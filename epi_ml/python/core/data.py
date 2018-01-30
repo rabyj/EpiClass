@@ -3,9 +3,9 @@ import h5py
 import json
 import os.path
 import numpy as np
+from scipy import signal
 
 import config
-
 
 class EpiData(object):
     def __init__(self, label_category):
@@ -40,7 +40,10 @@ class EpiData(object):
                 f = h5py.File(file_path)
                 array = f[md5][chrom][...]
                 datasets.append(array)
-            self._hdf5s[md5] = self._normalize(np.concatenate(datasets))
+            self._hdf5s[md5] = self._normalize(np.concatenate(datasets)) #TODO: generalise post-processing
+            #self._hdf5s[md5] = self._normalize(np.concatenate(datasets)).reshape((5, 245))
+            #_, _, Sxx = signal.spectrogram(np.concatenate(datasets))
+            #self._hdf5s[md5] = np.reshape(Sxx, 129*5)
     
     def _normalize(self, array):
         return (array - array.mean()) / array.std()
@@ -98,6 +101,7 @@ class Data(object):
     
     def next_batch(self, batch_size, shuffle=True):
         #if index exceeded num examples, start over
+        #TODO: make sure it works for any size
         if self._index >= self._num_examples:
             self._index = 0
         if self._index == 0:

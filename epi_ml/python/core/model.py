@@ -1,128 +1,189 @@
-
 import io
 import matplotlib.pyplot as plt
 import numpy as np
+import sklearn.metrics
+import pandas
 import tensorflow as tf
+import os.path
+from scipy import signal
+from abc import ABC
 
 import config
 
-def weight_variable(shape):
-  initial = tf.truncated_normal(shape, stddev=0.1)
-  return tf.Variable(initial)
+class Model(ABC):
+    def __init__(self):
+        self._x = None
+        self._y = None
+        self._x_size = None
+        self._y_size = None
+        self._keep_prob = tf.placeholder(tf.float32)
+        self._beta = tf.placeholder(tf.float32)
+        self._learning_rate = tf.placeholder(tf.float32)
+        self._model = None
+        self._loss = None
+        self._optimizer = None
+        self._predictor = None
 
-def bias_variable(shape):
-  initial = tf.constant(0.1, shape=shape)
-  return tf.Variable(initial)
+    @property
+    def x(self):
+        return self._x
 
-class Model(object):
-    def __init__(self, data):
-        #hyperparams
-        learning_rate = 1e-4
-        training_epochs = 1000
-        batch_size = 200
-        measure_frequency = 100
-        beta = 0.01
+    @property
+    def x_size(self):
+        return self._x_size
 
-        #model
-        size_y = data.test.labels[0].size
-        size_x = data.test.signals[0].size
+    @property
+    def y(self):
+        return self._y
 
-        y = tf.placeholder(tf.float32, [None, size_y])
-        x = tf.placeholder(tf.float32, [None, size_x])
-        keep_prob = tf.placeholder(tf.float32)
+    @property
+    def y_size(self):
+        return self._y_size
+    
+    @property
+    def keep_prob(self):
+        return self._keep_prob
 
-        #dense
-        hl_units = int((size_y + size_x)/2)
-        dense = tf.layers.dense(inputs=x, units=hl_units, activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=beta))
-        dropout = tf.nn.dropout(dense, keep_prob)
+    @property
+    def beta(self):
+        return self._beta
 
-        #readout
-        W = weight_variable([hl_units, size_y])
-        b = bias_variable([size_y])
+    @property
+    def learning_rate(self):
+        return self._learning_rate
 
+    @property
+    def model(self):
+        return self._model
+
+    @property
+    def loss(self):
+        return self._loss
+
+    @property
+    def optimizer(self):
+        return self._optimizer
+
+    @property
+    def predictor(self):
+        return self._predictor
+
+
+class Cnn(Model):
+    def __init__(self, input_size, output_size):
+        super().__init__()
+        self._x_size = input_size
+        self._y_size = output_size
+        self._x = tf.placeholder(tf.float32, [None, self._x_size])
+        self._y = tf.placeholder(tf.float32, [None, self._y_size])
+        self._model = self._init_model()
+        self._loss = self._init_loss()
+        self._optimizer = self._init_optimizer()
+        self._predictor = self._init_predictor()
+
+    def _init_model(self):
+        input_layer = tf.reshape(self._x, [-1, 129, 5, 1])
+        conv1 = tf.layers.conv2d(inputs=input_layer, filters=32, kernel_size=[5, 5], padding="same", activation=tf.nn.relu)
+        pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[2, 2], strides=2)
+        conv2 = tf.layers.conv2d(inputs=pool1, filters=64, kernel_size=[5, 5], padding="same", activation=tf.nn.relu)
+        pool2 = tf.layers.max_pooling2d(inputs=conv2, pool_size=[2, 2], strides=2)
+        pool2_flat = tf.reshape(pool2, [-1, 32 * 1 * 64])
+        hl_units = 1024
+        dense = tf.layers.dense(inputs=pool2_flat, units=hl_units, activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._beta))
+        dropout = tf.nn.dropout(dense, self._keep_prob)
         with tf.name_scope('Model'):
-            model = tf.matmul(dropout, W) + b
+            model = tf.layers.dense(inputs=self._model.output, units=self._model.size_y, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._hyperparams.get("beta")))
+        return model
 
-        #optimisation
+    def _init_loss(self):
         with tf.name_scope('Loss'):
-            loss =  tf.losses.softmax_cross_entropy(y , model) + tf.losses.get_regularization_loss() + beta * tf.nn.l2_loss(W)
+            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=self._y , logits=self._model) + tf.losses.get_regularization_loss())
+        return loss
 
-        with tf.name_scope('SGD'):
-            optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss)
+    def _init_optimizer(self):
+        with tf.name_scope('Optimizer'):
+            optimizer = tf.train.AdamOptimizer(self._learning_rate).minimize(self._loss)
+        return optimizer
 
-        #accuracy
-        with tf.name_scope('Training_Accuracy'):
-            train_accuracy = tf.equal(tf.argmax(model,1), tf.argmax(y,1))
-            train_accuracy = tf.reduce_mean(tf.cast(train_accuracy, tf.float32))
+    def _init_predictor(self):
+        with tf.name_scope('Predictor'):
+            predictor = tf.nn.softmax(self._model)
+        return predictor
 
-        with tf.name_scope('Validation_Accuracy'):
-            valid_accuracy = tf.equal(tf.argmax(model,1), tf.argmax(y,1))
-            valid_accuracy = tf.reduce_mean(tf.cast(valid_accuracy, tf.float32))
 
-        test_accuracy = tf.equal(tf.argmax(model,1), tf.argmax(y,1))
-        test_accuracy = tf.reduce_mean(tf.cast(test_accuracy, tf.float32))
+class BidirectionalRnn(Model):
+    def __init__(self, input_size, output_size):
+        super().__init__()
+        self._x_size = input_size
+        self._y_size = output_size
+        self._x = tf.placeholder(tf.float32, [None, 5, self._x_size/5])
+        self._y = tf.placeholder(tf.float32, [None, output_size])
+        self._model = self._init_model()
+        self._loss = self._init_loss()
+        self._optimizer = self._init_optimizer()
+        self._predictor = self._init_predictor()
 
-        confusion_mat = tf.confusion_matrix(tf.argmax(model,1), tf.argmax(y,1))
+    def _init_model(self):
+        input_layer = tf.unstack(self._x, 5, 1)
+        hl_units = int((self._x_size + self._y_size)/2)*2
+        lstm_fw_cell = tf.contrib.rnn.BasicLSTMCell(int(hl_units/2), forget_bias=1.0)
+        lstm_fw_dropout = tf.contrib.rnn.DropoutWrapper(lstm_fw_cell, self._keep_prob)
+        lstm_bw_cell = tf.contrib.rnn.BasicLSTMCell(int(hl_units/2), forget_bias=1.0)
+        lstm_bw_dropout = tf.contrib.rnn.DropoutWrapper(lstm_bw_cell, self._keep_prob)
+        outputs, a, b = tf.contrib.rnn.static_bidirectional_rnn(lstm_fw_dropout, lstm_bw_dropout, input_layer, dtype=tf.float32)
+        dense = tf.layers.dense(inputs=outputs[-1], units=hl_units, activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._beta))
+        dropout = tf.nn.dropout(dense, self._keep_prob)
+        with tf.name_scope('Model'):
+            model = tf.layers.dense(inputs=self._model.output, units=self._model.size_y, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._hyperparams.get("beta")))
+        return model
 
-        #training
-        init = tf.global_variables_initializer()
-        # monitoring
-        l_sum = tf.summary.scalar("loss", loss)
-        t_sum = tf.summary.scalar("training_accuracy", train_accuracy)
-        v_sum = tf.summary.scalar("validation_accuracy", valid_accuracy)
-        merged_summary = tf.summary.merge([l_sum, t_sum])
+    def _init_loss(self):
+        with tf.name_scope('Loss'):
+            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=self._y , logits=self._model) + tf.losses.get_regularization_loss())
+        return loss
 
-        #session
-        with tf.Session() as sess:
-            sess.run(init)
-            #writer
-            summary_writer = tf.summary.FileWriter(config.LOG_PATH, graph=tf.get_default_graph())
+    def _init_optimizer(self):
+        with tf.name_scope('Optimizer'):
+            optimizer = tf.train.AdamOptimizer(self._learning_rate).minimize(self._loss)
+        return optimizer
 
-            #train
-            nb_batch = int(data.train.num_examples/batch_size)
-            for epoch in range(training_epochs):
-                for batch in range(nb_batch):
-                    batch_xs, batch_ys = data.train.next_batch(batch_size)
-                    step = epoch*nb_batch+batch
-                    if step % measure_frequency == 0:
-                        t_acc = train_accuracy.eval(feed_dict={x: batch_xs, y: batch_ys, keep_prob: 1.0})
-                        v_acc, v_summary = sess.run([valid_accuracy, v_sum], feed_dict={x: data.validation.signals, y: data.validation.labels, keep_prob: 1.0})
-                        summary_writer.add_summary(v_summary, step)
-                        print('step {0}, training accuracy {1:.4f}, validation accuracy {2:.4f}'.format(step, t_acc, v_acc))
-                    _, l, summary = sess.run([optimizer, loss, merged_summary], feed_dict={x: batch_xs, y: batch_ys, keep_prob: 0.5})
-                    summary_writer.add_summary(summary, step)
-            #model accuracyt
-            test_acc, confusion = sess.run([test_accuracy, confusion_mat], feed_dict={x: data.test.signals, y: data.test.labels, keep_prob: 1.0})
-            print(test_acc)
-            heatmap(summary_writer, confusion, data.labels)
-            summary_writer.close()
+    def _init_predictor(self):
+        with tf.name_scope('Predictor'):
+            predictor = tf.nn.softmax(self._model)
+        return predictor
 
-def heatmap(writer, confusion_matrix, labels):
-    plt.figure()
-    confusion_matrix[(confusion_matrix > 0)] = 1
 
-    fig, ax = plt.subplots()
-    ax.pcolor(confusion_matrix, cmap=plt.cm.Blues, alpha=0.8)
-    ax.set_frame_on(False)
-    ax.set_yticks(np.arange(len(labels)) + 0.5, minor=False)
-    ax.set_xticks(np.arange(len(labels)) + 0.5, minor=False)
-    ax.invert_yaxis()
-    ax.xaxis.tick_top()
-    ax.set_xticklabels(labels, fontsize=2)
-    ax.set_yticklabels(labels, fontsize=2)
-    plt.xticks(rotation=90)
-    ax = plt.gca()
-    for t in ax.xaxis.get_major_ticks():
-        t.tick1On = False
-        t.tick2On = False
-    for t in ax.yaxis.get_major_ticks():
-        t.tick1On = False
-        t.tick2On = False
+class Dense(Model):
+    def __init__(self, input_size, output_size):
+        super().__init__()
+        self._x_size = input_size
+        self._y_size = output_size
+        self._x = tf.placeholder(tf.float32, [None, self._x_size])
+        self._y = tf.placeholder(tf.float32, [None, self._y_size])
+        self._model = self._init_model()
+        self._loss = self._init_loss()
+        self._optimizer = self._init_optimizer()
+        self._predictor = self._init_predictor()
 
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png', dpi=400)
-    buf.seek(0)
-    image = tf.image.decode_png(buf.getvalue(), channels=4)
-    image = tf.expand_dims(image, 0)
-    summary = tf.summary.image("test", image, max_outputs=1)
-    writer.add_summary(summary.eval())
+    def _init_model(self):
+        hl_units = int((self._x_size + self._y_size)/2)
+        dense = tf.layers.dense(inputs=self._x, units=hl_units, activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._beta))
+        dropout = tf.nn.dropout(dense, self.keep_prob)
+        with tf.name_scope('Model'):
+            model = tf.layers.dense(inputs=dropout, units=self._y_size, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._beta))
+        return model
+
+    def _init_loss(self):
+        with tf.name_scope('Loss'):
+            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=self._y , logits=self._model) + tf.losses.get_regularization_loss())
+        return loss
+
+    def _init_optimizer(self):
+        with tf.name_scope('Optimizer'):
+            optimizer = tf.train.AdamOptimizer(self._learning_rate).minimize(self._loss)
+        return optimizer
+
+    def _init_predictor(self):
+        with tf.name_scope('Predictor'):
+            predictor = tf.nn.softmax(self._model)
+        return predictor
