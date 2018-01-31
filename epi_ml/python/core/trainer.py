@@ -7,7 +7,7 @@ import tensorflow as tf
 import os.path
 from scipy import signal
 from abc import ABC
-
+import math
 import config
 
 
@@ -15,13 +15,14 @@ class Trainer(object):
     def __init__(self, data, model):
         self._data = data
         self._model = model
+        self._data.preprocess(model.preprocess)
         self._hparams = {
             "learning_rate": 1e-4,
-            "training_epochs": 10,
-            "batch_size": 200,
-            "measure_frequency": 100,
+            "training_epochs": 1000,
+            "batch_size": 512,
+            "measure_frequency": 5,
             "beta": 0.01,
-            "keep_prob": 0.4
+            "keep_prob": 0.5
         }
         self._train_accuracy = self._init_accuracy("Training_Accuracy")
         self._valid_accuracy = self._init_accuracy("Validation_Accuracy")
@@ -32,8 +33,10 @@ class Trainer(object):
         self._sess = self._start_sess()
 
     def __del__(self):
-        self._writer.close()
-        self._sess.close()
+        if hasattr(self, "_writer"):
+            self._writer.close()
+        if hasattr(self, "_sess"):
+            self._sess.close()
 
     def _start_sess(self):
         sess = tf.Session()
@@ -75,18 +78,17 @@ class Trainer(object):
 
     def train(self):
         #train
-        nb_batch = int(self._data.train.num_examples/self._hparams.get("batch_size"))
+        nb_batch = math.ceil(self._data.train.num_examples/self._hparams.get("batch_size"))
         for epoch in range(self._hparams.get("training_epochs")):
             for batch in range(nb_batch):
                 batch_xs, batch_ys = self._data.train.next_batch(self._hparams.get("batch_size"))
-                step = epoch*nb_batch+batch
-                if step % self._hparams.get("measure_frequency") == 0:
+                if epoch % self._hparams.get("measure_frequency") == 0 and batch == 0:
                     t_acc = self._sess.run(self._train_accuracy, feed_dict=self._make_dict(batch_xs, batch_ys, keep_prob=1.0))
                     v_acc, v_summary = self._sess.run([self._valid_accuracy, self._v_sum], feed_dict=self._make_dict(self._data.validation.signals, self._data.validation.labels, keep_prob= 1.0))
-                    self._writer.add_summary(v_summary, step)
-                    print('step {0}, training accuracy {1:.4f}, validation accuracy {2:.4f}'.format(step, t_acc, v_acc))
+                    self._writer.add_summary(v_summary, epoch)
+                    print('epoch {0}, training accuracy {1:.4f}, validation accuracy {2:.4f}'.format(epoch, t_acc, v_acc))
                 _, _, summary = self._sess.run([self._model.optimizer, self._model.loss, self._summary], feed_dict=self._make_dict(batch_xs, batch_ys))
-                self._writer.add_summary(summary, step)
+                self._writer.add_summary(summary, epoch)
 
     def metrics(self):
         test_acc, pred = self._sess.run([self._test_accuracy, self._model.predictor], feed_dict=self._make_dict(self._data.test.signals, self._data.test.labels, keep_prob=1.0))
@@ -98,7 +100,8 @@ class Trainer(object):
         print ("f1_score: %s" % sklearn.metrics.f1_score(y_true, y_pred, average="macro"))
         self.write_pred_table(pred, self._data.labels, self._data.test.labels)
         self.heatmap(self._data.labels)
-        #self.spectro(data.test.signals[3])
+        #only available without reshape
+        #self.spectro(self._data.test.signals[3])
 
 
     def importance(self):
@@ -106,20 +109,6 @@ class Trainer(object):
         total = np.dot(w[0], w[2])
         total = np.sum(np.absolute(total), axis=1)
         return ','.join([str(x) for x in total])
-
-    def spectro(self, x):
-        f, t, Sxx = signal.spectrogram(x)
-        plt.figure()
-        plt.pcolormesh(t, f, Sxx)
-        plt.ylabel('Frequency [Hz]')
-        plt.xlabel('Time [sec]')
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=400)
-        buf.seek(0)
-        image = tf.image.decode_png(buf.getvalue(), channels=4)
-        image = tf.expand_dims(image, 0)
-        summary = tf.summary.image("Spetrogram", image, max_outputs=1)
-        self._writer.add_summary(summary.eval(session=self._sess))
 
     def heatmap(self, labels):
         confusion_mat = tf.confusion_matrix(tf.argmax(self._model.model,1), tf.argmax(self._model.y,1))

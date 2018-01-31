@@ -4,12 +4,14 @@ import json
 import os.path
 import numpy as np
 from scipy import signal
+import random
 
 import config
 
 class EpiData(object):
-    def __init__(self, label_category):
+    def __init__(self, label_category, oversample=True):
         self._label_category = label_category
+        self._oversample = oversample
         self._load_metadata(config.META_PATH)
         self._load_chrom_sizes(config.CHROM_PATH)
         self._load_hdf5(config.DATA_PATH)
@@ -40,10 +42,7 @@ class EpiData(object):
                 f = h5py.File(file_path)
                 array = f[md5][chrom][...]
                 datasets.append(array)
-            self._hdf5s[md5] = self._normalize(np.concatenate(datasets)) #TODO: generalise post-processing
-            #self._hdf5s[md5] = self._normalize(np.concatenate(datasets)).reshape((5, 245))
-            #_, _, Sxx = signal.spectrogram(np.concatenate(datasets))
-            #self._hdf5s[md5] = np.reshape(Sxx, 129*5)
+            self._hdf5s[md5] = self._normalize(np.concatenate(datasets))
     
     def _normalize(self, array):
         return (array - array.mean()) / array.std()
@@ -51,21 +50,73 @@ class EpiData(object):
     def _extract_md5(self, file_name):
         return os.path.basename(file_name).split("_")[0]
 
+    def _oversample_rates(self):
+        sorted_md5 = sorted(self._metadata.keys())
+        label_count = {}
+        for md5 in sorted_md5:
+            label = self._metadata[md5][self._label_category]
+            label_count[label] = label_count.get(label, 0) + 1
+
+        max_count = 0
+        max_label = ""
+        for label, count in label_count.items():
+            if count > max_count:
+                max_count = count
+                max_label = label
+
+        oversample_rates = {}
+        for label, count in label_count.items():
+            oversample_rates[label] = count/max_count
+        return oversample_rates
+
     def _build_data(self):
         data = [[], []]
         sorted_md5 = sorted(self._metadata.keys())
         for md5 in sorted_md5:
             data[0].append(self._hdf5s[md5])
             data[1].append(self._metadata[md5][self._label_category])
-        self._to_onehot(data[1])
-        self._train = Data(data[0][:800], data[1][:800])
-        self._validation = Data(data[0][800:900], data[1][800:900])
-        self._test = Data(data[0][900:], data[1][900:])
+
+        size_all = len(data[0])
+        size_validation = int(size_all*0.1)
+        size_test = int(size_all*0.1)
+        split_index = size_test+size_validation
+
+        validation_signals = data[0][:size_validation]
+        validation_labels = data[1][:size_validation]
+        test_signals = data[0][size_validation:split_index]
+        test_labels = data[1][size_validation:split_index]
+        train_signals = data[0][split_index:]
+        train_labels = data[1][split_index:]
+        if self._oversample:
+            train_signals, train_labels = self._oversample_data(train_signals, train_labels)
+
+        self._to_onehot(validation_labels)
+        self._to_onehot(test_labels)
+        self._to_onehot(train_labels)
+
+        self._validation = Data(validation_signals, validation_labels)
+        self._test = Data(test_signals, test_labels)
+        self._train = Data(train_signals, train_labels)
+
+    def _oversample_data(self, signals, labels):
+        oversample_rates = self._oversample_rates()
+        new_signals = []
+        new_labels = []
+        for signal, label in zip(signals, labels):
+            rate = oversample_rates[label]
+            sample_rate = int(1/rate)
+            if random.random() < (1/rate) % 1:
+                sample_rate += 1
+            for i in range(sample_rate):
+                new_signals.append(signal)
+                new_labels.append(label)
+        return new_signals, new_labels
 
     def _to_onehot(self, labels):
+        sorted_md5 = sorted(self._metadata.keys())
         uniq = set()
-        for label in labels:
-            uniq.add(label)
+        for md5 in sorted_md5:
+            uniq.add(self._metadata[md5][self._label_category])
         self._sorted_choices = sorted(list(uniq))
         onehot_dict = {}
         for i in range(len(self._sorted_choices)):
@@ -74,6 +125,11 @@ class EpiData(object):
             onehot_dict[self._sorted_choices[i]] = onehot
         for i in range(len(labels)):
             labels[i] = onehot_dict[labels[i]]
+
+    def preprocess(self, f):
+        self._train.preprocess(f)
+        self._validation.preprocess(f)
+        self._test.preprocess(f)
 
     @property
     def train(self):
@@ -98,10 +154,12 @@ class Data(object):
         self._signals = np.array(x)
         self._labels = np.array(y)
         self._index = 0
+
+    def preprocess(self, f):
+        self._signals = np.apply_along_axis(f, 1, self._signals)
     
     def next_batch(self, batch_size, shuffle=True):
         #if index exceeded num examples, start over
-        #TODO: make sure it works for any size
         if self._index >= self._num_examples:
             self._index = 0
         if self._index == 0:
