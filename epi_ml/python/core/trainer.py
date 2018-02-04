@@ -18,11 +18,13 @@ class Trainer(object):
         self._data.preprocess(model.preprocess)
         self._hparams = {
             "learning_rate": 1e-4,
-            "training_epochs": 1000,
-            "batch_size": 512,
+            "training_epochs": 200,
+            "batch_size": 256,
             "measure_frequency": 5,
-            "beta": 0.01,
-            "keep_prob": 0.5
+            "l1_scale": 0.001,
+            "l2_scale": 0.01,
+            "keep_prob": 0.5,
+            "is_training": True
         }
         self._train_accuracy = self._init_accuracy("Training_Accuracy")
         self._valid_accuracy = self._init_accuracy("Validation_Accuracy")
@@ -60,19 +62,25 @@ class Trainer(object):
             accuracy = tf.reduce_mean(tf.cast(accuracy, tf.float32))
         return accuracy
 
-    def _make_dict(self, signals, labels, keep_prob=None, beta=None, learning_rate=None):
-        if keep_prob == None:
+    def _make_dict(self, signals, labels, keep_prob=None, l1_scale=None, l2_scale=None, learning_rate=None, is_training=None):
+        if keep_prob is None:
             keep_prob = self._hparams.get("keep_prob")
-        if beta == None:
-            beta = self._hparams.get("beta")
-        if learning_rate == None:
+        if l1_scale is None:
+            l1_scale = self._hparams.get("l1_scale")
+        if l2_scale is None:
+            l2_scale = self._hparams.get("l2_scale")
+        if learning_rate is None:
             learning_rate = self._hparams.get("learning_rate")
+        if is_training is None:
+            is_training = self._hparams.get("is_training")
         default_dict = {
             self._model.x: signals,
             self._model.y: labels,
             self._model.keep_prob: keep_prob,
-            self._model.beta: beta,
-            self._model.learning_rate: learning_rate
+            self._model.l1_scale: l1_scale,
+            self._model.l2_scale: l2_scale,
+            self._model.learning_rate: learning_rate,
+            self._model.is_training: is_training
         }
         return default_dict
 
@@ -84,14 +92,14 @@ class Trainer(object):
                 batch_xs, batch_ys = self._data.train.next_batch(self._hparams.get("batch_size"))
                 if epoch % self._hparams.get("measure_frequency") == 0 and batch == 0:
                     t_acc = self._sess.run(self._train_accuracy, feed_dict=self._make_dict(batch_xs, batch_ys, keep_prob=1.0))
-                    v_acc, v_summary = self._sess.run([self._valid_accuracy, self._v_sum], feed_dict=self._make_dict(self._data.validation.signals, self._data.validation.labels, keep_prob= 1.0))
+                    v_acc, v_summary = self._sess.run([self._valid_accuracy, self._v_sum], feed_dict=self._make_dict(self._data.validation.signals, self._data.validation.labels, keep_prob=1.0, is_training=False))
                     self._writer.add_summary(v_summary, epoch)
                     print('epoch {0}, training accuracy {1:.4f}, validation accuracy {2:.4f}'.format(epoch, t_acc, v_acc))
                 _, _, summary = self._sess.run([self._model.optimizer, self._model.loss, self._summary], feed_dict=self._make_dict(batch_xs, batch_ys))
                 self._writer.add_summary(summary, epoch)
 
     def metrics(self):
-        test_acc, pred = self._sess.run([self._test_accuracy, self._model.predictor], feed_dict=self._make_dict(self._data.test.signals, self._data.test.labels, keep_prob=1.0))
+        test_acc, pred = self._sess.run([self._test_accuracy, self._model.predictor], feed_dict=self._make_dict(self._data.test.signals, self._data.test.labels, keep_prob=1.0, is_training=False))
         print("Accuracy: %s" % (test_acc))
         y_true = np.argmax(self._data.test.labels,1)
         y_pred = np.argmax(pred,1)
@@ -100,19 +108,23 @@ class Trainer(object):
         print ("f1_score: %s" % sklearn.metrics.f1_score(y_true, y_pred, average="macro"))
         self.write_pred_table(pred, self._data.labels, self._data.test.labels)
         self.heatmap(self._data.labels)
-        #only available without reshape
-        #self.spectro(self._data.test.signals[3])
 
 
     def importance(self):
+        #garson algorithm #TODO: generalise, put in model
         w = self._sess.run(tf.trainable_variables())
-        total = np.dot(w[0], w[2])
-        total = np.sum(np.absolute(total), axis=1)
-        return ','.join([str(x) for x in total])
+        total_w = w[0]
+        for i in range(2, len(w), 2):
+            total_w = np.dot(total_w, w[i])
+        total_w = np.absolute(total_w)
+        sum_w = np.sum(total_w, axis=None)
+        total_w = np.sum(total_w/sum_w, axis=1)
+        print((total_w > 1e-04).sum())
+        return ','.join([str(x) for x in total_w])
 
     def heatmap(self, labels):
         confusion_mat = tf.confusion_matrix(tf.argmax(self._model.model,1), tf.argmax(self._model.y,1))
-        confusion_matrix = self._sess.run(confusion_mat, feed_dict=self._make_dict(self._data.test.signals, self._data.test.labels, keep_prob=1.0))
+        confusion_matrix = self._sess.run(confusion_mat, feed_dict=self._make_dict(self._data.test.signals, self._data.test.labels, keep_prob=1.0, is_training=False))
         plt.figure()
         confusion_matrix[(confusion_matrix > 0)] = 1
 

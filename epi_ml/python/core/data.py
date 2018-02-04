@@ -9,9 +9,11 @@ import random
 import config
 
 class EpiData(object):
-    def __init__(self, label_category, oversample=True):
+    def __init__(self, label_category, oversample=False, normalization=True, onehot=True):
         self._label_category = label_category
         self._oversample = oversample
+        self._normalization = normalization
+        self._onehot = onehot
         self._load_metadata(config.META_PATH)
         self._load_chrom_sizes(config.CHROM_PATH)
         self._load_hdf5(config.DATA_PATH)
@@ -45,7 +47,10 @@ class EpiData(object):
             self._hdf5s[md5] = self._normalize(np.concatenate(datasets))
     
     def _normalize(self, array):
-        return (array - array.mean()) / array.std()
+        if self._normalization:
+            return (array - array.mean()) / array.std()
+        else:
+            return array
 
     def _extract_md5(self, file_name):
         return os.path.basename(file_name).split("_")[0]
@@ -90,9 +95,10 @@ class EpiData(object):
         if self._oversample:
             train_signals, train_labels = self._oversample_data(train_signals, train_labels)
 
-        self._to_onehot(validation_labels)
-        self._to_onehot(test_labels)
-        self._to_onehot(train_labels)
+        if self._onehot:
+            self._to_onehot(validation_labels)
+            self._to_onehot(test_labels)
+            self._to_onehot(train_labels)
 
         self._validation = Data(validation_signals, validation_labels)
         self._test = Data(test_signals, test_labels)
