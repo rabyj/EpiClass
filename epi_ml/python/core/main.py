@@ -50,9 +50,9 @@ def main(args):
     input_size = my_data.train.signals[0].size
     ouput_size = my_data.train.labels[0].size
 
-    #my_model = model.Dense(input_size, ouput_size)
+    my_model = model.Dense(input_size, ouput_size)
     #my_model = model.Cnn(41*49, ouput_size, (41, 49))
-    my_model = model.BidirectionalRnn(input_size, ouput_size)
+    #my_model = model.BidirectionalRnn(input_size, ouput_size)
 
     my_trainer = trainer.Trainer(my_data, my_model)
     my_trainer.train()
