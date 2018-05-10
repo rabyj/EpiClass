@@ -68,7 +68,7 @@ def main(args):
     my_trainer = svm.Svm(my_data)
     my_trainer.train()
     my_trainer.metrics()
-
+    """
     import visualization
     my_trainer = visualization.Mds(my_data)
     my_trainer.train()
@@ -81,7 +81,6 @@ def main(args):
     my_trainer = visualization.Pca(my_data)
     my_trainer.train()
     my_trainer.show()
-    """
 
 if __name__ == "__main__":
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
