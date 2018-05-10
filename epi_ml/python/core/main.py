@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from scipy import signal
 import h5py
 import numpy as np
+import visualisation
 
 def spectro_hg(path):
     f = h5py.File(path)
@@ -57,30 +58,10 @@ def main(args):
     my_trainer = trainer.Trainer(my_data, my_model)
     my_trainer.train()
     my_trainer.metrics()
+
+    vis = visualization.Mds(my_data)
+    my_trainer.visualise(vis)
     #my_trainer.importance() #TODO: generalize, probably put in model
-    """
-    import ensemble
-    my_trainer = ensemble.Ensemble(my_data)
-    my_trainer.train()
-    my_trainer.metrics()
-
-    import svm
-    my_trainer = svm.Svm(my_data)
-    my_trainer.train()
-    my_trainer.metrics()
-    """
-    import visualization
-    my_trainer = visualization.Mds(my_data)
-    my_trainer.train()
-    my_trainer.show()
-
-    my_trainer = visualization.Tsne(my_data)
-    my_trainer.train()
-    my_trainer.show()
-
-    my_trainer = visualization.Pca(my_data)
-    my_trainer.train()
-    my_trainer.show()
 
 if __name__ == "__main__":
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'

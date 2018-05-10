@@ -25,6 +25,7 @@ class BaseModel(ABC):
         self._loss = None
         self._optimizer = None
         self._predictor = None
+        self._layers = []
         self._preprocess = lambda x: x
 
     @property
@@ -82,6 +83,10 @@ class BaseModel(ABC):
     @property
     def preprocess(self):
         return self._preprocess
+
+    @property
+    def layers(self):
+        return self._layers
 
 class StandardModel(BaseModel, ABC):
     def __init__(self):
@@ -204,7 +209,7 @@ class Dense(StandardModel):
         hl_units = int((self._x_size + self._y_size))
         nb_layers=1
 
-        layers = [self._x]
+        self.layers = [self._x]
         for i in range(nb_layers):
             dense = tf.layers.dense(inputs=layers[i], units=hl_units, activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
             dropout = tf.nn.dropout(dense, self.keep_prob)

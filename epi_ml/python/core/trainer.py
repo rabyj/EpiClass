@@ -109,6 +109,9 @@ class Trainer(object):
         self.write_pred_table(pred, self._data.labels, self._data.test.labels)
         self.heatmap(self._data.labels)
 
+    def visualise(vis):
+        self.outputs = self._model.layers
+        print(outputs)
 
     def importance(self):
         #garson algorithm #TODO: generalise, put in model
