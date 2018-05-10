@@ -14,16 +14,17 @@ class EpiData(object):
         self._oversample = oversample
         self._normalization = normalization
         self._onehot = onehot
-        self._load_metadata(config.META_PATH)
         self._load_chrom_sizes(config.CHROM_PATH)
         self._load_hdf5(config.DATA_PATH)
+        self._load_metadata(config.META_PATH)
         self._build_data()
 
     def _load_metadata(self, meta_path):
         meta_raw = json.load(open(meta_path))
         self._metadata = {}
         for dataset in meta_raw["datasets"]:
-            self._metadata[dataset["md5sum"]] = dataset
+            if dataset["md5sum"] in self._hdf5s:
+                self._metadata[dataset["md5sum"]] = dataset
 
     def _load_chrom_sizes(self, chrom_path):
         self._chroms = []
