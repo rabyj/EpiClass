@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from scipy import signal
 import h5py
 import numpy as np
-import visualisation
+import visualization
 
 def spectro_hg(path):
     f = h5py.File(path)
@@ -42,8 +42,8 @@ def main(args):
     #test_path = "/Users/Jon/Projects/epi_ml/epi_ml/python/core/66638a9c6899bf55f60a8b95dca0eee4_1kb_all_none.hdf5"
     #spectro_hg(test_path)
 
-    my_data = data.EpiData("assay")
-    #my_data = data.EpiData("assay_category", oversample=True)
+    # my_data = data.EpiData("assay")
+    my_data = data.EpiData("assay_category", oversample=True)
     #my_data = data.EpiData("publishing_group")
 
     #spectro(my_data.test.signals[55])
@@ -59,8 +59,8 @@ def main(args):
     my_trainer.train()
     my_trainer.metrics()
 
-    vis = visualization.Mds(my_data)
-    my_trainer.visualise(vis)
+    vis = visualization.Pca()
+    my_trainer.visualize(vis)
     #my_trainer.importance() #TODO: generalize, probably put in model
 
 if __name__ == "__main__":

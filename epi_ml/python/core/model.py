@@ -207,15 +207,16 @@ class Dense(StandardModel):
 
     def _init_model(self):
         hl_units = int((self._x_size + self._y_size))
-        nb_layers=1
+        nb_layers=3
 
-        self.layers = [self._x]
+        self.layers.append(self._x)
         for i in range(nb_layers):
-            dense = tf.layers.dense(inputs=layers[i], units=hl_units, activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
+            dense = tf.layers.dense(inputs=self.layers[i], units=hl_units, activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
             dropout = tf.nn.dropout(dense, self.keep_prob)
-            layers.append(dropout)
+            self.layers.append(dropout)
         with tf.name_scope('Model'):
-            model = tf.layers.dense(inputs=layers[-1], units=self._y_size, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
+            model = tf.layers.dense(inputs=self.layers[-1], units=self._y_size, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
+            self.layers.append(model)
         return model
 
 

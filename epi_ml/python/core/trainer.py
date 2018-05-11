@@ -18,7 +18,7 @@ class Trainer(object):
         self._data.preprocess(model.preprocess)
         self._hparams = {
             "learning_rate": 1e-4,
-            "training_epochs": 1000,
+            "training_epochs": 100,
             "batch_size": 512,
             "measure_frequency": 10,
             "l1_scale": 0.001,
@@ -109,9 +109,11 @@ class Trainer(object):
         self.write_pred_table(pred, self._data.labels, self._data.test.labels)
         self.heatmap(self._data.labels)
 
-    def visualise(vis):
-        self.outputs = self._model.layers
-        print(outputs)
+    def visualize(self, vis):
+        outputs = self._sess.run(self._model.layers, feed_dict=self._make_dict(self._data.train.signals, self._data.train.labels, keep_prob=1.0, is_training=False))
+
+        for idx, output in enumerate(outputs):
+            vis.run(output, self._data.train.labels, self._sess, self._writer, str(idx))
 
     def importance(self):
         #garson algorithm #TODO: generalise, put in model
