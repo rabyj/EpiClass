@@ -6,39 +6,60 @@ import numpy as np
 from scipy import signal
 import random
 
-import config
+import io
+
+class EpiDataSource(object):
+    def __init__(self, hdf5: io.IOBase, chromsize: io.IOBase, metadata: io.IOBase):
+        self._hdf5 = hdf5
+        self._chromsize = chromsize
+        self._metadata = metadata
+
+    @property
+    def hdf5_file(self) -> io.IOBase:
+        return self._hdf5
+
+    @property
+    def chromsize_file(self) -> io.IOBase:
+        return self._chromsize
+
+    @property
+    def metadata_file(self) -> io.IOBase:
+        return self._metadata
 
 class EpiData(object):
-    def __init__(self, label_category, oversample=False, normalization=True, onehot=True):
+    def __init__(self, datasource: EpiDataSource, label_category: str, oversample=False, normalization=True, onehot=True):
         self._label_category = label_category
         self._oversample = oversample
         self._normalization = normalization
         self._onehot = onehot
-        self._load_chrom_sizes(config.CHROM_PATH)
-        self._load_hdf5(config.DATA_PATH)
-        self._load_metadata(config.META_PATH)
+        self._load_chrom_sizes(datasource.chromsize_file)
+        self._load_hdf5(datasource.hdf5_file)
+        self._load_metadata(datasource.metadata_file)
         self._build_data()
 
-    def _load_metadata(self, meta_path):
-        meta_raw = json.load(open(meta_path))
+    def _load_metadata(self, meta_file: io.IOBase):
+        meta_file.seek(0)
+        meta_raw = json.load(meta_file)
         self._metadata = {}
         for dataset in meta_raw["datasets"]:
             if dataset["md5sum"] in self._hdf5s:
                 self._metadata[dataset["md5sum"]] = dataset
 
-    def _load_chrom_sizes(self, chrom_path):
+    def _load_chrom_sizes(self, chrom_file: io.IOBase):
+        chrom_file.seek(0)
         self._chroms = []
-        with open(chrom_path) as chrom_file:
-            for line in chrom_file:
-                line = line.strip()
-                if line:
-                    line = line.split()
-                    self._chroms.append(line[0])
+
+        for line in chrom_file:
+            line = line.strip()
+            if line:
+                line = line.split()
+                self._chroms.append(line[0])
         self._chroms.sort()
 
-    def _load_hdf5(self, data_path):
+    def _load_hdf5(self, data_file: io.IOBase):
+        data_file.seek(0)
         self._hdf5s = {}
-        for file_path in glob.glob(os.path.join(data_path, "*.hdf5")):
+        for file_path in [line.strip() for line in data_file]:
             md5 = self._extract_md5(file_path)
             datasets = []
             for chrom in self._chroms:

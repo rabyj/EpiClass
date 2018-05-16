@@ -7,7 +7,6 @@ import numpy as np
 import io
 import tensorflow as tf
 from abc import ABC
-import config
 import itertools
 import collections
 

@@ -8,13 +8,13 @@ import os.path
 from scipy import signal
 from abc import ABC
 import math
-import config
 
 
 class Trainer(object):
-    def __init__(self, data, model):
+    def __init__(self, data, model, logdir):
         self._data = data
         self._model = model
+        self._logdir = logdir
         self._data.preprocess(model.preprocess)
         self._hparams = {
             "learning_rate": 1e-4,
@@ -46,7 +46,7 @@ class Trainer(object):
         return sess
 
     def _init_writer(self):
-        return tf.summary.FileWriter(config.LOG_PATH, graph=tf.get_default_graph())
+        return tf.summary.FileWriter(self._logdir, graph=tf.get_default_graph())
 
     def _init_summary(self):
         l_sum = tf.summary.scalar("loss", self._model.loss)
@@ -162,4 +162,4 @@ class Trainer(object):
     def write_pred_table(self, pred, pred_labels, labels):
         string_labels = [pred_labels[np.argmax(label)] for label in labels]
         df = pandas.DataFrame(data=pred, index=string_labels, columns=pred_labels)
-        pred_str = df.to_csv(os.path.join(config.LOG_PATH, "predict.csv"), encoding="utf8")
+        pred_str = df.to_csv(os.path.join(self._logdir, "predict.csv"), encoding="utf8")

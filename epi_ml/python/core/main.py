@@ -5,13 +5,15 @@ warnings.simplefilter("ignore")
 import data
 import model
 import trainer
-import config
 import os.path
 import matplotlib.pyplot as plt
 from scipy import signal
 import h5py
 import numpy as np
 import visualization
+
+import argparse
+from argparseutils.directorytype import DirectoryType
 
 def spectro_hg(path):
     f = h5py.File(path)
@@ -37,13 +39,28 @@ def spectro(x):
         plt.xlabel('Time [sec]')
         plt.show()
 
+def parse_arguments(args: list) -> argparse.Namespace:
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument('hdf5', type=argparse.FileType('r'), help='A file with hdf5 filenames. Use absolute path!')
+    arg_parser.add_argument('chromsize', type=argparse.FileType('r'), help='A file with chrom sizes.')
+    arg_parser.add_argument('metadata', type=argparse.FileType('r'), help='A metadata JSON file.')
+    arg_parser.add_argument('logdir', type=DirectoryType(), help='A directory for the logs.')
+    return arg_parser.parse_args(args)
+
 def main(args):
+    epiml_options = parse_arguments(args)
+
+    my_datasource = data.EpiDataSource(
+        epiml_options.hdf5,
+        epiml_options.chromsize,
+        epiml_options.metadata)
+
     #test_path = "/Users/Jon/Projects/epi_ml/epi_ml/python/core/1110b4cbcd3f8659d2c479b8889e3eeb_1kb_all_none.hdf5"
     #test_path = "/Users/Jon/Projects/epi_ml/epi_ml/python/core/66638a9c6899bf55f60a8b95dca0eee4_1kb_all_none.hdf5"
     #spectro_hg(test_path)
 
     # my_data = data.EpiData("assay")
-    my_data = data.EpiData("assay_category", oversample=True)
+    my_data = data.EpiData(my_datasource ,"assay_category", oversample=True)
     #my_data = data.EpiData("publishing_group")
 
     #spectro(my_data.test.signals[55])
@@ -55,7 +72,7 @@ def main(args):
     #my_model = model.Cnn(41*49, ouput_size, (41, 49))
     #my_model = model.BidirectionalRnn(input_size, ouput_size)
 
-    my_trainer = trainer.Trainer(my_data, my_model)
+    my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir)
     my_trainer.train()
     my_trainer.metrics()
 

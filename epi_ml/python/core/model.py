@@ -8,8 +8,6 @@ import os.path
 from scipy import signal
 from abc import ABC
 
-import config
-
 class BaseModel(ABC):
     def __init__(self):
         self._x = None
