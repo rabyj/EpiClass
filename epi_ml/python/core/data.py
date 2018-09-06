@@ -6,6 +6,7 @@ import numpy as np
 from scipy import signal
 import random
 import collections
+import math
 
 import io
 
@@ -97,24 +98,40 @@ class EpiData(object):
             oversample_rates[label] = count/max_count
         return oversample_rates
 
-    def _build_data(self):
-        data = [[], []]
+    def _build_data(self, validation_ratio=0.1, test_ratio=0.1):
         sorted_md5 = sorted(self._metadata.keys())
+        data = collections.defaultdict(list)
         for md5 in sorted_md5:
-            data[0].append(self._hdf5s[md5])
-            data[1].append(self._metadata[md5][self._label_category])
+            data[self._metadata[md5][self._label_category]].append(md5)
 
-        size_all = len(data[0])
-        size_validation = int(size_all*0.1)
-        size_test = int(size_all*0.1)
-        split_index = size_test+size_validation
+        size_all_dict = collections.Counter({label:len(data[label]) for label in data.keys()})
+        for label, size in size_all_dict.items():
+            if size < 3:
+                print('The label `{}` countains only {} datasets.'.format(label, size))
 
-        validation_signals = data[0][:size_validation]
-        validation_labels = data[1][:size_validation]
-        test_signals = data[0][size_validation:split_index]
-        test_labels = data[1][size_validation:split_index]
-        train_signals = data[0][split_index:]
-        train_labels = data[1][split_index:]
+        size_validation_dict = collections.Counter({label:math.ceil(size*validation_ratio) for label, size in size_all_dict.items()})
+        size_test_dict = collections.Counter({label:math.ceil(size*test_ratio) for label, size in size_all_dict.items()})
+        split_index_dict = size_validation_dict + size_test_dict
+
+        slice_data = lambda begin={}, end={}: sum([
+            data[label][begin.get(label, 0):end.get(label, None)]
+            for label in size_all_dict.keys()
+        ], [])
+
+        validation_md5s = slice_data(end=size_validation_dict)
+        test_md5s = slice_data(begin=size_validation_dict, end=split_index_dict)
+        train_md5s = slice_data(begin=split_index_dict)
+
+        assert len(sorted_md5) == len(set(sum([validation_md5s, test_md5s, train_md5s], [])))
+
+        validation_signals = [self._hdf5s[md5] for md5 in validation_md5s]
+        test_signals = [self._hdf5s[md5] for md5 in test_md5s]
+        train_signals = [self._hdf5s[md5] for md5 in train_md5s]
+
+        validation_labels = [self._metadata[md5][self._label_category] for md5 in validation_md5s]
+        test_labels = [self._metadata[md5][self._label_category] for md5 in test_md5s]
+        train_labels = [self._metadata[md5][self._label_category] for md5 in train_md5s]
+
         if self._oversample:
             train_signals, train_labels = self._oversample_data(train_signals, train_labels)
 
