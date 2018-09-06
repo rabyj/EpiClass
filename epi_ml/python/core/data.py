@@ -5,6 +5,7 @@ import os.path
 import numpy as np
 from scipy import signal
 import random
+import collections
 
 import io
 
@@ -153,6 +154,18 @@ class EpiData(object):
             onehot_dict[self._sorted_choices[i]] = onehot
         for i in range(len(labels)):
             labels[i] = onehot_dict[labels[i]]
+
+    def label_counter(self, n=None):
+        counter = collections.Counter()
+        for labels in self._metadata.values():
+            label = labels[self._label_category]
+            counter.update([label])
+
+        return counter
+
+    def display_labels(self):
+        for label, count in self.label_counter().most_common():
+            print('{}: {}'.format(label, count))
 
     def preprocess(self, f):
         self._train.preprocess(f)
