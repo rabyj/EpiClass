@@ -75,9 +75,7 @@ def main(args):
     my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir)
     my_trainer.train()
     my_trainer.metrics()
-
-    vis = visualization.Pca()
-    my_trainer.visualize(vis)
+    
     #my_trainer.importance() #TODO: generalize, probably put in model
 
 if __name__ == "__main__":
