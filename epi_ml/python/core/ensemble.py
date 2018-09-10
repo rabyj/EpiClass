@@ -1,6 +1,8 @@
 from sklearn.ensemble import RandomForestClassifier
 import sklearn.metrics
 from sklearn.manifold import MDS
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 class Ensemble(object):
