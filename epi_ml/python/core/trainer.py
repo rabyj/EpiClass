@@ -97,7 +97,7 @@ class Trainer(object):
                     t_acc = self._sess.run(self._train_accuracy, feed_dict=self._make_dict(batch_xs, batch_ys, keep_prob=1.0))
                     v_acc, v_summary = self._sess.run([self._valid_accuracy, self._v_sum], feed_dict=self._make_dict(self._data.validation.signals, self._data.validation.labels, keep_prob=1.0, is_training=False))
                     self._writer.add_summary(v_summary, epoch)
-                    print('epoch {0}, training accuracy {1:.4f}, validation accuracy {2:.4f} {}'.format(epoch, t_acc, v_acc, datetime.datetime.now()))
+                    print('epoch {0}, training accuracy {1:.4f}, validation accuracy {2:.4f} {3}'.format(epoch, t_acc, v_acc, datetime.datetime.now()))
                 _, _, summary = self._sess.run([self._model.optimizer, self._model.loss, self._summary], feed_dict=self._make_dict(batch_xs, batch_ys))
                 self._writer.add_summary(summary, epoch)
 
@@ -109,6 +109,7 @@ class Trainer(object):
         print ("Precision: %s" % sklearn.metrics.precision_score(y_true, y_pred, average="macro"))
         print ("Recall: %s" % sklearn.metrics.recall_score(y_true, y_pred, average="macro"))
         print ("f1_score: %s" % sklearn.metrics.f1_score(y_true, y_pred, average="macro"))
+        print ("MCC: %s" % sklearn.metrics.matthews_corrcoef(y_true, y_pred))
         self.write_pred_table(pred, self._data.labels, self._data.test.labels)
         # self.heatmap(self._data.labels)
 
