@@ -1,6 +1,8 @@
 from sklearn.ensemble import RandomForestClassifier
 import sklearn.metrics
 from sklearn.manifold import MDS, TSNE
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 import numpy as np
