@@ -62,7 +62,7 @@ def main(args):
     #spectro_hg(test_path)
 
     # my_data = data.EpiData("assay")
-    my_data = data.EpiData(my_datasource ,"assay_category", oversample=True)
+    my_data = data.EpiData(my_datasource ,"assay", oversample=False)
     #my_data = data.EpiData("publishing_group")
 
     #spectro(my_data.test.signals[55])
@@ -78,8 +78,8 @@ def main(args):
     my_trainer.train()
     my_trainer.metrics()
 
-    vis = visualization.Pca()
-    my_trainer.visualize(vis)
+    # vis = visualization.Pca()
+    # my_trainer.visualize(vis)
     #my_trainer.importance() #TODO: generalize, probably put in model
 
 if __name__ == "__main__":
