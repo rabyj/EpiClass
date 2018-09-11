@@ -21,7 +21,7 @@ class Trainer(object):
         self._data.preprocess(model.preprocess)
         self._hparams = {
             "learning_rate": 1e-4,
-            "training_epochs": 50,
+            "training_epochs": 1000,
             "batch_size": 64,
             "measure_frequency": 1,
             "l1_scale": 0.001,
