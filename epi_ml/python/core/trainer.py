@@ -23,7 +23,7 @@ class Trainer(object):
             "learning_rate": 1e-4,
             "training_epochs": 1000,
             "batch_size": 64,
-            "measure_frequency": 1,
+            "measure_frequency": 10,
             "l1_scale": 0.001,
             "l2_scale": 0.01,
             "keep_prob": 0.5,
@@ -36,6 +36,8 @@ class Trainer(object):
         self._summary = self._init_summary()
         self._v_sum = self._init_v_sum()
         self._sess = self._start_sess()
+        self._run_metadata = tf.RunMetadata()
+        self._run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 
     def __del__(self):
         if hasattr(self, "_writer"):
@@ -94,12 +96,16 @@ class Trainer(object):
             for batch in range(nb_batch):
                 batch_xs, batch_ys = self._data.train.next_batch(self._hparams.get("batch_size"))
                 if epoch % self._hparams.get("measure_frequency") == 0 and batch == 0:
+                    _, _, summary = self._sess.run([self._model.optimizer, self._model.loss, self._summary], feed_dict=self._make_dict(batch_xs, batch_ys), run_metadata=self._run_metadata, options=self._run_options)
+                    self._writer.add_summary(summary, epoch)
                     t_acc = self._sess.run(self._train_accuracy, feed_dict=self._make_dict(batch_xs, batch_ys, keep_prob=1.0))
                     v_acc, v_summary = self._sess.run([self._valid_accuracy, self._v_sum], feed_dict=self._make_dict(self._data.validation.signals, self._data.validation.labels, keep_prob=1.0, is_training=False))
+                    self._writer.add_run_metadata(self._run_metadata, 'epoch{}'.format(epoch))
                     self._writer.add_summary(v_summary, epoch)
                     print('epoch {0}, training accuracy {1:.4f}, validation accuracy {2:.4f} {3}'.format(epoch, t_acc, v_acc, datetime.datetime.now()))
-                _, _, summary = self._sess.run([self._model.optimizer, self._model.loss, self._summary], feed_dict=self._make_dict(batch_xs, batch_ys))
-                self._writer.add_summary(summary, epoch)
+                else:
+                    _, _, summary = self._sess.run([self._model.optimizer, self._model.loss, self._summary], feed_dict=self._make_dict(batch_xs, batch_ys))
+                    self._writer.add_summary(summary, epoch)
 
     def metrics(self):
         test_acc, pred = self._sess.run([self._test_accuracy, self._model.predictor], feed_dict=self._make_dict(self._data.test.signals, self._data.test.labels, keep_prob=1.0, is_training=False))
