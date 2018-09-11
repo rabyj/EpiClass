@@ -144,6 +144,10 @@ class EpiData(object):
         self._test = Data(test_signals, test_labels)
         self._train = Data(train_signals, train_labels)
 
+        print('validation size {}'.format(len(validation_labels)))
+        print('test size {}'.format(len(test_labels)))
+        print('training size {}'.format(len(train_labels)))
+
     def _oversample_data(self, signals, labels):
         oversample_rates = self._oversample_rates()
         new_signals = []
