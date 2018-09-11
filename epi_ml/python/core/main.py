@@ -13,6 +13,7 @@ from scipy import signal
 import h5py
 import numpy as np
 import visualization
+import datetime
 
 import argparse
 from argparseutils.directorytype import DirectoryType
@@ -50,6 +51,7 @@ def parse_arguments(args: list) -> argparse.Namespace:
     return arg_parser.parse_args(args)
 
 def main(args):
+    print('begin {}'.format(datetime.datetime.now()))
     epiml_options = parse_arguments(args)
 
     my_datasource = data.EpiDataSource(
@@ -77,6 +79,7 @@ def main(args):
     my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir)
     my_trainer.train()
     my_trainer.metrics()
+    print('end {}'.format(datetime.datetime.now()))
 
     # vis = visualization.Pca()
     # my_trainer.visualize(vis)
