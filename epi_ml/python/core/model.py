@@ -207,7 +207,7 @@ class Dense(StandardModel):
         self._predictor = self._init_predictor()
 
     def _init_model(self):
-        level = 3
+        level = 1
         hl_units = int(math.sqrt(self._x_size + self._y_size)) * level
         nb_layers=1 * level
 
