@@ -6,6 +6,7 @@ import numpy as np
 import sklearn.metrics
 import pandas
 import tensorflow as tf
+import os
 import os.path
 from scipy import signal
 from abc import ABC
@@ -207,9 +208,8 @@ class Dense(StandardModel):
         self._predictor = self._init_predictor()
 
     def _init_model(self):
-        level = 1
-        hl_units = int(math.sqrt(self._x_size + self._y_size)) * level
-        nb_layers=1 * level
+        hl_units = int(os.getenv('LAYER_SIZE', math.sqrt(self._x_size + self._y_size)))
+        nb_layers= int(os.getenv('NB_LAYER', 1))
 
         self.layers.append(self._x)
         for i in range(nb_layers):
