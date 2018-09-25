@@ -20,8 +20,8 @@ class Trainer(object):
         self._logdir = logdir
         self._data.preprocess(model.preprocess)
         self._hparams = {
-            "learning_rate": 1e-4,
-            "training_epochs": 100,
+            "learning_rate": 1e-5,
+            "training_epochs": 200,
             "batch_size": 64,
             "measure_frequency": 1,
             "l1_scale": 0.001,
