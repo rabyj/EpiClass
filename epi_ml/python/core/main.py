@@ -6,11 +6,6 @@ import data
 import model
 import trainer
 import os.path
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from scipy import signal
-import h5py
 import numpy as np
 import visualization
 import datetime

@@ -1,3 +1,10 @@
+from scipy import signal
+import h5py
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import numpy as np
+
 def spectro_hg(path):
     f = h5py.File(path)
     for group in f:
