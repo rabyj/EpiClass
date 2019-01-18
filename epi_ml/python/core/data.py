@@ -30,11 +30,12 @@ class EpiDataSource(object):
 
 class EpiData(object):
     """used to load and preprocess epigenomic data"""
-    def __init__(self, datasource: EpiDataSource, label_category: str, oversample=False, normalization=True, onehot=True):
+    def __init__(self, datasource: EpiDataSource, label_category: str, oversample=False, normalization=True, onehot=True, min_class_size=3):
         self._label_category = label_category
         self._oversample = oversample
         self._normalization = normalization
         self._onehot = onehot
+        self._min_class_size = min_class_size
         self._load_chrom_sizes(datasource.chromsize_file)
         self._load_hdf5(datasource.hdf5_file)
         self._load_metadata(datasource.metadata_file)
@@ -108,7 +109,7 @@ class EpiData(object):
 
         size_all_dict = collections.Counter({label:len(data[label]) for label in data.keys()})
         for label, size in size_all_dict.items():
-            if size < 10:
+            if size < self._min_class_size:
                 print('The label `{}` countains only {} datasets.'.format(label, size))
 
         size_validation_dict = collections.Counter({label:math.ceil(size*validation_ratio) for label, size in size_all_dict.items()})
