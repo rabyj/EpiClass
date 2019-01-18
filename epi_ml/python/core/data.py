@@ -7,10 +7,10 @@ from scipy import signal
 import random
 import collections
 import math
-
 import io
 
 class EpiDataSource(object):
+    """used to load metadata"""
     def __init__(self, hdf5: io.IOBase, chromsize: io.IOBase, metadata: io.IOBase):
         self._hdf5 = hdf5
         self._chromsize = chromsize
@@ -29,6 +29,7 @@ class EpiDataSource(object):
         return self._metadata
 
 class EpiData(object):
+    """used to load and preprocess epigenomic data"""
     def __init__(self, datasource: EpiDataSource, label_category: str, oversample=False, normalization=True, onehot=True):
         self._label_category = label_category
         self._oversample = oversample
@@ -80,6 +81,7 @@ class EpiData(object):
         return os.path.basename(file_name).split("_")[0]
 
     def _oversample_rates(self):
+        """"""
         sorted_md5 = sorted(self._metadata.keys())
         label_count = {}
         for md5 in sorted_md5:
@@ -106,7 +108,7 @@ class EpiData(object):
 
         size_all_dict = collections.Counter({label:len(data[label]) for label in data.keys()})
         for label, size in size_all_dict.items():
-            if size < 3:
+            if size < 10:
                 print('The label `{}` countains only {} datasets.'.format(label, size))
 
         size_validation_dict = collections.Counter({label:math.ceil(size*validation_ratio) for label, size in size_all_dict.items()})
@@ -211,6 +213,7 @@ class EpiData(object):
 
 
 class Data(object):
+    """generalised object to deal with data"""
     def __init__(self, x, y):
         self._num_examples = len(x)
         self._signals = np.array(x)

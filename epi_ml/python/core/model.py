@@ -208,8 +208,8 @@ class Dense(StandardModel):
         self._predictor = self._init_predictor()
 
     def _init_model(self):
-        hl_units = int(os.getenv('LAYER_SIZE', math.sqrt(self._x_size + self._y_size)))
-        nb_layers= int(os.getenv('NB_LAYER', 1))
+        hl_units = int(os.getenv('LAYER_SIZE', self._x_size + self._y_size))
+        nb_layers= int(os.getenv('NB_LAYER', 3))
 
         self.layers.append(self._x)
         for i in range(nb_layers):
