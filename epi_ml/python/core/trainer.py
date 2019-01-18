@@ -14,21 +14,22 @@ import datetime
 
 
 class Trainer(object):
-    def __init__(self, data, model, logdir):
+    def __init__(self, data, model, logdir, **kwargs):
         self._data = data
         self._model = model
         self._logdir = logdir
         self._data.preprocess(model.preprocess)
         self._hparams = {
-            "learning_rate": 1e-5,
-            "training_epochs": 50,
-            "batch_size": 64,
-            "measure_frequency": 1,
-            "l1_scale": 0.001,
-            "l2_scale": 0.01,
-            "keep_prob": 0.5,
-            "is_training": True
+            "learning_rate": kwargs.get("learning_rate", 1e-5),
+            "training_epochs": kwargs.get("training_epochs", 50),
+            "batch_size": kwargs.get("batch_size", 64),
+            "measure_frequency": kwargs.get("measure_frequency", 1),
+            "l1_scale": kwargs.get("l1_scale", 0.001),
+            "l2_scale": kwargs.get("l2_scale", 0.01),
+            "keep_prob": kwargs.get("keep_prob", 0.5),
+            "is_training": kwargs.get("is_training", True)
         }
+        print (self._hparams)
         self._train_accuracy = self._init_accuracy("Training_Accuracy")
         self._valid_accuracy = self._init_accuracy("Validation_Accuracy")
         self._test_accuracy = self._init_accuracy("Test_Accuracy")
@@ -172,4 +173,4 @@ class Trainer(object):
     def write_pred_table(self, pred, pred_labels, labels):
         string_labels = [pred_labels[np.argmax(label)] for label in labels]
         df = pandas.DataFrame(data=pred, index=string_labels, columns=pred_labels)
-        pred_str = df.to_csv(os.path.join(self._logdir, "predict.csv"), encoding="utf8")
+        df.to_csv(os.path.join(self._logdir, "predict.csv"), encoding="utf8")

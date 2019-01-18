@@ -47,9 +47,18 @@ def main(args):
     my_model = model.Dense(input_size, ouput_size)
     #my_model = model.Cnn(41*49, ouput_size, (41, 49))
     #my_model = model.BidirectionalRnn(input_size, ouput_size)
-
     #trainer for the model
-    my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir)
+    hparams = {
+            "learning_rate": 1e-5,
+            "training_epochs": 500,
+            "batch_size": 128,
+            "measure_frequency": 1,
+            "l1_scale": 0.001,
+            "l2_scale": 0.01,
+            "keep_prob": 0.5,
+            "is_training": True
+        }
+    my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir, **hparams)
     #train the model
     my_trainer.train()
     #outputs
