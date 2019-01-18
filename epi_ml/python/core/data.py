@@ -126,10 +126,12 @@ class EpiData(object):
 
         assert len(sorted_md5) == len(set(sum([validation_md5s, test_md5s, train_md5s], [])))
 
+        # separate hdf5 files 
         validation_signals = [self._hdf5s[md5] for md5 in validation_md5s]
         test_signals = [self._hdf5s[md5] for md5 in test_md5s]
         train_signals = [self._hdf5s[md5] for md5 in train_md5s]
 
+        # separate label values
         validation_labels = [self._metadata[md5][self._label_category] for md5 in validation_md5s]
         test_labels = [self._metadata[md5][self._label_category] for md5 in test_md5s]
         train_labels = [self._metadata[md5][self._label_category] for md5 in train_md5s]
