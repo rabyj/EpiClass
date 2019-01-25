@@ -30,16 +30,17 @@ class EpiDataSource(object):
 
 class EpiData(object):
     """used to load and preprocess epigenomic data"""
-    def __init__(self, datasource: EpiDataSource, label_category: str, oversample=False, normalization=True, onehot=True, min_class_size=3):
+    def __init__(self, datasource: EpiDataSource, label_category: str, oversample=False, normalization=True, min_class_size=3):
         self._label_category = label_category
         self._oversample = oversample
         self._normalization = normalization
-        self._onehot = onehot
         self._min_class_size = min_class_size
         self._load_chrom_sizes(datasource.chromsize_file)
         self._load_hdf5(datasource.hdf5_file)
         self._load_metadata(datasource.metadata_file)
-        self._build_data()
+        self._data = self._build_data()
+        self._filter_data()
+        self._split_data()
 
     def _load_metadata(self, meta_file: io.IOBase):
         meta_file.seek(0)
@@ -101,15 +102,34 @@ class EpiData(object):
             oversample_rates[label] = count/max_count
         return oversample_rates
 
-    def _build_data(self, validation_ratio=0.1, test_ratio=0.1):
+    def _build_data(self):
+        """"""
         sorted_md5 = sorted(self._metadata.keys())
         data = collections.defaultdict(list)
         for md5 in sorted_md5:
             data[self._metadata[md5][self._label_category]].append(md5)
+        return data
 
-        size_all_dict = collections.Counter({label:len(data[label]) for label in data.keys()})
-        for label, size in size_all_dict.items():
+    def _filter_data(self):
+        """"""
+        # self._data  # label: md5 list
+        # self._metadata #md5sum : dataset_dict
+        nb_label_i =  len(self._data)
+        for label, size in self.label_counter().most_common():
             if size < self._min_class_size:
+                for md5 in self._data[label]:
+                    del self._metadata[md5]
+                del self._data[label]
+
+        print("{}/{} labels left after filtering.".format(len(self._data), nb_label_i))
+        
+    def _split_data(self, validation_ratio=0.1, test_ratio=0.1):
+        """"""
+        size_all_dict = self.label_counter()
+
+        # A minimum of 3 examples are needed for each label (1 for each set)
+        for label, size in size_all_dict.items():
+            if size < 3:
                 print('The label `{}` countains only {} datasets.'.format(label, size))
 
         size_validation_dict = collections.Counter({label:math.ceil(size*validation_ratio) for label, size in size_all_dict.items()})
@@ -117,7 +137,7 @@ class EpiData(object):
         split_index_dict = size_validation_dict + size_test_dict
 
         slice_data = lambda begin={}, end={}: sum([
-            data[label][begin.get(label, 0):end.get(label, None)]
+            self._data[label][begin.get(label, 0):end.get(label, None)]
             for label in size_all_dict.keys()
         ], [])
 
@@ -125,7 +145,7 @@ class EpiData(object):
         test_md5s = slice_data(begin=size_validation_dict, end=split_index_dict)
         train_md5s = slice_data(begin=split_index_dict)
 
-        assert len(sorted_md5) == len(set(sum([validation_md5s, test_md5s, train_md5s], [])))
+        assert len(self._metadata.keys()) == len(set(sum([validation_md5s, test_md5s, train_md5s], [])))
 
         # separate hdf5 files 
         validation_signals = [self._hdf5s[md5] for md5 in validation_md5s]
@@ -140,10 +160,9 @@ class EpiData(object):
         if self._oversample:
             train_signals, train_labels = self._oversample_data(train_signals, train_labels)
 
-        if self._onehot:
-            self._to_onehot(validation_labels)
-            self._to_onehot(test_labels)
-            self._to_onehot(train_labels)
+        self._to_onehot(validation_labels)
+        self._to_onehot(test_labels)
+        self._to_onehot(train_labels)
 
         self._validation = Data(validation_signals, validation_labels)
         self._test = Data(test_signals, test_labels)
@@ -181,7 +200,7 @@ class EpiData(object):
         for i in range(len(labels)):
             labels[i] = onehot_dict[labels[i]]
 
-    def label_counter(self, n=None):
+    def label_counter(self):
         counter = collections.Counter()
         for labels in self._metadata.values():
             label = labels[self._label_category]
