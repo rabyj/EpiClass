@@ -26,6 +26,7 @@ class BaseModel(ABC):
         self._model = None
         self._loss = None
         self._optimizer = None
+        self._gradients = None
         self._predictor = None
         self._layers = []
         self._preprocess = lambda x: x
@@ -79,6 +80,14 @@ class BaseModel(ABC):
         return self._optimizer
 
     @property
+    def minimize(self):
+        return self._minimize
+
+    @property
+    def gradients(self):
+        return self._gradients
+
+    @property
     def predictor(self):
         return self._predictor
 
@@ -90,6 +99,7 @@ class BaseModel(ABC):
     def layers(self):
         return self._layers
 
+
 class StandardModel(BaseModel, ABC):
     def __init__(self):
         super().__init__()
@@ -100,9 +110,18 @@ class StandardModel(BaseModel, ABC):
         return loss
 
     def _init_optimizer(self):
-        with tf.name_scope('Optimizer'):
-            optimizer = tf.train.AdamOptimizer(self._learning_rate).minimize(self._loss)
+        optimizer = tf.train.AdamOptimizer(self._learning_rate)
         return optimizer
+
+    def _init_minimize(self):
+        with tf.name_scope('Optimizer'):
+            minimize = tf.train.AdamOptimizer(self._learning_rate).minimize(self._loss)
+        return minimize
+
+    def _init_gradients(self):
+        with tf.name_scope('Gradients'):
+            gradients, variables = zip(*tf.train.AdamOptimizer(self._learning_rate).compute_gradients(self._loss))
+        return gradients
 
     def _init_predictor(self):
         with tf.name_scope('Predictor'):
@@ -121,6 +140,8 @@ class Cnn(StandardModel):
         self._model = self._init_model()
         self._loss = self._init_loss()
         self._optimizer = self._init_optimizer()
+        self._minimize = self._init_minimize()
+        self._gradients = self._init_gradients()
         self._predictor = self._init_predictor()
         self._preprocess = self._init_preprocess()
 
@@ -161,6 +182,8 @@ class BidirectionalRnn(StandardModel):
         self._model = self._init_model()
         self._loss = self._init_loss()
         self._optimizer = self._init_optimizer()
+        self._minimize = self._init_minimize()
+        self._gradients = self._init_gradients()
         self._predictor = self._init_predictor()
 
     def _init_model(self):
@@ -194,7 +217,6 @@ class BidirectionalRnn(StandardModel):
         return model
 
 
-
 class Dense(StandardModel):
     def __init__(self, input_size, output_size):
         super().__init__()
@@ -205,11 +227,13 @@ class Dense(StandardModel):
         self._model = self._init_model()
         self._loss = self._init_loss()
         self._optimizer = self._init_optimizer()
+        self._minimize = self._init_minimize()
+        self._gradients = self._init_gradients()
         self._predictor = self._init_predictor()
 
     def _init_model(self):
-        hl_units = int(os.getenv('LAYER_SIZE', self._x_size + self._y_size))
-        nb_layers= int(os.getenv('NB_LAYER', 3))
+        hl_units = int(os.getenv('LAYER_SIZE', math.sqrt(self._x_size + self._y_size)))
+        nb_layers= int(os.getenv('NB_LAYER', 1))
 
         self.layers.append(self._x)
         for i in range(nb_layers):
@@ -232,6 +256,8 @@ class L1Dense(StandardModel):
         self._model = self._init_model()
         self._loss = self._init_loss()
         self._optimizer = self._init_optimizer()
+        self._minimize = self._init_minimize()
+        self._gradients = self._init_gradients()
         self._predictor = self._init_predictor()
 
     def _init_model(self):
@@ -260,6 +286,8 @@ class BatchNormDense(StandardModel):
         self._model = self._init_model()
         self._loss = self._init_loss()
         self._optimizer = self._init_optimizer()
+        self._minimize = self._init_minimize()
+        self._gradients = self._init_gradients()
         self._predictor = self._init_predictor()
 
     def _init_model(self):

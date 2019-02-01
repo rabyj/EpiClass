@@ -91,23 +91,56 @@ class Trainer(object):
         return default_dict
 
     def train(self):
-        #train
         nb_batch = math.ceil(self._data.train.num_examples/self._hparams.get("batch_size"))
+
+        saver = tf.train.Saver()
+        save_path = os.path.join(self._logdir, "miaw")
+        max_v_acc = 0
+        nb_since_max = 0
+        limit = 20
+
         for epoch in range(self._hparams.get("training_epochs")):
             for batch in range(nb_batch):
                 batch_xs, batch_ys = self._data.train.next_batch(self._hparams.get("batch_size"))
                 if epoch % self._hparams.get("measure_frequency") == 0 and batch == 0:
-                    _, _, summary = self._sess.run([self._model.optimizer, self._model.loss, self._summary], feed_dict=self._make_dict(batch_xs, batch_ys), run_metadata=self._run_metadata, options=self._run_options)
-                    self._writer.add_summary(summary, epoch)
-                    t_acc = self._sess.run(self._train_accuracy, feed_dict=self._make_dict(batch_xs, batch_ys, keep_prob=1.0))
-                    v_acc, v_summary = self._sess.run([self._valid_accuracy, self._v_sum], feed_dict=self._make_dict(self._data.validation.signals, self._data.validation.labels, keep_prob=1.0, is_training=False))
-                    self._writer.add_run_metadata(self._run_metadata, 'epoch{}'.format(epoch))
-                    self._writer.add_summary(v_summary, epoch)
-                    print('epoch {0}, training accuracy {1:.4f}, validation accuracy {2:.4f} {3}'.format(epoch, t_acc, v_acc, datetime.datetime.now()))
-                else:
-                    _, _, summary = self._sess.run([self._model.optimizer, self._model.loss, self._summary], feed_dict=self._make_dict(batch_xs, batch_ys))
+
+                    # train
+                    _, _, summary = self._sess.run([self._model.minimize, self._model.loss, self._summary], feed_dict=self._make_dict(batch_xs, batch_ys), run_metadata=self._run_metadata, options=self._run_options)
                     self._writer.add_summary(summary, epoch)
 
+                    # training accuracy
+                    t_acc = self._sess.run(self._train_accuracy, feed_dict=self._make_dict(batch_xs, batch_ys, keep_prob=1.0))
+
+                    # validation accuracy
+                    v_acc, v_summary = self._sess.run([self._valid_accuracy, self._v_sum], feed_dict=self._make_dict(self._data.validation.signals, self._data.validation.labels, keep_prob=1.0, is_training=False))
+                    self._writer.add_summary(v_summary, epoch)
+
+                    self._writer.add_run_metadata(self._run_metadata, 'epoch{}'.format(epoch))
+
+                    if v_acc > max_v_acc:
+                        max_v_acc = v_acc
+                        saver.save(self._sess, save_path)
+                        nb_since_max = 0
+                    else:
+                        nb_since_max += 1
+
+                    if nb_since_max == limit:
+                        break
+                    
+                    print('epoch {0}, training accuracy {1:.4f}, validation accuracy {2:.4f} {3}'.format(epoch, t_acc, v_acc, datetime.datetime.now()))
+
+                else:
+                    # train
+                    _, _, summary = self._sess.run([self._model.minimize, self._model.loss, self._summary], feed_dict=self._make_dict(batch_xs, batch_ys))
+                    self._writer.add_summary(summary, epoch)
+                
+            if nb_since_max == limit:
+                break
+
+        # load best model
+        saver.restore(self._sess, save_path)
+            
+    
     def metrics(self):
         test_acc, pred = self._sess.run([self._test_accuracy, self._model.predictor], feed_dict=self._make_dict(self._data.test.signals, self._data.test.labels, keep_prob=1.0, is_training=False))
         print("Accuracy: %s" % (test_acc))
