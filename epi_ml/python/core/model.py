@@ -26,6 +26,7 @@ class BaseModel(ABC):
         self._model = None
         self._loss = None
         self._optimizer = None
+        self._minimize = None
         self._gradients = None
         self._predictor = None
         self._layers = []
@@ -232,7 +233,9 @@ class Dense(StandardModel):
         self._predictor = self._init_predictor()
 
     def _init_model(self):
-        hl_units = int(os.getenv('LAYER_SIZE', math.sqrt(self._x_size + self._y_size)))
+        # hl_units = int(os.getenv('LAYER_SIZE', math.sqrt(self._x_size + self._y_size)))
+        # hl_units = int(os.getenv('LAYER_SIZE', self._x_size + self._y_size))
+        hl_units = int(os.getenv('LAYER_SIZE', 3000))
         nb_layers= int(os.getenv('NB_LAYER', 1))
 
         self.layers.append(self._x)
