@@ -27,9 +27,10 @@ class Trainer(object):
             "l1_scale": kwargs.get("l1_scale", 0.001),
             "l2_scale": kwargs.get("l2_scale", 0.01),
             "keep_prob": kwargs.get("keep_prob", 0.5),
-            "is_training": kwargs.get("is_training", True)
+            "is_training": kwargs.get("is_training", True),
+            "early_stop_limit": kwargs.get("early_stop_limit", 15)
         }
-        print (self._hparams)
+        self._print_hparams()
         self._train_accuracy = self._init_accuracy("Training_Accuracy")
         self._valid_accuracy = self._init_accuracy("Validation_Accuracy")
         self._test_accuracy = self._init_accuracy("Test_Accuracy")
@@ -90,14 +91,17 @@ class Trainer(object):
         }
         return default_dict
 
+    def _print_hparams(self):
+        for hparam, value in sorted(self._hparams.items()):
+            print('{}: {}'.format(hparam, value))
+
     def train(self):
         nb_batch = math.ceil(self._data.train.num_examples/self._hparams.get("batch_size"))
 
         saver = tf.train.Saver()
-        save_path = os.path.join(self._logdir, "miaw")
+        save_path = os.path.join(self._logdir, "save")
         max_v_acc = 0
         nb_since_max = 0
-        limit = 20
 
         for epoch in range(self._hparams.get("training_epochs")):
             for batch in range(nb_batch):
@@ -124,7 +128,7 @@ class Trainer(object):
                     else:
                         nb_since_max += 1
 
-                    if nb_since_max == limit:
+                    if nb_since_max == self._hparams.get("early_stop_limit"):
                         break
                     
                     print('epoch {0}, training accuracy {1:.4f}, validation accuracy {2:.4f} {3}'.format(epoch, t_acc, v_acc, datetime.datetime.now()))
@@ -134,7 +138,7 @@ class Trainer(object):
                     _, _, summary = self._sess.run([self._model.minimize, self._model.loss, self._summary], feed_dict=self._make_dict(batch_xs, batch_ys))
                     self._writer.add_summary(summary, epoch)
                 
-            if nb_since_max == limit:
+            if nb_since_max == self._hparams.get("early_stop_limit"):
                 break
 
         # load best model

@@ -47,7 +47,7 @@ class EpiData(object):
         meta_raw = json.load(meta_file)
         self._metadata = {}
         for dataset in meta_raw["datasets"]:
-            if dataset["md5sum"] in self._hdf5s:
+            if dataset["md5sum"] in self._hdf5s and self._label_category in dataset:
                 self._metadata[dataset["md5sum"]] = dataset
 
     def _load_chrom_sizes(self, chrom_file: io.IOBase):
@@ -209,8 +209,11 @@ class EpiData(object):
         return counter
 
     def display_labels(self):
+        i = 0
         for label, count in self.label_counter().most_common():
             print('{}: {}'.format(label, count))
+            i += count
+        print('For a total of {} examples'.format(i))
 
     def preprocess(self, f):
         self._train.preprocess(f)
