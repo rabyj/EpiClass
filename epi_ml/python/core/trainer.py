@@ -207,6 +207,20 @@ class Trainer(object):
         summary = tf.summary.image("Confusion Matrix", image, max_outputs=1)
         self._writer.add_summary(summary.eval(session=self._sess))
 
+    def write_confusion_matrix(self, labels):
+        confusion_mat = tf.confusion_matrix(tf.argmax(self._model.model,1), tf.argmax(self._model.y,1))
+        confusion_matrix = self._sess.run(confusion_mat, feed_dict=self._make_dict(self._data.test.signals, self._data.test.labels, keep_prob=1.0, is_training=False))
+
+        labels_count = confusion_matrix.sum(axis=0)
+        confusion_matrix = confusion_matrix/labels_count 
+        confusion_matrix = np.nan_to_num(confusion_matrix)
+        confusion_matrix = confusion_matrix.T #one label per row instead of column
+
+        labels_w_count = ["{}({})".format(label, label_count) for label, label_count in zip(labels, labels_count)]
+
+        df = pandas.DataFrame(data=confusion_matrix, index=labels_w_count, columns=labels)
+        df.to_csv(os.path.join(self._logdir, "confusion_matrix.csv"), encoding="utf8", float_format='%.4f')
+
     def write_pred_table(self, pred, pred_labels, labels):
         string_labels = [pred_labels[np.argmax(label)] for label in labels]
         df = pandas.DataFrame(data=pred, index=string_labels, columns=pred_labels)
