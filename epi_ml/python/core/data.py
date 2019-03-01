@@ -30,11 +30,14 @@ class EpiDataSource(object):
 
 class EpiData(object):
     """used to load and preprocess epigenomic data"""
-    def __init__(self, datasource: EpiDataSource, label_category: str, oversample=False, normalization=True, min_class_size=3):
+    def __init__(self, datasource: EpiDataSource, label_category: str, oversample=False,
+                 normalization=True, min_class_size=3, metadata_filter=lambda m:True):
+        # metadata_filter is a function that returns True or False
         self._label_category = label_category
         self._oversample = oversample
         self._normalization = normalization
         self._min_class_size = min_class_size
+        self._metadata_filter = metadata_filter
         self._load_chrom_sizes(datasource.chromsize_file)
         self._load_hdf5(datasource.hdf5_file)
         self._load_metadata(datasource.metadata_file)
@@ -47,7 +50,8 @@ class EpiData(object):
         meta_raw = json.load(meta_file)
         self._metadata = {}
         for dataset in meta_raw["datasets"]:
-            if dataset["md5sum"] in self._hdf5s and self._label_category in dataset:
+            if (dataset["md5sum"] in self._hdf5s and self._label_category in dataset 
+                    and self._metadata_filter(dataset)):
                 self._metadata[dataset["md5sum"]] = dataset
 
     def _load_chrom_sizes(self, chrom_file: io.IOBase):
@@ -209,11 +213,12 @@ class EpiData(object):
         return counter
 
     def display_labels(self):
+        print('\nExamples')
         i = 0
         for label, count in self.label_counter().most_common():
             print('{}: {}'.format(label, count))
             i += count
-        print('For a total of {} examples'.format(i))
+        print('For a total of {} examples\n'.format(i))
 
     def preprocess(self, f):
         self._train.preprocess(f)

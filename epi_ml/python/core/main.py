@@ -54,17 +54,18 @@ def main(args):
             "training_epochs": 200,
             "batch_size": 64,
             "measure_frequency": 1,
-            "l1_scale": 0.001,
+            "l1_scale": 0.001, #ONLY IN L1DENSE
             "l2_scale": 0.01,
             "keep_prob": 0.5,
             "is_training": True,
-            "early_stop_limit": 25
+            "early_stop_limit": 30
         }
     my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir, **hparams)
     #train the model
     my_trainer.train()
     #outputs
     my_trainer.metrics()
+    my_trainer.write_confusion_matrix(my_data.labels)
     # vis = visualization.Pca()
     # my_trainer.visualize(vis)
     #my_trainer.importance() #TODO: generalize, probably put in model
