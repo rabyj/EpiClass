@@ -1,7 +1,3 @@
-import io
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import numpy as np
 import sklearn.metrics
 import pandas
@@ -12,6 +8,7 @@ from abc import ABC
 import math
 import datetime
 
+from figs import ConfusionMatrix
 
 class Trainer(object):
     def __init__(self, data, model, logdir, **kwargs):
@@ -100,7 +97,7 @@ class Trainer(object):
 
         saver = tf.train.Saver()
         save_path = os.path.join(self._logdir, "save")
-        max_v_acc = 0
+        max_v_acc = -1
         nb_since_max = 0
 
         for epoch in range(self._hparams.get("training_epochs")):
@@ -144,7 +141,6 @@ class Trainer(object):
         # load best model
         saver.restore(self._sess, save_path)
             
-    
     def metrics(self):
         test_acc, pred = self._sess.run([self._test_accuracy, self._model.predictor], feed_dict=self._make_dict(self._data.test.signals, self._data.test.labels, keep_prob=1.0, is_training=False))
         print("Accuracy: %s" % (test_acc))
@@ -155,7 +151,16 @@ class Trainer(object):
         print ("f1_score: %s" % sklearn.metrics.f1_score(y_true, y_pred, average="macro"))
         print ("MCC: %s" % sklearn.metrics.matthews_corrcoef(y_true, y_pred))
         self.write_pred_table(pred, self._data.labels, self._data.test.labels)
-        # self.heatmap(self._data.labels)
+
+    def confusion_matrix(self):
+        mat = self._create_confusion_matrix()
+        mat.to_csv(os.path.join(self._logdir, "confusion_matrix.csv"))
+        mat.to_png(os.path.join(self._logdir, "confusion_matrix.png"))
+
+    def _create_confusion_matrix(self):
+        confusion_mat = tf.confusion_matrix(tf.argmax(self._model.model,1), tf.argmax(self._model.y,1))
+        confusion_matrix = self._sess.run(confusion_mat, feed_dict=self._make_dict(self._data.test.signals, self._data.test.labels, keep_prob=1.0, is_training=False))
+        return ConfusionMatrix(self._data.labels, confusion_matrix)
 
     def visualize(self, vis):
         outputs = self._sess.run(self._model.layers, feed_dict=self._make_dict(self._data.train.signals, self._data.train.labels, keep_prob=1.0, is_training=False))
@@ -174,52 +179,6 @@ class Trainer(object):
         total_w = np.sum(total_w/sum_w, axis=1)
         print((total_w > 1e-04).sum())
         return ','.join([str(x) for x in total_w])
-
-    def heatmap(self, labels):
-        confusion_mat = tf.confusion_matrix(tf.argmax(self._model.model,1), tf.argmax(self._model.y,1))
-        confusion_matrix = self._sess.run(confusion_mat, feed_dict=self._make_dict(self._data.test.signals, self._data.test.labels, keep_prob=1.0, is_training=False))
-        plt.figure()
-        confusion_matrix[(confusion_matrix > 0)] = 1
-
-        fig, ax = plt.subplots()
-        ax.pcolor(confusion_matrix, cmap=plt.cm.Blues, alpha=0.8)
-        ax.set_frame_on(False)
-        ax.set_yticks(np.arange(len(labels)) + 0.5, minor=False)
-        ax.set_xticks(np.arange(len(labels)) + 0.5, minor=False)
-        ax.invert_yaxis()
-        ax.xaxis.tick_top()
-        ax.set_xticklabels(labels, fontsize=2)
-        ax.set_yticklabels(labels, fontsize=2)
-        plt.xticks(rotation=90)
-        ax = plt.gca()
-        for t in ax.xaxis.get_major_ticks():
-            t.tick1On = False
-            t.tick2On = False
-        for t in ax.yaxis.get_major_ticks():
-            t.tick1On = False
-            t.tick2On = False
-
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=400)
-        buf.seek(0)
-        image = tf.image.decode_png(buf.getvalue(), channels=4)
-        image = tf.expand_dims(image, 0)
-        summary = tf.summary.image("Confusion Matrix", image, max_outputs=1)
-        self._writer.add_summary(summary.eval(session=self._sess))
-
-    def write_confusion_matrix(self, labels):
-        confusion_mat = tf.confusion_matrix(tf.argmax(self._model.model,1), tf.argmax(self._model.y,1))
-        confusion_matrix = self._sess.run(confusion_mat, feed_dict=self._make_dict(self._data.test.signals, self._data.test.labels, keep_prob=1.0, is_training=False))
-
-        labels_count = confusion_matrix.sum(axis=0)
-        confusion_matrix = confusion_matrix/labels_count 
-        confusion_matrix = np.nan_to_num(confusion_matrix)
-        confusion_matrix = confusion_matrix.T #one label per row instead of column
-
-        labels_w_count = ["{}({})".format(label, label_count) for label, label_count in zip(labels, labels_count)]
-
-        df = pandas.DataFrame(data=confusion_matrix, index=labels_w_count, columns=labels)
-        df.to_csv(os.path.join(self._logdir, "confusion_matrix.csv"), encoding="utf8", float_format='%.4f')
 
     def write_pred_table(self, pred, pred_labels, labels):
         string_labels = [pred_labels[np.argmax(label)] for label in labels]

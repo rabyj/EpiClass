@@ -2,13 +2,15 @@ import os
 import sys
 import warnings
 warnings.simplefilter("ignore")
+import os.path
+import numpy as np
+import datetime
+
 import data
 import model
 import trainer
-import os.path
-import numpy as np
+import figs
 import visualization
-import datetime
 
 import argparse
 from argparseutils.directorytype import DirectoryType
@@ -30,6 +32,13 @@ def main(args):
     #parse params
     epiml_options = parse_arguments(args)
 
+    #if only want to convert confusion matrix csv to png
+    # in_path = os.path.join(epiml_options.logdir, "confusion_matrix.csv")
+    # out_path = os.path.join(epiml_options.logdir, "confusion_matrix.png")
+    # confusion_matrix = figs.ConfusionMatrix.from_csv(in_path)
+    # confusion_matrix.to_png(out_path)
+    # sys.exit()
+
     #load metadata
     my_datasource = data.EpiDataSource(
         epiml_options.hdf5,
@@ -37,7 +46,7 @@ def main(args):
         epiml_options.metadata)
 
     #load data
-    my_data = data.EpiData(my_datasource , os.getenv('CATEGORY', 'molecule'), oversample=True, min_class_size=10)
+    my_data = data.EpiData(my_datasource , os.getenv('CATEGORY', 'assay'), oversample=False, min_class_size=3)
     my_data.display_labels()
 
     #define sizes for input and output layers of the network
@@ -51,21 +60,21 @@ def main(args):
     #trainer for the model
     hparams = {
             "learning_rate": 1e-6,
-            "training_epochs": 200,
-            "batch_size": 64,
+            "training_epochs": 50,
+            "batch_size": 256,
             "measure_frequency": 1,
             "l1_scale": 0.001, #ONLY IN L1DENSE
             "l2_scale": 0.01,
             "keep_prob": 0.5,
             "is_training": True,
-            "early_stop_limit": 30
+            "early_stop_limit": 5
         }
     my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir, **hparams)
     #train the model
     my_trainer.train()
     #outputs
     my_trainer.metrics()
-    my_trainer.write_confusion_matrix(my_data.labels)
+    my_trainer.confusion_matrix()
     # vis = visualization.Pca()
     # my_trainer.visualize(vis)
     #my_trainer.importance() #TODO: generalize, probably put in model
