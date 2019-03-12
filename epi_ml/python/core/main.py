@@ -35,8 +35,7 @@ def main(args):
     #if only want to convert confusion matrix csv to png
     # in_path = os.path.join(epiml_options.logdir, "confusion_matrix.csv")
     # out_path = os.path.join(epiml_options.logdir, "confusion_matrix.png")
-    # confusion_matrix = figs.ConfusionMatrix.from_csv(in_path)
-    # confusion_matrix.to_png(out_path)
+    # figs.convert_matrix_csv_to_png(in_path, out_path)
     # sys.exit()
 
     #load metadata

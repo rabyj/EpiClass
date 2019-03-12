@@ -49,16 +49,22 @@ class ConfusionMatrix(object):
 
         blue_red = matplotlib.colors.LinearSegmentedColormap('BlueRed', cdict, N=1000)
 
+        nb_labels = len(self._confusion_matrix.columns)
+        grid_width = 0.5 - nb_labels/400.0
+        label_size = 15*np.exp(-0.02*nb_labels)
+
         fig, ax = plt.subplots()
-        cm = ax.pcolormesh(data_mask, cmap=blue_red, alpha=0.8)
+        cm = ax.pcolormesh(data_mask, cmap=blue_red, alpha=0.8, edgecolors='k', linewidths=grid_width)
         ax.set_frame_on(False)
-        ax.set_xticks(np.arange(len(self._confusion_matrix.columns)) + 0.5, minor=False)
-        ax.set_yticks(np.arange(len(self._confusion_matrix.index)) + 0.5, minor=False)
+        ax.set_xticks(np.arange(nb_labels) + 0.5, minor=False)
+        ax.set_yticks(np.arange(nb_labels) + 0.5, minor=False)
         ax.invert_yaxis()
         ax.xaxis.tick_top()
-        ax.set_xticklabels(self._confusion_matrix.columns, fontsize=2)
-        ax.set_yticklabels(self._confusion_matrix.index, fontsize=2)
+
+        ax.set_xticklabels(self._confusion_matrix.columns, fontsize=label_size)
+        ax.set_yticklabels(self._confusion_matrix.index, fontsize=label_size)
         plt.xticks(rotation=90)
+
         ax = plt.gca()
         for t in ax.xaxis.get_major_ticks():
             t.tick1On = False
@@ -70,6 +76,7 @@ class ConfusionMatrix(object):
         cbar = fig.colorbar(cm, ax=ax, shrink=0.5)
         cbar.ax.tick_params(labelsize=4)
 
+        plt.tight_layout()
         plt.savefig(path, format='png', dpi=400)
 
         # buf = io.BytesIO()
@@ -82,3 +89,7 @@ class ConfusionMatrix(object):
 
     def to_csv(self, path):
         self._confusion_matrix.to_csv(path, encoding="utf8", float_format='%.4f')
+
+def convert_matrix_csv_to_png(in_path, out_path):
+    confusion_matrix = ConfusionMatrix.from_csv(in_path)
+    confusion_matrix.to_png(out_path)
