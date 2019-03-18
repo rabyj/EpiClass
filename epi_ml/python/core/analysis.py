@@ -4,7 +4,56 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import sklearn.metrics
 import tensorflow as tf
+
+
+class Analysis(object):
+    def __init__(self, trainer):
+        self._trainer = trainer
+        self._model = trainer._model
+        self._data = trainer._data
+
+    def training_metrics(self):
+        print("Training set metrics")
+        metrics(self._trainer.training_accuracy(), self._trainer.training_pred(), self._data.train)
+
+    def validation_metrics(self):
+        print("Validation set metrics")
+        metrics(self._trainer.validation_accuracy(), self._trainer.validation_pred(), self._data.validation)
+
+    def test_metrics(self):
+        print("Test set metrics")
+        metrics(self._trainer.test_accuracy(), self._trainer.test_pred(), self._data.test)
+
+    def training_prediction(self, path):
+        write_pred_table(self._trainer.training_pred(), self._data.labels, self._data.train.labels, path)
+
+    def validation_prediction(self, path):
+        write_pred_table(self._trainer.validation_pred(), self._data.labels, self._data.validation.labels, path)
+
+    def test_prediction(self, path):
+        write_pred_table(self._trainer.test_pred(), self._data.labels, self._data.test.labels, path)
+
+
+def metrics(acc, pred, data_set):
+    #TODO: separate metrics
+    print("Accuracy: %s" % (acc))
+    y_true = np.argmax(data_set.labels, 1)
+    y_pred = np.argmax(pred, 1)
+    print ("Precision: %s" % sklearn.metrics.precision_score(y_true, y_pred, average="macro"))
+    print ("Recall: %s" % sklearn.metrics.recall_score(y_true, y_pred, average="macro"))
+    print ("f1_score: %s" % sklearn.metrics.f1_score(y_true, y_pred, average="macro"))
+    print ("MCC: %s" % sklearn.metrics.matthews_corrcoef(y_true, y_pred))
+
+def write_pred_table(pred, pred_labels, labels, path):
+    string_labels = [pred_labels[np.argmax(label)] for label in labels]
+    df = pd.DataFrame(data=pred, index=string_labels, columns=pred_labels)
+    df.to_csv(path, encoding="utf8")
+
+
+
+
 
 
 class ConfusionMatrix(object):

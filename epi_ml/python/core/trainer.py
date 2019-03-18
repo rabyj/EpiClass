@@ -1,5 +1,4 @@
 import numpy as np
-import sklearn.metrics
 import pandas
 import tensorflow as tf
 import os.path
@@ -8,7 +7,7 @@ from abc import ABC
 import math
 import datetime
 
-from figs import ConfusionMatrix
+from analysis import ConfusionMatrix
 
 class Trainer(object):
     def __init__(self, data, model, logdir, **kwargs):
@@ -141,38 +140,48 @@ class Trainer(object):
         # load best model
         saver.restore(self._sess, save_path)
 
-    def test_metrics(self):
-        self._metrics(self._test_accuracy, self._data.test)
 
-    def validation_metrics(self):
-        self._metrics(self._valid_accuracy, self._data.validation)
 
-    def train_metrics(self):
-        self._metrics(self._train_accuracy, self._data.train)
+    def _compute_accuracy(self, set_accuracy, data_set):
+        return self._sess.run(set_accuracy, feed_dict=self._make_dict(data_set.signals, data_set.labels, keep_prob=1.0, is_training=False))
 
-    def _metrics(self, set_accuracy, data_set):
-        acc, pred = self._sess.run([set_accuracy, self._model.predictor], feed_dict=self._make_dict(data_set.signals, data_set.labels, keep_prob=1.0, is_training=False))
-        # acc, pred = self._sess.run([self._test_accuracy, self._model.predictor], feed_dict=self._make_dict(self._data.test.signals, self._data.test.labels, keep_prob=1.0, is_training=False))
-        print("Accuracy: %s" % (acc))
-        y_true = np.argmax(data_set.labels, 1)
-        y_pred = np.argmax(pred, 1)
-        print ("Precision: %s" % sklearn.metrics.precision_score(y_true, y_pred, average="macro"))
-        print ("Recall: %s" % sklearn.metrics.recall_score(y_true, y_pred, average="macro"))
-        print ("f1_score: %s" % sklearn.metrics.f1_score(y_true, y_pred, average="macro"))
-        print ("MCC: %s" % sklearn.metrics.matthews_corrcoef(y_true, y_pred))
-        self.write_pred_table(pred, self._data.labels, data_set.labels)
-    
-    def confusion_matrix(self):
-        mat = self._create_confusion_matrix()
-        mat.to_csv(os.path.join(self._logdir, "confusion_matrix.csv"))
-        mat.to_png(os.path.join(self._logdir, "confusion_matrix.png"))
+    def training_accuracy(self):
+        return self._compute_accuracy(self._train_accuracy, self._data.train)
+
+    def validation_accuracy(self):
+        return self._compute_accuracy(self._valid_accuracy, self._data.validation)
+
+    def test_accuracy(self):
+        return self._compute_accuracy(self._test_accuracy, self._data.test)
+
+    def _compute_pred(self, data_set):
+        return self._sess.run(self._model.predictor, feed_dict=self._make_dict(data_set.signals, data_set.labels, keep_prob=1.0, is_training=False))
+
+    def training_pred(self):
+        return self._compute_pred(self._data.train)
+
+    def validation_pred(self):
+        return self._compute_pred(self._data.validation)
+
+    def test_pred(self):
+        return self._compute_pred(self._data.test)
+
+
 
     def _create_confusion_matrix(self):
         confusion_mat = tf.confusion_matrix(tf.argmax(self._model.model,1), tf.argmax(self._model.y,1))
         confusion_matrix = self._sess.run(confusion_mat, feed_dict=self._make_dict(self._data.test.signals, self._data.test.labels, keep_prob=1.0, is_training=False))
         return ConfusionMatrix(self._data.labels, confusion_matrix)
 
+    def confusion_matrix(self):
+        mat = self._create_confusion_matrix()
+        mat.to_csv(os.path.join(self._logdir, "confusion_matrix.csv"))
+        mat.to_png(os.path.join(self._logdir, "confusion_matrix.png"))
+
+
+
     def visualize(self, vis):
+        #TODO: maybe send to analysis module
         outputs = self._sess.run(self._model.layers, feed_dict=self._make_dict(self._data.train.signals, self._data.train.labels, keep_prob=1.0, is_training=False))
 
         for idx, output in enumerate(outputs):
@@ -190,7 +199,4 @@ class Trainer(object):
         print((total_w > 1e-04).sum())
         return ','.join([str(x) for x in total_w])
 
-    def write_pred_table(self, pred, pred_labels, labels):
-        string_labels = [pred_labels[np.argmax(label)] for label in labels]
-        df = pandas.DataFrame(data=pred, index=string_labels, columns=pred_labels)
-        df.to_csv(os.path.join(self._logdir, "predict.csv"), encoding="utf8")
+

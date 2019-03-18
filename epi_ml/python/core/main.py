@@ -9,7 +9,7 @@ import datetime
 import data
 import model
 import trainer
-import figs
+import analysis
 import visualization
 
 import argparse
@@ -57,24 +57,38 @@ def main(args):
     my_model = model.Dense(input_size, ouput_size)
     #my_model = model.Cnn(41*49, ouput_size, (41, 49))
     #my_model = model.BidirectionalRnn(input_size, ouput_size)
+
     #trainer for the model
     hparams = {
-            "learning_rate": 1e-6,
+            "learning_rate": 1e-5,
             "training_epochs": 200,
-            "batch_size": 64,
+            "batch_size": 256,
             "measure_frequency": 1,
             "l1_scale": 0.001, #ONLY IN L1DENSE
             "l2_scale": 0.01,
             "keep_prob": 0.5,
             "is_training": True,
-            "early_stop_limit": 30
+            "early_stop_limit": 5
         }
     my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir, **hparams)
+
     #train the model
     my_trainer.train()
+
     #outputs
-    my_trainer.validation_metrics()
-    my_trainer.confusion_matrix()
+    my_analyzer = analysis.Analysis(my_trainer)
+
+    # my_analyzer.training_metrics()
+    my_analyzer.validation_metrics()
+    # my_analyzer.test_metrics()
+
+    # outpath1 = os.path.join(epiml_options.logdir, "training_predict.csv")
+    outpath2 = os.path.join(epiml_options.logdir, "validation_predict.csv")
+    # outpath3 = os.path.join(epiml_options.logdir, "test_predict.csv")
+    # my_analyzer.training_prediction(outpath1)
+    my_analyzer.validation_prediction(outpath2)
+    # my_analyzer.test_prediction(outpath3)
+
     # vis = visualization.Pca()
     # my_trainer.visualize(vis)
     #my_trainer.importance() #TODO: generalize, probably put in model
