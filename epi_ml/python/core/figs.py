@@ -73,7 +73,7 @@ class ConfusionMatrix(object):
             t.tick1On = False
             t.tick2On = False
 
-        cbar = fig.colorbar(cm, ax=ax, shrink=0.5)
+        cbar = fig.colorbar(cm, ax=ax, shrink=0.6)
         cbar.ax.tick_params(labelsize=4)
 
         plt.tight_layout()

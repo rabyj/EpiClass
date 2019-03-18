@@ -140,18 +140,28 @@ class Trainer(object):
 
         # load best model
         saver.restore(self._sess, save_path)
-            
-    def metrics(self):
-        test_acc, pred = self._sess.run([self._test_accuracy, self._model.predictor], feed_dict=self._make_dict(self._data.test.signals, self._data.test.labels, keep_prob=1.0, is_training=False))
-        print("Accuracy: %s" % (test_acc))
-        y_true = np.argmax(self._data.test.labels,1)
-        y_pred = np.argmax(pred,1)
+
+    def test_metrics(self):
+        self._metrics(self._test_accuracy, self._data.test)
+
+    def validation_metrics(self):
+        self._metrics(self._valid_accuracy, self._data.validation)
+
+    def train_metrics(self):
+        self._metrics(self._train_accuracy, self._data.train)
+
+    def _metrics(self, set_accuracy, data_set):
+        acc, pred = self._sess.run([set_accuracy, self._model.predictor], feed_dict=self._make_dict(data_set.signals, data_set.labels, keep_prob=1.0, is_training=False))
+        # acc, pred = self._sess.run([self._test_accuracy, self._model.predictor], feed_dict=self._make_dict(self._data.test.signals, self._data.test.labels, keep_prob=1.0, is_training=False))
+        print("Accuracy: %s" % (acc))
+        y_true = np.argmax(data_set.labels, 1)
+        y_pred = np.argmax(pred, 1)
         print ("Precision: %s" % sklearn.metrics.precision_score(y_true, y_pred, average="macro"))
         print ("Recall: %s" % sklearn.metrics.recall_score(y_true, y_pred, average="macro"))
         print ("f1_score: %s" % sklearn.metrics.f1_score(y_true, y_pred, average="macro"))
         print ("MCC: %s" % sklearn.metrics.matthews_corrcoef(y_true, y_pred))
-        self.write_pred_table(pred, self._data.labels, self._data.test.labels)
-
+        self.write_pred_table(pred, self._data.labels, data_set.labels)
+    
     def confusion_matrix(self):
         mat = self._create_confusion_matrix()
         mat.to_csv(os.path.join(self._logdir, "confusion_matrix.csv"))

@@ -18,6 +18,7 @@ from argparseutils.directorytype import DirectoryType
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument('category', type=str, help='The metatada category to analyse.')
     arg_parser.add_argument('hdf5', type=argparse.FileType('r'), help='A file with hdf5 filenames. Use absolute path!')
     arg_parser.add_argument('chromsize', type=argparse.FileType('r'), help='A file with chrom sizes.')
     arg_parser.add_argument('metadata', type=argparse.FileType('r'), help='A metadata JSON file.')
@@ -45,7 +46,7 @@ def main(args):
         epiml_options.metadata)
 
     #load data
-    my_data = data.EpiData(my_datasource , os.getenv('CATEGORY', 'assay'), oversample=False, min_class_size=3)
+    my_data = data.EpiData(my_datasource, epiml_options.category, oversample=True, min_class_size=10)
     my_data.display_labels()
 
     #define sizes for input and output layers of the network
@@ -59,20 +60,20 @@ def main(args):
     #trainer for the model
     hparams = {
             "learning_rate": 1e-6,
-            "training_epochs": 50,
-            "batch_size": 256,
+            "training_epochs": 200,
+            "batch_size": 64,
             "measure_frequency": 1,
             "l1_scale": 0.001, #ONLY IN L1DENSE
             "l2_scale": 0.01,
             "keep_prob": 0.5,
             "is_training": True,
-            "early_stop_limit": 5
+            "early_stop_limit": 30
         }
     my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir, **hparams)
     #train the model
     my_trainer.train()
     #outputs
-    my_trainer.metrics()
+    my_trainer.validation_metrics()
     my_trainer.confusion_matrix()
     # vis = visualization.Pca()
     # my_trainer.visualize(vis)
