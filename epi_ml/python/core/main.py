@@ -36,7 +36,7 @@ def main(args):
     #if only want to convert confusion matrix csv to png
     # in_path = os.path.join(epiml_options.logdir, "confusion_matrix.csv")
     # out_path = os.path.join(epiml_options.logdir, "confusion_matrix.png")
-    # figs.convert_matrix_csv_to_png(in_path, out_path)
+    # analysis.convert_matrix_csv_to_png(in_path, out_path)
     # sys.exit()
 
     #load metadata
@@ -60,15 +60,15 @@ def main(args):
 
     #trainer for the model
     hparams = {
-            "learning_rate": 1e-5,
+            "learning_rate": 1e-6,
             "training_epochs": 200,
-            "batch_size": 256,
+            "batch_size": 64,
             "measure_frequency": 1,
             "l1_scale": 0.001, #ONLY IN L1DENSE
             "l2_scale": 0.01,
             "keep_prob": 0.5,
             "is_training": True,
-            "early_stop_limit": 5
+            "early_stop_limit": 30
         }
     my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir, **hparams)
 
@@ -89,9 +89,13 @@ def main(args):
     my_analyzer.validation_prediction(outpath2)
     # my_analyzer.test_prediction(outpath3)
 
+    my_analyzer.validation_confusion_matrix(epiml_options.logdir)
+    # my_analyzer.test_confusion_matrix(epiml_options.logdir)
+
     # vis = visualization.Pca()
     # my_trainer.visualize(vis)
-    #my_trainer.importance() #TODO: generalize, probably put in model
+
+    # my_analyzer.importance() #TODO: generalize, probably put in model
     print('end {}'.format(datetime.datetime.now()))
 
 if __name__ == "__main__":

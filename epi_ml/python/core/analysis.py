@@ -1,4 +1,5 @@
 import io
+import os
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -16,15 +17,15 @@ class Analysis(object):
 
     def training_metrics(self):
         print("Training set metrics")
-        metrics(self._trainer.training_accuracy(), self._trainer.training_pred(), self._data.train)
+        metrics(self._trainer.training_acc(), self._trainer.training_pred(), self._data.train)
 
     def validation_metrics(self):
         print("Validation set metrics")
-        metrics(self._trainer.validation_accuracy(), self._trainer.validation_pred(), self._data.validation)
+        metrics(self._trainer.validation_acc(), self._trainer.validation_pred(), self._data.validation)
 
     def test_metrics(self):
         print("Test set metrics")
-        metrics(self._trainer.test_accuracy(), self._trainer.test_pred(), self._data.test)
+        metrics(self._trainer.test_acc(), self._trainer.test_pred(), self._data.test)
 
     def training_prediction(self, path):
         write_pred_table(self._trainer.training_pred(), self._data.labels, self._data.train.labels, path)
@@ -35,31 +36,26 @@ class Analysis(object):
     def test_prediction(self, path):
         write_pred_table(self._trainer.test_pred(), self._data.labels, self._data.test.labels, path)
 
+    def training_confusion_matrix(self, logdir, name="training_confusion_matrix"):
+        mat = ConfusionMatrix(self._data.labels, self._trainer.training_mat())
+        mat.to_all_formats(logdir, name)
 
-def metrics(acc, pred, data_set):
-    #TODO: separate metrics
-    print("Accuracy: %s" % (acc))
-    y_true = np.argmax(data_set.labels, 1)
-    y_pred = np.argmax(pred, 1)
-    print ("Precision: %s" % sklearn.metrics.precision_score(y_true, y_pred, average="macro"))
-    print ("Recall: %s" % sklearn.metrics.recall_score(y_true, y_pred, average="macro"))
-    print ("f1_score: %s" % sklearn.metrics.f1_score(y_true, y_pred, average="macro"))
-    print ("MCC: %s" % sklearn.metrics.matthews_corrcoef(y_true, y_pred))
+    def validation_confusion_matrix(self, logdir, name="validation_confusion_matrix"):
+        mat = ConfusionMatrix(self._data.labels, self._trainer.validation_mat())
+        mat.to_all_formats(logdir, name)
 
-def write_pred_table(pred, pred_labels, labels, path):
-    string_labels = [pred_labels[np.argmax(label)] for label in labels]
-    df = pd.DataFrame(data=pred, index=string_labels, columns=pred_labels)
-    df.to_csv(path, encoding="utf8")
+    def test_confusion_matrix(self, logdir, name="test_confusion_matrix"):
+        mat = ConfusionMatrix(self._data.labels, self._trainer.test_mat())
+        mat.to_all_formats(logdir, name)
 
-
-
-
+    def importance(self):
+        return importance(self._trainer.weights())
 
 
 class ConfusionMatrix(object):
-    def __init__(self, labels, confusion_matrix):
+    def __init__(self, labels, tf_confusion_mat):
         self._labels = labels
-        self._confusion_matrix = self._create_confusion_matrix(confusion_matrix)
+        self._confusion_matrix = self._create_confusion_matrix(tf_confusion_mat) #pd dataframe
         
     @classmethod
     def from_csv(cls, csv_path):
@@ -67,20 +63,19 @@ class ConfusionMatrix(object):
         obj._confusion_matrix = pd.read_csv(csv_path, sep=',', index_col=0)
         return obj
 
-    def _create_confusion_matrix(self, confusion_matrix):
-
-        labels_count = confusion_matrix.sum(axis=0)
+    def _create_confusion_matrix(self, tf_confusion_mat):
+        labels_count = tf_confusion_mat.sum(axis=0)
         labels_w_count = ["{}({})".format(label, label_count) for label, label_count in zip(self._labels, labels_count)]
 
-        confusion_matrix = self._to_relative_confusion_matrix(labels_count, confusion_matrix)
+        confusion_mat = self._to_relative_confusion_matrix(labels_count, tf_confusion_mat)
 
-        return pd.DataFrame(data=confusion_matrix, index=labels_w_count, columns=self._labels)
+        return pd.DataFrame(data=confusion_mat, index=labels_w_count, columns=self._labels)
 
-    def _to_relative_confusion_matrix(self, labels_count, confusion_matrix):
-        confusion_matrix = confusion_matrix/labels_count 
-        confusion_matrix = np.nan_to_num(confusion_matrix)
-        confusion_matrix = confusion_matrix.T #one label per row instead of column
-        return confusion_matrix
+    def _to_relative_confusion_matrix(self, labels_count, tf_confusion_mat):
+        confusion_mat = tf_confusion_mat/labels_count 
+        confusion_mat = np.nan_to_num(confusion_mat)
+        confusion_mat = confusion_mat.T #one label per row instead of column
+        return confusion_mat
 
     def to_png(self, path):
         plt.figure()
@@ -139,6 +134,39 @@ class ConfusionMatrix(object):
     def to_csv(self, path):
         self._confusion_matrix.to_csv(path, encoding="utf8", float_format='%.4f')
 
+    def to_all_formats(self, logdir, name):
+        outpath = os.path.join(logdir, name)
+        self.to_csv(outpath + ".csv")
+        self.to_png(outpath + ".png")
+
+
 def convert_matrix_csv_to_png(in_path, out_path):
-    confusion_matrix = ConfusionMatrix.from_csv(in_path)
-    confusion_matrix.to_png(out_path)
+    mat = ConfusionMatrix.from_csv(in_path)
+    mat.to_png(out_path)
+
+def metrics(acc, pred, data_set):
+    #TODO: separate metrics
+    print("Accuracy: %s" % (acc))
+    y_true = np.argmax(data_set.labels, 1)
+    y_pred = np.argmax(pred, 1)
+    print ("Precision: %s" % sklearn.metrics.precision_score(y_true, y_pred, average="macro"))
+    print ("Recall: %s" % sklearn.metrics.recall_score(y_true, y_pred, average="macro"))
+    print ("f1_score: %s" % sklearn.metrics.f1_score(y_true, y_pred, average="macro"))
+    print ("MCC: %s" % sklearn.metrics.matthews_corrcoef(y_true, y_pred))
+
+def write_pred_table(pred, pred_labels, labels, path):
+    string_labels = [pred_labels[np.argmax(label)] for label in labels]
+    df = pd.DataFrame(data=pred, index=string_labels, columns=pred_labels)
+    df.to_csv(path, encoding="utf8")
+
+def importance(w):
+    #garson algorithm, w for weights 
+    #TODO: generalise, put in model
+    total_w = w[0]
+    for i in range(2, len(w), 2):
+        total_w = np.dot(total_w, w[i])
+    total_w = np.absolute(total_w)
+    sum_w = np.sum(total_w, axis=None)
+    total_w = np.sum(total_w/sum_w, axis=1)
+    print((total_w > 1e-04).sum())
+    return ','.join([str(x) for x in total_w])

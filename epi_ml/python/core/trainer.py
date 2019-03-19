@@ -140,19 +140,17 @@ class Trainer(object):
         # load best model
         saver.restore(self._sess, save_path)
 
-
-
-    def _compute_accuracy(self, set_accuracy, data_set):
+    def _compute_acc(self, set_accuracy, data_set):
         return self._sess.run(set_accuracy, feed_dict=self._make_dict(data_set.signals, data_set.labels, keep_prob=1.0, is_training=False))
 
-    def training_accuracy(self):
-        return self._compute_accuracy(self._train_accuracy, self._data.train)
+    def training_acc(self):
+        return self._compute_acc(self._train_accuracy, self._data.train)
 
-    def validation_accuracy(self):
-        return self._compute_accuracy(self._valid_accuracy, self._data.validation)
+    def validation_acc(self):
+        return self._compute_acc(self._valid_accuracy, self._data.validation)
 
-    def test_accuracy(self):
-        return self._compute_accuracy(self._test_accuracy, self._data.test)
+    def test_acc(self):
+        return self._compute_acc(self._test_accuracy, self._data.test)
 
     def _compute_pred(self, data_set):
         return self._sess.run(self._model.predictor, feed_dict=self._make_dict(data_set.signals, data_set.labels, keep_prob=1.0, is_training=False))
@@ -166,19 +164,21 @@ class Trainer(object):
     def test_pred(self):
         return self._compute_pred(self._data.test)
 
-
-
-    def _create_confusion_matrix(self):
+    def _compute_conf_mat(self, data_set):
         confusion_mat = tf.confusion_matrix(tf.argmax(self._model.model,1), tf.argmax(self._model.y,1))
-        confusion_matrix = self._sess.run(confusion_mat, feed_dict=self._make_dict(self._data.test.signals, self._data.test.labels, keep_prob=1.0, is_training=False))
-        return ConfusionMatrix(self._data.labels, confusion_matrix)
+        return self._sess.run(confusion_mat, feed_dict=self._make_dict(data_set.signals, data_set.labels, keep_prob=1.0, is_training=False))
 
-    def confusion_matrix(self):
-        mat = self._create_confusion_matrix()
-        mat.to_csv(os.path.join(self._logdir, "confusion_matrix.csv"))
-        mat.to_png(os.path.join(self._logdir, "confusion_matrix.png"))
+    def training_mat(self):
+        return self._compute_conf_mat(self._data.train)
 
+    def validation_mat(self):
+        return self._compute_conf_mat(self._data.validation)
 
+    def test_mat(self):
+        return self._compute_conf_mat(self._data.test)
+
+    def weights(self):
+        return self._sess.run(tf.trainable_variables())
 
     def visualize(self, vis):
         #TODO: maybe send to analysis module
@@ -186,17 +186,5 @@ class Trainer(object):
 
         for idx, output in enumerate(outputs):
             vis.run(output, self._data.train.labels, self._sess, self._writer, str(idx))
-
-    def importance(self):
-        #garson algorithm #TODO: generalise, put in model
-        w = self._sess.run(tf.trainable_variables())
-        total_w = w[0]
-        for i in range(2, len(w), 2):
-            total_w = np.dot(total_w, w[i])
-        total_w = np.absolute(total_w)
-        sum_w = np.sum(total_w, axis=None)
-        total_w = np.sum(total_w/sum_w, axis=1)
-        print((total_w > 1e-04).sum())
-        return ','.join([str(x) for x in total_w])
 
 
