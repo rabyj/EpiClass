@@ -170,3 +170,4 @@ def importance(w):
     total_w = np.sum(total_w/sum_w, axis=1)
     print((total_w > 1e-04).sum())
     return ','.join([str(x) for x in total_w])
+

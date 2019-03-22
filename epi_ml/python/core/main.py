@@ -6,6 +6,7 @@ import os.path
 import numpy as np
 import datetime
 
+import metadata
 import data
 import model
 import trainer
@@ -39,15 +40,16 @@ def main(args):
     # analysis.convert_matrix_csv_to_png(in_path, out_path)
     # sys.exit()
 
-    #load metadata
+    #load external files
     my_datasource = data.EpiDataSource(
         epiml_options.hdf5,
         epiml_options.chromsize,
         epiml_options.metadata)
 
     #load data
-    my_data = data.EpiData(my_datasource, epiml_options.category, oversample=True, min_class_size=10)
-    my_data.display_labels()
+    my_metadata = metadata.Metadata(my_datasource)
+    my_data = data.EpiData(my_datasource, my_metadata, epiml_options.category, oversample=True, min_class_size=10)
+    my_metadata.display_labels(epiml_options.category)
 
     #define sizes for input and output layers of the network
     input_size = my_data.train.signals[0].size
@@ -101,3 +103,4 @@ def main(args):
 if __name__ == "__main__":
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     main(sys.argv[1:])
+

@@ -7,8 +7,6 @@ from abc import ABC
 import math
 import datetime
 
-from analysis import ConfusionMatrix
-
 class Trainer(object):
     def __init__(self, data, model, logdir, **kwargs):
         self._data = data
@@ -186,5 +184,4 @@ class Trainer(object):
 
         for idx, output in enumerate(outputs):
             vis.run(output, self._data.train.labels, self._sess, self._writer, str(idx))
-
 
