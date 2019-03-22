@@ -1,6 +1,4 @@
-import glob
 import h5py
-import json
 import os.path
 import numpy as np
 from scipy import signal
@@ -9,50 +7,40 @@ import collections
 import math
 import io
 
-class EpiDataSource(object):
-    """used to load metadata"""
-    def __init__(self, hdf5: io.IOBase, chromsize: io.IOBase, metadata: io.IOBase):
-        self._hdf5 = hdf5
-        self._chromsize = chromsize
-        self._metadata = metadata
-
-    @property
-    def hdf5_file(self) -> io.IOBase:
-        return self._hdf5
-
-    @property
-    def chromsize_file(self) -> io.IOBase:
-        return self._chromsize
-
-    @property
-    def metadata_file(self) -> io.IOBase:
-        return self._metadata
+from dataSource import EpiDataSource
+from metadata import Metadata
 
 class EpiData(object):
     """used to load and preprocess epigenomic data"""
-    def __init__(self, datasource: EpiDataSource, label_category: str, oversample=False,
-                 normalization=True, min_class_size=3, metadata_filter=lambda m:True):
-        # metadata_filter is a function that returns True or False
+    def __init__(self, datasource: EpiDataSource, metadata: Metadata, label_category: str, oversample=False,
+                 normalization=True, min_class_size=3):
         self._label_category = label_category
         self._oversample = oversample
         self._normalization = normalization
-        self._min_class_size = min_class_size
-        self._metadata_filter = metadata_filter
+
+        #load
         self._load_chrom_sizes(datasource.chromsize_file)
-        self._load_hdf5(datasource.hdf5_file)
-        self._load_metadata(datasource.metadata_file)
-        self._data = self._build_data()
-        self._filter_data()
+        self._hdf5s = self._load_hdf5(datasource.hdf5_file)
+        self._metadata = self._load_metadata(metadata)
+
+        #preprocess
+        self._keep_meta_overlap()
+        self._metadata.remove_small_classes(min_class_size, self._label_category)
         self._split_data()
 
-    def _load_metadata(self, meta_file: io.IOBase):
-        meta_file.seek(0)
-        meta_raw = json.load(meta_file)
-        self._metadata = {}
-        for dataset in meta_raw["datasets"]:
-            if (dataset["md5sum"] in self._hdf5s and self._label_category in dataset 
-                    and self._metadata_filter(dataset)):
-                self._metadata[dataset["md5sum"]] = dataset
+    def _load_metadata(self, metadata):
+        metadata.remove_missing_labels(self._label_category)
+        return metadata
+
+    def _keep_meta_overlap(self):
+        self._remove_md5_without_hdf5()
+        self._remove_hdf5_without_md5()
+
+    def _remove_md5_without_hdf5(self):
+       self._metadata.apply_filter(lambda item: item[0] in self._hdf5s)
+
+    def _remove_hdf5_without_md5(self):
+        self._hdf5s = {md5:self._hdf5s[md5] for md5 in self._metadata.md5s}
 
     def _load_chrom_sizes(self, chrom_file: io.IOBase):
         chrom_file.seek(0)
@@ -67,7 +55,7 @@ class EpiData(object):
 
     def _load_hdf5(self, data_file: io.IOBase):
         data_file.seek(0)
-        self._hdf5s = {}
+        hdf5s = {}
         for file_path in [line.strip() for line in data_file]:
             md5 = self._extract_md5(file_path)
             datasets = []
@@ -75,7 +63,8 @@ class EpiData(object):
                 f = h5py.File(file_path)
                 array = f[md5][chrom][...]
                 datasets.append(array)
-            self._hdf5s[md5] = self._normalize(np.concatenate(datasets))
+            hdf5s[md5] = self._normalize(np.concatenate(datasets))
+        return hdf5s
     
     def _normalize(self, array):
         if self._normalization:
@@ -88,7 +77,7 @@ class EpiData(object):
 
     def _oversample_rates(self):
         """"""
-        sorted_md5 = sorted(self._metadata.keys())
+        sorted_md5 = sorted(self._metadata.md5s)
         label_count = {}
         for md5 in sorted_md5:
             label = self._metadata[md5][self._label_category]
@@ -105,31 +94,10 @@ class EpiData(object):
         for label, count in label_count.items():
             oversample_rates[label] = count/max_count
         return oversample_rates
-
-    def _build_data(self):
-        """"""
-        sorted_md5 = sorted(self._metadata.keys())
-        data = collections.defaultdict(list)
-        for md5 in sorted_md5:
-            data[self._metadata[md5][self._label_category]].append(md5)
-        return data
-
-    def _filter_data(self):
-        """"""
-        # self._data  # label: md5 list
-        # self._metadata #md5sum : dataset_dict
-        nb_label_i =  len(self._data)
-        for label, size in self.label_counter().most_common():
-            if size < self._min_class_size:
-                for md5 in self._data[label]:
-                    del self._metadata[md5]
-                del self._data[label]
-
-        print("{}/{} labels left after filtering.".format(len(self._data), nb_label_i))
         
     def _split_data(self, validation_ratio=0.1, test_ratio=0.1):
         """"""
-        size_all_dict = self.label_counter()
+        size_all_dict = self._metadata.label_counter(self._label_category)
 
         # A minimum of 3 examples are needed for each label (1 for each set)
         for label, size in size_all_dict.items():
@@ -140,8 +108,10 @@ class EpiData(object):
         size_test_dict = collections.Counter({label:math.ceil(size*test_ratio) for label, size in size_all_dict.items()})
         split_index_dict = size_validation_dict + size_test_dict
 
+        data = self._metadata.md5_per_class(self._label_category)
+
         slice_data = lambda begin={}, end={}: sum([
-            self._data[label][begin.get(label, 0):end.get(label, None)]
+            data[label][begin.get(label, 0):end.get(label, None)]
             for label in size_all_dict.keys()
         ], [])
 
@@ -149,7 +119,7 @@ class EpiData(object):
         test_md5s = slice_data(begin=size_validation_dict, end=split_index_dict)
         train_md5s = slice_data(begin=split_index_dict)
 
-        assert len(self._metadata.keys()) == len(set(sum([validation_md5s, test_md5s, train_md5s], [])))
+        assert len(self._metadata.md5s) == len(set(sum([validation_md5s, test_md5s, train_md5s], [])))
 
         # separate hdf5 files 
         validation_signals = [self._hdf5s[md5] for md5 in validation_md5s]
@@ -191,7 +161,7 @@ class EpiData(object):
         return new_signals, new_labels
 
     def _to_onehot(self, labels):
-        sorted_md5 = sorted(self._metadata.keys())
+        sorted_md5 = sorted(self._metadata.md5s)
         uniq = set()
         for md5 in sorted_md5:
             uniq.add(self._metadata[md5][self._label_category])
@@ -203,22 +173,6 @@ class EpiData(object):
             onehot_dict[self._sorted_choices[i]] = onehot
         for i in range(len(labels)):
             labels[i] = onehot_dict[labels[i]]
-
-    def label_counter(self):
-        counter = collections.Counter()
-        for labels in self._metadata.values():
-            label = labels[self._label_category]
-            counter.update([label])
-
-        return counter
-
-    def display_labels(self):
-        print('\nExamples')
-        i = 0
-        for label, count in self.label_counter().most_common():
-            print('{}: {}'.format(label, count))
-            i += count
-        print('For a total of {} examples\n'.format(i))
 
     def preprocess(self, f):
         self._train.preprocess(f)
@@ -282,3 +236,4 @@ class Data(object):
     @property
     def num_examples(self):
         return self._num_examples
+
