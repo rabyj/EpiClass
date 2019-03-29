@@ -11,40 +11,6 @@ from data_source import EpiDataSource
 from metadata import Metadata
 
 
-class DataSet(object): #class Data?
-    """Contains training/valid/test data objects."""
-    def __init__(self, training, validation, test, sorted_classes):
-        self._train = training
-        self._validation = validation
-        self._test = test
-        self._sorted_classes = sorted_classes
-
-    @property
-    def train(self):
-        return self._train
-
-    @property
-    def validation(self):
-        return self._validation
-
-    @property
-    def test(self):
-        return self._test
-
-    # @property
-    # def labels(self):
-    #     return self._sorted_classes
-
-    @property
-    def classes(self):
-        return self._sorted_classes
-
-    def preprocess(self, f):
-        self._train.preprocess(f)
-        self._validation.preprocess(f)
-        self._test.preprocess(f)
-
-
 class DataSetFactory(object):
     """Creation of DataSet from different sources."""
     @classmethod
@@ -274,4 +240,34 @@ class Data(object): #class DataSet?
     @property
     def num_examples(self):
         return self._num_examples
+
+
+class DataSet(object): #class Data?
+    """Contains training/valid/test Data objects."""
+    def __init__(self, training: Data, validation: Data, test: Data, sorted_classes):
+        self._train = training
+        self._validation = validation
+        self._test = test
+        self._sorted_classes = sorted_classes
+
+    @property
+    def train(self):
+        return self._train
+
+    @property
+    def validation(self):
+        return self._validation
+
+    @property
+    def test(self):
+        return self._test
+
+    @property
+    def classes(self):
+        return self._sorted_classes
+
+    def preprocess(self, f):
+        self._train.preprocess(f)
+        self._validation.preprocess(f)
+        self._test.preprocess(f)
 
