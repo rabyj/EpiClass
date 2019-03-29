@@ -48,6 +48,8 @@ def main(args):
 
     #load data
     my_metadata = metadata.Metadata(my_datasource)
+    my_metadata.create_healthy_category()
+
     my_data = data.EpiData(my_datasource, my_metadata, epiml_options.category, oversample=True, min_class_size=10)
     my_metadata.display_labels(epiml_options.category)
 
