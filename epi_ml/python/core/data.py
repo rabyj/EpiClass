@@ -7,7 +7,7 @@ import collections
 import math
 import io
 
-from dataSource import EpiDataSource
+from data_source import EpiDataSource
 from metadata import Metadata
 
 class EpiData(object):

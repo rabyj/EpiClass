@@ -2,7 +2,7 @@ import json
 import collections
 import io
 
-from dataSource import EpiDataSource
+from data_source import EpiDataSource
 
 class Metadata(object):
     def __init__(self, datasource: EpiDataSource):
