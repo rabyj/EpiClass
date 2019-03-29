@@ -50,7 +50,7 @@ def main(args):
     my_metadata = metadata.Metadata(my_datasource)
     my_metadata.create_healthy_category()
 
-    my_data = data.EpiData(my_datasource, my_metadata, epiml_options.category, oversample=True, min_class_size=10)
+    my_data = data.DataSetFactory.from_epidata(my_datasource, my_metadata, epiml_options.category, oversample=True, min_class_size=10)
     my_metadata.display_labels(epiml_options.category)
 
     #define sizes for input and output layers of the network
@@ -64,15 +64,15 @@ def main(args):
 
     #trainer for the model
     hparams = {
-            "learning_rate": 1e-6,
+            "learning_rate": 1e-6 * 10,
             "training_epochs": 200,
-            "batch_size": 64,
+            "batch_size": 64 * 4,
             "measure_frequency": 1,
             "l1_scale": 0.001, #ONLY IN L1DENSE
             "l2_scale": 0.01,
             "keep_prob": 0.5,
             "is_training": True,
-            "early_stop_limit": 30
+            "early_stop_limit": 30 / 6
         }
     my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir, **hparams)
 

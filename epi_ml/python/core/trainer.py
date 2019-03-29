@@ -7,8 +7,11 @@ from abc import ABC
 import math
 import datetime
 
+from data import DataSet
+
+
 class Trainer(object):
-    def __init__(self, data, model, logdir, **kwargs):
+    def __init__(self, data: DataSet, model, logdir, **kwargs):
         self._data = data
         self._model = model
         self._logdir = logdir
@@ -138,8 +141,8 @@ class Trainer(object):
         # load best model
         saver.restore(self._sess, save_path)
 
-    def _compute_acc(self, set_accuracy, data_set):
-        return self._sess.run(set_accuracy, feed_dict=self._make_dict(data_set.signals, data_set.labels, keep_prob=1.0, is_training=False))
+    def _compute_acc(self, set_accuracy, data_subset):
+        return self._sess.run(set_accuracy, feed_dict=self._make_dict(data_subset.signals, data_subset.labels, keep_prob=1.0, is_training=False))
 
     def training_acc(self):
         return self._compute_acc(self._train_accuracy, self._data.train)
@@ -150,8 +153,8 @@ class Trainer(object):
     def test_acc(self):
         return self._compute_acc(self._test_accuracy, self._data.test)
 
-    def _compute_pred(self, data_set):
-        return self._sess.run(self._model.predictor, feed_dict=self._make_dict(data_set.signals, data_set.labels, keep_prob=1.0, is_training=False))
+    def _compute_pred(self, data_subset):
+        return self._sess.run(self._model.predictor, feed_dict=self._make_dict(data_subset.signals, data_subset.labels, keep_prob=1.0, is_training=False))
 
     def training_pred(self):
         return self._compute_pred(self._data.train)
@@ -162,9 +165,9 @@ class Trainer(object):
     def test_pred(self):
         return self._compute_pred(self._data.test)
 
-    def _compute_conf_mat(self, data_set):
+    def _compute_conf_mat(self, data_subset):
         confusion_mat = tf.confusion_matrix(tf.argmax(self._model.model,1), tf.argmax(self._model.y,1))
-        return self._sess.run(confusion_mat, feed_dict=self._make_dict(data_set.signals, data_set.labels, keep_prob=1.0, is_training=False))
+        return self._sess.run(confusion_mat, feed_dict=self._make_dict(data_subset.signals, data_subset.labels, keep_prob=1.0, is_training=False))
 
     def training_mat(self):
         return self._compute_conf_mat(self._data.train)

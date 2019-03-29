@@ -10,8 +10,52 @@ import io
 from data_source import EpiDataSource
 from metadata import Metadata
 
+
+class DataSet(object): #class Data?
+    """Contains training/valid/test data objects."""
+    def __init__(self, training, validation, test, sorted_classes):
+        self._train = training
+        self._validation = validation
+        self._test = test
+        self._sorted_classes = sorted_classes
+
+    @property
+    def train(self):
+        return self._train
+
+    @property
+    def validation(self):
+        return self._validation
+
+    @property
+    def test(self):
+        return self._test
+
+    # @property
+    # def labels(self):
+    #     return self._sorted_classes
+
+    @property
+    def classes(self):
+        return self._sorted_classes
+
+    def preprocess(self, f):
+        self._train.preprocess(f)
+        self._validation.preprocess(f)
+        self._test.preprocess(f)
+
+
+class DataSetFactory(object):
+    """Creation of DataSet from different sources."""
+    @classmethod
+    def from_epidata(cls, datasource: EpiDataSource, metadata: Metadata, label_category: str, oversample=False,
+                 normalization=True, min_class_size=3):
+        
+        return EpiData(datasource, metadata, label_category, oversample, normalization, min_class_size).dataset
+
+
 class EpiData(object):
-    """used to load and preprocess epigenomic data"""
+    """Used to load and preprocess epigenomic data. Data factory."""
     def __init__(self, datasource: EpiDataSource, metadata: Metadata, label_category: str, oversample=False,
                  normalization=True, min_class_size=3):
         self._label_category = label_category
@@ -27,6 +71,10 @@ class EpiData(object):
         self._keep_meta_overlap()
         self._metadata.remove_small_classes(min_class_size, self._label_category)
         self._split_data()
+
+    @property
+    def dataset(self):
+        return DataSet(self._train, self._validation, self._test, self._sorted_classes)
 
     def _load_metadata(self, metadata):
         metadata.remove_missing_labels(self._label_category)
@@ -138,9 +186,9 @@ class EpiData(object):
         self._to_onehot(test_labels)
         self._to_onehot(train_labels)
 
-        self._validation = Data(validation_signals, validation_labels)
-        self._test = Data(test_signals, test_labels)
-        self._train = Data(train_signals, train_labels)
+        self._validation = Data(validation_md5s, validation_signals, validation_labels, self._metadata)
+        self._test = Data(test_md5s, test_signals, test_labels, self._metadata)
+        self._train = Data(train_md5s, train_signals, train_labels, self._metadata)
 
         print('validation size {}'.format(len(validation_labels)))
         print('test size {}'.format(len(test_labels)))
@@ -165,45 +213,28 @@ class EpiData(object):
         uniq = set()
         for md5 in sorted_md5:
             uniq.add(self._metadata[md5][self._label_category])
-        self._sorted_choices = sorted(list(uniq))
+        self._sorted_classes = sorted(list(uniq))
         onehot_dict = {}
-        for i in range(len(self._sorted_choices)):
-            onehot = np.zeros(len(self._sorted_choices))
+        for i in range(len(self._sorted_classes)):
+            onehot = np.zeros(len(self._sorted_classes))
             onehot[i] = 1
-            onehot_dict[self._sorted_choices[i]] = onehot
+            onehot_dict[self._sorted_classes[i]] = onehot
         for i in range(len(labels)):
             labels[i] = onehot_dict[labels[i]]
 
-    def preprocess(self, f):
-        self._train.preprocess(f)
-        self._validation.preprocess(f)
-        self._test.preprocess(f)
 
-    @property
-    def train(self):
-        return self._train
-
-    @property
-    def validation(self):
-        return self._validation
-
-    @property
-    def test(self):
-        return self._test
-
-    @property
-    def labels(self):
-        return self._sorted_choices
-
-
-class Data(object):
-    """generalised object to deal with data"""
-    def __init__(self, x, y):
+class Data(object): #class DataSet?
+    """Generalised object to deal with data."""
+    def __init__(self, ids, x, y , metadata: Metadata):
+        self._ids = ids
         self._num_examples = len(x)
         self._signals = np.array(x)
         self._labels = np.array(y)
+        self._shuffled_signals = None
+        self._shuffled_labels = None
         self._index = 0
-
+        self._metadata = metadata
+        
     def preprocess(self, f):
         self._signals = np.apply_along_axis(f, 1, self._signals)
     
@@ -217,13 +248,20 @@ class Data(object):
         start = self._index
         self._index += batch_size
         end = self._index
-        return self._signals[start:end], self._labels[start:end]
+        return self._shuffled_signals[start:end], self._shuffled_labels[start:end]
 
     def _shuffle(self):
         shuffle = np.arange(self._num_examples)
         np.random.shuffle(shuffle)
-        self._signals = self._signals[shuffle]
-        self._labels = self._labels[shuffle]
+        self._shuffled_signals = self._signals[shuffle]
+        self._shuffled_labels = self._labels[shuffle]
+
+    def get_metadata(self, index):
+        return self._metadata.get(self._ids[index])
+
+    @property
+    def ids(self):
+        return self._ids
 
     @property
     def signals(self):

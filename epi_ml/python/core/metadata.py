@@ -17,6 +17,9 @@ class Metadata(object):
     def __contains__(self, md5):
         return md5 in self._metadata
 
+    def get(self, md5):
+        return self._metadata.get(md5)
+
     @property
     def md5s(self):
         return self._metadata.keys()

@@ -28,24 +28,24 @@ class Analysis(object):
         metrics(self._trainer.test_acc(), self._trainer.test_pred(), self._data.test)
 
     def training_prediction(self, path):
-        write_pred_table(self._trainer.training_pred(), self._data.labels, self._data.train.labels, path)
+        write_pred_table(self._trainer.training_pred(), self._data.classes, self._data.train, path)
 
     def validation_prediction(self, path):
-        write_pred_table(self._trainer.validation_pred(), self._data.labels, self._data.validation.labels, path)
+        write_pred_table(self._trainer.validation_pred(), self._data.classes, self._data.validation, path)
 
     def test_prediction(self, path):
-        write_pred_table(self._trainer.test_pred(), self._data.labels, self._data.test.labels, path)
+        write_pred_table(self._trainer.test_pred(), self._data.classes, self._data.test, path)
 
     def training_confusion_matrix(self, logdir, name="training_confusion_matrix"):
-        mat = ConfusionMatrix(self._data.labels, self._trainer.training_mat())
+        mat = ConfusionMatrix(self._data.classes, self._trainer.training_mat())
         mat.to_all_formats(logdir, name)
 
     def validation_confusion_matrix(self, logdir, name="validation_confusion_matrix"):
-        mat = ConfusionMatrix(self._data.labels, self._trainer.validation_mat())
+        mat = ConfusionMatrix(self._data.classes, self._trainer.validation_mat())
         mat.to_all_formats(logdir, name)
 
     def test_confusion_matrix(self, logdir, name="test_confusion_matrix"):
-        mat = ConfusionMatrix(self._data.labels, self._trainer.test_mat())
+        mat = ConfusionMatrix(self._data.classes, self._trainer.test_mat())
         mat.to_all_formats(logdir, name)
 
     def importance(self):
@@ -140,24 +140,30 @@ class ConfusionMatrix(object):
         self.to_png(outpath + ".png")
 
 
+def write_pred_table(pred, classes, data_subset, path):
+    labels = data_subset.labels
+    md5s = data_subset.ids
+
+    string_labels = [classes[np.argmax(label)] for label in labels]
+    df = pd.DataFrame(data=pred, index=md5s, columns=classes)
+
+    df.insert(loc=0 , column="class", value=string_labels)
+    
+    df.to_csv(path, encoding="utf8")
+
 def convert_matrix_csv_to_png(in_path, out_path):
     mat = ConfusionMatrix.from_csv(in_path)
     mat.to_png(out_path)
 
-def metrics(acc, pred, data_set):
+def metrics(acc, pred, data_subset):
     #TODO: separate metrics
     print("Accuracy: %s" % (acc))
-    y_true = np.argmax(data_set.labels, 1)
+    y_true = np.argmax(data_subset.labels, 1)
     y_pred = np.argmax(pred, 1)
     print ("Precision: %s" % sklearn.metrics.precision_score(y_true, y_pred, average="macro"))
     print ("Recall: %s" % sklearn.metrics.recall_score(y_true, y_pred, average="macro"))
     print ("f1_score: %s" % sklearn.metrics.f1_score(y_true, y_pred, average="macro"))
     print ("MCC: %s" % sklearn.metrics.matthews_corrcoef(y_true, y_pred))
-
-def write_pred_table(pred, pred_labels, labels, path):
-    string_labels = [pred_labels[np.argmax(label)] for label in labels]
-    df = pd.DataFrame(data=pred, index=string_labels, columns=pred_labels)
-    df.to_csv(path, encoding="utf8")
 
 def importance(w):
     #garson algorithm, w for weights 
