@@ -1,9 +1,4 @@
-import io
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import numpy as np
-import sklearn.metrics
 import pandas
 import tensorflow as tf
 import os.path
@@ -12,9 +7,11 @@ from abc import ABC
 import math
 import datetime
 
+from data import DataSet
+
 
 class Trainer(object):
-    def __init__(self, data, model, logdir, **kwargs):
+    def __init__(self, data: DataSet, model, logdir, **kwargs):
         self._data = data
         self._model = model
         self._logdir = logdir
@@ -27,9 +24,10 @@ class Trainer(object):
             "l1_scale": kwargs.get("l1_scale", 0.001),
             "l2_scale": kwargs.get("l2_scale", 0.01),
             "keep_prob": kwargs.get("keep_prob", 0.5),
-            "is_training": kwargs.get("is_training", True)
+            "is_training": kwargs.get("is_training", True),
+            "early_stop_limit": kwargs.get("early_stop_limit", 15)
         }
-        print (self._hparams)
+        self._print_hparams()
         self._train_accuracy = self._init_accuracy("Training_Accuracy")
         self._valid_accuracy = self._init_accuracy("Validation_Accuracy")
         self._test_accuracy = self._init_accuracy("Test_Accuracy")
@@ -90,87 +88,103 @@ class Trainer(object):
         }
         return default_dict
 
+    def _print_hparams(self):
+        for hparam, value in sorted(self._hparams.items()):
+            print('{}: {}'.format(hparam, value))
+
     def train(self):
-        #train
         nb_batch = math.ceil(self._data.train.num_examples/self._hparams.get("batch_size"))
+
+        saver = tf.train.Saver()
+        save_path = os.path.join(self._logdir, "save")
+        max_v_acc = -1
+        nb_since_max = 0
+
         for epoch in range(self._hparams.get("training_epochs")):
             for batch in range(nb_batch):
                 batch_xs, batch_ys = self._data.train.next_batch(self._hparams.get("batch_size"))
                 if epoch % self._hparams.get("measure_frequency") == 0 and batch == 0:
-                    _, _, summary = self._sess.run([self._model.optimizer, self._model.loss, self._summary], feed_dict=self._make_dict(batch_xs, batch_ys), run_metadata=self._run_metadata, options=self._run_options)
-                    self._writer.add_summary(summary, epoch)
-                    t_acc = self._sess.run(self._train_accuracy, feed_dict=self._make_dict(batch_xs, batch_ys, keep_prob=1.0))
-                    v_acc, v_summary = self._sess.run([self._valid_accuracy, self._v_sum], feed_dict=self._make_dict(self._data.validation.signals, self._data.validation.labels, keep_prob=1.0, is_training=False))
-                    self._writer.add_run_metadata(self._run_metadata, 'epoch{}'.format(epoch))
-                    self._writer.add_summary(v_summary, epoch)
-                    print('epoch {0}, training accuracy {1:.4f}, validation accuracy {2:.4f} {3}'.format(epoch, t_acc, v_acc, datetime.datetime.now()))
-                else:
-                    _, _, summary = self._sess.run([self._model.optimizer, self._model.loss, self._summary], feed_dict=self._make_dict(batch_xs, batch_ys))
+
+                    # train
+                    _, _, summary = self._sess.run([self._model.minimize, self._model.loss, self._summary], feed_dict=self._make_dict(batch_xs, batch_ys), run_metadata=self._run_metadata, options=self._run_options)
                     self._writer.add_summary(summary, epoch)
 
-    def metrics(self):
-        test_acc, pred = self._sess.run([self._test_accuracy, self._model.predictor], feed_dict=self._make_dict(self._data.test.signals, self._data.test.labels, keep_prob=1.0, is_training=False))
-        print("Accuracy: %s" % (test_acc))
-        y_true = np.argmax(self._data.test.labels,1)
-        y_pred = np.argmax(pred,1)
-        print ("Precision: %s" % sklearn.metrics.precision_score(y_true, y_pred, average="macro"))
-        print ("Recall: %s" % sklearn.metrics.recall_score(y_true, y_pred, average="macro"))
-        print ("f1_score: %s" % sklearn.metrics.f1_score(y_true, y_pred, average="macro"))
-        print ("MCC: %s" % sklearn.metrics.matthews_corrcoef(y_true, y_pred))
-        self.write_pred_table(pred, self._data.labels, self._data.test.labels)
-        # self.heatmap(self._data.labels)
+                    # training accuracy
+                    t_acc = self._sess.run(self._train_accuracy, feed_dict=self._make_dict(batch_xs, batch_ys, keep_prob=1.0))
+
+                    # validation accuracy
+                    v_acc, v_summary = self._sess.run([self._valid_accuracy, self._v_sum], feed_dict=self._make_dict(self._data.validation.signals, self._data.validation.labels, keep_prob=1.0, is_training=False))
+                    self._writer.add_summary(v_summary, epoch)
+
+                    self._writer.add_run_metadata(self._run_metadata, 'epoch{}'.format(epoch))
+
+                    if v_acc > max_v_acc:
+                        max_v_acc = v_acc
+                        saver.save(self._sess, save_path)
+                        nb_since_max = 0
+                    else:
+                        nb_since_max += 1
+
+                    if nb_since_max == self._hparams.get("early_stop_limit"):
+                        break
+                    
+                    print('epoch {0}, training accuracy {1:.4f}, validation accuracy {2:.4f} {3}'.format(epoch, t_acc, v_acc, datetime.datetime.now()))
+
+                else:
+                    # train
+                    _, _, summary = self._sess.run([self._model.minimize, self._model.loss, self._summary], feed_dict=self._make_dict(batch_xs, batch_ys))
+                    self._writer.add_summary(summary, epoch)
+                
+            if nb_since_max == self._hparams.get("early_stop_limit"):
+                break
+
+        # load best model
+        saver.restore(self._sess, save_path)
+
+    def _compute_acc(self, set_accuracy, data_subset):
+        return self._sess.run(set_accuracy, feed_dict=self._make_dict(data_subset.signals, data_subset.labels, keep_prob=1.0, is_training=False))
+
+    def training_acc(self):
+        return self._compute_acc(self._train_accuracy, self._data.train)
+
+    def validation_acc(self):
+        return self._compute_acc(self._valid_accuracy, self._data.validation)
+
+    def test_acc(self):
+        return self._compute_acc(self._test_accuracy, self._data.test)
+
+    def _compute_pred(self, data_subset):
+        return self._sess.run(self._model.predictor, feed_dict=self._make_dict(data_subset.signals, data_subset.labels, keep_prob=1.0, is_training=False))
+
+    def training_pred(self):
+        return self._compute_pred(self._data.train)
+
+    def validation_pred(self):
+        return self._compute_pred(self._data.validation)
+
+    def test_pred(self):
+        return self._compute_pred(self._data.test)
+
+    def _compute_conf_mat(self, data_subset):
+        confusion_mat = tf.confusion_matrix(tf.argmax(self._model.model,1), tf.argmax(self._model.y,1))
+        return self._sess.run(confusion_mat, feed_dict=self._make_dict(data_subset.signals, data_subset.labels, keep_prob=1.0, is_training=False))
+
+    def training_mat(self):
+        return self._compute_conf_mat(self._data.train)
+
+    def validation_mat(self):
+        return self._compute_conf_mat(self._data.validation)
+
+    def test_mat(self):
+        return self._compute_conf_mat(self._data.test)
+
+    def weights(self):
+        return self._sess.run(tf.trainable_variables())
 
     def visualize(self, vis):
+        #TODO: maybe send to analysis module
         outputs = self._sess.run(self._model.layers, feed_dict=self._make_dict(self._data.train.signals, self._data.train.labels, keep_prob=1.0, is_training=False))
 
         for idx, output in enumerate(outputs):
             vis.run(output, self._data.train.labels, self._sess, self._writer, str(idx))
 
-    def importance(self):
-        #garson algorithm #TODO: generalise, put in model
-        w = self._sess.run(tf.trainable_variables())
-        total_w = w[0]
-        for i in range(2, len(w), 2):
-            total_w = np.dot(total_w, w[i])
-        total_w = np.absolute(total_w)
-        sum_w = np.sum(total_w, axis=None)
-        total_w = np.sum(total_w/sum_w, axis=1)
-        print((total_w > 1e-04).sum())
-        return ','.join([str(x) for x in total_w])
-
-    def heatmap(self, labels):
-        confusion_mat = tf.confusion_matrix(tf.argmax(self._model.model,1), tf.argmax(self._model.y,1))
-        confusion_matrix = self._sess.run(confusion_mat, feed_dict=self._make_dict(self._data.test.signals, self._data.test.labels, keep_prob=1.0, is_training=False))
-        plt.figure()
-        confusion_matrix[(confusion_matrix > 0)] = 1
-
-        fig, ax = plt.subplots()
-        ax.pcolor(confusion_matrix, cmap=plt.cm.Blues, alpha=0.8)
-        ax.set_frame_on(False)
-        ax.set_yticks(np.arange(len(labels)) + 0.5, minor=False)
-        ax.set_xticks(np.arange(len(labels)) + 0.5, minor=False)
-        ax.invert_yaxis()
-        ax.xaxis.tick_top()
-        ax.set_xticklabels(labels, fontsize=2)
-        ax.set_yticklabels(labels, fontsize=2)
-        plt.xticks(rotation=90)
-        ax = plt.gca()
-        for t in ax.xaxis.get_major_ticks():
-            t.tick1On = False
-            t.tick2On = False
-        for t in ax.yaxis.get_major_ticks():
-            t.tick1On = False
-            t.tick2On = False
-
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=400)
-        buf.seek(0)
-        image = tf.image.decode_png(buf.getvalue(), channels=4)
-        image = tf.expand_dims(image, 0)
-        summary = tf.summary.image("Confusion Matrix", image, max_outputs=1)
-        self._writer.add_summary(summary.eval(session=self._sess))
-
-    def write_pred_table(self, pred, pred_labels, labels):
-        string_labels = [pred_labels[np.argmax(label)] for label in labels]
-        df = pandas.DataFrame(data=pred, index=string_labels, columns=pred_labels)
-        df.to_csv(os.path.join(self._logdir, "predict.csv"), encoding="utf8")
