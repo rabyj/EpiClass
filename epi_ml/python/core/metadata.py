@@ -163,3 +163,14 @@ class Metadata(object):
             healthy = dataset.get("healthy", "absent")
             print("md5:{}\ndisease: {}\ndonor_health_status: {}\nhealthy:{}\n".format(md5, disease, donor_health_status, healthy))
 
+
+
+    def merge_molecule_classes(self):
+        """Combine similar classes pairs in the molecule category."""
+        for dataset in self.datasets:
+            molecule = dataset.get("molecule", None)
+            if molecule == "rna":
+                dataset["molecule"] = "total_rna"
+            elif molecule == "polyadenylated_mrna":
+                dataset["molecule"] = "polya_rna"
+
