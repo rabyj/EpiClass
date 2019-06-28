@@ -36,12 +36,12 @@ class Metadata(object):
             metadata[dataset["md5sum"]] = dataset
         return metadata
 
-    def apply_filter(self, meta_filter=lambda item:True):
+    def apply_filter(self, meta_filter=lambda item: True):
         #item is md5:dataset
         self._metadata = dict(filter(meta_filter, self._metadata.items()))
 
     def remove_missing_labels(self, label_category):
-        filt = lambda item:label_category in item[1] 
+        filt = lambda item: label_category in item[1]
         self.apply_filter(filt)
 
     def md5_per_class(self, label_category):
@@ -56,7 +56,7 @@ class Metadata(object):
         # self._data  # label/class: md5 list
         # self._metadata #md5 : dataset_dict
         data = self.md5_per_class(label_category)
-        nb_label_i =  len(data)
+        nb_label_i = len(data)
         for label, size in self.label_counter(label_category).most_common():
             if size < min_class_size:
                 for md5 in data[label]:
@@ -83,12 +83,12 @@ class Metadata(object):
         """Combine "disease" and "donor_health_status" to create a "healthy" category."""
 
         healthy_pairs = {
-            ("apparently_healthy","apparently_healthy"),
-            ("healthy","na"),
-            ("healthy","healthy"),
-            ("healthy","healty"),
-            ("healthy","_"),
-            ("healthy","."),
+            ("apparently_healthy", "apparently_healthy"),
+            ("healthy", "na"),
+            ("healthy", "healthy"),
+            ("healthy", "healty"),
+            ("healthy", "_"),
+            ("healthy", "."),
             ("healthy", None),
             ("healthy", ""),
             ("no_ad_evident_at_demise", "no_ad_evident_at_demise"),
@@ -129,7 +129,7 @@ class Metadata(object):
             (None, "na"),
             ("", "na"),
             (None, None),
-            ("","")
+            ("", "")
         }
 
         # self._test_healthy_hg38()
@@ -149,7 +149,7 @@ class Metadata(object):
 
     def _test_healthy_hg38(self):
 
-        test_md5s =  ["379bed415f8e3fb17456115e68e5e773", "4749dbc09f7af9731f22cb1818dcefbd", "64b754ec8bc10b1f45b9990c387dda1f"]
+        test_md5s = ["379bed415f8e3fb17456115e68e5e773", "4749dbc09f7af9731f22cb1818dcefbd", "64b754ec8bc10b1f45b9990c387dda1f"]
         """ disease:donor_health_status
         "":""
         "":"na"
@@ -163,8 +163,6 @@ class Metadata(object):
             healthy = dataset.get("healthy", "absent")
             print("md5:{}\ndisease: {}\ndonor_health_status: {}\nhealthy:{}\n".format(md5, disease, donor_health_status, healthy))
 
-
-
     def merge_molecule_classes(self):
         """Combine similar classes pairs in the molecule category."""
         for dataset in self.datasets:
@@ -173,4 +171,3 @@ class Metadata(object):
                 dataset["molecule"] = "total_rna"
             elif molecule == "polyadenylated_mrna":
                 dataset["molecule"] = "polya_rna"
-
