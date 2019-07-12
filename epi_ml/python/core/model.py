@@ -238,6 +238,9 @@ class Dense(StandardModel):
         hl_units = int(os.getenv('LAYER_SIZE', 3000))
         nb_layers= int(os.getenv('NB_LAYER', 1))
 
+        print("Nb layers: {}".format(nb_layers))
+        print("Layers size: {}".format(hl_units))
+
         self.layers.append(self._x)
         for i in range(nb_layers):
             dense = tf.layers.dense(inputs=self.layers[i], units=hl_units, activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
