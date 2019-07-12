@@ -1,6 +1,7 @@
 import argparse
 from argparseutils.directorytype import DirectoryType
 import datetime
+import json
 import os
 import os.path
 import sys
@@ -20,6 +21,7 @@ def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('category', type=str, help='The metatada category to analyse.')
+    arg_parser.add_argument('hyperparameters', type=argparse.FileType('r'), help='A json file containing model hyperparameters.')
     arg_parser.add_argument('hdf5', type=argparse.FileType('r'), help='A file with hdf5 filenames. Use absolute path!')
     arg_parser.add_argument('chromsize', type=argparse.FileType('r'), help='A file with chrom sizes.')
     arg_parser.add_argument('metadata', type=argparse.FileType('r'), help='A metadata JSON file.')
@@ -48,7 +50,7 @@ def main(args):
     # load data
     my_metadata = metadata.Metadata(my_datasource)
     # my_metadata.create_healthy_category()
-    my_metadata.merge_molecule_classes()
+    # my_metadata.merge_molecule_classes()
 
     my_data = data.DataSetFactory.from_epidata(my_datasource, my_metadata, epiml_options.category, oversample=True, min_class_size=10)
     my_metadata.display_labels(epiml_options.category)
@@ -63,17 +65,7 @@ def main(args):
     #my_model = model.BidirectionalRnn(input_size, ouput_size)
 
     # trainer for the model
-    hparams = {
-        "learning_rate": 1e-6,
-        "training_epochs": 100,
-        "batch_size": 64,
-        "measure_frequency": 1,
-        "l1_scale": 0.001, #ONLY IN L1DENSE
-        "l2_scale": 0.01,
-        "keep_prob": 0.5,
-        "is_training": True,
-        "early_stop_limit": 10
-        }
+    hparams = json.load(epiml_options.hyperparameters)
     my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir, **hparams)
 
     # train the model
