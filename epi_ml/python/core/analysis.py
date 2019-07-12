@@ -117,11 +117,11 @@ class ConfusionMatrix(object):
             t.tick1On = False
             t.tick2On = False
 
-        cbar = fig.colorbar(cm, ax=ax, shrink=0.6)
+        cbar = fig.colorbar(cm, ax=ax, shrink=0.75)
         cbar.ax.tick_params(labelsize=4)
 
         plt.tight_layout()
-        plt.savefig(path, format='png', dpi=400)
+        plt.savefig(path, format='png', dpi=500)
 
         # buf = io.BytesIO()
         # plt.savefig(buf, format='png', dpi=400)
