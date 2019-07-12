@@ -41,10 +41,15 @@ class Metadata(object):
         self._metadata = dict(filter(meta_filter, self._metadata.items()))
 
     def remove_missing_labels(self, label_category):
+        """Remove datasets where the metadata category is missing."""
         filt = lambda item: label_category in item[1]
         self.apply_filter(filt)
 
     def md5_per_class(self, label_category):
+        """Return {label/class:md5 list} dict for a given metadata category.
+
+        Will fail if remove_missing_labels has not been ran before.
+        """
         sorted_md5 = sorted(self._metadata.keys())
         data = collections.defaultdict(list)
         for md5 in sorted_md5:
@@ -52,17 +57,20 @@ class Metadata(object):
         return data
 
     def remove_small_classes(self, min_class_size, label_category):
-        """"""
-        # self._data  # label/class: md5 list
-        # self._metadata #md5 : dataset_dict
+        """Remove from metatada classes with less than min_class_size examples
+        for a given metatada category.
+        """
         data = self.md5_per_class(label_category)
-        nb_label_i = len(data)
+        nb_class = len(data)
+
+        nb_removed_class = 0
         for label, size in self.label_counter(label_category).most_common():
             if size < min_class_size:
+                nb_removed_class += 1
                 for md5 in data[label]:
                     del self._metadata[md5]
 
-        print("{}/{} labels left after filtering.".format(len(data), nb_label_i))
+        print("{}/{} labels left after filtering.".format(nb_class - nb_removed_class, nb_class))
 
     def label_counter(self, label_category):
         counter = collections.Counter()
