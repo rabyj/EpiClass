@@ -36,7 +36,7 @@ class Trainer(object):
         self._v_sum = self._init_v_sum()
         self._sess = self._start_sess()
         self._run_metadata = tf.RunMetadata()
-        self._run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+        self._run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE, report_tensor_allocations_upon_oom=True)
 
     def __del__(self):
         if hasattr(self, "_writer"):
@@ -46,7 +46,7 @@ class Trainer(object):
 
     def _start_sess(self):
         sess = tf.Session()
-        sess.run(tf.global_variables_initializer())
+        sess.run(tf.global_variables_initializer(), options=tf.RunOptions(report_tensor_allocations_upon_oom=True))
         return sess
 
     def _init_writer(self):
