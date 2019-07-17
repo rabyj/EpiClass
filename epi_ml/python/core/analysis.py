@@ -1,5 +1,7 @@
 import io
+import itertools
 import os
+
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -174,6 +176,47 @@ def importance(w):
     total_w = np.absolute(total_w)
     sum_w = np.sum(total_w, axis=None)
     total_w = np.sum(total_w/sum_w, axis=1)
-    print((total_w > 1e-04).sum())
-    return ','.join([str(x) for x in total_w])
+    # print((total_w > 1e-04).sum())
+    # return ','.join([str(x) for x in total_w])
+    return [x for x in total_w]
 
+def predict_concat_size(chroms, resolution):
+    """Compute the size of a concatenated genome from the resolution of each chromosome."""
+    concat_size = 0
+    for _, size in chroms:
+        size_of_mean = size//resolution
+        if size_of_mean%resolution == 0:
+            concat_size += size_of_mean
+        else:
+             concat_size += size_of_mean + 1
+
+    return concat_size
+
+def pairwise(iterable):
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return zip(a, b)
+
+def assert_correct_resolution(chroms, resolution, signal_length):
+    """Raise AssertionError if the given resolution is not coherent with
+    the input size of the network.
+    """
+    if predict_concat_size(chroms, resolution) != signal_length:
+        raise AssertionError("Signal_length not coherent with given resolution of {}.".format(resolution))
+
+def bedgraph_from_importance(importance, chroms, resolution, bedgraph_path):
+    """Write a bedgraph from the computed importance of features.
+    The chromosome coordinates are zero-based, half-open (from 0 to N-1).
+    """
+    importance_index = 0
+    with open(bedgraph_path, 'w') as my_bedgraph:
+        for name, size in chroms:
+
+            positions = itertools.chain(range(0, size, resolution), [size-1])
+
+            for pos1, pos2 in pairwise(positions):
+
+                line = [name, pos1, pos2, importance[importance_index]]
+                my_bedgraph.write("{}\t{}\t{}\t{:.6f}\n".format(*line))
+                importance_index += 1

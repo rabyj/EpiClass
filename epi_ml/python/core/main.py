@@ -17,6 +17,8 @@ import trainer
 import analysis
 import visualization
 
+import pickle
+
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = argparse.ArgumentParser()
@@ -28,6 +30,7 @@ def parse_arguments(args: list) -> argparse.Namespace:
     arg_parser.add_argument('logdir', type=DirectoryType(), help='A directory for the logs.')
     return arg_parser.parse_args(args)
 
+# @profile
 def main(args):
     """main called from command line, edit to change behavior"""
     print('begin {}'.format(datetime.datetime.now()))
@@ -45,19 +48,29 @@ def main(args):
     my_datasource = data.EpiDataSource(
         epiml_options.hdf5,
         epiml_options.chromsize,
-        epiml_options.metadata)
+        epiml_options.metadata
+        )
+
+    # load useful info
+    hdf5_resolution = my_datasource.hdf5_resolution()
+    chroms = my_datasource.load_chrom_sizes()
 
     # load data
     my_metadata = metadata.Metadata(my_datasource)
     # my_metadata.create_healthy_category()
     # my_metadata.merge_molecule_classes()
 
-    my_data = data.DataSetFactory.from_epidata(my_datasource, my_metadata, epiml_options.category, oversample=True, min_class_size=10)
+    my_data = data.DataSetFactory.from_epidata(
+        my_datasource, my_metadata, epiml_options.category, oversample=True, min_class_size=10
+        )
     my_metadata.display_labels(epiml_options.category)
 
     # define sizes for input and output layers of the network
     input_size = my_data.train.signals[0].size
     ouput_size = my_data.train.labels[0].size
+
+    # Assert the resolution is correct so the importance bedgraph works later
+    analysis.assert_correct_resolution(chroms, hdf5_resolution, input_size)
 
     # choose a model
     my_model = model.Dense(input_size, ouput_size)
@@ -97,7 +110,13 @@ def main(args):
     # vis = visualization.Pca()
     # my_trainer.visualize(vis)
 
-    # my_analyzer.importance() #TODO: generalize, probably put in model
+    # importance = pickle.load(open("importance.pickle", 'rb'))
+    importance = my_analyzer.importance() #TODO: generalize, probably put in model
+    # pickle.dump(importance, open("importance.pickle", 'wb'))
+
+    bedgraph_path = os.path.join(epiml_options.logdir, "importance.bedgraph")
+    analysis.bedgraph_from_importance(importance, chroms, hdf5_resolution, bedgraph_path)
+
     print('end {}'.format(datetime.datetime.now()))
 
 if __name__ == "__main__":
