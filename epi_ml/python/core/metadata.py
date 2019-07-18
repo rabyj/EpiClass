@@ -3,12 +3,23 @@ import collections
 import io
 import os.path
 
-from data_source import EpiDataSource
+from .data_source import EpiDataSource
 
 class Metadata(object):
     """Wrapper around metadata md5:dataset dict."""
-    def __init__(self, datasource: EpiDataSource):
-        self._metadata = self._load_metadata(datasource.metadata_file)
+    def __init__(self, meta_file: io.IOBase):
+        self._metadata = self._load_metadata(meta_file)
+
+    @classmethod
+    def from_path(cls, path):
+        """Initialize from metadata filepath."""
+        with open(path, 'r') as meta_file:
+            return cls(meta_file)
+
+    @classmethod
+    def from_epidatasource(cls, datasource: EpiDataSource):
+        """Initialize from EpiDataSource"""
+        return cls(datasource.metadata_file)
 
     def __getitem__(self, md5):
         return self._metadata[md5]

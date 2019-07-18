@@ -96,7 +96,7 @@ class Trainer(object):
     def train(self):
         nb_batch = math.ceil(self._data.train.num_examples/self._hparams.get("batch_size"))
 
-        saver = tf.train.Saver()
+        saver = tf.train.Saver(max_to_keep=1)
         save_path = os.path.join(self._logdir, "save")
         max_v_acc = -1
         nb_since_max = 0

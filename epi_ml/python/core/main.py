@@ -56,7 +56,7 @@ def main(args):
     chroms = my_datasource.load_chrom_sizes()
 
     # load data
-    my_metadata = metadata.Metadata(my_datasource)
+    my_metadata = metadata.Metadata.from_epidatasource(my_datasource)
     # my_metadata.create_healthy_category()
     # my_metadata.merge_molecule_classes()
 
