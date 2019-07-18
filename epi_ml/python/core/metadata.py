@@ -6,6 +6,7 @@ import os.path
 from data_source import EpiDataSource
 
 class Metadata(object):
+    """Wrapper around metadata md5:dataset dict."""
     def __init__(self, datasource: EpiDataSource):
         self._metadata = self._load_metadata(datasource.metadata_file)
 
@@ -18,27 +19,28 @@ class Metadata(object):
     def __contains__(self, md5):
         return md5 in self._metadata
 
-    def get(self, md5):
-        return self._metadata.get(md5)
+    def get(self, md5, default=None):
+        """Dict .get"""
+        return self._metadata.get(md5, default)
 
     @property
     def md5s(self):
+        """Return keys."""
         return self._metadata.keys()
 
     @property
     def datasets(self):
+        """Return values."""
         return self._metadata.values()
 
     def _load_metadata(self, meta_file: io.IOBase):
+        """Return md5:dataset dict."""
         meta_file.seek(0)
         meta_raw = json.load(meta_file)
-        metadata = {}
-        for dataset in meta_raw["datasets"]:
-            metadata[dataset["md5sum"]] = dataset
-        return metadata
+        return {dset["md5sum"]:dset for dset in meta_raw["datasets"]}
 
     def apply_filter(self, meta_filter=lambda item: True):
-        #item is md5:dataset
+        """Apply a filter on items (md5:dataset)."""
         self._metadata = dict(filter(meta_filter, self._metadata.items()))
 
     def remove_missing_labels(self, label_category):
@@ -74,6 +76,7 @@ class Metadata(object):
         print("{}/{} labels left after filtering.".format(nb_class - nb_removed_class, nb_class))
 
     def label_counter(self, label_category):
+        """Return a Counter() with label count from the given category."""
         counter = collections.Counter()
         for labels in self._metadata.values():
             label = labels[label_category]
@@ -81,6 +84,7 @@ class Metadata(object):
         return counter
 
     def display_labels(self, label_category):
+        """Print number of examples for each label in given category."""
         print('\nExamples')
         i = 0
         for label, count in self.label_counter(label_category).most_common():
