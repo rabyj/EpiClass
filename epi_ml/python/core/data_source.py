@@ -40,5 +40,5 @@ class EpiDataSource(object):
         is the same as the order of chroms in the concatenated signals.
         """
         self.chromsize_file.seek(0)
-        pairs = [line.rstrip('\n').split('\t') for line in self.chromsize_file]
+        pairs = [line.rstrip('\n').split() for line in self.chromsize_file]
         return sorted([(name, int(size)) for name, size in pairs])
