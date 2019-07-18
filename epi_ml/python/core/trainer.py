@@ -31,12 +31,12 @@ class Trainer(object):
         self._train_accuracy = self._init_accuracy("Training_Accuracy")
         self._valid_accuracy = self._init_accuracy("Validation_Accuracy")
         self._test_accuracy = self._init_accuracy("Test_Accuracy")
+        self._run_metadata = tf.RunMetadata()
+        self._run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE, report_tensor_allocations_upon_oom=True)
         self._writer = self._init_writer()
         self._summary = self._init_summary()
         self._v_sum = self._init_v_sum()
         self._sess = self._start_sess()
-        self._run_metadata = tf.RunMetadata()
-        self._run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE, report_tensor_allocations_upon_oom=True)
 
     def __del__(self):
         if hasattr(self, "_writer"):
@@ -46,7 +46,8 @@ class Trainer(object):
 
     def _start_sess(self):
         sess = tf.Session()
-        sess.run(tf.global_variables_initializer(), options=tf.RunOptions(report_tensor_allocations_upon_oom=True))
+        sess.run(tf.global_variables_initializer(), options=self._run_options, run_metadata=self._run_metadata)
+        self._writer.add_run_metadata(self._run_metadata, "init")
         return sess
 
     def _init_writer(self):
@@ -90,7 +91,7 @@ class Trainer(object):
 
     def _print_hparams(self):
         for hparam, value in sorted(self._hparams.items()):
-            print('{}: {}'.format(hparam, value))
+            print("{}: {}".format(hparam, value))
 
     def train(self):
         nb_batch = math.ceil(self._data.train.num_examples/self._hparams.get("batch_size"))
@@ -116,7 +117,7 @@ class Trainer(object):
                     v_acc, v_summary = self._sess.run([self._valid_accuracy, self._v_sum], feed_dict=self._make_dict(self._data.validation.signals, self._data.validation.labels, keep_prob=1.0, is_training=False))
                     self._writer.add_summary(v_summary, epoch)
 
-                    self._writer.add_run_metadata(self._run_metadata, 'epoch{}'.format(epoch))
+                    self._writer.add_run_metadata(self._run_metadata, "epoch{}".format(epoch))
 
                     if v_acc > max_v_acc:
                         max_v_acc = v_acc
@@ -128,7 +129,7 @@ class Trainer(object):
                     if nb_since_max == self._hparams.get("early_stop_limit"):
                         break
                     
-                    print('epoch {0}, training accuracy {1:.4f}, validation accuracy {2:.4f} {3}'.format(epoch, t_acc, v_acc, datetime.datetime.now()))
+                    print("epoch {0}, training accuracy {1:.4f}, validation accuracy {2:.4f} {3}".format(epoch, t_acc, v_acc, datetime.datetime.now()))
 
                 else:
                     # train
