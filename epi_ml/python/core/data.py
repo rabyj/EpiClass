@@ -7,8 +7,8 @@ import collections
 import math
 import io
 
-from data_source import EpiDataSource
-from metadata import Metadata
+from .data_source import EpiDataSource
+from .metadata import Metadata
 
 
 class DataSetFactory(object):

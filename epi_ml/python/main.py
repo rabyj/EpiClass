@@ -1,5 +1,4 @@
 import argparse
-from argparseutils.directorytype import DirectoryType
 import datetime
 import json
 import os
@@ -10,12 +9,13 @@ warnings.simplefilter("ignore")
 
 import numpy as np
 
-import metadata
-import data
-import model
-import trainer
-import analysis
-import visualization
+from argparseutils.directorytype import DirectoryType
+from core import metadata
+from core import data
+from core import model
+from core import trainer
+from core import analysis
+from core import visualization
 
 import pickle
 

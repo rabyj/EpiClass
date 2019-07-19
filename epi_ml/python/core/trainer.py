@@ -7,7 +7,7 @@ from abc import ABC
 import math
 import datetime
 
-from data import DataSet
+from .data import DataSet
 
 
 class Trainer(object):
