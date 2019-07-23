@@ -267,8 +267,14 @@ class L1Dense(StandardModel):
         self._predictor = self._init_predictor()
 
     def _init_model(self):
-        hl_units = int((self._x_size + self._y_size))
-        nb_layers=3
+        # hl_units = int((self._x_size + self._y_size))
+        # nb_layers=3
+
+        hl_units = int(os.getenv('LAYER_SIZE', 3000))
+        nb_layers= int(os.getenv('NB_LAYER', 1))
+
+        print("Nb layers: {}".format(nb_layers))
+        print("Layers size: {}".format(hl_units))
 
         dense = tf.layers.dense(inputs=self._x, units=hl_units, activation=tf.nn.sigmoid, kernel_regularizer= tf.contrib.layers.l1_regularizer(scale=self._l1_scale))
 
