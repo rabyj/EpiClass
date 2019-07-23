@@ -110,7 +110,7 @@ class Trainer(object):
                     _, _, summary = self._sess.run([self._model.minimize, self._model.loss, self._summary], feed_dict=self._make_dict(batch_xs, batch_ys), run_metadata=self._run_metadata, options=self._run_options)
                     self._writer.add_summary(summary, epoch)
 
-                    # training accuracy
+                    # batch training accuracy
                     t_acc = self._sess.run(self._train_accuracy, feed_dict=self._make_dict(batch_xs, batch_ys, keep_prob=1.0))
 
                     # validation accuracy
@@ -129,7 +129,7 @@ class Trainer(object):
                     if nb_since_max == self._hparams.get("early_stop_limit"):
                         break
                     
-                    print("epoch {0}, training accuracy {1:.4f}, validation accuracy {2:.4f} {3}".format(epoch, t_acc, v_acc, datetime.datetime.now()))
+                    print("epoch {0}, batch training accuracy {1:.4f}, validation accuracy {2:.4f} {3}".format(epoch, t_acc, v_acc, datetime.datetime.now()))
 
                 else:
                     # train
