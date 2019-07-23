@@ -196,8 +196,7 @@ class Data(object): #class DataSet?
         self._num_examples = len(x)
         self._signals = np.array(x)
         self._labels = np.array(y)
-        self._shuffled_signals = None
-        self._shuffled_labels = None
+        self._shuffle_order = np.arange(self._num_examples)
         self._index = 0
         self._metadata = metadata
         
@@ -214,15 +213,16 @@ class Data(object): #class DataSet?
         start = self._index
         self._index += batch_size
         end = self._index
-        return self._shuffled_signals[start:end], self._shuffled_labels[start:end]
+        return self._signals[start:end], self._labels[start:end]
 
     def _shuffle(self):
-        shuffle = np.arange(self._num_examples)
-        np.random.shuffle(shuffle)
-        self._shuffled_signals = self._signals[shuffle]
-        self._shuffled_labels = self._labels[shuffle]
+        rng_state = np.random.get_state()
+        for array in [self._shuffle_order, self._signals, self._labels]:
+            np.random.shuffle(array)
+            np.random.set_state(rng_state)
 
     def get_metadata(self, index):
+        #TODO: account for oversampling, ids don't match x for oversampled training set
         return self._metadata.get(self._ids[index])
 
     @property
