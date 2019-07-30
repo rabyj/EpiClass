@@ -1,7 +1,10 @@
-import json
 import collections
+import json
 import io
 import os.path
+
+import tensorflow as tf
+import numpy as np
 
 from .data_source import EpiDataSource
 
@@ -86,6 +89,20 @@ class Metadata(object):
 
         print("{}/{} labels left after filtering.".format(nb_class - nb_removed_class, nb_class))
 
+    def select_category_subset(self, label, label_category):
+        """Select only datasets which possess the given label
+        for the given label category.
+        """
+        filt = lambda item: item[1].get(label_category) == label
+        self.apply_filter(filt)
+
+    def remove_category_subset(self, label, label_category):
+        """Remove datasets which possess the given label
+        for the given label category.
+        """
+        filt = lambda item: item[1].get(label_category) != label
+        self.apply_filter(filt)
+
     def label_counter(self, label_category):
         """Return a Counter() with label count from the given category."""
         counter = collections.Counter()
@@ -102,6 +119,15 @@ class Metadata(object):
             print('{}: {}'.format(label, count))
             i += count
         print('For a total of {} examples\n'.format(i))
+
+    def category_class_weights(self, label_category):
+        """Return class weights for the given category, ordered
+        by alphabetical order of labels.
+        """
+        counter = self.label_counter(label_category)
+        weights = np.array([class_size for label, class_size in sorted(counter.most_common())])
+        weights = 1. / (weights / np.amax(weights))
+        return tf.constant(weights, shape=[1, weights.size], dtype=tf.float32)
 
     def create_healthy_category(self):
         """Combine "disease" and "donor_health_status" to create a "healthy" category.
