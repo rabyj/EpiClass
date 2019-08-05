@@ -33,6 +33,9 @@ class Metadata(object):
     def __contains__(self, md5):
         return md5 in self._metadata
 
+    def __len__(self):
+        return len(self._metadata)
+
     def get(self, md5, default=None):
         """Dict .get"""
         return self._metadata.get(md5, default)
@@ -65,7 +68,7 @@ class Metadata(object):
     def md5_per_class(self, label_category):
         """Return {label/class:md5 list} dict for a given metadata category.
 
-        Will fail if remove_missing_labels has not been ran before.
+        Can fail if remove_missing_labels has not been ran before.
         """
         sorted_md5 = sorted(self._metadata.keys())
         data = collections.defaultdict(list)
@@ -74,7 +77,7 @@ class Metadata(object):
         return data
 
     def remove_small_classes(self, min_class_size, label_category):
-        """Remove from metatada classes with less than min_class_size examples
+        """Remove classes with less than min_class_size examples
         for a given metatada category.
         """
         data = self.md5_per_class(label_category)
@@ -87,7 +90,8 @@ class Metadata(object):
                 for md5 in data[label]:
                     del self._metadata[md5]
 
-        print("{}/{} labels left after filtering.".format(nb_class - nb_removed_class, nb_class))
+        print("{}/{} labels left from \"{}\" after removing classes with less than {} signals.".format(
+            nb_class - nb_removed_class, nb_class, label_category, min_class_size))
 
     def select_category_subset(self, label, label_category):
         """Select only datasets which possess the given label
@@ -192,3 +196,57 @@ class HealthyCategory(object):
         disease = dataset.get("disease", "--empty--")
         donor_health_status = dataset.get("donor_health_status", "--empty--")
         return self.healthy_dict[(disease, donor_health_status)]
+
+
+def keep_major_cell_types(metadata):
+    """Remove datasets which are not part of a cell_type which has
+    at least 10 signals in two assays. Those assays must also have
+    at least two cell_type.
+    """
+    # First pass to remove useless classes
+    for category in ["assay", "cell_type"]:
+        metadata.remove_small_classes(10, category)
+
+    # Find big enough cell types in each assay
+    md5s_per_assay = metadata.md5_per_class("assay")
+    cell_types_in_assay = {}
+    for assay, md5s in md5s_per_assay.items():
+
+        # count cell_type occurence in assay
+        cell_types_count = collections.Counter(
+            metadata[md5]["cell_type"] for md5 in md5s
+            )
+
+        # remove small classes from counter
+        cell_types_count = {
+            cell_type:size for cell_type, size in cell_types_count.items()
+            if size >= 10
+            }
+
+        # bad assay if only one class left with more than 10 examples
+        if len(cell_types_count) == 1:
+            cell_types_count = {}
+
+        # delete small classes from metadata
+        for md5 in md5s:
+            if metadata[md5]["cell_type"] not in cell_types_count:
+                del metadata[md5]
+
+        # keep track of big enough classes
+        if cell_types_count:
+            cell_types_in_assay[assay] = set(cell_types_count.keys())
+
+    # Count in how many assay each passing cell_type is
+    cell_type_counter = collections.Counter()
+    for cell_type_set in cell_types_in_assay.values():
+        for cell_type in cell_type_set:
+            cell_type_counter[cell_type] += 1
+
+    # Remove signals which are not part of common+big cell_types
+    for md5 in list(metadata.md5s):
+        dset = metadata[md5]
+        good_cell_type = cell_type_counter.get(dset["cell_type"], 0) > 1
+        if not good_cell_type:
+            del metadata[md5]
+
+    return metadata
