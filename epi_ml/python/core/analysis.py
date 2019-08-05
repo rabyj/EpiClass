@@ -159,13 +159,13 @@ def convert_matrix_csv_to_png(in_path, out_path):
 
 def metrics(acc, pred, data_subset):
     #TODO: separate metrics
-    print("Accuracy: %s" % (acc))
+    print("Accuracy: {:.3f}".format(acc))
     y_true = np.argmax(data_subset.labels, 1)
     y_pred = np.argmax(pred, 1)
-    print ("Precision: %s" % sklearn.metrics.precision_score(y_true, y_pred, average="macro"))
-    print ("Recall: %s" % sklearn.metrics.recall_score(y_true, y_pred, average="macro"))
-    print ("f1_score: %s" % sklearn.metrics.f1_score(y_true, y_pred, average="macro"))
-    print ("MCC: %s" % sklearn.metrics.matthews_corrcoef(y_true, y_pred))
+    print ("Precision: {:.3f}".format(sklearn.metrics.precision_score(y_true, y_pred, average="macro")))
+    print ("Recall: {:.3f}".format(sklearn.metrics.recall_score(y_true, y_pred, average="macro")))
+    print ("f1_score: {:.3f}".format(sklearn.metrics.f1_score(y_true, y_pred, average="macro")))
+    print ("MCC: {:.3f}".format(sklearn.metrics.matthews_corrcoef(y_true, y_pred)))
 
 def importance(w):
     #garson algorithm, w for weights 

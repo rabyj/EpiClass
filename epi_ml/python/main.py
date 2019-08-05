@@ -57,6 +57,7 @@ def main(args):
 
     # load data
     my_metadata = metadata.Metadata.from_epidatasource(my_datasource)
+    # my_metadata.select_category_subset(os.getenv("STEP1_ASSAY"), "assay")
     # my_metadata.create_healthy_category()
     # my_metadata.merge_molecule_classes()
 
@@ -82,13 +83,16 @@ def main(args):
     my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir, **hparams)
 
     # train the model
+    t0 = datetime.datetime.now()
     my_trainer.train()
+    train_time = datetime.datetime.now() - t0
+    print('training time: {}'.format(train_time))
 
     # outputs
     my_analyzer = analysis.Analysis(my_trainer)
 
     # Print metrics
-    # my_analyzer.training_metrics()
+    my_analyzer.training_metrics()
     my_analyzer.validation_metrics()
     # my_analyzer.test_metrics()
 
