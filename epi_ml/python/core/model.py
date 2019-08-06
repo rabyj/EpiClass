@@ -247,7 +247,7 @@ class Dense(StandardModel):
                 inputs=self.layers[i],
                 units=hl_units,
                 activation=tf.nn.relu,
-                kernel_initializer=tf.glorot_uniform_initializer()
+                kernel_initializer=tf.glorot_uniform_initializer(),
                 kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale)
                 )
             dropout = tf.nn.dropout(dense, self.keep_prob)
