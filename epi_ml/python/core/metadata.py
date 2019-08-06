@@ -1,3 +1,4 @@
+import copy
 import collections
 import json
 import io
@@ -23,6 +24,13 @@ class Metadata(object):
     def from_epidatasource(cls, datasource: EpiDataSource):
         """Initialize from EpiDataSource"""
         return cls(datasource.metadata_file)
+
+    def empty(self):
+        """Remove all entries."""
+        self._metadata = {}
+
+    def __setitem__(self, md5, value):
+        self._metadata[md5] = value
 
     def __getitem__(self, md5):
         return self._metadata[md5]
@@ -100,11 +108,25 @@ class Metadata(object):
         filt = lambda item: item[1].get(label_category) == label
         self.apply_filter(filt)
 
+    def select_category_subsets(self, labels, label_category):
+        """Select only datasets which possess the given labels
+        for the given label category.
+        """
+        filt = lambda item: item[1].get(label_category) in set(labels)
+        self.apply_filter(filt)
+
     def remove_category_subset(self, label, label_category):
         """Remove datasets which possess the given label
         for the given label category.
         """
         filt = lambda item: item[1].get(label_category) != label
+        self.apply_filter(filt)
+
+    def remove_category_subsets(self, labels, label_category):
+        """Remove datasets which possess the given label
+        for the given label category.
+        """
+        filt = lambda item: item[1].get(label_category) not in set(labels)
         self.apply_filter(filt)
 
     def label_counter(self, label_category):
@@ -154,6 +176,24 @@ class Metadata(object):
                 dataset["molecule"] = "total_rna"
             elif molecule == "polyadenylated_mrna":
                 dataset["molecule"] = "polya_rna"
+
+    def merge_fetal_tissues(self):
+        """Combine similar fetal tissues in the cell_type category."""
+        conversion = {
+            "fetal_intestine_large":"fetal_intestine",
+            "fetal_intestine_small":"fetal_intestine",
+            "fetal_lung_left":"fetal_lung",
+            "fetal_lung_right":"fetal_lung",
+            "fetal_muscle_arm":"fetal_muscle",
+            "fetal_muscle_back":"fetal_muscle",
+            "fetal_muscle_leg":"fetal_muscle",
+            "fetal_renal_cortex":"fetal_kidney",
+            "fetal_renal_pelvis":"fetal_kidney"
+        }
+        for dataset in self.datasets:
+            cell_type = dataset.get("cell_type", None)
+            if cell_type in conversion:
+                dataset["cell_type"] = conversion[cell_type]
 
 
 class HealthyCategory(object):
@@ -250,3 +290,30 @@ def keep_major_cell_types(metadata):
             del metadata[md5]
 
     return metadata
+
+
+def keep_major_cell_types_alt(metadata):
+    """Return a filtered metadata with certain assays. Datasets which are
+    not part of a cell_type which has at least 10 signals are removed.
+    """
+    my_meta = copy.deepcopy(metadata)
+
+    # remove useless assays and cell_types
+    assays = [
+        "chromatin_acc", "h3k27ac", "h3k27me3", "h3k36me3", "h3k4me1",
+        "h3k4me3", "h3k9me3", "input", "mrna_seq", "rna_seq", "wgb_seq"
+        ]
+    my_meta.select_category_subsets(assays, "assay")
+    my_meta.remove_small_classes(10, "cell_type")
+    my_meta.merge_fetal_tissues()
+
+    new_meta = copy.deepcopy(my_meta)
+    new_meta.empty()
+    for assay in assays:
+        temp_meta = copy.deepcopy(my_meta)
+        temp_meta.select_category_subsets([assay], "assay")
+        temp_meta.remove_small_classes(10, "cell_type")
+        for md5 in temp_meta.md5s:
+            new_meta[md5] = temp_meta[md5]
+
+    return new_meta
