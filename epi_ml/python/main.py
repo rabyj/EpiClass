@@ -33,7 +33,8 @@ def parse_arguments(args: list) -> argparse.Namespace:
 # @profile
 def main(args):
     """main called from command line, edit to change behavior"""
-    print('begin {}'.format(datetime.datetime.now()))
+    begin = datetime.datetime.now()
+    print("begin {}".format(begin))
 
     # parse params
     epiml_options = parse_arguments(args)
@@ -57,6 +58,7 @@ def main(args):
 
     # load data
     my_metadata = metadata.Metadata.from_epidatasource(my_datasource)
+    # my_metadata = metadata.keep_major_cell_types(my_metadata)
     # my_metadata.select_category_subset(os.getenv("STEP1_ASSAY"), "assay")
     # my_metadata.create_healthy_category()
     # my_metadata.merge_molecule_classes()
@@ -83,10 +85,9 @@ def main(args):
     my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir, **hparams)
 
     # train the model
-    t0 = datetime.datetime.now()
+    before_train = datetime.datetime.now()
     my_trainer.train()
-    train_time = datetime.datetime.now() - t0
-    print('training time: {}'.format(train_time))
+    print("training time: {}".format(datetime.datetime.now() - before_train))
 
     # outputs
     my_analyzer = analysis.Analysis(my_trainer)
@@ -121,7 +122,9 @@ def main(args):
     bedgraph_path = os.path.join(epiml_options.logdir, "importance.bedgraph")
     analysis.bedgraph_from_importance(importance, chroms, hdf5_resolution, bedgraph_path)
 
-    print('end {}'.format(datetime.datetime.now()))
+    end = datetime.datetime.now()
+    print("end {}".format(end))
+    print("Main() time: {}".format(end - begin))
 
 if __name__ == "__main__":
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
