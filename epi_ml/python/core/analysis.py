@@ -159,13 +159,18 @@ def convert_matrix_csv_to_png(in_path, out_path):
 
 def metrics(acc, pred, data_subset):
     #TODO: separate metrics
-    print("Accuracy: {:.3f}".format(acc))
     y_true = np.argmax(data_subset.labels, 1)
     y_pred = np.argmax(pred, 1)
-    print ("Precision: {:.3f}".format(sklearn.metrics.precision_score(y_true, y_pred, average="macro")))
-    print ("Recall: {:.3f}".format(sklearn.metrics.recall_score(y_true, y_pred, average="macro")))
-    print ("f1_score: {:.3f}".format(sklearn.metrics.f1_score(y_true, y_pred, average="macro")))
-    print ("MCC: {:.3f}".format(sklearn.metrics.matthews_corrcoef(y_true, y_pred)))
+    precision = sklearn.metrics.precision_score(y_true, y_pred, average="macro")
+    recall = sklearn.metrics.recall_score(y_true, y_pred, average="macro")
+    f1 = sklearn.metrics.f1_score(y_true, y_pred, average="macro")
+    mcc = sklearn.metrics.matthews_corrcoef(y_true, y_pred)
+    print("Accuracy: {:.3f}".format(acc))
+    print("Precision: {:.3f}".format(precision))
+    print("Recall: {:.3f}".format(recall))
+    print("f1_score: {:.3f}".format(f1))
+    print("MCC: {:.3f}".format(mcc))
+    print("{:.3f}\t{:.3f}\t{:.3f}\t{:.3f}\t{:.3f}".format(acc, precision, recall, f1, mcc))
 
 def importance(w):
     #garson algorithm, w for weights 
