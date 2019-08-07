@@ -223,5 +223,5 @@ def bedgraph_from_importance(importance, chroms, resolution, bedgraph_path):
             for pos1, pos2 in pairwise(positions):
 
                 line = [name, pos1, pos2, importance[importance_index]]
-                my_bedgraph.write("{}\t{}\t{}\t{:.6f}\n".format(*line))
+                my_bedgraph.write("{}\t{}\t{}\t{}\n".format(*line))
                 importance_index += 1
