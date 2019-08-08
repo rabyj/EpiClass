@@ -101,13 +101,6 @@ class Metadata(object):
         print("{}/{} labels left from \"{}\" after removing classes with less than {} signals.".format(
             nb_class - nb_removed_class, nb_class, label_category, min_class_size))
 
-    def select_category_subset(self, label, label_category):
-        """Select only datasets which possess the given label
-        for the given label category.
-        """
-        filt = lambda item: item[1].get(label_category) == label
-        self.apply_filter(filt)
-
     def select_category_subsets(self, labels, label_category):
         """Select only datasets which possess the given labels
         for the given label category.
@@ -115,15 +108,8 @@ class Metadata(object):
         filt = lambda item: item[1].get(label_category) in set(labels)
         self.apply_filter(filt)
 
-    def remove_category_subset(self, label, label_category):
-        """Remove datasets which possess the given label
-        for the given label category.
-        """
-        filt = lambda item: item[1].get(label_category) != label
-        self.apply_filter(filt)
-
     def remove_category_subsets(self, labels, label_category):
-        """Remove datasets which possess the given label
+        """Remove datasets which possess the given labels
         for the given label category.
         """
         filt = lambda item: item[1].get(label_category) not in set(labels)
@@ -317,3 +303,61 @@ def keep_major_cell_types_alt(metadata):
             new_meta[md5] = temp_meta[md5]
 
     return new_meta
+
+
+def five_cell_types_selection(my_metadata):
+    """Return a filtered metadata with 5 major cell_types and certain assays."""
+    cell_types = [
+        "monocyte", "cd4_positive_helper_t_cell", "macrophage",
+        "skeletal_muscle_tissue", "thyroid"
+        ]
+    assays = [
+        "chromatin_acc", "h3k27ac", "h3k27me3", "h3k36me3", "h3k4me1",
+        "h3k4me3", "h3k9me3", "input", "mrna_seq", "rna_seq", "wgb_seq"
+        ]
+    my_metadata.select_category_subsets(cell_types, "cell_type")
+    my_metadata.select_category_subsets(assays, "assay")
+    return my_metadata
+
+
+def special_case(my_metadata):
+    """Return a filtered metadata with only rna_seq examples,
+    but also add 3 thyroid (for model construction).
+
+    Made to evaluate an already trained model,
+    works with min_class_size=3 and oversample=False.
+    """
+    my_metadata = five_cell_types_selection(my_metadata)
+
+    # get some thyroid examples md5s, there are none in rna_seq
+    temp_meta = copy.deepcopy(my_metadata)
+    temp_meta.select_category_subsets(["h3k9me3"], "assay")
+    md5s = temp_meta.md5_per_class("cell_type")["thyroid"][0:3]
+
+    # select only rna_seq examples + 3 thyroid examples for model making
+    my_metadata.select_category_subsets(["rna_seq"], "assay")
+    for md5 in md5s:
+        my_metadata[md5] = temp_meta[md5]
+
+    return my_metadata
+
+
+def special_case_2(my_metadata):
+    """Return a filtered metadata without 2 examples
+    from all assay/cell_type pairs, and all mrna_seq.
+    """
+    my_metadata = five_cell_types_selection(my_metadata)
+    my_metadata.remove_category_subsets(["mrna_seq"], "assay")
+
+    cell_types = my_metadata.md5_per_class("cell_type").keys()
+    to_del = []
+    for cell_type in cell_types:
+        temp_meta = copy.deepcopy(my_metadata)
+        temp_meta.select_category_subsets([cell_type], "cell_type")
+        for md5s in temp_meta.md5_per_class("assay").values():
+            to_del.extend(md5s[0:2])
+
+    for md5 in to_del:
+        del my_metadata[md5]
+
+    return my_metadata
