@@ -224,23 +224,23 @@ class HealthyCategory(object):
         return self.healthy_dict[(disease, donor_health_status)]
 
 
-def keep_major_cell_types(metadata):
+def keep_major_cell_types(my_metadata: Metadata):
     """Remove datasets which are not part of a cell_type which has
     at least 10 signals in two assays. Those assays must also have
     at least two cell_type.
     """
     # First pass to remove useless classes
     for category in ["assay", "cell_type"]:
-        metadata.remove_small_classes(10, category)
+        my_metadata.remove_small_classes(10, category)
 
     # Find big enough cell types in each assay
-    md5s_per_assay = metadata.md5_per_class("assay")
+    md5s_per_assay = my_metadata.md5_per_class("assay")
     cell_types_in_assay = {}
     for assay, md5s in md5s_per_assay.items():
 
         # count cell_type occurence in assay
         cell_types_count = collections.Counter(
-            metadata[md5]["cell_type"] for md5 in md5s
+            my_metadata[md5]["cell_type"] for md5 in md5s
             )
 
         # remove small classes from counter
@@ -255,8 +255,8 @@ def keep_major_cell_types(metadata):
 
         # delete small classes from metadata
         for md5 in md5s:
-            if metadata[md5]["cell_type"] not in cell_types_count:
-                del metadata[md5]
+            if my_metadata[md5]["cell_type"] not in cell_types_count:
+                del my_metadata[md5]
 
         # keep track of big enough classes
         if cell_types_count:
@@ -269,20 +269,20 @@ def keep_major_cell_types(metadata):
             cell_type_counter[cell_type] += 1
 
     # Remove signals which are not part of common+big cell_types
-    for md5 in list(metadata.md5s):
-        dset = metadata[md5]
+    for md5 in list(my_metadata.md5s):
+        dset = my_metadata[md5]
         good_cell_type = cell_type_counter.get(dset["cell_type"], 0) > 1
         if not good_cell_type:
-            del metadata[md5]
+            del my_metadata[md5]
 
-    return metadata
+    return my_metadata
 
 
-def keep_major_cell_types_alt(metadata):
+def keep_major_cell_types_alt(my_metadata: Metadata):
     """Return a filtered metadata with certain assays. Datasets which are
     not part of a cell_type which has at least 10 signals are removed.
     """
-    my_meta = copy.deepcopy(metadata)
+    my_meta = copy.deepcopy(my_metadata)
 
     # remove useless assays and cell_types
     assays = [
@@ -305,7 +305,7 @@ def keep_major_cell_types_alt(metadata):
     return new_meta
 
 
-def five_cell_types_selection(my_metadata):
+def five_cell_types_selection(my_metadata: Metadata):
     """Return a filtered metadata with 5 major cell_types and certain assays."""
     cell_types = [
         "monocyte", "cd4_positive_helper_t_cell", "macrophage",
