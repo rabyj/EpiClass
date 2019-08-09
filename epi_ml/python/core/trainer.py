@@ -93,6 +93,12 @@ class Trainer(object):
         for hparam, value in sorted(self._hparams.items()):
             print("{}: {}".format(hparam, value))
 
+    def restore(self, name="save"):
+        """Restore saved model."""
+        saver = tf.train.Saver()
+        save_path = os.path.join(self._logdir, name)
+        saver.restore(self._sess, save_path)
+
     def train(self):
         nb_batch = math.ceil(self._data.train.num_examples/self._hparams.get("batch_size"))
 
