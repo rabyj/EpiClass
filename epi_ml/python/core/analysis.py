@@ -1,4 +1,3 @@
-import io
 import itertools
 import os
 
@@ -58,7 +57,7 @@ class ConfusionMatrix(object):
     def __init__(self, labels, tf_confusion_mat):
         self._labels = labels
         self._confusion_matrix = self._create_confusion_matrix(tf_confusion_mat) #pd dataframe
-        
+
     @classmethod
     def from_csv(cls, csv_path):
         obj = cls.__new__(cls)  # Does not call __init__
@@ -74,24 +73,24 @@ class ConfusionMatrix(object):
         return pd.DataFrame(data=confusion_mat, index=labels_w_count, columns=self._labels)
 
     def _to_relative_confusion_matrix(self, labels_count, tf_confusion_mat):
-        confusion_mat = tf_confusion_mat/labels_count 
+        confusion_mat = tf_confusion_mat/labels_count
         confusion_mat = np.nan_to_num(confusion_mat)
         confusion_mat = confusion_mat.T #one label per row instead of column
         return confusion_mat
 
     def to_png(self, path):
         plt.figure()
-        
+
         data_mask = np.ma.masked_where(self._confusion_matrix == 0, self._confusion_matrix)
 
-        cdict = {'red':   ((0.0,  0.1, 0.1),
-                           (1.0,  1.0, 1.0)),
+        cdict = {'red': ((0.0, 0.1, 0.1),
+                         (1.0, 1.0, 1.0)),
 
-                'green': ((0.0,  0.1, 0.1),
-                          (1.0,  0.1, 0.1)),
+                 'green': ((0.0, 0.1, 0.1),
+                           (1.0, 0.1, 0.1)),
 
-                'blue': ((0.0,  1.0, 1.0),
-                         (1.0,  0.1, 0.1))}
+                 'blue': ((0.0, 1.0, 1.0),
+                          (1.0, 0.1, 0.1))}
 
         blue_red = matplotlib.colors.LinearSegmentedColormap('BlueRed', cdict, N=1000)
 
@@ -149,8 +148,8 @@ def write_pred_table(pred, classes, data_subset, path):
     string_labels = [classes[np.argmax(label)] for label in labels]
     df = pd.DataFrame(data=pred, index=md5s, columns=classes)
 
-    df.insert(loc=0 , column="class", value=string_labels)
-    
+    df.insert(loc=0, column="class", value=string_labels)
+
     df.to_csv(path, encoding="utf8")
 
 def convert_matrix_csv_to_png(in_path, out_path):
@@ -173,7 +172,7 @@ def metrics(acc, pred, data_subset):
     print("{:.3f}\t{:.3f}\t{:.3f}\t{:.3f}\t{:.3f}".format(acc, precision, recall, f1, mcc))
 
 def importance(w):
-    #garson algorithm, w for weights 
+    #garson algorithm, w for weights
     #TODO: generalise, put in model
     total_w = w[0]
     for i in range(2, len(w), 2):
@@ -193,7 +192,7 @@ def predict_concat_size(chroms, resolution):
         if size_of_mean%resolution == 0:
             concat_size += size_of_mean
         else:
-             concat_size += size_of_mean + 1
+            concat_size += size_of_mean + 1
 
     return concat_size
 
@@ -210,18 +209,16 @@ def assert_correct_resolution(chroms, resolution, signal_length):
     if predict_concat_size(chroms, resolution) != signal_length:
         raise AssertionError("Signal_length not coherent with given resolution of {}.".format(resolution))
 
-def bedgraph_from_importance(importance, chroms, resolution, bedgraph_path):
-    """Write a bedgraph from the computed importance of features.
+def values_to_bedgraph(values, chroms, resolution, bedgraph_path):
+    """Write a bedgraph from a full genome values iterable (e.g. importance).
     The chromosome coordinates are zero-based, half-open (from 0 to N-1).
     """
-    importance_index = 0
     with open(bedgraph_path, 'w') as my_bedgraph:
         for name, size in chroms:
 
             positions = itertools.chain(range(0, size, resolution), [size-1])
 
-            for pos1, pos2 in pairwise(positions):
+            for i, (pos1, pos2) in enumerate(pairwise(positions)):
 
-                line = [name, pos1, pos2, importance[importance_index]]
+                line = [name, pos1, pos2, values[i]]
                 my_bedgraph.write("{}\t{}\t{}\t{}\n".format(*line))
-                importance_index += 1

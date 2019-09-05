@@ -7,8 +7,6 @@ import sys
 import warnings
 warnings.simplefilter("ignore")
 
-import numpy as np
-
 from argparseutils.directorytype import DirectoryType
 from core import metadata
 from core import data
@@ -30,13 +28,12 @@ def parse_arguments(args: list) -> argparse.Namespace:
     arg_parser.add_argument('logdir', type=DirectoryType(), help='A directory for the logs.')
     return arg_parser.parse_args(args)
 
-# @profile
 def main(args):
     """main called from command line, edit to change behavior"""
     begin = datetime.datetime.now()
     print("begin {}".format(begin))
 
-    # parse params
+    # --- parse params ---
     epiml_options = parse_arguments(args)
 
     # if only want to convert confusion matrix csv to png
@@ -45,59 +42,78 @@ def main(args):
     # analysis.convert_matrix_csv_to_png(in_path, out_path)
     # sys.exit()
 
-    # load external files
+    # --- load external files ---
     my_datasource = data.EpiDataSource(
         epiml_options.hdf5,
         epiml_options.chromsize,
         epiml_options.metadata
         )
 
-    # load useful info
-    hdf5_resolution = my_datasource.hdf5_resolution()
-    chroms = my_datasource.load_chrom_sizes()
+    # --- load useful info ---
+    # hdf5_resolution = my_datasource.hdf5_resolution()
+    # chroms = my_datasource.load_chrom_sizes()
 
-    # load data
+    # --- load data ---
     my_metadata = metadata.Metadata.from_epidatasource(my_datasource)
-    # my_metadata = metadata.keep_major_cell_types(my_metadata)
-    # my_metadata.select_category_subset(os.getenv("STEP1_ASSAY"), "assay")
+
+    # --- Categories creation/change ---
     # my_metadata.create_healthy_category()
     # my_metadata.merge_molecule_classes()
+    # my_metadata.merge_fetal_tissues()
 
+    # --- Dataset selection ---
+
+    my_metadata = metadata.keep_major_cell_types(my_metadata)
+    # my_metadata = metadata.keep_major_cell_types_alt(my_metadata)
+    # my_metadata.remove_category_subsets([os.getenv("REMOVE_ASSAY", "")], "assay")
+    # my_metadata.select_category_subsets([os.getenv("SELECT_ASSAY", "")], "assay")
+    # my_metadata = metadata.special_case_2(my_metadata)
+
+    # my_metadata = metadata.five_cell_types_selection(my_metadata)
+    # assays_to_remove = [os.getenv(var, "") for var in ["REMOVE_ASSAY1", "REMOVE_ASSAY2", "REMOVE_ASSAY3"]]
+    # my_metadata.remove_category_subsets(assays_to_remove, "assay")
+
+    # --- Create training/validation/test sets (and change metadata according to what is used) ---
     my_data = data.DataSetFactory.from_epidata(
         my_datasource, my_metadata, epiml_options.category, oversample=True, min_class_size=10
         )
-    my_metadata.display_labels(epiml_options.category)
+    # my_metadata.display_labels(epiml_options.category)
+    my_metadata.display_labels("cell_type")
+    my_metadata.display_labels("assay")
 
-    # define sizes for input and output layers of the network
+    # --- define sizes for input and output layers of the network ---
     input_size = my_data.train.signals[0].size
     ouput_size = my_data.train.labels[0].size
 
-    # Assert the resolution is correct so the importance bedgraph works later
-    analysis.assert_correct_resolution(chroms, hdf5_resolution, input_size)
+    # --- Assert the resolution is correct so the importance bedgraph works later ---
+    # analysis.assert_correct_resolution(chroms, hdf5_resolution, input_size)
 
-    # choose a model
+    # --- choose a model ---
     my_model = model.Dense(input_size, ouput_size)
     #my_model = model.Cnn(41*49, ouput_size, (41, 49))
     #my_model = model.BidirectionalRnn(input_size, ouput_size)
 
-    # trainer for the model
+    # --- trainer for the model ---
     hparams = json.load(epiml_options.hyperparameters)
     my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir, **hparams)
 
-    # train the model
+    # --- train the model ---
     before_train = datetime.datetime.now()
     my_trainer.train()
     print("training time: {}".format(datetime.datetime.now() - before_train))
 
-    # outputs
+    # --- restore old model ---
+    # my_trainer.restore()
+
+    # --- outputs ---
     my_analyzer = analysis.Analysis(my_trainer)
 
-    # Print metrics
+    # --- Print metrics ---
     my_analyzer.training_metrics()
     my_analyzer.validation_metrics()
     # my_analyzer.test_metrics()
 
-    # Create prediction file
+    # --- Create prediction file ---
     # outpath1 = os.path.join(epiml_options.logdir, "training_predict.csv")
     outpath2 = os.path.join(epiml_options.logdir, "validation_predict.csv")
     # outpath3 = os.path.join(epiml_options.logdir, "test_predict.csv")
@@ -106,21 +122,24 @@ def main(args):
     my_analyzer.validation_prediction(outpath2)
     # my_analyzer.test_prediction(outpath3)
 
-    # Create confusion matrix
+    # --- Create confusion matrix ---
+    # my_analyzer.training_confusion_matrix(epiml_options.logdir)
     my_analyzer.validation_confusion_matrix(epiml_options.logdir)
     # my_analyzer.test_confusion_matrix(epiml_options.logdir)
 
-    # Create visualisation
+    # --- Create visualisation ---
 
     # vis = visualization.Pca()
     # my_trainer.visualize(vis)
 
+    # --- Compute/write importance ---
+
     # importance = pickle.load(open("importance.pickle", 'rb'))
-    importance = my_analyzer.importance() #TODO: generalize, probably put in model
+    # importance = my_analyzer.importance() #TODO: generalize, probably put in model
     # pickle.dump(importance, open("importance.pickle", 'wb'))
 
-    bedgraph_path = os.path.join(epiml_options.logdir, "importance.bedgraph")
-    analysis.bedgraph_from_importance(importance, chroms, hdf5_resolution, bedgraph_path)
+    # bedgraph_path = os.path.join(epiml_options.logdir, "importance.bedgraph")
+    # analysis.values_to_bedgraph(importance, chroms, hdf5_resolution, bedgraph_path)
 
     end = datetime.datetime.now()
     print("end {}".format(end))
