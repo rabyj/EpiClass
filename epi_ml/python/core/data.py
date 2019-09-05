@@ -1,11 +1,11 @@
-import h5py
-import os.path
-import numpy as np
-from scipy import signal
-import random
 import collections
-import math
 import io
+import math
+import os.path
+import random
+
+import h5py
+import numpy as np
 
 from .data_source import EpiDataSource
 from .metadata import Metadata
@@ -15,8 +15,8 @@ class DataSetFactory(object):
     """Creation of DataSet from different sources."""
     @classmethod
     def from_epidata(cls, datasource: EpiDataSource, metadata: Metadata, label_category: str, oversample=False,
-                 normalization=True, min_class_size=3):
-        
+                     normalization=True, min_class_size=3):
+
         return EpiData(datasource, metadata, label_category, oversample, normalization, min_class_size).dataset
 
 
@@ -26,11 +26,9 @@ class EpiData(object):
                  normalization=True, min_class_size=3):
         self._label_category = label_category
         self._oversample = oversample
-        self._normalization = normalization
 
         #load
-        self._load_chrom_sizes(datasource.chromsize_file)
-        self._hdf5s = self._load_hdf5(datasource.hdf5_file)
+        self._hdf5s = Hdf5Loader(datasource.chromsize_file, datasource.hdf5_file, normalization).hdf5s
         self._metadata = self._load_metadata(metadata)
 
         #preprocess
@@ -51,43 +49,10 @@ class EpiData(object):
         self._remove_hdf5_without_md5()
 
     def _remove_md5_without_hdf5(self):
-       self._metadata.apply_filter(lambda item: item[0] in self._hdf5s)
+        self._metadata.apply_filter(lambda item: item[0] in self._hdf5s)
 
     def _remove_hdf5_without_md5(self):
         self._hdf5s = {md5:self._hdf5s[md5] for md5 in self._metadata.md5s}
-
-    def _load_chrom_sizes(self, chrom_file: io.IOBase):
-        chrom_file.seek(0)
-        self._chroms = []
-
-        for line in chrom_file:
-            line = line.strip()
-            if line:
-                line = line.split()
-                self._chroms.append(line[0])
-        self._chroms.sort()
-
-    def _load_hdf5(self, data_file: io.IOBase):
-        data_file.seek(0)
-        hdf5s = {}
-        for file_path in [line.strip() for line in data_file]:
-            md5 = self._extract_md5(file_path)
-            datasets = []
-            for chrom in self._chroms:
-                f = h5py.File(file_path)
-                array = f[md5][chrom][...]
-                datasets.append(array)
-            hdf5s[md5] = self._normalize(np.concatenate(datasets))
-        return hdf5s
-    
-    def _normalize(self, array):
-        if self._normalization:
-            return (array - array.mean()) / array.std()
-        else:
-            return array
-
-    def _extract_md5(self, file_name):
-        return os.path.basename(file_name).split("_")[0]
 
     def _oversample_rates(self):
         """"""
@@ -108,7 +73,7 @@ class EpiData(object):
         for label, count in label_count.items():
             oversample_rates[label] = count/max_count
         return oversample_rates
-        
+
     def _split_data(self, validation_ratio=0.1, test_ratio=0.1):
         """"""
         size_all_dict = self._metadata.label_counter(self._label_category)
@@ -135,7 +100,7 @@ class EpiData(object):
 
         assert len(self._metadata.md5s) == len(set(sum([validation_md5s, test_md5s, train_md5s], [])))
 
-        # separate hdf5 files 
+        # separate hdf5 files
         validation_signals = [self._hdf5s[md5] for md5 in validation_md5s]
         test_signals = [self._hdf5s[md5] for md5 in test_md5s]
         train_signals = [self._hdf5s[md5] for md5 in train_md5s]
@@ -191,7 +156,7 @@ class EpiData(object):
 
 class Data(object): #class DataSet?
     """Generalised object to deal with data."""
-    def __init__(self, ids, x, y , metadata: Metadata):
+    def __init__(self, ids, x, y, metadata: Metadata):
         self._ids = ids
         self._num_examples = len(x)
         self._signals = np.array(x)
@@ -199,10 +164,10 @@ class Data(object): #class DataSet?
         self._shuffle_order = np.arange(self._num_examples)
         self._index = 0
         self._metadata = metadata
-        
+
     def preprocess(self, f):
         self._signals = np.apply_along_axis(f, 1, self._signals)
-    
+
     def next_batch(self, batch_size, shuffle=True):
         #if index exceeded num examples, start over
         if self._index >= self._num_examples:
@@ -271,3 +236,48 @@ class DataSet(object): #class Data?
         self._validation.preprocess(f)
         self._test.preprocess(f)
 
+
+class Hdf5Loader(object):
+
+    def __init__(self, chrom_file: io.IOBase, data_file: io.IOBase, normalization: bool):
+        self._normalization = normalization
+        self._chroms = self._load_chroms(chrom_file)
+        self._hdf5s = self._load_hdf5s(data_file)
+
+    @property
+    def hdf5s(self):
+        """Return a md5:norm_concat_chroms dict."""
+        return self._hdf5s
+
+    def _load_chroms(self, chrom_file: io.IOBase):
+        """Return sorted chromosome names list."""
+        chrom_file.seek(0)
+        chroms = []
+        for line in chrom_file:
+            line = line.strip()
+            if line:
+                chroms.append(line.split()[0])
+        chroms.sort()
+        return chroms
+
+    def _load_hdf5s(self, data_file: io.IOBase):
+        data_file.seek(0)
+        hdf5s = {}
+        for file_path in [line.strip() for line in data_file]:
+            md5 = self._extract_md5(file_path)
+            datasets = []
+            for chrom in self._chroms:
+                f = h5py.File(file_path)
+                array = f[md5][chrom][...]
+                datasets.append(array)
+            hdf5s[md5] = self._normalize(np.concatenate(datasets))
+        return hdf5s
+
+    def _normalize(self, array):
+        if self._normalization:
+            return (array - array.mean()) / array.std()
+        else:
+            return array
+
+    def _extract_md5(self, file_name):
+        return os.path.basename(file_name).split("_")[0]
