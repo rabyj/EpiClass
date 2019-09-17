@@ -213,12 +213,14 @@ def values_to_bedgraph(values, chroms, resolution, bedgraph_path):
     """Write a bedgraph from a full genome values iterable (e.g. importance).
     The chromosome coordinates are zero-based, half-open (from 0 to N-1).
     """
+    i = 0
     with open(bedgraph_path, 'w') as my_bedgraph:
         for name, size in chroms:
 
             positions = itertools.chain(range(0, size, resolution), [size-1])
 
-            for i, (pos1, pos2) in enumerate(pairwise(positions)):
+            for pos1, pos2 in enumerate(pairwise(positions)):
 
                 line = [name, pos1, pos2, values[i]]
                 my_bedgraph.write("{}\t{}\t{}\t{}\n".format(*line))
+                i += 1
