@@ -219,7 +219,7 @@ def values_to_bedgraph(values, chroms, resolution, bedgraph_path):
 
             positions = itertools.chain(range(0, size, resolution), [size-1])
 
-            for pos1, pos2 in enumerate(pairwise(positions)):
+            for pos1, pos2 in pairwise(positions):
 
                 line = [name, pos1, pos2, values[i]]
                 my_bedgraph.write("{}\t{}\t{}\t{}\n".format(*line))
