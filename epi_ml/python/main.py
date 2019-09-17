@@ -1,3 +1,5 @@
+import tensorflow as tf #import first because of library linking (cuda) reasons
+
 import argparse
 import datetime
 import json
@@ -77,9 +79,9 @@ def main(args):
     my_data = data.DataSetFactory.from_epidata(
         my_datasource, my_metadata, epiml_options.category, oversample=True, min_class_size=10
         )
-    # my_metadata.display_labels(epiml_options.category)
-    my_metadata.display_labels("cell_type")
-    my_metadata.display_labels("assay")
+    to_display = set(["cell_type", "assay", epiml_options.category])
+    for category in to_display:
+        my_metadata.display_labels(category)
 
     # --- define sizes for input and output layers of the network ---
     input_size = my_data.train.signals[0].size
