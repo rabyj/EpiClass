@@ -1,3 +1,6 @@
+# cluster files
+slurm_files/
+
 # Dev environnement
 .vscode
 
