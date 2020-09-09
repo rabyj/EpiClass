@@ -15,17 +15,20 @@ class DataSetFactory(object):
     """Creation of DataSet from different sources."""
     @classmethod
     def from_epidata(cls, datasource: EpiDataSource, metadata: Metadata, label_category: str, oversample=False,
-                     normalization=True, min_class_size=3):
+                     normalization=True, min_class_size=3, validation_ratio=0.1, test_ratio=0.1):
 
-        return EpiData(datasource, metadata, label_category, oversample, normalization, min_class_size).dataset
+        return EpiData(
+            datasource, metadata, label_category, oversample, normalization, min_class_size, validation_ratio, test_ratio
+            ).dataset
 
 
 class EpiData(object):
     """Used to load and preprocess epigenomic data. Data factory."""
     def __init__(self, datasource: EpiDataSource, metadata: Metadata, label_category: str, oversample=False,
-                 normalization=True, min_class_size=3):
+                 normalization=True, min_class_size=3, validation_ratio=0.1, test_ratio=0.1):
         self._label_category = label_category
         self._oversample = oversample
+        self._sorted_classes = []
 
         #load
         self._hdf5s = Hdf5Loader(datasource.chromsize_file, datasource.hdf5_file, normalization).hdf5s
@@ -34,11 +37,19 @@ class EpiData(object):
         #preprocess
         self._keep_meta_overlap()
         self._metadata.remove_small_classes(min_class_size, self._label_category)
-        self._split_data()
+        self._split_data(validation_ratio, test_ratio)
 
     @property
     def dataset(self):
         return DataSet(self._train, self._validation, self._test, self._sorted_classes)
+
+    @staticmethod
+    def _assert_ratios(valid_ratio, test_ratio):
+        """Verify that splitting ratios make sense."""
+        if valid_ratio + test_ratio > 1:
+            raise ValueError(
+                "Validation and test ratios are bigger than 100%: {} and {}".format(valid_ratio, test_ratio)
+                )
 
     def _load_metadata(self, metadata):
         metadata.remove_missing_labels(self._label_category)
@@ -74,11 +85,11 @@ class EpiData(object):
             oversample_rates[label] = count/max_count
         return oversample_rates
 
-    def _split_data(self, validation_ratio=0.1, test_ratio=0.1):
+    def _split_data(self, validation_ratio, test_ratio):
         """"""
         size_all_dict = self._metadata.label_counter(self._label_category)
 
-        # A minimum of 3 examples are needed for each label (1 for each set)
+        # A minimum of 3 examples are needed for each label (1 for each set), when splitting into three sets
         for label, size in size_all_dict.items():
             if size < 3:
                 print('The label `{}` countains only {} datasets.'.format(label, size))
@@ -232,9 +243,25 @@ class DataSet(object): #class Data?
         return self._sorted_classes
 
     def preprocess(self, f):
-        self._train.preprocess(f)
-        self._validation.preprocess(f)
-        self._test.preprocess(f)
+        if self._train.num_examples:
+            self._train.preprocess(f)
+        if self._validation.num_examples:
+            self._validation.preprocess(f)
+        if self._test.num_examples:
+            self._test.preprocess(f)
+
+    def save_mapping(self, path):
+        with open(path, 'w') as map_file:
+            for i, label in enumerate(self._sorted_classes):
+                map_file.write("{}\t{}\n".format(i, label))
+
+    def load_mapping(self, path):
+        with open(path, 'r') as map_file:
+            mapping = {}
+            for line in map_file:
+                i, label = line.rstrip().split('\t')
+                mapping[int(i)] = label
+        return mapping
 
 
 class Hdf5Loader(object):
