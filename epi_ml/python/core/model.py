@@ -1,13 +1,15 @@
 import io
+import os
+import os.path
+
+import tensorflow as tf
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import sklearn.metrics
 import pandas
-import tensorflow as tf
-import os
-import os.path
+
 from scipy import signal
 from abc import ABC
 import math
@@ -18,18 +20,17 @@ class BaseModel(ABC):
         self._y = None
         self._x_size = None
         self._y_size = None
-        self._keep_prob = tf.placeholder(tf.float32)
-        self._l1_scale = tf.placeholder(tf.float32)
-        self._l2_scale = tf.placeholder(tf.float32)
-        self._learning_rate = tf.placeholder(tf.float32)
-        self._is_training = tf.placeholder(tf.bool)
+        self._dropout_rate = None
+        self._l1_scale = None
+        self._l2_scale = None
+        self._learning_rate = None
+        self._is_training = None
         self._model = None
         self._loss = None
         self._optimizer = None
         self._minimize = None
         self._gradients = None
         self._predictor = None
-        self._layers = []
         self._preprocess = lambda x: x
 
     @property
@@ -47,10 +48,10 @@ class BaseModel(ABC):
     @property
     def y_size(self):
         return self._y_size
-    
+
     @property
-    def keep_prob(self):
-        return self._keep_prob
+    def dropout_rate(self):
+        return self._dropout_rate
 
     @property
     def l1_scale(self):
@@ -96,33 +97,26 @@ class BaseModel(ABC):
     def preprocess(self):
         return self._preprocess
 
-    @property
-    def layers(self):
-        return self._layers
-
 
 class StandardModel(BaseModel, ABC):
     def __init__(self):
         super().__init__()
 
     def _init_loss(self):
-        with tf.name_scope('Loss'):
-            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=self._y , logits=self._model) + tf.losses.get_regularization_loss())
-        return loss
+        return tf.keras.losses.CategoricalCrossentropy(from_logits=True)
 
     def _init_optimizer(self):
-        optimizer = tf.train.AdamOptimizer(self._learning_rate)
-        return optimizer
+        return tf.keras.optimizers.Adam(learning_rate=self._learning_rate)
 
-    def _init_minimize(self):
-        with tf.name_scope('Optimizer'):
-            minimize = tf.train.AdamOptimizer(self._learning_rate).minimize(self._loss)
-        return minimize
+    # def _init_minimize(self):
+    #     with tf.name_scope('Optimizer'):
+    #         minimize = tf.train.AdamOptimizer(self._learning_rate).minimize(self._loss)
+    #     return minimize
 
-    def _init_gradients(self):
-        with tf.name_scope('Gradients'):
-            gradients, variables = zip(*tf.train.AdamOptimizer(self._learning_rate).compute_gradients(self._loss))
-        return gradients
+    # def _init_gradients(self):
+    #     with tf.name_scope('Gradients'):
+    #         gradients, variables = zip(*tf.train.AdamOptimizer(self._learning_rate).compute_gradients(self._loss))
+    #     return gradients
 
     def _init_predictor(self):
         with tf.name_scope('Predictor'):
@@ -130,199 +124,212 @@ class StandardModel(BaseModel, ABC):
         return predictor
 
 
-class Cnn(StandardModel):
-    def __init__(self, input_size, output_size, shape):
+# class Cnn(StandardModel):
+#     def __init__(self, input_size, output_size, shape):
+#         super().__init__()
+#         self._x_size = input_size
+#         self._y_size = output_size
+#         self._shape = shape
+#         self._x = tf.placeholder(tf.float32, [None, self._x_size])
+#         self._y = tf.placeholder(tf.float32, [None, self._y_size])
+#         self._model = self._init_model()
+#         self._loss = self._init_loss()
+#         self._optimizer = self._init_optimizer()
+#         self._minimize = self._init_minimize()
+#         self._gradients = self._init_gradients()
+#         self._predictor = self._init_predictor()
+#         self._preprocess = self._init_preprocess()
+
+#     def _init_model(self):
+#         conv1_size = [5, 5]
+#         conv1_filters = 32
+#         pool1_size = [2, 2]
+
+#         conv2_size = [5, 5]
+#         conv2_filters = 64
+#         pool2_size = [2, 2]
+
+#         input_layer = tf.reshape(self._x, [-1, self._shape[0], self._shape[1], 1])
+#         conv1 = tf.layers.conv2d(inputs=input_layer, filters=conv1_filters, kernel_size=conv1_size, padding="same", activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
+#         pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=pool1_size, strides=2)
+#         conv2 = tf.layers.conv2d(inputs=pool1, filters=conv2_filters, kernel_size=conv2_size, padding="same", activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
+#         pool2 = tf.layers.max_pooling2d(inputs=conv2, pool_size=pool2_size, strides=2)
+#         after_conv_size = int(self._shape[0]/(pool1_size[0]*pool2_size[0])) * int(self._shape[1]/(pool1_size[1]*pool2_size[1])) * conv2_filters
+#         pool2_flat = tf.reshape(pool2, [-1, after_conv_size])
+#         hl_units = int((after_conv_size + self._y_size)/2)
+#         dense = tf.layers.dense(inputs=pool2_flat, units=hl_units, activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
+#         dropout = tf.nn.dropout(dense, self._keep_prob)
+#         with tf.name_scope('Model'):
+#             model = tf.layers.dense(inputs=dropout, units=self._y_size, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
+#         return model
+
+#     def _init_preprocess(self):
+#         return lambda x: np.reshape(signal.spectrogram(x, window=("gaussian",.005), noverlap=40, nfft=80, nperseg=64, fs=16000)[2], self._x_size)
+
+
+# class BidirectionalRnn(StandardModel):
+#     def __init__(self, input_size, output_size):
+#         super().__init__()
+#         self._x_size = input_size
+#         self._y_size = output_size
+#         self._x = tf.placeholder(tf.float32, [None, self._x_size])
+#         self._y = tf.placeholder(tf.float32, [None, self._y_size])
+#         self._model = self._init_model()
+#         self._loss = self._init_loss()
+#         self._optimizer = self._init_optimizer()
+#         self._minimize = self._init_minimize()
+#         self._gradients = self._init_gradients()
+#         self._predictor = self._init_predictor()
+
+#     def _init_model(self):
+#         seq_len = 5
+#         hl_units = int((self._x_size + self._y_size)/2)*2
+#         nb_layers = 1
+
+#         #tf_b_VCCs_AMs_BN1 = tf.layers.batch_normalization(tf_b_VCCs_AMs, # the input vector, size [#batches, #time_steps, 2]
+#         #axis=-1, # axis that should be normalized
+#         #training=Flg_training, # Flg_training = True during training, and False during test
+#         #trainable=True,
+#         #name="Inputs_BN"
+#         #)
+
+#         sequences = tf.reshape(self._x, (-1, seq_len, int(self._x_size/seq_len)))
+#         input_layer = tf.unstack(sequences, seq_len, 1)
+
+#         layers=[input_layer]
+#         for i in range(nb_layers):
+#             lstm_fw_cell = tf.contrib.rnn.BasicLSTMCell(int(hl_units/2), forget_bias=1.0)
+#             lstm_fw_dropout = tf.contrib.rnn.DropoutWrapper(lstm_fw_cell, self._keep_prob)
+#             lstm_bw_cell = tf.contrib.rnn.BasicLSTMCell(int(hl_units/2), forget_bias=1.0)
+#             lstm_bw_dropout = tf.contrib.rnn.DropoutWrapper(lstm_bw_cell, self._keep_prob)
+#             outputs, _, _ = tf.contrib.rnn.static_bidirectional_rnn(lstm_fw_dropout, lstm_bw_dropout, layers[i], dtype=tf.float32)
+#             layers.append(outputs[-1])
+
+#         dense = tf.layers.dense(inputs=layers[-1], units=hl_units, activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
+#         dropout = tf.nn.dropout(dense, self._keep_prob)
+#         with tf.name_scope('Model'):
+#             model = tf.layers.dense(inputs=dropout, units=self._y_size, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
+#         return model
+
+
+class Dense_TF2(StandardModel):
+    def __init__(self, input_size, output_size, l2_scale):#
+        # TODO : add l2_scale and dropout, eventually modif hparam file for dropout name
         super().__init__()
         self._x_size = input_size
         self._y_size = output_size
-        self._shape = shape
-        self._x = tf.placeholder(tf.float32, [None, self._x_size])
-        self._y = tf.placeholder(tf.float32, [None, self._y_size])
-        self._model = self._init_model()
+        self._l2_scale = l2_scale
+        # self._x = tf.placeholder(tf.float32, [None, self._x_size])
+        # self._y = tf.placeholder(tf.float32, [None, self._y_size])
+        self._model = self._get_compiled_model()
         self._loss = self._init_loss()
         self._optimizer = self._init_optimizer()
-        self._minimize = self._init_minimize()
-        self._gradients = self._init_gradients()
-        self._predictor = self._init_predictor()
-        self._preprocess = self._init_preprocess()
-
-    def _init_model(self):
-        conv1_size = [5, 5]
-        conv1_filters = 32
-        pool1_size = [2, 2]
-
-        conv2_size = [5, 5]
-        conv2_filters = 64
-        pool2_size = [2, 2]
-
-        input_layer = tf.reshape(self._x, [-1, self._shape[0], self._shape[1], 1])
-        conv1 = tf.layers.conv2d(inputs=input_layer, filters=conv1_filters, kernel_size=conv1_size, padding="same", activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
-        pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=pool1_size, strides=2)
-        conv2 = tf.layers.conv2d(inputs=pool1, filters=conv2_filters, kernel_size=conv2_size, padding="same", activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
-        pool2 = tf.layers.max_pooling2d(inputs=conv2, pool_size=pool2_size, strides=2)
-        after_conv_size = int(self._shape[0]/(pool1_size[0]*pool2_size[0])) * int(self._shape[1]/(pool1_size[1]*pool2_size[1])) * conv2_filters
-        pool2_flat = tf.reshape(pool2, [-1, after_conv_size])
-        hl_units = int((after_conv_size + self._y_size)/2)
-        dense = tf.layers.dense(inputs=pool2_flat, units=hl_units, activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
-        dropout = tf.nn.dropout(dense, self._keep_prob)
-        with tf.name_scope('Model'):
-            model = tf.layers.dense(inputs=dropout, units=self._y_size, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
-        return model
-
-    def _init_preprocess(self):
-        return lambda x: np.reshape(signal.spectrogram(x, window=("gaussian",.005), noverlap=40, nfft=80, nperseg=64, fs=16000)[2], self._x_size)
-
-
-class BidirectionalRnn(StandardModel):
-    def __init__(self, input_size, output_size):
-        super().__init__()
-        self._x_size = input_size
-        self._y_size = output_size
-        self._x = tf.placeholder(tf.float32, [None, self._x_size])
-        self._y = tf.placeholder(tf.float32, [None, self._y_size])
-        self._model = self._init_model()
-        self._loss = self._init_loss()
-        self._optimizer = self._init_optimizer()
-        self._minimize = self._init_minimize()
-        self._gradients = self._init_gradients()
+        # self._minimize = self._init_minimize()
+        # self._gradients = self._init_gradients()
         self._predictor = self._init_predictor()
 
-    def _init_model(self):
-        seq_len = 5
-        hl_units = int((self._x_size + self._y_size)/2)*2
-        nb_layers = 1
-
-        #tf_b_VCCs_AMs_BN1 = tf.layers.batch_normalization(tf_b_VCCs_AMs, # the input vector, size [#batches, #time_steps, 2]
-        #axis=-1, # axis that should be normalized 
-        #training=Flg_training, # Flg_training = True during training, and False during test
-        #trainable=True,
-        #name="Inputs_BN"
-        #)
-
-        sequences = tf.reshape(self._x, (-1, seq_len, int(self._x_size/seq_len)))
-        input_layer = tf.unstack(sequences, seq_len, 1)
-
-        layers=[input_layer]
-        for i in range(nb_layers):
-            lstm_fw_cell = tf.contrib.rnn.BasicLSTMCell(int(hl_units/2), forget_bias=1.0)
-            lstm_fw_dropout = tf.contrib.rnn.DropoutWrapper(lstm_fw_cell, self._keep_prob)
-            lstm_bw_cell = tf.contrib.rnn.BasicLSTMCell(int(hl_units/2), forget_bias=1.0)
-            lstm_bw_dropout = tf.contrib.rnn.DropoutWrapper(lstm_bw_cell, self._keep_prob)
-            outputs, _, _ = tf.contrib.rnn.static_bidirectional_rnn(lstm_fw_dropout, lstm_bw_dropout, layers[i], dtype=tf.float32)
-            layers.append(outputs[-1])
-
-        dense = tf.layers.dense(inputs=layers[-1], units=hl_units, activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
-        dropout = tf.nn.dropout(dense, self._keep_prob)
-        with tf.name_scope('Model'):
-            model = tf.layers.dense(inputs=dropout, units=self._y_size, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
-        return model
-
-
-class Dense(StandardModel):
-    def __init__(self, input_size, output_size):
-        super().__init__()
-        self._x_size = input_size
-        self._y_size = output_size
-        self._x = tf.placeholder(tf.float32, [None, self._x_size])
-        self._y = tf.placeholder(tf.float32, [None, self._y_size])
-        self._model = self._init_model()
-        self._loss = self._init_loss()
-        self._optimizer = self._init_optimizer()
-        self._minimize = self._init_minimize()
-        self._gradients = self._init_gradients()
-        self._predictor = self._init_predictor()
-
-    def _init_model(self):
+    def _get_uncompiled_model(self):
         # hl_units = int(os.getenv('LAYER_SIZE', math.sqrt(self._x_size + self._y_size)))
         # hl_units = int(os.getenv('LAYER_SIZE', self._x_size + self._y_size))
         hl_units = int(os.getenv('LAYER_SIZE', 3000))
-        nb_layers= int(os.getenv('NB_LAYER', 1))
+        nb_layers = int(os.getenv('NB_LAYER', 1))
 
-        print("Nb layers: {}".format(nb_layers))
-        print("Layers size: {}".format(hl_units))
+        # print("Nb layers: {}".format(nb_layers))
+        # print("Layers size: {}".format(hl_units))
 
-        self.layers.append(self._x)
+        model = tf.keras.Sequential()
+        model.add(tf.keras.Input(shape=(self._x_size,)))
+
         for i in range(nb_layers):
-            dense = tf.layers.dense(
-                inputs=self.layers[i],
+            model.add(tf.keras.layers.Dense(
                 units=hl_units,
-                activation=tf.nn.relu,
-                kernel_initializer=tf.glorot_uniform_initializer(),
-                kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale)
-                )
-            dropout = tf.nn.dropout(dense, self.keep_prob)
-            self.layers.append(dropout)
+                activation="relu",
+                kernel_regularizer=tf.keras.regularizers.L2(l2=self._l2_scale),
+                name="dense_{}".format(i)
+                ))
+            model.add(tf.keras.layers.Dropout(self._dropout_rate))
+
         with tf.name_scope('Model'):
-            model = tf.layers.dense(
-                inputs=self.layers[-1],
+            model.add(tf.keras.layers.Dense(
                 units=self._y_size,
-                kernel_initializer=tf.glorot_uniform_initializer(),
-                kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale)
-                )
-            self.layers.append(model)
+                kernel_regularizer=tf.keras.regularizers.L2(l2=self._l2_scale),
+                name="dense_last"
+                ))
         return model
 
-
-class L1Dense(StandardModel):
-    def __init__(self, input_size, output_size):
-        super().__init__()
-        self._x_size = input_size
-        self._y_size = output_size
-        self._x = tf.placeholder(tf.float32, [None, self._x_size])
-        self._y = tf.placeholder(tf.float32, [None, self._y_size])
-        self._model = self._init_model()
-        self._loss = self._init_loss()
-        self._optimizer = self._init_optimizer()
-        self._minimize = self._init_minimize()
-        self._gradients = self._init_gradients()
-        self._predictor = self._init_predictor()
-
-    def _init_model(self):
-        # hl_units = int((self._x_size + self._y_size))
-        # nb_layers=3
-
-        hl_units = int(os.getenv('LAYER_SIZE', 3000))
-        nb_layers= int(os.getenv('NB_LAYER', 1))
-
-        print("Nb layers: {}".format(nb_layers))
-        print("Layers size: {}".format(hl_units))
-
-        dense = tf.layers.dense(inputs=self._x, units=hl_units, activation=tf.nn.sigmoid, kernel_regularizer= tf.contrib.layers.l1_regularizer(scale=self._l1_scale))
-
-        layers = [dense]
-        for i in range(nb_layers-1):
-            dense = tf.layers.dense(inputs=layers[i], units=hl_units, activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
-            dropout = tf.nn.dropout(dense, self.keep_prob)
-            layers.append(dropout)
-        with tf.name_scope('Model'):
-            model = tf.layers.dense(inputs=layers[-1], units=self._y_size, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
+    def _get_compiled_model(self):
+        model = self._get_uncompiled_model()
+        model.compile(
+            optimizer=self._optimizer,
+            loss=self.loss,
+            metrics=[tf.keras.metrics.CategoricalAccuracy()]
+        )
         return model
 
+    def summary(self):
+        self._model.summary()
 
-class BatchNormDense(StandardModel):
-    def __init__(self, input_size, output_size):
-        super().__init__()
-        self._x_size = input_size
-        self._y_size = output_size
-        self._x = tf.placeholder(tf.float32, [None, self._x_size])
-        self._y = tf.placeholder(tf.float32, [None, self._y_size])
-        self._model = self._init_model()
-        self._loss = self._init_loss()
-        self._optimizer = self._init_optimizer()
-        self._minimize = self._init_minimize()
-        self._gradients = self._init_gradients()
-        self._predictor = self._init_predictor()
 
-    def _init_model(self):
-        hl_units = int(math.sqrt(self._x_size + self._y_size))
-        nb_layers=1
+# class L1Dense(StandardModel):
+#     def __init__(self, input_size, output_size):
+#         super().__init__()
+#         self._x_size = input_size
+#         self._y_size = output_size
+#         self._x = tf.placeholder(tf.float32, [None, self._x_size])
+#         self._y = tf.placeholder(tf.float32, [None, self._y_size])
+#         self._model = self._init_model()
+#         self._loss = self._init_loss()
+#         self._optimizer = self._init_optimizer()
+#         self._minimize = self._init_minimize()
+#         self._gradients = self._init_gradients()
+#         self._predictor = self._init_predictor()
 
-        layers = [self._x]
-        for i in range(nb_layers):
-            dense = tf.layers.dense(inputs=layers[i], units=hl_units, activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
-            batch_norm = tf.contrib.layers.batch_norm(dense, center=True, scale=True, is_training=self._is_training)
-            dropout = tf.nn.dropout(batch_norm, self.keep_prob)
-            layers.append(dropout)
-        with tf.name_scope('Model'):
-            model = tf.layers.dense(inputs=layers[-1], units=self._y_size, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
-        return model
+#     def _init_model(self):
+#         # hl_units = int((self._x_size + self._y_size))
+#         # nb_layers=3
+
+#         hl_units = int(os.getenv('LAYER_SIZE', 3000))
+#         nb_layers= int(os.getenv('NB_LAYER', 1))
+
+#         print("Nb layers: {}".format(nb_layers))
+#         print("Layers size: {}".format(hl_units))
+
+#         dense = tf.layers.dense(inputs=self._x, units=hl_units, activation=tf.nn.sigmoid, kernel_regularizer= tf.contrib.layers.l1_regularizer(scale=self._l1_scale))
+
+#         layers = [dense]
+#         for i in range(nb_layers-1):
+#             dense = tf.layers.dense(inputs=layers[i], units=hl_units, activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
+#             dropout = tf.nn.dropout(dense, self.keep_prob)
+#             layers.append(dropout)
+#         with tf.name_scope('Model'):
+#             model = tf.layers.dense(inputs=layers[-1], units=self._y_size, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
+#         return model
+
+
+# class BatchNormDense(StandardModel):
+#     def __init__(self, input_size, output_size):
+#         super().__init__()
+#         self._x_size = input_size
+#         self._y_size = output_size
+#         self._x = tf.placeholder(tf.float32, [None, self._x_size])
+#         self._y = tf.placeholder(tf.float32, [None, self._y_size])
+#         self._model = self._init_model()
+#         self._loss = self._init_loss()
+#         self._optimizer = self._init_optimizer()
+#         self._minimize = self._init_minimize()
+#         self._gradients = self._init_gradients()
+#         self._predictor = self._init_predictor()
+
+#     def _init_model(self):
+#         hl_units = int(math.sqrt(self._x_size + self._y_size))
+#         nb_layers=1
+
+#         layers = [self._x]
+#         for i in range(nb_layers):
+#             dense = tf.layers.dense(inputs=layers[i], units=hl_units, activation=tf.nn.relu, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
+#             batch_norm = tf.contrib.layers.batch_norm(dense, center=True, scale=True, is_training=self._is_training)
+#             dropout = tf.nn.dropout(batch_norm, self.keep_prob)
+#             layers.append(dropout)
+#         with tf.name_scope('Model'):
+#             model = tf.layers.dense(inputs=layers[-1], units=self._y_size, kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=self._l2_scale))
+#         return model
