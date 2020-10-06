@@ -1,18 +1,13 @@
-import io
-import os
-import os.path
+"""
+Implement different model types classes,
+such that the hyperparameters and general structure are easily modifiable.
+"""
+from abc import ABC
 
 import tensorflow as tf
 import matplotlib
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import numpy as np
-import sklearn.metrics
-import pandas
 
-from scipy import signal
-from abc import ABC
-import math
 
 class BaseModel(ABC):
     def __init__(self):
@@ -99,8 +94,8 @@ class BaseModel(ABC):
 
 
 class StandardModel(BaseModel, ABC):
-    def __init__(self):
-        super().__init__()
+    # def __init__(self):
+    #     super().__init__()
 
     def _init_loss(self):
         return tf.keras.losses.CategoricalCrossentropy(from_logits=True)
@@ -118,10 +113,10 @@ class StandardModel(BaseModel, ABC):
     #         gradients, variables = zip(*tf.train.AdamOptimizer(self._learning_rate).compute_gradients(self._loss))
     #     return gradients
 
-    def _init_predictor(self):
-        with tf.name_scope('Predictor'):
-            predictor = tf.nn.softmax(self._model)
-        return predictor
+    # def _init_predictor(self):
+    #     with tf.name_scope('Predictor'):
+    #         predictor = tf.nn.softmax(self._model)
+    #     return predictor
 
 
 # class Cnn(StandardModel):
@@ -213,36 +208,39 @@ class StandardModel(BaseModel, ABC):
 
 
 class Dense_TF2(StandardModel):
-    def __init__(self, input_size, output_size, l2_scale):#
-        # TODO : add l2_scale and dropout, eventually modif hparam file for dropout name
+    def __init__(self, input_size, output_size, hl_units=3000, nb_layer=1, **hparams):
         super().__init__()
+
+        # -- general structure --
         self._x_size = input_size
         self._y_size = output_size
-        self._l2_scale = l2_scale
+        self._hl_size = hl_units # hl = hidden layer
+        self._nb_layer = nb_layer
+
+        # -- hyperparameters --
+        self._l2_scale = hparams.get("l2_scale", 0.01)
+        self._dropout_rate = 1 - hparams.get("keep_prob", 0.5)
+        self._learning_rate = hparams.get("learning_rate", 1e-5)
+
         # self._x = tf.placeholder(tf.float32, [None, self._x_size])
         # self._y = tf.placeholder(tf.float32, [None, self._y_size])
-        self._model = self._get_compiled_model()
+
+        # -- Cost fct and backprop definition --
         self._loss = self._init_loss()
         self._optimizer = self._init_optimizer()
         # self._minimize = self._init_minimize()
         # self._gradients = self._init_gradients()
-        self._predictor = self._init_predictor()
+        self._model = self._get_compiled_model()
+        # self._predictor = self._init_predictor()
 
     def _get_uncompiled_model(self):
-        # hl_units = int(os.getenv('LAYER_SIZE', math.sqrt(self._x_size + self._y_size)))
-        # hl_units = int(os.getenv('LAYER_SIZE', self._x_size + self._y_size))
-        hl_units = int(os.getenv('LAYER_SIZE', 3000))
-        nb_layers = int(os.getenv('NB_LAYER', 1))
-
-        # print("Nb layers: {}".format(nb_layers))
-        # print("Layers size: {}".format(hl_units))
-
+        """Return uncompiled sequential keras model."""
         model = tf.keras.Sequential()
         model.add(tf.keras.Input(shape=(self._x_size,)))
 
-        for i in range(nb_layers):
+        for i in range(self._nb_layer):
             model.add(tf.keras.layers.Dense(
-                units=hl_units,
+                units=self._hl_size,
                 activation="relu",
                 kernel_regularizer=tf.keras.regularizers.L2(l2=self._l2_scale),
                 name="dense_{}".format(i)
@@ -258,11 +256,12 @@ class Dense_TF2(StandardModel):
         return model
 
     def _get_compiled_model(self):
+        """Return compiled sequential keras model."""
         model = self._get_uncompiled_model()
         model.compile(
             optimizer=self._optimizer,
             loss=self.loss,
-            metrics=[tf.keras.metrics.CategoricalAccuracy()]
+            metrics=["acc"] # categorical_accuracy supposed to be same thing
         )
         return model
 

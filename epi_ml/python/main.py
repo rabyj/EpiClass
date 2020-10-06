@@ -13,8 +13,8 @@ from argparseutils.directorytype import DirectoryType
 from core import metadata
 from core import data
 from core import model
-from core import trainer
-from core import analysis
+# from core import trainer
+# from core import analysis
 from core import visualization
 
 import pickle
@@ -65,7 +65,7 @@ def main(args):
 
     # --- Dataset selection ---
 
-    my_metadata = metadata.keep_major_cell_types(my_metadata)
+    # my_metadata = metadata.keep_major_cell_types(my_metadata)
     # my_metadata = metadata.keep_major_cell_types_alt(my_metadata)
     # my_metadata.remove_category_subsets([os.getenv("REMOVE_ASSAY", "")], "assay")
     # my_metadata.select_category_subsets([os.getenv("SELECT_ASSAY", "")], "assay")
@@ -79,54 +79,62 @@ def main(args):
     my_data = data.DataSetFactory.from_epidata(
         my_datasource, my_metadata, epiml_options.category, oversample=True, min_class_size=10
         )
-    to_display = set(["cell_type", "assay", epiml_options.category])
+    to_display = set(["assay", epiml_options.category])
     for category in to_display:
         my_metadata.display_labels(category)
 
+    # my_data.save_mapping(os.path.join(epiml_options.logdir, "training_mapping.tsv"))
+
     # --- define sizes for input and output layers of the network ---
     input_size = my_data.train.signals[0].size
-    ouput_size = my_data.train.labels[0].size
+    output_size = my_data.train.labels[0].size
+    # hl_units = int(os.getenv("LAYER_SIZE", default="3000"))
+    # nb_layers = int(os.getenv("NB_LAYER", default="1"))
 
     # --- Assert the resolution is correct so the importance bedgraph works later ---
     # analysis.assert_correct_resolution(chroms, hdf5_resolution, input_size)
 
-    # --- choose a model ---
-    my_model = model.Dense(input_size, ouput_size)
+    # --- choose a model --
+    hparams = json.load(epiml_options.hyperparameters)
+    my_model = model.Dense_TF2(input_size, output_size, hl_units=1500, nb_layer=1, hparams=hparams)
+    my_model.summary()
+
+    # print(my_model._model.metrics_names)
     #my_model = model.Cnn(41*49, ouput_size, (41, 49))
     #my_model = model.BidirectionalRnn(input_size, ouput_size)
 
     # --- trainer for the model ---
-    hparams = json.load(epiml_options.hyperparameters)
-    my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir, **hparams)
+    
+    # my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir, **hparams)
 
     # --- train the model ---
     before_train = datetime.datetime.now()
-    my_trainer.train()
+    my_model._model.fit(x=my_data.train.signals, y=my_data.train.labels, batch_size=128, epochs=80, verbose=2, validation_data=(my_data.validation.signals, my_data.validation.labels))
     print("training time: {}".format(datetime.datetime.now() - before_train))
 
     # --- restore old model ---
     # my_trainer.restore()
 
     # --- outputs ---
-    my_analyzer = analysis.Analysis(my_trainer)
+    # my_analyzer = analysis.Analysis(my_trainer)
 
     # --- Print metrics ---
-    my_analyzer.training_metrics()
-    my_analyzer.validation_metrics()
+    # my_analyzer.training_metrics()
+    # my_analyzer.validation_metrics()
     # my_analyzer.test_metrics()
 
     # --- Create prediction file ---
     # outpath1 = os.path.join(epiml_options.logdir, "training_predict.csv")
-    outpath2 = os.path.join(epiml_options.logdir, "validation_predict.csv")
+    # outpath2 = os.path.join(epiml_options.logdir, "validation_predict.csv")
     # outpath3 = os.path.join(epiml_options.logdir, "test_predict.csv")
 
     # my_analyzer.training_prediction(outpath1)
-    my_analyzer.validation_prediction(outpath2)
+    # my_analyzer.validation_prediction(outpath2)
     # my_analyzer.test_prediction(outpath3)
 
     # --- Create confusion matrix ---
     # my_analyzer.training_confusion_matrix(epiml_options.logdir)
-    my_analyzer.validation_confusion_matrix(epiml_options.logdir)
+    # my_analyzer.validation_confusion_matrix(epiml_options.logdir)
     # my_analyzer.test_confusion_matrix(epiml_options.logdir)
 
     # --- Create visualisation ---
