@@ -13,7 +13,7 @@ from argparseutils.directorytype import DirectoryType
 from core import metadata
 from core import data
 from core import model
-# from core import trainer
+from core import trainer
 # from core import analysis
 from core import visualization
 
@@ -94,22 +94,22 @@ def main(args):
     # --- Assert the resolution is correct so the importance bedgraph works later ---
     # analysis.assert_correct_resolution(chroms, hdf5_resolution, input_size)
 
-    # --- choose a model --
+    # --- Create a brand new model --
     hparams = json.load(epiml_options.hyperparameters)
-    my_model = model.Dense_TF2(input_size, output_size, hl_units=1500, nb_layer=1, hparams=hparams)
+    my_model = model.Dense_TF2(input_size, output_size, hparams, hl_units=1000, nb_layer=1)
     my_model.summary()
 
-    # print(my_model._model.metrics_names)
     #my_model = model.Cnn(41*49, ouput_size, (41, 49))
     #my_model = model.BidirectionalRnn(input_size, ouput_size)
 
     # --- trainer for the model ---
     
-    # my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir, **hparams)
+    my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir, hparams, save_checkpoints=True)
+    my_trainer.print_hparams()
 
     # --- train the model ---
     before_train = datetime.datetime.now()
-    my_model._model.fit(x=my_data.train.signals, y=my_data.train.labels, batch_size=128, epochs=80, verbose=2, validation_data=(my_data.validation.signals, my_data.validation.labels))
+    my_trainer.train()
     print("training time: {}".format(datetime.datetime.now() - before_train))
 
     # --- restore old model ---

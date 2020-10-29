@@ -208,7 +208,8 @@ class StandardModel(BaseModel, ABC):
 
 
 class Dense_TF2(StandardModel):
-    def __init__(self, input_size, output_size, hl_units=3000, nb_layer=1, **hparams):
+    """TF2 Keras Sequential Dense model creator"""
+    def __init__(self, input_size, output_size, hparams, hl_units=3000, nb_layer=1):
         super().__init__()
 
         # -- general structure --
@@ -222,16 +223,10 @@ class Dense_TF2(StandardModel):
         self._dropout_rate = 1 - hparams.get("keep_prob", 0.5)
         self._learning_rate = hparams.get("learning_rate", 1e-5)
 
-        # self._x = tf.placeholder(tf.float32, [None, self._x_size])
-        # self._y = tf.placeholder(tf.float32, [None, self._y_size])
-
-        # -- Cost fct and backprop definition --
+        # -- Loss and backprop definition --
         self._loss = self._init_loss()
         self._optimizer = self._init_optimizer()
-        # self._minimize = self._init_minimize()
-        # self._gradients = self._init_gradients()
-        self._model = self._get_compiled_model()
-        # self._predictor = self._init_predictor()
+        self._keras_model = self._get_compiled_model()
 
     def _get_uncompiled_model(self):
         """Return uncompiled sequential keras model."""
@@ -266,7 +261,15 @@ class Dense_TF2(StandardModel):
         return model
 
     def summary(self):
-        self._model.summary()
+        """Print compiled model summary."""
+        self._keras_model.summary()
+        print("l2_scale : {}".format(self._l2_scale))
+        print("dropout_rate : {}".format(self._dropout_rate))
+        print("learning_rate : {}".format(self._learning_rate))
+
+    @property
+    def keras_model(self):
+        return self._keras_model
 
 
 # class L1Dense(StandardModel):
