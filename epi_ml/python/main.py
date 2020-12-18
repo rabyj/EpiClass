@@ -22,7 +22,7 @@ import pickle
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('category', type=str, help='The metatada category to analyse.')
+    arg_parser.add_argument('category', type=str, help='The metadata category to analyse.')
     arg_parser.add_argument('hyperparameters', type=argparse.FileType('r'), help='A json file containing model hyperparameters.')
     arg_parser.add_argument('hdf5', type=argparse.FileType('r'), help='A file with hdf5 filenames. Use absolute path!')
     arg_parser.add_argument('chromsize', type=argparse.FileType('r'), help='A file with chrom sizes.')
@@ -65,7 +65,7 @@ def main(args):
 
     # --- Dataset selection ---
 
-    my_metadata = metadata.keep_major_cell_types(my_metadata)
+    # my_metadata = metadata.keep_major_cell_types(my_metadata)
     # my_metadata = metadata.keep_major_cell_types_alt(my_metadata)
     # my_metadata.remove_category_subsets([os.getenv("REMOVE_ASSAY", "")], "assay")
     # my_metadata.select_category_subsets([os.getenv("SELECT_ASSAY", "")], "assay")
@@ -77,57 +77,58 @@ def main(args):
 
     # --- Create training/validation/test sets (and change metadata according to what is used) ---
     my_data = data.DataSetFactory.from_epidata(
-        my_datasource, my_metadata, epiml_options.category, oversample=True, min_class_size=10
+        my_datasource, my_metadata, epiml_options.category, oversample=False, min_class_size=1, validation_ratio=0, test_ratio=1
         )
-    to_display = set(["cell_type", "assay", epiml_options.category])
-    for category in to_display:
-        my_metadata.display_labels(category)
+    # to_display = set(["cell_type", "assay", epiml_options.category])
+    # for category in to_display:
+    #     my_metadata.display_labels(category)
+    my_metadata.display_labels(epiml_options.category)
 
     # --- define sizes for input and output layers of the network ---
-    input_size = my_data.train.signals[0].size
-    ouput_size = my_data.train.labels[0].size
+    input_size = my_data.test.signals[0].size
+    output_size = my_data.test.labels[0].size
 
     # --- Assert the resolution is correct so the importance bedgraph works later ---
     # analysis.assert_correct_resolution(chroms, hdf5_resolution, input_size)
 
     # --- choose a model ---
-    my_model = model.Dense(input_size, ouput_size)
-    #my_model = model.Cnn(41*49, ouput_size, (41, 49))
-    #my_model = model.BidirectionalRnn(input_size, ouput_size)
+    my_model = model.Dense(input_size, output_size)
+    #my_model = model.Cnn(41*49, output_size, (41, 49))
+    #my_model = model.BidirectionalRnn(input_size, output_size)
 
     # --- trainer for the model ---
     hparams = json.load(epiml_options.hyperparameters)
     my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir, **hparams)
 
     # --- train the model ---
-    before_train = datetime.datetime.now()
-    my_trainer.train()
-    print("training time: {}".format(datetime.datetime.now() - before_train))
+    # before_train = datetime.datetime.now()
+    # my_trainer.train()
+    # print("training time: {}".format(datetime.datetime.now() - before_train))
 
     # --- restore old model ---
-    # my_trainer.restore()
+    my_trainer.restore()
 
     # --- outputs ---
     my_analyzer = analysis.Analysis(my_trainer)
 
     # --- Print metrics ---
-    my_analyzer.training_metrics()
-    my_analyzer.validation_metrics()
-    # my_analyzer.test_metrics()
+    # my_analyzer.training_metrics()
+    # my_analyzer.validation_metrics()
+    my_analyzer.test_metrics()
 
     # --- Create prediction file ---
     # outpath1 = os.path.join(epiml_options.logdir, "training_predict.csv")
-    outpath2 = os.path.join(epiml_options.logdir, "validation_predict.csv")
-    # outpath3 = os.path.join(epiml_options.logdir, "test_predict.csv")
+    # outpath2 = os.path.join(epiml_options.logdir, "validation_predict.csv")
+    outpath3 = os.path.join(epiml_options.logdir, "test_predict.csv")
 
     # my_analyzer.training_prediction(outpath1)
-    my_analyzer.validation_prediction(outpath2)
-    # my_analyzer.test_prediction(outpath3)
+    # my_analyzer.validation_prediction(outpath2)
+    my_analyzer.test_prediction(outpath3)
 
     # --- Create confusion matrix ---
     # my_analyzer.training_confusion_matrix(epiml_options.logdir)
-    my_analyzer.validation_confusion_matrix(epiml_options.logdir)
-    # my_analyzer.test_confusion_matrix(epiml_options.logdir)
+    # my_analyzer.validation_confusion_matrix(epiml_options.logdir)
+    my_analyzer.test_confusion_matrix(epiml_options.logdir)
 
     # --- Create visualisation ---
 
