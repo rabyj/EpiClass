@@ -361,3 +361,47 @@ def special_case_2(my_metadata):
         del my_metadata[md5]
 
     return my_metadata
+
+
+def keep_major_assays_2019(my_metadata):
+    """Combine rna_seq and polr2a classes pairs in the assay category.
+    Written for the 2019-11 release.
+    """
+    print("Filtering, removing smrna_seq, and then merging rna/polr2a similar labels")
+    my_metadata.remove_small_classes(10, "assay")
+    my_metadata.remove_category_subsets(["smrna_seq"], "assay")
+    for dataset in my_metadata.datasets:
+        assay = dataset.get("assay", None)
+        if assay == "mrna_seq":
+            dataset["assay"] = "rna_seq"
+        elif assay == "polr2aphosphos5":
+            dataset["assay"] = "polr2a"
+
+    return my_metadata
+
+
+def keep_major_cell_types_2019(my_metadata):
+    """Select 20 cell types in the major assays signal subset.
+    A cell type needs to have at least 10 signals in one assay.
+    Selection choices made out of the code.
+    Written for the 2019-11 release.
+    """
+    my_metadata = keep_major_assays_2019(my_metadata)
+
+    brain_labels = set(["brain_occipetal_lobe_right", "brain_right_temporal", "brain_temporal_lobe_left", "brain", "brain_frontal_lobe_left"])
+    hepatocyte_labels = set(["hepatocytes", "hepatocyte"])
+    large_intestin_colon_labels = set(["large_intestine_colon_ascending_(right)", "large_intestine_colon", "large_intestine_colon_rectosigmoid"])
+
+    for dataset in my_metadata.datasets:
+        cell_type = dataset.get("cell_type", None)
+        if cell_type in brain_labels:
+            dataset["cell_type"] = "brain"
+        elif cell_type in hepatocyte_labels:
+            dataset["cell_type"] = "hepatocytes"
+        elif cell_type in large_intestin_colon_labels:
+            dataset["cell_type"] = "large_intestine_colon"
+
+    selected_cell_types = set(["myeloid_cell", "venous_blood", "monocyte", "thyroid", "mature_neutrophil", "macrophage", "b_cells", "cd14_positive,_cd16_negative_classical_monocyte", "normal_human_colon_absorptive_epithelial_cells", "cd4_positive,_alpha_beta_t_cell", "precursor_b_cell", "naive_b_cell", "stomach", "lymph_node", "muscle_of_leg", "neoplastic_plasma_cell", "plasma_cell", "brain", "hepatocytes", "large_intestine_colon"])
+    my_metadata.select_category_subset(selected_cell_types, "cell_type")
+
+    return my_metadata
