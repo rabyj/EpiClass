@@ -402,6 +402,6 @@ def keep_major_cell_types_2019(my_metadata):
             dataset["cell_type"] = "large_intestine_colon"
 
     selected_cell_types = set(["myeloid_cell", "venous_blood", "monocyte", "thyroid", "mature_neutrophil", "macrophage", "b_cells", "cd14_positive,_cd16_negative_classical_monocyte", "normal_human_colon_absorptive_epithelial_cells", "cd4_positive,_alpha_beta_t_cell", "precursor_b_cell", "naive_b_cell", "stomach", "lymph_node", "muscle_of_leg", "neoplastic_plasma_cell", "plasma_cell", "brain", "hepatocytes", "large_intestine_colon"])
-    my_metadata.select_category_subset(selected_cell_types, "cell_type")
+    my_metadata.select_category_subsets(selected_cell_types, "cell_type")
 
     return my_metadata
