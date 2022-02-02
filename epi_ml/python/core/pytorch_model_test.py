@@ -1,11 +1,12 @@
 import torch
 from torch import nn
+import torch.nn.functional as F
 import pytorch_lightning as pl
 
 class LightningDenseClassifier(pl.LightningModule):
 
     def __init__(self, input_size, output_size, hparams, hl_units=3000, nb_layer=1):
-        super(LightningEpiClassifier, self).__init__()
+        super(LightningDenseClassifier, self).__init__()
 
         # -- general structure --
         self._x_size = input_size
@@ -31,9 +32,10 @@ class LightningDenseClassifier(pl.LightningModule):
         layer_list.append(torch.nn.Linear(self._x_size, self._hl_size))
 
         # hidden layers
-        for i in range(self._nb_layer - 1):
+        for _ in range(self._nb_layer - 1):
             layer_list.append(torch.nn.Linear(self._hl_size, self._hl_size))
-            # in case of ReLU, dropout should be applied before for computational efficiency https://sebastianraschka.com/faq/docs/dropout-activation.html
+            # in case of ReLU, dropout should be applied before for computational efficiency
+            # https://sebastianraschka.com/faq/docs/dropout-activation.html
             layer_list.append(torch.nn.ReLU())
             layer_list.append(torch.nn.Dropout(self._dropout_rate))
 
@@ -45,19 +47,6 @@ class LightningDenseClassifier(pl.LightningModule):
 
         return model
 
-# TO ADAPT
-# model.add(tf.keras.Input(shape=(self._x_size,)))
-
-# for i in range(self._nb_layer):
-#     model.add(tf.keras.layers.Dense(
-#         units=self._hl_size,
-#         activation="relu",
-#         kernel_regularizer=tf.keras.regularizers.L2(l2=self._l2_scale),
-#         name="dense_{}".format(i)
-#         ))
-#     model.add(tf.keras.layers.Dropout(self._dropout_rate))
-
-
     def configure_optimizers(self):
         """https://pytorch.org/docs/stable/optim.html"""
         optimizer = torch.optim.Adam(
@@ -66,3 +55,91 @@ class LightningDenseClassifier(pl.LightningModule):
             weight_decay=self._l2_scale
             )
         return optimizer
+
+    def forward(self, x):
+        """Return probabilities"""
+        return F.softmax(self._forward_train(x))
+
+    def forward_train(self, x):
+        """Return logits"""
+        return self._pt_model(x)
+
+    def training_step(self, train_batch, batch_idx):
+        "Do things each step."
+        x, y = train_batch
+        logits = self.forward_train(x) # do not call forward directly?
+        loss = F.cross_entropy(logits, y)
+        # changing "step" for x-axis change
+        metrics = {
+            "train_loss_epoch" : loss,
+            "step" : self.current_epoch + 1
+            }
+        self.log_dict(metrics, on_step=False, on_epoch=True)
+        return loss
+
+    def validation_step(self, val_batch, batch_idx):
+        x, y = val_batch
+        logits = self.forward_train(x)
+        loss = F.cross_entropy(logits, y)
+        metrics = {
+            "valid_loss_epoch" : loss,
+            "step" : self.current_epoch + 1
+            }
+        self.log_dict(metrics, on_step=False, on_epoch=True)
+
+#TODO : add accuracy to validation step. Use old method or torchmetrics?
+
+
+# class LightningMNISTClassifier(pl.LightningModule):
+
+#   def __init__(self):
+#     super().__init__()
+
+#     # mnist images are (1, 28, 28) (channels, width, height)
+#     self.layer_1 = torch.nn.Linear(28 * 28, 128)
+#     self.layer_2 = torch.nn.Linear(128, 256)
+#     self.layer_3 = torch.nn.Linear(256, 10)
+
+#   def forward(self, x):
+#       batch_size, channels, width, height = x.size()
+
+#       # (b, 1, 28, 28) -> (b, 1*28*28)
+#       x = x.view(batch_size, -1)
+
+#       # layer 1 (b, 1*28*28) -> (b, 128)
+#       x = self.layer_1(x)
+#       x = torch.relu(x)
+
+#       # layer 2 (b, 128) -> (b, 256)
+#       x = self.layer_2(x)
+#       x = torch.relu(x)
+
+#       # layer 3 (b, 256) -> (b, 10)
+#       x = self.layer_3(x)
+
+#       # probability distribution over labels
+#       x = torch.log_softmax(x, dim=1)
+
+#       return x
+
+#   def forward_train(self, x):
+#       batch_size, channels, width, height = x.size()
+
+#       # (b, 1, 28, 28) -> (b, 1*28*28)
+#       x = x.view(batch_size, -1)
+
+#       # layer 1 (b, 1*28*28) -> (b, 128)
+#       x = self.layer_1(x)
+#       x = torch.relu(x)
+
+#       # layer 2 (b, 128) -> (b, 256)
+#       x = self.layer_2(x)
+#       x = torch.relu(x)
+
+#       # layer 3 (b, 256) -> (b, 10)
+#       x = self.layer_3(x)
+
+        ### NO SOFTMAX ###
+
+#       return x
+

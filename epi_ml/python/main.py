@@ -1,4 +1,8 @@
-import tensorflow as tf #import first because of library linking (cuda) reasons
+import torch #import first because of library linking (cuda) reasons
+from torch.utils.data import TensorDataset
+from torch.utils.data import DataLoader
+import pytorch_lightning as pl
+from pytorch_lightning import loggers as pl_loggers
 
 import argparse
 import datetime
@@ -12,12 +16,12 @@ warnings.simplefilter("ignore")
 from argparseutils.directorytype import DirectoryType
 from core import metadata
 from core import data
-from core import model
-from core import trainer
+from core import pytorch_model_test
+# from core import trainer
 # from core import analysis
-from core import visualization
+# from core import visualization
 
-import pickle
+# import pickle
 
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
@@ -51,6 +55,8 @@ def main(args):
         epiml_options.metadata
         )
 
+    hparams = json.load(epiml_options.hyperparameters)
+
     # --- load useful info ---
     # hdf5_resolution = my_datasource.hdf5_resolution()
     # chroms = my_datasource.load_chrom_sizes()
@@ -79,9 +85,23 @@ def main(args):
     my_data = data.DataSetFactory.from_epidata(
         my_datasource, my_metadata, epiml_options.category, oversample=True, min_class_size=10
         )
+
     to_display = set(["assay", epiml_options.category])
     for category in to_display:
         my_metadata.display_labels(category)
+
+    train_dataset = TensorDataset(
+        torch.from_numpy(my_data.train.signals),
+        torch.from_numpy(my_data.train.labels)
+        )
+
+    valid_dataset = TensorDataset(
+        torch.from_numpy(my_data.validation.signals),
+        torch.from_numpy(my_data.validation.labels)
+        )
+
+    train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True)
+    valid_dataloader = DataLoader(valid_dataset)
 
     # my_data.save_mapping(os.path.join(epiml_options.logdir, "training_mapping.tsv"))
 
@@ -95,21 +115,22 @@ def main(args):
     # analysis.assert_correct_resolution(chroms, hdf5_resolution, input_size)
 
     # --- Create a brand new model --
-    hparams = json.load(epiml_options.hyperparameters)
-    my_model = model.Dense_TF2(input_size, output_size, hparams, hl_units=1000, nb_layer=1)
-    my_model.summary()
 
-    #my_model = model.Cnn(41*49, ouput_size, (41, 49))
-    #my_model = model.BidirectionalRnn(input_size, ouput_size)
+    my_model = pytorch_model_test.LightningDenseClassifier(input_size, output_size, hparams, hl_units=1000, nb_layer=1)
 
     # --- trainer for the model ---
     
-    my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir, hparams, save_checkpoints=True)
-    my_trainer.print_hparams()
+    # my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir, hparams, save_checkpoints=True)
+    # my_trainer.print_hparams()
 
     # --- train the model ---
     before_train = datetime.datetime.now()
-    my_trainer.train()
+
+    tb_logger = pl_loggers.TensorBoardLogger(epiml_options.logdir)
+    # trainer = pl.Trainer(max_epochs=hparams.get("training_epochs", 100), logger=tb_logger)
+    trainer = pl.Trainer(max_epochs=40, logger=tb_logger)
+    trainer.fit(my_model, train_dataloader, valid_dataloader)
+
     print("training time: {}".format(datetime.datetime.now() - before_train))
 
     # --- restore old model ---

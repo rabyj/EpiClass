@@ -4,7 +4,7 @@ import json
 import io
 import os.path
 
-import tensorflow as tf
+# import tensorflow as tf
 import numpy as np
 
 from .data_source import EpiDataSource
@@ -132,14 +132,14 @@ class Metadata(object):
             i += count
         print('For a total of {} examples\n'.format(i))
 
-    def category_class_weights(self, label_category):
-        """Return class weights for the given category, ordered
-        by alphabetical order of labels.
-        """
-        counter = self.label_counter(label_category)
-        weights = np.array([class_size for label, class_size in sorted(counter.most_common())])
-        weights = 1. / (weights / np.amax(weights))
-        return tf.constant(weights, shape=[1, weights.size], dtype=tf.float32)
+    # def category_class_weights(self, label_category):
+    #     """Return class weights for the given category, ordered
+    #     by alphabetical order of labels.
+    #     """
+    #     counter = self.label_counter(label_category)
+    #     weights = np.array([class_size for label, class_size in sorted(counter.most_common())])
+    #     weights = 1. / (weights / np.amax(weights))
+    #     return tf.constant(weights, shape=[1, weights.size], dtype=tf.float32)
 
     def create_healthy_category(self):
         """Combine "disease" and "donor_health_status" to create a "healthy" category.
