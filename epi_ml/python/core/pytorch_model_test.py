@@ -2,10 +2,13 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
+from torchinfo import summary
+from torchmetrics import Accuracy, Precision, Recall, F1Score, MatthewsCorrCoef, MetricCollection
 
 class LightningDenseClassifier(pl.LightningModule):
 
     def __init__(self, input_size, output_size, hparams, hl_units=3000, nb_layer=1):
+        """Metrics expect probabilities and not logits"""
         super(LightningDenseClassifier, self).__init__()
 
         # -- general structure --
@@ -21,8 +24,18 @@ class LightningDenseClassifier(pl.LightningModule):
 
         self._pt_model = self.define_model()
 
-        # self.layer_1 = torch.nn.Linear(input_size, hl_units)
-        # self.layer_3 = torch.nn.Linear(hl_units, output_size)
+        # Used Metrics.
+        # metrics = MetricCollection([
+        #     Accuracy(num_classes=self._y_size, average="micro"),
+        #     Precision(num_classes=self._y_size, average="macro"),
+        #     Recall(num_classes=self._y_size, average="macro"),
+        #     F1Score(num_classes=self._y_size, average="macro"),
+        #     MatthewsCorrCoef(num_classes=self._y_size)
+        #     ])
+        # self.train_metrics = metrics.clone(prefix='train_')
+        # self.valid_metrics = metrics.clone(prefix='valid_')
+        # self.train_acc = Accuracy(num_classes=self._y_size, average="micro")
+        # self.valid_acc = Accuracy(num_classes=self._y_size, average="micro")
 
     def define_model(self):
         """ref : https://stackoverflow.com/questions/62937388/pytorch-dynamic-amount-of-layers"""
@@ -57,89 +70,73 @@ class LightningDenseClassifier(pl.LightningModule):
         return optimizer
 
     def forward(self, x):
-        """Return probabilities"""
-        return F.softmax(self._forward_train(x))
+        """Return probabilities."""
+        return F.softmax(self.forward_train(x))
 
     def forward_train(self, x):
-        """Return logits"""
+        """Return logits."""
         return self._pt_model(x)
 
     def training_step(self, train_batch, batch_idx):
-        "Do things each step."
+        """Return training loss and co."""
         x, y = train_batch
-        logits = self.forward_train(x) # do not call forward directly?
+        logits = self.forward_train(x)
         loss = F.cross_entropy(logits, y)
+        preds = F.softmax(logits)
+        return {"loss": loss, "preds": preds, "target": y}
+
+    def training_step_end(self, outputs):
+        """Update and log training metrics."""
+        # self.train_acc(outputs["preds"], outputs["target"])
+        # metrics = {
+        #     "train_acc" : self.train_acc,
+        #     "train_loss" : outputs["loss"],
+        #     "step" : self.current_epoch + 1
+        #     }
+
         # changing "step" for x-axis change
         metrics = {
-            "train_loss_epoch" : loss,
+            "train_loss" : outputs["loss"],
             "step" : self.current_epoch + 1
             }
         self.log_dict(metrics, on_step=False, on_epoch=True)
-        return loss
 
     def validation_step(self, val_batch, batch_idx):
+        """Return validation loss and co."""
         x, y = val_batch
         logits = self.forward_train(x)
         loss = F.cross_entropy(logits, y)
+        preds = F.softmax(logits)
+        return {"loss": loss, "preds": preds, "target": y}
+
+    def validation_step_end(self, outputs):
+        """Update and log validation metrics."""
+        # self.valid_acc(outputs["preds"], outputs["target"])
+        # metrics = {
+        #     "valid_acc" : self.valid_acc,
+        #     "valid_loss" : outputs["loss"],
+        #     "step" : self.current_epoch + 1
+        #     }
+
+        # changing "step" for x-axis change
         metrics = {
-            "valid_loss_epoch" : loss,
+            "valid_loss" : outputs["loss"],
             "step" : self.current_epoch + 1
             }
         self.log_dict(metrics, on_step=False, on_epoch=True)
 
-#TODO : add accuracy to validation step. Use old method or torchmetrics?
+    # def validation_epoch_end(self) -> None:
+    #     """Reset torchmetric metrics."""
+    #     self.train_acc.reset()
+    #     self.valid_acc.reset()
 
+    def print_info_summary(self, batch_size=1):
+        """Print torchinfo summary."""
+        print("--MODEL SUMMARY--")
+        summary(
+            model=self,
+            input_size=(batch_size, self._x_size),
+            col_names=["input_size", "output_size", "num_params"]
+            )
 
-# class LightningMNISTClassifier(pl.LightningModule):
-
-#   def __init__(self):
-#     super().__init__()
-
-#     # mnist images are (1, 28, 28) (channels, width, height)
-#     self.layer_1 = torch.nn.Linear(28 * 28, 128)
-#     self.layer_2 = torch.nn.Linear(128, 256)
-#     self.layer_3 = torch.nn.Linear(256, 10)
-
-#   def forward(self, x):
-#       batch_size, channels, width, height = x.size()
-
-#       # (b, 1, 28, 28) -> (b, 1*28*28)
-#       x = x.view(batch_size, -1)
-
-#       # layer 1 (b, 1*28*28) -> (b, 128)
-#       x = self.layer_1(x)
-#       x = torch.relu(x)
-
-#       # layer 2 (b, 128) -> (b, 256)
-#       x = self.layer_2(x)
-#       x = torch.relu(x)
-
-#       # layer 3 (b, 256) -> (b, 10)
-#       x = self.layer_3(x)
-
-#       # probability distribution over labels
-#       x = torch.log_softmax(x, dim=1)
-
-#       return x
-
-#   def forward_train(self, x):
-#       batch_size, channels, width, height = x.size()
-
-#       # (b, 1, 28, 28) -> (b, 1*28*28)
-#       x = x.view(batch_size, -1)
-
-#       # layer 1 (b, 1*28*28) -> (b, 128)
-#       x = self.layer_1(x)
-#       x = torch.relu(x)
-
-#       # layer 2 (b, 128) -> (b, 256)
-#       x = self.layer_2(x)
-#       x = torch.relu(x)
-
-#       # layer 3 (b, 256) -> (b, 10)
-#       x = self.layer_3(x)
-
-        ### NO SOFTMAX ###
-
-#       return x
-
+#TODO : use class indices instead of one-hots for cross entropy loss computation

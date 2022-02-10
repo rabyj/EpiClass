@@ -17,7 +17,7 @@ from argparseutils.directorytype import DirectoryType
 from core import metadata
 from core import data
 from core import pytorch_model_test
-# from core import trainer
+from core.trainer import define_callbacks
 # from core import analysis
 # from core import visualization
 
@@ -39,7 +39,7 @@ def main(args):
     begin = datetime.datetime.now()
     print("begin {}".format(begin))
 
-    # --- parse params ---
+    # --- PARSE params ---
     epiml_options = parse_arguments(args)
 
     # if only want to convert confusion matrix csv to png
@@ -48,7 +48,7 @@ def main(args):
     # analysis.convert_matrix_csv_to_png(in_path, out_path)
     # sys.exit()
 
-    # --- load external files ---
+    # --- LOAD external files ---
     my_datasource = data.EpiDataSource(
         epiml_options.hdf5,
         epiml_options.chromsize,
@@ -57,11 +57,11 @@ def main(args):
 
     hparams = json.load(epiml_options.hyperparameters)
 
-    # --- load useful info ---
+    # --- LOAD useful info ---
     # hdf5_resolution = my_datasource.hdf5_resolution()
     # chroms = my_datasource.load_chrom_sizes()
 
-    # --- load data ---
+    # --- LOAD DATA ---
     my_metadata = metadata.Metadata.from_epidatasource(my_datasource)
 
     # --- Categories creation/change ---
@@ -81,7 +81,7 @@ def main(args):
     # assays_to_remove = [os.getenv(var, "") for var in ["REMOVE_ASSAY1", "REMOVE_ASSAY2", "REMOVE_ASSAY3"]]
     # my_metadata.remove_category_subsets(assays_to_remove, "assay")
 
-    # --- Create training/validation/test sets (and change metadata according to what is used) ---
+    # --- CREATE training/validation/test SETS (and change metadata according to what is used) ---
     my_data = data.DataSetFactory.from_epidata(
         my_datasource, my_metadata, epiml_options.category, oversample=True, min_class_size=10
         )
@@ -100,12 +100,19 @@ def main(args):
         torch.from_numpy(my_data.validation.labels)
         )
 
+    print(
+        torch.from_numpy(my_data.train.signals).dtype,
+        torch.from_numpy(my_data.train.labels).dtype,
+        torch.from_numpy(my_data.validation.signals).dtype,
+        torch.from_numpy(my_data.validation.labels).dtype
+    )
+
     train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True)
-    valid_dataloader = DataLoader(valid_dataset)
+    valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset))
 
-    # my_data.save_mapping(os.path.join(epiml_options.logdir, "training_mapping.tsv"))
+    my_data.save_mapping(os.path.join(epiml_options.logdir, "training_mapping.tsv"))
 
-    # --- define sizes for input and output layers of the network ---
+    # --- DEFINE sizes for input and output LAYERS of the network ---
     input_size = my_data.train.signals[0].size
     output_size = my_data.train.labels[0].size
     # hl_units = int(os.getenv("LAYER_SIZE", default="3000"))
@@ -114,21 +121,27 @@ def main(args):
     # --- Assert the resolution is correct so the importance bedgraph works later ---
     # analysis.assert_correct_resolution(chroms, hdf5_resolution, input_size)
 
-    # --- Create a brand new model --
-
+    # --- CREATE a brand new MODEL ---
     my_model = pytorch_model_test.LightningDenseClassifier(input_size, output_size, hparams, hl_units=1000, nb_layer=1)
 
-    # --- trainer for the model ---
-    
-    # my_trainer = trainer.Trainer(my_data, my_model, epiml_options.logdir, hparams, save_checkpoints=True)
-    # my_trainer.print_hparams()
+    print("--MODEL STRUCTURE--\n", my_model)
+    my_model.print_info_summary()
 
-    # --- train the model ---
+    # --- DEFINE training CALLBACKS ---
+    callbacks = define_callbacks(early_stop_limit=hparams.get("early_stop_limit", 15))
+    tb_logger = pl_loggers.TensorBoardLogger(epiml_options.logdir)
+
+    # --- TRAIN the model ---
     before_train = datetime.datetime.now()
 
-    tb_logger = pl_loggers.TensorBoardLogger(epiml_options.logdir)
-    # trainer = pl.Trainer(max_epochs=hparams.get("training_epochs", 100), logger=tb_logger)
-    trainer = pl.Trainer(max_epochs=40, logger=tb_logger)
+    trainer = pl.Trainer(
+        max_epochs=hparams.get("training_epochs", 100),
+        check_val_every_n_epoch=hparams.get("measure_frequency", 1),
+        logger=tb_logger,
+        callbacks=callbacks,
+        enable_model_summary=False
+        )
+
     trainer.fit(my_model, train_dataloader, valid_dataloader)
 
     print("training time: {}".format(datetime.datetime.now() - before_train))

@@ -1,6 +1,8 @@
+import pytorch_lightning.callbacks as torch_callbacks
+
 import numpy as np
 import pandas
-import tensorflow as tf
+# import tensorflow as tf
 import os.path
 from scipy import signal
 from abc import ABC
@@ -9,73 +11,39 @@ from datetime import datetime
 
 from .data import DataSet
 
-class Trainer(object):
-    """Handle training"""
-    def __init__(self, data: DataSet, model, logdir, hparams, save_checkpoints=False):
-        self._data = data
-        self._model = model.keras_model
-        self._logdir = logdir
-        self._training_epochs = hparams.get("training_epochs", 50)
-        self._batch_size = hparams.get("batch_size", 64)
-        self._valid_frequency = hparams.get("measure_frequency", 1)
-        self._early_stop_limit = hparams.get("early_stop_limit", 15)
-        self._checkpoints = save_checkpoints
-        self._callbacks = self._init_callbacks()
+#TODO Print used hyperparameters
+#TODO implement correct save/load (full save vs weight save only handling?)
 
-    def _init_callbacks(self):
-        """Return Keras training callbacks"""
-        callbacks = []
-        callbacks.append(tf.keras.callbacks.EarlyStopping(
-            monitor="val_acc",
-            patience=self._early_stop_limit,
-            mode="max",
-            restore_best_weights=True
-            ))
-        if self._checkpoints:
-            callbacks.append(tf.keras.callbacks.ModelCheckpoint(
-                filepath=os.path.join(self._logdir, "save.ckpt"),
-                monitor="val_acc",
-                mode="max",
-                save_best_only=True,
-                save_weights_only=True
-            ))
-        callbacks.append(tf.keras.callbacks.TensorBoard(
-            log_dir=os.path.join(self._logdir, "scalars", datetime.today().strftime("%Y%m%d-%H%M%S"))
-            ))
-        return callbacks
+def define_callbacks(early_stop_limit: int):
+    """Returns list of PyTorch trainer callbacks.
 
-    def train(self, full_save=True):
-        """Fit model to data."""
-        self._model.fit(
-            x=self._data.train.signals,
-            y=self._data.train.labels,
-            batch_size=self._batch_size,
-            epochs=self._training_epochs,
-            validation_data=(self._data.validation.signals, self._data.validation.labels),
-            validation_freq=self._valid_frequency,
-            callbacks=self._callbacks,
-            verbose=2
-            )
+    RichModelSummary, EarlyStopping, ModelCheckpoint, RichProgressBar
+    """
+    summary = torch_callbacks.RichModelSummary(max_depth=2)
 
-        if full_save:
-            self.save_full_model()
+    monitored_value="valid_loss"
+    mode="min"
 
-    def save_full_model(self):
-        """Save full model to logdir."""
-        self._model.save(self._logdir)
+    early_stop = torch_callbacks.EarlyStopping(
+        monitor=monitored_value,
+        mode=mode,
+        patience=early_stop_limit,
+        check_on_train_epoch_end=False
+    )
 
-    def restore_model(self):
-        """Try to restore model from logdir."""
-        self._model = tf.keras.models.load_model(self._logdir)
+    checkpoint = torch_callbacks.ModelCheckpoint(
+        monitor=monitored_value,
+        mode=mode,
+        save_last=True,
+        auto_insert_metric_name=True,
+        every_n_epochs=1,
+        save_top_k=2,
+        save_on_train_epoch_end=False
+    )
 
-    def print_hparams(self):
-        """Print training hyperparameters."""
-        print("training_epochs : {}".format(self._training_epochs))
-        print("batch_size : {}".format(self._batch_size))
-        print("measure_frequency : {}".format(self._valid_frequency))
-        print("early_stop_limit : {}".format(self._early_stop_limit))
+    bar = torch_callbacks.RichProgressBar()
 
-
+    return [summary, early_stop, checkpoint, bar]
 
 
 # class Trainer(object):
@@ -202,14 +170,14 @@ class Trainer(object):
 
 #                     if nb_since_max == self._hparams.get("early_stop_limit"):
 #                         break
-                    
+
 #                     print("epoch {0}, batch training accuracy {1:.4f}, validation accuracy {2:.4f} {3}".format(epoch, t_acc, v_acc, datetime.datetime.now()))
 
 #                 else:
 #                     # train
 #                     _, _, summary = self._sess.run([self._model.minimize, self._model.loss, self._summary], feed_dict=self._make_dict(batch_xs, batch_ys))
 #                     self._writer.add_summary(summary, epoch)
-                
+
 #             if nb_since_max == self._hparams.get("early_stop_limit"):
 #                 break
 
@@ -262,4 +230,3 @@ class Trainer(object):
 
 #         for idx, output in enumerate(outputs):
 #             vis.run(output, self._data.train.labels, self._sess, self._writer, str(idx))
-
