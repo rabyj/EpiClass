@@ -4,8 +4,10 @@ from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from pytorch_lightning import loggers as pl_loggers
 
+import numpy as np
+
 import argparse
-import datetime
+from datetime import datetime
 import json
 import os
 import os.path
@@ -16,9 +18,9 @@ warnings.simplefilter("ignore")
 from argparseutils.directorytype import DirectoryType
 from core import metadata
 from core import data
-from core import pytorch_model_test
-from core.trainer import define_callbacks
-# from core import analysis
+from core.pytorch_model_test import LightningDenseClassifier
+from core.trainer import MyTrainer, define_callbacks
+from core import analysis
 # from core import visualization
 
 # import pickle
@@ -36,7 +38,7 @@ def parse_arguments(args: list) -> argparse.Namespace:
 
 def main(args):
     """main called from command line, edit to change behavior"""
-    begin = datetime.datetime.now()
+    begin = datetime.now()
     print("begin {}".format(begin))
 
     # --- PARSE params ---
@@ -92,20 +94,13 @@ def main(args):
 
     train_dataset = TensorDataset(
         torch.from_numpy(my_data.train.signals),
-        torch.from_numpy(my_data.train.labels)
+        torch.from_numpy(np.argmax(my_data.train.labels, axis=-1))
         )
 
     valid_dataset = TensorDataset(
         torch.from_numpy(my_data.validation.signals),
-        torch.from_numpy(my_data.validation.labels)
+        torch.from_numpy(np.argmax(my_data.validation.labels, axis=-1))
         )
-
-    print(
-        torch.from_numpy(my_data.train.signals).dtype,
-        torch.from_numpy(my_data.train.labels).dtype,
-        torch.from_numpy(my_data.validation.signals).dtype,
-        torch.from_numpy(my_data.validation.labels).dtype
-    )
 
     train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True)
     valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset))
@@ -122,7 +117,7 @@ def main(args):
     # analysis.assert_correct_resolution(chroms, hdf5_resolution, input_size)
 
     # --- CREATE a brand new MODEL ---
-    my_model = pytorch_model_test.LightningDenseClassifier(input_size, output_size, hparams, hl_units=1000, nb_layer=1)
+    my_model = LightningDenseClassifier(input_size, output_size, hparams, hl_units=1000, nb_layer=1)
 
     print("--MODEL STRUCTURE--\n", my_model)
     my_model.print_info_summary()
@@ -132,27 +127,47 @@ def main(args):
     tb_logger = pl_loggers.TensorBoardLogger(epiml_options.logdir)
 
     # --- TRAIN the model ---
-    before_train = datetime.datetime.now()
 
-    trainer = pl.Trainer(
-        max_epochs=hparams.get("training_epochs", 100),
-        check_val_every_n_epoch=hparams.get("measure_frequency", 1),
-        logger=tb_logger,
-        callbacks=callbacks,
-        enable_model_summary=False
-        )
 
-    trainer.fit(my_model, train_dataloader, valid_dataloader)
+    best_checkpoint_file = os.path.join(epiml_options.logdir, "best_checkpoint.list")
 
-    print("training time: {}".format(datetime.datetime.now() - before_train))
+    # is_training = hparams.get("is_training", True)
+    is_training = False
+    if is_training:
+        before_train = datetime.now()
+        trainer = MyTrainer(
+            max_epochs=10,
+            check_val_every_n_epoch=hparams.get("measure_frequency", 1),
+            logger=tb_logger,
+            callbacks=callbacks,
+            enable_model_summary=False
+            )
+
+        trainer.fit(my_model, train_dataloader, valid_dataloader)
+
+        trainer.save_model_path()
+
+        print("training time: {}".format(datetime.now() - before_train))
 
     # --- restore old model ---
-    # my_trainer.restore()
+    # TODO fix model reloading
+    if not is_training:
+        print("No training, loading last best model from given logdir")
+        my_model = LightningDenseClassifier.restore_model(epiml_options.logdir)
 
     # --- outputs ---
     # my_analyzer = analysis.Analysis(my_trainer)
 
     # --- Print metrics ---
+
+    #TODO : make sure func and module metrics give same value (accumulation reset correctly)
+
+    train_metrics = my_model.compute_metrics(train_dataset)
+    valid_metrics = my_model.compute_metrics(valid_dataset)
+    analysis.print_metrics(train_metrics, "TRAINING")
+    analysis.print_metrics(valid_metrics, "VALIDATION")
+
+
     # my_analyzer.training_metrics()
     # my_analyzer.validation_metrics()
     # my_analyzer.test_metrics()
@@ -162,9 +177,9 @@ def main(args):
     # outpath2 = os.path.join(epiml_options.logdir, "validation_predict.csv")
     # outpath3 = os.path.join(epiml_options.logdir, "test_predict.csv")
 
-    # my_analyzer.training_prediction(outpath1)
-    # my_analyzer.validation_prediction(outpath2)
-    # my_analyzer.test_prediction(outpath3)
+    # my_analyzer.write_training_prediction(outpath1)
+    # my_analyzer.write_validation_prediction(outpath2)
+    # my_analyzer.write_test_prediction(outpath3)
 
     # --- Create confusion matrix ---
     # my_analyzer.training_confusion_matrix(epiml_options.logdir)
@@ -185,7 +200,7 @@ def main(args):
     # bedgraph_path = os.path.join(epiml_options.logdir, "importance.bedgraph")
     # analysis.values_to_bedgraph(importance, chroms, hdf5_resolution, bedgraph_path)
 
-    end = datetime.datetime.now()
+    end = datetime.now()
     print("end {}".format(end))
     print("Main() time: {}".format(end - begin))
 

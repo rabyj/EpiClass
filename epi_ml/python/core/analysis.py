@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import sklearn.metrics
-import tensorflow as tf
 
 
 class Analysis(object):
@@ -28,13 +27,13 @@ class Analysis(object):
         print("Test set metrics")
         metrics(self._trainer.test_acc(), self._trainer.test_pred(), self._data.test)
 
-    def training_prediction(self, path):
+    def write_training_prediction(self, path):
         write_pred_table(self._trainer.training_pred(), self._data.classes, self._data.train, path)
 
-    def validation_prediction(self, path):
+    def write_validation_prediction(self, path):
         write_pred_table(self._trainer.validation_pred(), self._data.classes, self._data.validation, path)
 
-    def test_prediction(self, path):
+    def write_test_prediction(self, path):
         write_pred_table(self._trainer.test_pred(), self._data.classes, self._data.test, path)
 
     def training_confusion_matrix(self, logdir, name="training_confusion_matrix"):
@@ -170,6 +169,15 @@ def metrics(acc, pred, data_subset):
     print("f1_score: {:.3f}".format(f1))
     print("MCC: {:.3f}".format(mcc))
     print("{:.3f}\t{:.3f}\t{:.3f}\t{:.3f}\t{:.3f}".format(acc, precision, recall, f1, mcc))
+
+def print_metrics(metric_dict, name):
+    print("--- {} METRICS ---".format(name))
+    vals = []
+    for metric, val in metric_dict.items():
+        str_val = "{:.3f}".format(val.item())
+        print(metric, str_val)
+        vals.append(str_val)
+    print(*vals)
 
 def importance(w):
     #garson algorithm, w for weights

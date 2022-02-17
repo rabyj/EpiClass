@@ -5,11 +5,15 @@ import pytorch_lightning as pl
 from torchinfo import summary
 from torchmetrics import Accuracy, Precision, Recall, F1Score, MatthewsCorrCoef, MetricCollection
 
+import os.path
+
 class LightningDenseClassifier(pl.LightningModule):
 
     def __init__(self, input_size, output_size, hparams, hl_units=3000, nb_layer=1):
         """Metrics expect probabilities and not logits"""
         super(LightningDenseClassifier, self).__init__()
+
+        self.save_hyperparameters()
 
         # -- general structure --
         self._x_size = input_size
@@ -24,18 +28,19 @@ class LightningDenseClassifier(pl.LightningModule):
 
         self._pt_model = self.define_model()
 
-        # Used Metrics.
-        # metrics = MetricCollection([
-        #     Accuracy(num_classes=self._y_size, average="micro"),
-        #     Precision(num_classes=self._y_size, average="macro"),
-        #     Recall(num_classes=self._y_size, average="macro"),
-        #     F1Score(num_classes=self._y_size, average="macro"),
-        #     MatthewsCorrCoef(num_classes=self._y_size)
-        #     ])
+        # Used Metrics
+        metrics = MetricCollection([
+            Accuracy(num_classes=self._y_size, average="micro"),
+            Precision(num_classes=self._y_size, average="macro"),
+            Recall(num_classes=self._y_size, average="macro"),
+            F1Score(num_classes=self._y_size, average="macro"),
+            MatthewsCorrCoef(num_classes=self._y_size)
+            ])
         # self.train_metrics = metrics.clone(prefix='train_')
         # self.valid_metrics = metrics.clone(prefix='valid_')
-        # self.train_acc = Accuracy(num_classes=self._y_size, average="micro")
-        # self.valid_acc = Accuracy(num_classes=self._y_size, average="micro")
+        self.metrics = metrics
+        self.train_acc = Accuracy(num_classes=self._y_size, average="micro")
+        self.valid_acc = Accuracy(num_classes=self._y_size, average="micro")
 
     def define_model(self):
         """ref : https://stackoverflow.com/questions/62937388/pytorch-dynamic-amount-of-layers"""
@@ -69,6 +74,7 @@ class LightningDenseClassifier(pl.LightningModule):
             )
         return optimizer
 
+
     def forward(self, x):
         """Return probabilities."""
         return F.softmax(self.forward_train(x))
@@ -76,6 +82,8 @@ class LightningDenseClassifier(pl.LightningModule):
     def forward_train(self, x):
         """Return logits."""
         return self._pt_model(x)
+
+
 
     def training_step(self, train_batch, batch_idx):
         """Return training loss and co."""
@@ -87,15 +95,11 @@ class LightningDenseClassifier(pl.LightningModule):
 
     def training_step_end(self, outputs):
         """Update and log training metrics."""
-        # self.train_acc(outputs["preds"], outputs["target"])
-        # metrics = {
-        #     "train_acc" : self.train_acc,
-        #     "train_loss" : outputs["loss"],
-        #     "step" : self.current_epoch + 1
-        #     }
+        self.train_acc(outputs["preds"], outputs["target"])
 
         # changing "step" for x-axis change
         metrics = {
+            "train_acc" : self.train_acc,
             "train_loss" : outputs["loss"],
             "step" : self.current_epoch + 1
             }
@@ -111,24 +115,17 @@ class LightningDenseClassifier(pl.LightningModule):
 
     def validation_step_end(self, outputs):
         """Update and log validation metrics."""
-        # self.valid_acc(outputs["preds"], outputs["target"])
-        # metrics = {
-        #     "valid_acc" : self.valid_acc,
-        #     "valid_loss" : outputs["loss"],
-        #     "step" : self.current_epoch + 1
-        #     }
+        self.valid_acc(outputs["preds"], outputs["target"])
 
         # changing "step" for x-axis change
         metrics = {
+            "valid_acc" : self.valid_acc,
             "valid_loss" : outputs["loss"],
             "step" : self.current_epoch + 1
             }
         self.log_dict(metrics, on_step=False, on_epoch=True)
 
-    # def validation_epoch_end(self) -> None:
-    #     """Reset torchmetric metrics."""
-    #     self.train_acc.reset()
-    #     self.valid_acc.reset()
+
 
     def print_info_summary(self, batch_size=1):
         """Print torchinfo summary."""
@@ -139,4 +136,21 @@ class LightningDenseClassifier(pl.LightningModule):
             col_names=["input_size", "output_size", "num_params"]
             )
 
-#TODO : use class indices instead of one-hots for cross entropy loss computation
+
+    def compute_metrics(self, dataset):
+        """Return dict of metrics for given dataset."""
+        x, y = dataset[:]
+        preds = self(x)
+        return self.metrics(preds, y)
+
+
+    @classmethod
+    def restore_model(cls, logdir):
+        """Load the checkpoint of the best model from the last run."""
+
+        path = os.path.join(logdir, "best_checkpoint.list")
+        with open(path, "r") as ckpt_file:
+            lines = ckpt_file.read().splitlines()
+            ckpt_path = lines[-1].split(' ')[0]
+
+        return LightningDenseClassifier.load_from_checkpoint(ckpt_path)
