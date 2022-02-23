@@ -12,25 +12,35 @@ from datetime import datetime
 from .data import DataSet
 from core.pytorch_model_test import LightningDenseClassifier
 
-#TODO Print used hyperparameters
-#TODO implement correct save/load (full save vs weight save only handling?)
-
 class MyTrainer(pl.Trainer):
 
-    def __init__(self, **kwargs):
+    def __init__(self, general_log_dir : str, last_trained_model : pl.LightningModule, **kwargs):
         """Metrics expect probabilities and not logits"""
         super().__init__(**kwargs)
 
         self.best_checkpoint_file = os.path.join(
-            self.log_dir,
+            general_log_dir,
             "best_checkpoint.list"
             )
 
+        self.model = last_trained_model
+
     def save_model_path(self):
         """Save best checkpoint path to a file."""
+        print("Saving model to {}".format(self.checkpoint_callback.best_model_path))
         with open(self.best_checkpoint_file, "a") as ckpt_file:
             ckpt_file.write("{} {}\n".format(self.checkpoint_callback.best_model_path, datetime.now()))
 
+    def print_hyperparameters(self):
+        """Print training hyperparameters."""
+        stop_callback = self.early_stopping_callback
+        print("--TRAINING HYPERPARAMETERS--")
+        print("L2 scale : {}".format(self.model.l2_scale))
+        print("Dropout rate : {}".format(self.model.dropout_rate))
+        print("Learning rate : {}".format(self.model.learning_rate))
+        print("Patience : {}".format(stop_callback.patience))
+        print("Monitored value : {}".format(stop_callback.monitor))
+        print("Batch size : {}".format(self.num_training_batches))
 
 
 def define_callbacks(early_stop_limit: int):
@@ -38,7 +48,7 @@ def define_callbacks(early_stop_limit: int):
 
     RichModelSummary, EarlyStopping, ModelCheckpoint, RichProgressBar
     """
-    summary = torch_callbacks.RichModelSummary(max_depth=2)
+    summary = torch_callbacks.RichModelSummary(max_depth=3)
 
     monitored_value="valid_loss"
     mode="min"

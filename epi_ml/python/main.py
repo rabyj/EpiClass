@@ -4,6 +4,8 @@ from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from pytorch_lightning import loggers as pl_loggers
 
+# import torchmetrics
+
 import numpy as np
 
 import argparse
@@ -92,15 +94,13 @@ def main(args):
     for category in to_display:
         my_metadata.display_labels(category)
 
-    train_dataset = TensorDataset(
-        torch.from_numpy(my_data.train.signals),
-        torch.from_numpy(np.argmax(my_data.train.labels, axis=-1))
-        )
+    train_signals = torch.from_numpy(my_data.train.signals)
+    train_classes = torch.from_numpy(np.argmax(my_data.train.labels, axis=-1))
+    train_dataset = TensorDataset(train_signals, train_classes)
 
-    valid_dataset = TensorDataset(
-        torch.from_numpy(my_data.validation.signals),
-        torch.from_numpy(np.argmax(my_data.validation.labels, axis=-1))
-        )
+    valid_signals = torch.from_numpy(my_data.validation.signals)
+    valid_classes = torch.from_numpy(np.argmax(my_data.validation.labels, axis=-1))
+    valid_dataset = TensorDataset(valid_signals, valid_classes)
 
     train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True)
     valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset))
@@ -122,27 +122,27 @@ def main(args):
     print("--MODEL STRUCTURE--\n", my_model)
     my_model.print_info_summary()
 
-    # --- DEFINE training CALLBACKS ---
-    callbacks = define_callbacks(early_stop_limit=hparams.get("early_stop_limit", 15))
-    tb_logger = pl_loggers.TensorBoardLogger(epiml_options.logdir)
-
     # --- TRAIN the model ---
-
-
-    best_checkpoint_file = os.path.join(epiml_options.logdir, "best_checkpoint.list")
 
     # is_training = hparams.get("is_training", True)
     is_training = False
     if is_training:
+
+        callbacks = define_callbacks(early_stop_limit=hparams.get("early_stop_limit", 15))
+        tb_logger = pl_loggers.TensorBoardLogger(epiml_options.logdir)
+
         before_train = datetime.now()
         trainer = MyTrainer(
-            max_epochs=10,
+            general_log_dir=epiml_options.logdir,
+            last_trained_model=my_model,
+            max_epochs=hparams.get("training_epochs", 50),
             check_val_every_n_epoch=hparams.get("measure_frequency", 1),
             logger=tb_logger,
             callbacks=callbacks,
             enable_model_summary=False
             )
 
+        trainer.print_hyperparameters()
         trainer.fit(my_model, train_dataloader, valid_dataloader)
 
         trainer.save_model_path()
@@ -150,7 +150,6 @@ def main(args):
         print("training time: {}".format(datetime.now() - before_train))
 
     # --- restore old model ---
-    # TODO fix model reloading
     if not is_training:
         print("No training, loading last best model from given logdir")
         my_model = LightningDenseClassifier.restore_model(epiml_options.logdir)
@@ -160,13 +159,17 @@ def main(args):
 
     # --- Print metrics ---
 
-    #TODO : make sure func and module metrics give same value (accumulation reset correctly)
-
     train_metrics = my_model.compute_metrics(train_dataset)
     valid_metrics = my_model.compute_metrics(valid_dataset)
     analysis.print_metrics(train_metrics, "TRAINING")
     analysis.print_metrics(valid_metrics, "VALIDATION")
 
+    # test how to compute fonctional metric
+    # another_trainer = pl.Trainer()
+    # preds = another_trainer.predict(my_model, valid_signals)
+    # predicted_classes = torch.tensor([torch.argmax(pred) for pred in preds])
+    # func_acc = torchmetrics.functional.accuracy(predicted_classes, valid_classes)
+    # print(func_acc)
 
     # my_analyzer.training_metrics()
     # my_analyzer.validation_metrics()

@@ -13,8 +13,6 @@ class LightningDenseClassifier(pl.LightningModule):
         """Metrics expect probabilities and not logits"""
         super(LightningDenseClassifier, self).__init__()
 
-        self.save_hyperparameters()
-
         # -- general structure --
         self._x_size = input_size
         self._y_size = output_size
@@ -22,9 +20,11 @@ class LightningDenseClassifier(pl.LightningModule):
         self._nb_layer = nb_layer # number of intermediary/hidden layers
 
         # -- hyperparameters --
-        self._l2_scale = hparams.get("l2_scale", 0.01)
-        self._dropout_rate = 1 - hparams.get("keep_prob", 0.5)
-        self._learning_rate = hparams.get("learning_rate", 1e-5)
+        self.l2_scale = hparams.get("l2_scale", 0.01)
+        self.dropout_rate = 1 - hparams.get("keep_prob", 0.5)
+        self.learning_rate = hparams.get("learning_rate", 1e-5)
+
+        self.save_hyperparameters()
 
         self._pt_model = self.define_model()
 
@@ -42,6 +42,7 @@ class LightningDenseClassifier(pl.LightningModule):
         self.train_acc = Accuracy(num_classes=self._y_size, average="micro")
         self.valid_acc = Accuracy(num_classes=self._y_size, average="micro")
 
+    # --- Define general model structure ---
     def define_model(self):
         """ref : https://stackoverflow.com/questions/62937388/pytorch-dynamic-amount-of-layers"""
         layer_list = []
@@ -55,7 +56,7 @@ class LightningDenseClassifier(pl.LightningModule):
             # in case of ReLU, dropout should be applied before for computational efficiency
             # https://sebastianraschka.com/faq/docs/dropout-activation.html
             layer_list.append(torch.nn.ReLU())
-            layer_list.append(torch.nn.Dropout(self._dropout_rate))
+            layer_list.append(torch.nn.Dropout(self.dropout_rate))
 
         # output layer
         layer_list.append(torch.nn.Linear(self._hl_size, self._y_size))
@@ -69,12 +70,13 @@ class LightningDenseClassifier(pl.LightningModule):
         """https://pytorch.org/docs/stable/optim.html"""
         optimizer = torch.optim.Adam(
             self.parameters(),
-            lr=self._learning_rate,
-            weight_decay=self._l2_scale
+            lr=self.learning_rate,
+            weight_decay=self.l2_scale
             )
         return optimizer
 
 
+    # --- Define format of output ---
     def forward(self, x):
         """Return probabilities."""
         return F.softmax(self.forward_train(x))
@@ -84,7 +86,7 @@ class LightningDenseClassifier(pl.LightningModule):
         return self._pt_model(x)
 
 
-
+    # --- Define how training and validation is done, what loss is used ---
     def training_step(self, train_batch, batch_idx):
         """Return training loss and co."""
         x, y = train_batch
@@ -126,7 +128,7 @@ class LightningDenseClassifier(pl.LightningModule):
         self.log_dict(metrics, on_step=False, on_epoch=True)
 
 
-
+    # --- Other information fonctions ---
     def print_info_summary(self, batch_size=1):
         """Print torchinfo summary."""
         print("--MODEL SUMMARY--")
@@ -136,21 +138,21 @@ class LightningDenseClassifier(pl.LightningModule):
             col_names=["input_size", "output_size", "num_params"]
             )
 
-
     def compute_metrics(self, dataset):
         """Return dict of metrics for given dataset."""
         x, y = dataset[:]
         preds = self(x)
         return self.metrics(preds, y)
 
-
     @classmethod
     def restore_model(cls, logdir):
         """Load the checkpoint of the best model from the last run."""
 
         path = os.path.join(logdir, "best_checkpoint.list")
+
         with open(path, "r") as ckpt_file:
             lines = ckpt_file.read().splitlines()
             ckpt_path = lines[-1].split(' ')[0]
 
+        print("Loading model from {}".format(ckpt_path))
         return LightningDenseClassifier.load_from_checkpoint(ckpt_path)
