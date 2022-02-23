@@ -1,9 +1,8 @@
-import torch #import first because of library linking (cuda) reasons
-from torch.utils.data import TensorDataset
-from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from pytorch_lightning import loggers as pl_loggers
-
+import torch
+from torch.utils.data import TensorDataset
+from torch.utils.data import DataLoader
 # import torchmetrics
 
 import numpy as np
@@ -129,7 +128,13 @@ def main(args):
     if is_training:
 
         callbacks = define_callbacks(early_stop_limit=hparams.get("early_stop_limit", 15))
-        tb_logger = pl_loggers.TensorBoardLogger(epiml_options.logdir)
+        # tb_logger = pl_loggers.TensorBoardLogger(epiml_options.logdir)
+        #api key in config file
+        comet_logger = pl_loggers.CometLogger(
+            project_name="EpiLaP",
+            save_dir=epiml_options.logdir,
+            offline=False
+        )
 
         before_train = datetime.now()
         trainer = MyTrainer(
@@ -137,13 +142,13 @@ def main(args):
             last_trained_model=my_model,
             max_epochs=hparams.get("training_epochs", 50),
             check_val_every_n_epoch=hparams.get("measure_frequency", 1),
-            logger=tb_logger,
+            logger=comet_logger,
             callbacks=callbacks,
             enable_model_summary=False
             )
 
         trainer.print_hyperparameters()
-        trainer.fit(my_model, train_dataloader, valid_dataloader)
+        trainer.fit(my_model, train_dataloaders=train_dataloader, val_dataloaders=valid_dataloader)
 
         trainer.save_model_path()
 

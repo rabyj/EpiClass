@@ -22,8 +22,14 @@ class MyTrainer(pl.Trainer):
             general_log_dir,
             "best_checkpoint.list"
             )
-
         self.model = last_trained_model
+        self.batch_size = None
+
+    def fit(self, *args, **kwargs):
+        """Base pl.Trainer.fit function, but also prints the batch size."""
+        self.batch_size = kwargs["train_dataloaders"].batch_size
+        print("Training batch size : {}".format(self.batch_size))
+        super().fit(*args, **kwargs)
 
     def save_model_path(self):
         """Save best checkpoint path to a file."""
@@ -40,7 +46,6 @@ class MyTrainer(pl.Trainer):
         print("Learning rate : {}".format(self.model.learning_rate))
         print("Patience : {}".format(stop_callback.patience))
         print("Monitored value : {}".format(stop_callback.monitor))
-        print("Batch size : {}".format(self.num_training_batches))
 
 
 def define_callbacks(early_stop_limit: int):
@@ -50,8 +55,8 @@ def define_callbacks(early_stop_limit: int):
     """
     summary = torch_callbacks.RichModelSummary(max_depth=3)
 
-    monitored_value="valid_loss"
-    mode="min"
+    monitored_value="valid_acc"
+    mode="max"
 
     early_stop = torch_callbacks.EarlyStopping(
         monitor=monitored_value,
