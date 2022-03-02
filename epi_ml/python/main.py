@@ -19,12 +19,10 @@ warnings.simplefilter("ignore")
 from argparseutils.directorytype import DirectoryType
 from core import metadata
 from core import data
-from core.pytorch_model_test import LightningDenseClassifier
+from core.model_pytorch import LightningDenseClassifier
 from core.trainer import MyTrainer, define_callbacks
 from core import analysis
 # from core import visualization
-
-# import pickle
 
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
@@ -89,6 +87,8 @@ def main(args):
         my_datasource, my_metadata, epiml_options.category, oversample=True, min_class_size=10
         )
 
+    print("Data+metadata loading time: {}".format(datetime.now() - begin))
+
     to_display = set(["assay", epiml_options.category])
     for category in to_display:
         my_metadata.display_labels(category)
@@ -109,14 +109,20 @@ def main(args):
     # --- DEFINE sizes for input and output LAYERS of the network ---
     input_size = my_data.train.signals[0].size
     output_size = my_data.train.labels[0].size
-    # hl_units = int(os.getenv("LAYER_SIZE", default="3000"))
-    # nb_layers = int(os.getenv("NB_LAYER", default="1"))
+    hl_units = int(os.getenv("LAYER_SIZE", default="3000"))
+    nb_layers = int(os.getenv("NB_LAYER", default="1"))
 
     # --- Assert the resolution is correct so the importance bedgraph works later ---
     # analysis.assert_correct_resolution(chroms, hdf5_resolution, input_size)
 
     # --- CREATE a brand new MODEL ---
-    my_model = LightningDenseClassifier(input_size, output_size, hparams, hl_units=1000, nb_layer=1)
+    my_model = LightningDenseClassifier(
+        input_size,
+        output_size,
+        hparams,
+        hl_units=hl_units,
+        nb_layer=nb_layers
+        )
 
     print("--MODEL STRUCTURE--\n", my_model)
     my_model.print_info_summary()
@@ -128,7 +134,7 @@ def main(args):
     if is_training:
 
         callbacks = define_callbacks(early_stop_limit=hparams.get("early_stop_limit", 15))
-        # tb_logger = pl_loggers.TensorBoardLogger(epiml_options.logdir)
+
         #api key in config file
         comet_logger = pl_loggers.CometLogger(
             project_name="EpiLaP",
