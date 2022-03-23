@@ -1,28 +1,28 @@
-import pytorch_lightning as pl
-from pytorch_lightning import loggers as pl_loggers
-import torch
-from torch.utils.data import TensorDataset
-from torch.utils.data import DataLoader
-# import torchmetrics
-
-import numpy as np
+"""Main"""
+import pytorch_lightning #in case GCC or CUDA needs it
 
 import argparse
+from argparseutils.directorytype import DirectoryType
 from datetime import datetime
 import json
 import os
 import os.path
 import sys
 import warnings
-warnings.simplefilter("ignore")
+warnings.simplefilter("ignore", category=FutureWarning)
 
-from argparseutils.directorytype import DirectoryType
+import numpy as np
+from pytorch_lightning import loggers as pl_loggers
+import torch
+from torch.utils.data import TensorDataset
+from torch.utils.data import DataLoader
+
 from core import metadata
 from core import data
 from core.model_pytorch import LightningDenseClassifier
 from core.trainer import MyTrainer, define_callbacks
 from core import analysis
-# from core import visualization
+
 
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
@@ -38,7 +38,7 @@ def parse_arguments(args: list) -> argparse.Namespace:
 def main(args):
     """main called from command line, edit to change behavior"""
     begin = datetime.now()
-    print("begin {}".format(begin))
+    print(f"begin {begin}")
 
     # --- PARSE params ---
     epiml_options = parse_arguments(args)
@@ -87,19 +87,22 @@ def main(args):
         my_datasource, my_metadata, epiml_options.category, oversample=True, min_class_size=10
         )
 
-    print("Data+metadata loading time: {}".format(datetime.now() - begin))
+    print(f"Data+metadata loading time: {datetime.now() - begin}")
 
     to_display = set(["assay", epiml_options.category])
     for category in to_display:
         my_metadata.display_labels(category)
 
-    train_signals = torch.from_numpy(my_data.train.signals)
-    train_classes = torch.from_numpy(np.argmax(my_data.train.labels, axis=-1))
-    train_dataset = TensorDataset(train_signals, train_classes)
 
-    valid_signals = torch.from_numpy(my_data.validation.signals)
-    valid_classes = torch.from_numpy(np.argmax(my_data.validation.labels, axis=-1))
-    valid_dataset = TensorDataset(valid_signals, valid_classes)
+    train_dataset = TensorDataset(
+        torch.from_numpy(my_data.train.signals),
+        torch.from_numpy(np.argmax(my_data.train.labels, axis=-1))
+        )
+
+    valid_dataset = TensorDataset(
+        torch.from_numpy(my_data.validation.signals),
+        torch.from_numpy(np.argmax(my_data.validation.labels, axis=-1))
+        )
 
     train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True)
     valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset))
@@ -139,7 +142,7 @@ def main(args):
         comet_logger = pl_loggers.CometLogger(
             project_name="EpiLaP",
             save_dir=epiml_options.logdir,
-            offline=False
+            offline=True
         )
 
         before_train = datetime.now()
@@ -158,24 +161,23 @@ def main(args):
 
         trainer.save_model_path()
 
-        print("training time: {}".format(datetime.now() - before_train))
+        print(f"training time: {datetime.now() - before_train}")
 
-    # --- restore old model ---
+    # --- RESTORE old model ---
     if not is_training:
         print("No training, loading last best model from given logdir")
         my_model = LightningDenseClassifier.restore_model(epiml_options.logdir)
 
-    # --- outputs ---
+    # --- OUTPUTS ---
     # my_analyzer = analysis.Analysis(my_trainer)
 
     # --- Print metrics ---
-
     train_metrics = my_model.compute_metrics(train_dataset)
     valid_metrics = my_model.compute_metrics(valid_dataset)
     analysis.print_metrics(train_metrics, "TRAINING")
     analysis.print_metrics(valid_metrics, "VALIDATION")
 
-    # test how to compute fonctional metric
+    # - test how to compute fonctional metric -
     # another_trainer = pl.Trainer()
     # preds = another_trainer.predict(my_model, valid_signals)
     # predicted_classes = torch.tensor([torch.argmax(pred) for pred in preds])
@@ -215,8 +217,8 @@ def main(args):
     # analysis.values_to_bedgraph(importance, chroms, hdf5_resolution, bedgraph_path)
 
     end = datetime.now()
-    print("end {}".format(end))
-    print("Main() time: {}".format(end - begin))
+    print(f"end {end}".format)
+    print(f"Main() time: {end - begin}")
 
 if __name__ == "__main__":
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'

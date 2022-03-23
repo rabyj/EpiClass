@@ -1,21 +1,15 @@
-import pytorch_lightning as pl
-import pytorch_lightning.callbacks as torch_callbacks
-import numpy as np
-import pandas
-
+"""Trainer class extensions module"""
 import os.path
-from scipy import signal
-from abc import ABC
-import math
 from datetime import datetime
 
-from .data import DataSet
-from core.pytorch_model_test import LightningDenseClassifier
+import pytorch_lightning as pl
+import pytorch_lightning.callbacks as torch_callbacks
 
 class MyTrainer(pl.Trainer):
+    """Personalized trainer"""
 
-    def __init__(self, general_log_dir : str, last_trained_model : pl.LightningModule, **kwargs):
-        """Metrics expect probabilities and not logits"""
+    def __init__(self, general_log_dir : str, last_trained_model = None, **kwargs):
+        """Metrics expect probabilities and not logits."""
         super().__init__(**kwargs)
 
         self.best_checkpoint_file = os.path.join(
@@ -25,27 +19,29 @@ class MyTrainer(pl.Trainer):
         self.model = last_trained_model
         self.batch_size = None
 
-    def fit(self, *args, **kwargs):
+    def fit(self, *args, verbose = True, **kwargs):
         """Base pl.Trainer.fit function, but also prints the batch size."""
         self.batch_size = kwargs["train_dataloaders"].batch_size
-        print("Training batch size : {}".format(self.batch_size))
+        if verbose :
+            print(f"Training batch size : {self.batch_size}")
         super().fit(*args, **kwargs)
+
 
     def save_model_path(self):
         """Save best checkpoint path to a file."""
-        print("Saving model to {}".format(self.checkpoint_callback.best_model_path))
+        print(f"Saving model to {self.checkpoint_callback.best_model_path}")
         with open(self.best_checkpoint_file, "a") as ckpt_file:
-            ckpt_file.write("{} {}\n".format(self.checkpoint_callback.best_model_path, datetime.now()))
+            ckpt_file.write(f"{self.checkpoint_callback.best_model_path} {datetime.now()}\n")
 
     def print_hyperparameters(self):
         """Print training hyperparameters."""
         stop_callback = self.early_stopping_callback
         print("--TRAINING HYPERPARAMETERS--")
-        print("L2 scale : {}".format(self.model.l2_scale))
-        print("Dropout rate : {}".format(self.model.dropout_rate))
-        print("Learning rate : {}".format(self.model.learning_rate))
-        print("Patience : {}".format(stop_callback.patience))
-        print("Monitored value : {}".format(stop_callback.monitor))
+        print(f"L2 scale : {self.model.l2_scale}")
+        print(f"Dropout rate : {self.model.dropout_rate}")
+        print(f"Learning rate : {self.model.learning_rate}")
+        print(f"Patience : {stop_callback.patience}")
+        print(f"Monitored value : {stop_callback.monitor}")
 
 
 def define_callbacks(early_stop_limit: int):
@@ -75,6 +71,6 @@ def define_callbacks(early_stop_limit: int):
         save_on_train_epoch_end=False
     )
 
-    bar = torch_callbacks.RichProgressBar()
+    my_bar = torch_callbacks.RichProgressBar()
 
-    return [summary, early_stop, checkpoint, bar]
+    return [summary, early_stop, checkpoint, my_bar]

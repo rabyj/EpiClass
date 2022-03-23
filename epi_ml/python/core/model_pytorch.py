@@ -1,3 +1,6 @@
+"""Model creation module"""
+import os.path
+
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -5,9 +8,9 @@ import pytorch_lightning as pl
 from torchinfo import summary
 from torchmetrics import Accuracy, Precision, Recall, F1Score, MatthewsCorrCoef, MetricCollection
 
-import os.path
 
 class LightningDenseClassifier(pl.LightningModule):
+    """Simple dense network handler"""
 
     def __init__(self, input_size, output_size, hparams, hl_units=3000, nb_layer=1):
         """Metrics expect probabilities and not logits"""
@@ -48,21 +51,21 @@ class LightningDenseClassifier(pl.LightningModule):
         layer_list = []
 
         # input layer
-        layer_list.append(torch.nn.Linear(self._x_size, self._hl_size))
+        layer_list.append(nn.Linear(self._x_size, self._hl_size))
 
         # hidden layers
         for _ in range(self._nb_layer - 1):
-            layer_list.append(torch.nn.Linear(self._hl_size, self._hl_size))
+            layer_list.append(nn.Linear(self._hl_size, self._hl_size))
             # in case of ReLU, dropout should be applied before for computational efficiency
             # https://sebastianraschka.com/faq/docs/dropout-activation.html
-            layer_list.append(torch.nn.ReLU())
-            layer_list.append(torch.nn.Dropout(self.dropout_rate))
+            layer_list.append(nn.ReLU())
+            layer_list.append(nn.Dropout(self.dropout_rate))
 
         # output layer
-        layer_list.append(torch.nn.Linear(self._hl_size, self._y_size))
+        layer_list.append(nn.Linear(self._hl_size, self._y_size))
 
         # https://pytorch.org/docs/stable/_modules/torch/nn/modules/container.html#Sequential
-        model = torch.nn.Sequential(*layer_list)
+        model = nn.Sequential(*layer_list)
 
         return model
 
@@ -150,9 +153,9 @@ class LightningDenseClassifier(pl.LightningModule):
 
         path = os.path.join(logdir, "best_checkpoint.list")
 
-        with open(path, "r") as ckpt_file:
+        with open(path, "r", encoding="utf-8") as ckpt_file:
             lines = ckpt_file.read().splitlines()
             ckpt_path = lines[-1].split(' ')[0]
 
-        print("Loading model from {}".format(ckpt_path))
+        print(f"Loading model from {ckpt_path}")
         return LightningDenseClassifier.load_from_checkpoint(ckpt_path)
