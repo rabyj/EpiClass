@@ -1,4 +1,5 @@
 """Main"""
+import comet_ml #needed because special snowflake
 import pytorch_lightning #in case GCC or CUDA needs it
 
 import argparse
@@ -138,8 +139,7 @@ def main(args):
 
     # --- TRAIN the model ---
 
-    # is_training = hparams.get("is_training", True)
-    is_training = False
+    is_training = hparams.get("is_training", True)
     if is_training:
 
         callbacks = define_callbacks(early_stop_limit=hparams.get("early_stop_limit", 15))
