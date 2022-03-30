@@ -23,12 +23,18 @@ from core.model_pytorch import LightningDenseClassifier
 from core.trainer import MyTrainer, define_callbacks
 from core import analysis
 
+def time_now():
+    """Return datetime of call without microseconds"""
+    return datetime.utcnow().replace(microsecond=0)
+
 
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('category', type=str, help='The metatada category to analyse.')
-    arg_parser.add_argument('hyperparameters', type=argparse.FileType('r'), help='A json file containing model hyperparameters.')
+    arg_parser.add_argument(
+        'hyperparameters', type=argparse.FileType('r'), help='A json file containing model hyperparameters.'
+        )
     arg_parser.add_argument('hdf5', type=argparse.FileType('r'), help='A file with hdf5 filenames. Use absolute path!')
     arg_parser.add_argument('chromsize', type=argparse.FileType('r'), help='A file with chrom sizes.')
     arg_parser.add_argument('metadata', type=argparse.FileType('r'), help='A metadata JSON file.')
@@ -37,7 +43,7 @@ def parse_arguments(args: list) -> argparse.Namespace:
 
 def main(args):
     """main called from command line, edit to change behavior"""
-    begin = datetime.now()
+    begin = time_now()
     print(f"begin {begin}")
 
     # --- PARSE params ---
@@ -87,7 +93,7 @@ def main(args):
         my_datasource, my_metadata, epiml_options.category, oversample=True, min_class_size=10
         )
 
-    print(f"Data+metadata loading time: {datetime.now() - begin}")
+    print(f"Data+metadata loading time: {time_now() - begin}")
 
     to_display = set(["assay", epiml_options.category])
     for category in to_display:
@@ -145,7 +151,7 @@ def main(args):
             offline=True
         )
 
-        before_train = datetime.now()
+        before_train = time_now()
         trainer = MyTrainer(
             general_log_dir=epiml_options.logdir,
             last_trained_model=my_model,
@@ -161,7 +167,7 @@ def main(args):
 
         trainer.save_model_path()
 
-        print(f"training time: {datetime.now() - before_train}")
+        print(f"training time: {time_now() - before_train}")
 
     # --- RESTORE old model ---
     if not is_training:
@@ -169,7 +175,7 @@ def main(args):
         my_model = LightningDenseClassifier.restore_model(epiml_options.logdir)
 
     # --- OUTPUTS ---
-    # my_analyzer = analysis.Analysis(my_trainer)
+    my_analyzer = analysis.Analysis(my_model, train_dataset=train_dataset)
 
     # --- Print metrics ---
     train_metrics = my_model.compute_metrics(train_dataset)
@@ -184,7 +190,7 @@ def main(args):
     # func_acc = torchmetrics.functional.accuracy(predicted_classes, valid_classes)
     # print(func_acc)
 
-    # my_analyzer.training_metrics()
+    my_analyzer.training_metrics()
     # my_analyzer.validation_metrics()
     # my_analyzer.test_metrics()
 
@@ -216,8 +222,8 @@ def main(args):
     # bedgraph_path = os.path.join(epiml_options.logdir, "importance.bedgraph")
     # analysis.values_to_bedgraph(importance, chroms, hdf5_resolution, bedgraph_path)
 
-    end = datetime.now()
-    print(f"end {end}".format)
+    end = time_now()
+    print(f"end {end}")
     print(f"Main() time: {end - begin}")
 
 if __name__ == "__main__":

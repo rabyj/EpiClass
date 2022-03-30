@@ -9,12 +9,12 @@ from torchinfo import summary
 from torchmetrics import Accuracy, Precision, Recall, F1Score, MatthewsCorrCoef, MetricCollection
 
 
-class LightningDenseClassifier(pl.LightningModule):
+class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-ancestors
     """Simple dense network handler"""
 
     def __init__(self, input_size, output_size, hparams, hl_units=3000, nb_layer=1):
         """Metrics expect probabilities and not logits"""
-        super(LightningDenseClassifier, self).__init__()
+        super().__init__()
 
         # -- general structure --
         self._x_size = input_size

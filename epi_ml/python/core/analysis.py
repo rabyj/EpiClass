@@ -1,58 +1,71 @@
+"""Module containing result analysis code."""
 import itertools
 import os
+from typing import Union
 
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pytorch_lightning as pl
 import sklearn.metrics
 
+from core.model_pytorch import LightningDenseClassifier
 
 class Analysis(object):
-    def __init__(self, trainer):
-        self._trainer = trainer
-        self._model = trainer._model
-        self._data = trainer._data
+    """Class containing main analysis methods desired."""
+    def __init__(self,
+    model : Union[pl.LightningModule, LightningDenseClassifier],
+    train_dataset=None, val_dataset=None, test_dataset=None
+    ):
+        self._model = model
+        self._train = train_dataset
+        self._val = val_dataset
+        self._test = test_dataset
 
     def training_metrics(self):
-        print("Training set metrics")
-        metrics(self._trainer.training_acc(), self._trainer.training_pred(), self._data.train)
+        if self._train is None:
+            print("Cannot compute training metrics : No training dataset given")
+        else :
+            metrics_dict = self._model.compute_metrics(self._train)
+            print_metrics(metrics_dict, name="Training set")
 
-    def validation_metrics(self):
-        print("Validation set metrics")
-        metrics(self._trainer.validation_acc(), self._trainer.validation_pred(), self._data.validation)
+    # def validation_metrics(self):
+    #     print("Validation set metrics")
+    #     metrics(self._trainer.validation_acc(), self._trainer.validation_pred(), self._data.validation)
 
-    def test_metrics(self):
-        print("Test set metrics")
-        metrics(self._trainer.test_acc(), self._trainer.test_pred(), self._data.test)
+    # def test_metrics(self):
+    #     print("Test set metrics")
+    #     metrics(self._trainer.test_acc(), self._trainer.test_pred(), self._data.test)
 
-    def write_training_prediction(self, path):
-        write_pred_table(self._trainer.training_pred(), self._data.classes, self._data.train, path)
+    # def write_training_prediction(self, path):
+    #     write_pred_table(self._trainer.training_pred(), self._data.classes, self._data.train, path)
 
-    def write_validation_prediction(self, path):
-        write_pred_table(self._trainer.validation_pred(), self._data.classes, self._data.validation, path)
+    # def write_validation_prediction(self, path):
+    #     write_pred_table(self._trainer.validation_pred(), self._data.classes, self._data.validation, path)
 
-    def write_test_prediction(self, path):
-        write_pred_table(self._trainer.test_pred(), self._data.classes, self._data.test, path)
+    # def write_test_prediction(self, path):
+    #     write_pred_table(self._trainer.test_pred(), self._data.classes, self._data.test, path)
 
-    def training_confusion_matrix(self, logdir, name="training_confusion_matrix"):
-        mat = ConfusionMatrix(self._data.classes, self._trainer.training_mat())
-        mat.to_all_formats(logdir, name)
+    # def training_confusion_matrix(self, logdir, name="training_confusion_matrix"):
+    #     mat = ConfusionMatrix(self._data.classes, self._trainer.training_mat())
+    #     mat.to_all_formats(logdir, name)
 
-    def validation_confusion_matrix(self, logdir, name="validation_confusion_matrix"):
-        mat = ConfusionMatrix(self._data.classes, self._trainer.validation_mat())
-        mat.to_all_formats(logdir, name)
+    # def validation_confusion_matrix(self, logdir, name="validation_confusion_matrix"):
+    #     mat = ConfusionMatrix(self._data.classes, self._trainer.validation_mat())
+    #     mat.to_all_formats(logdir, name)
 
-    def test_confusion_matrix(self, logdir, name="test_confusion_matrix"):
-        mat = ConfusionMatrix(self._data.classes, self._trainer.test_mat())
-        mat.to_all_formats(logdir, name)
+    # def test_confusion_matrix(self, logdir, name="test_confusion_matrix"):
+    #     mat = ConfusionMatrix(self._data.classes, self._trainer.test_mat())
+    #     mat.to_all_formats(logdir, name)
 
-    def importance(self):
-        return importance(self._trainer.weights())
+    # def importance(self):
+    #     return importance(self._trainer.weights())
 
 
 class ConfusionMatrix(object):
+    """Class to create/handle confusion matrices"""
     def __init__(self, labels, tf_confusion_mat):
         self._labels = labels
         self._confusion_matrix = self._create_confusion_matrix(tf_confusion_mat) #pd dataframe
@@ -65,7 +78,7 @@ class ConfusionMatrix(object):
 
     def _create_confusion_matrix(self, tf_confusion_mat):
         labels_count = tf_confusion_mat.sum(axis=0)
-        labels_w_count = ["{}({})".format(label, label_count) for label, label_count in zip(self._labels, labels_count)]
+        labels_w_count = [f"{label}({label_count})" for label, label_count in zip(self._labels, labels_count)]
 
         confusion_mat = self._to_relative_confusion_matrix(labels_count, tf_confusion_mat)
 
@@ -163,18 +176,19 @@ def metrics(acc, pred, data_subset):
     recall = sklearn.metrics.recall_score(y_true, y_pred, average="macro")
     f1 = sklearn.metrics.f1_score(y_true, y_pred, average="macro")
     mcc = sklearn.metrics.matthews_corrcoef(y_true, y_pred)
-    print("Accuracy: {:.3f}".format(acc))
-    print("Precision: {:.3f}".format(precision))
-    print("Recall: {:.3f}".format(recall))
-    print("f1_score: {:.3f}".format(f1))
-    print("MCC: {:.3f}".format(mcc))
-    print("{:.3f}\t{:.3f}\t{:.3f}\t{:.3f}\t{:.3f}".format(acc, precision, recall, f1, mcc))
+    print(f"Accuracy: {acc:.3f}")
+    print(f"Precision: {precision:.3f}")
+    print(f"Recall: {recall:.3f}")
+    print(f"f1_score: {f1:.3f}")
+    print(f"MCC: {mcc:.3f}")
+    print(f"{acc:.3f}\t{precision:.3f}\t{recall:.3f}\t{f1:.3f}\t{mcc:.3f}")
 
 def print_metrics(metric_dict, name):
-    print("--- {} METRICS ---".format(name))
+    """Print metrics from torchmetrics dict."""
+    print(f"--- {name} METRICS ---")
     vals = []
     for metric, val in metric_dict.items():
-        str_val = "{:.3f}".format(val.item())
+        str_val = f"{val.item():.3f}"
         print(metric, str_val)
         vals.append(str_val)
     print(*vals)
@@ -215,14 +229,14 @@ def assert_correct_resolution(chroms, resolution, signal_length):
     the input size of the network.
     """
     if predict_concat_size(chroms, resolution) != signal_length:
-        raise AssertionError("Signal_length not coherent with given resolution of {}.".format(resolution))
+        raise AssertionError(f"Signal_length not coherent with given resolution of {resolution}.")
 
 def values_to_bedgraph(values, chroms, resolution, bedgraph_path):
     """Write a bedgraph from a full genome values iterable (e.g. importance).
     The chromosome coordinates are zero-based, half-open (from 0 to N-1).
     """
     i = 0
-    with open(bedgraph_path, 'w') as my_bedgraph:
+    with open(bedgraph_path, 'w', encoding="utf-8") as my_bedgraph:
         for name, size in chroms:
 
             positions = itertools.chain(range(0, size, resolution), [size-1])

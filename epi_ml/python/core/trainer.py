@@ -30,7 +30,7 @@ class MyTrainer(pl.Trainer):
     def save_model_path(self):
         """Save best checkpoint path to a file."""
         print(f"Saving model to {self.checkpoint_callback.best_model_path}")
-        with open(self.best_checkpoint_file, "a") as ckpt_file:
+        with open(self.best_checkpoint_file, "a", encoding="uft-8") as ckpt_file:
             ckpt_file.write(f"{self.checkpoint_callback.best_model_path} {datetime.now()}\n")
 
     def print_hyperparameters(self):
