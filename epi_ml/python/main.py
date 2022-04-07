@@ -56,6 +56,7 @@ def main(args):
     # analysis.convert_matrix_csv_to_png(in_path, out_path)
     # sys.exit()
 
+
     # --- LOAD external files ---
     my_datasource = data.EpiDataSource(
         epiml_options.hdf5,
@@ -65,9 +66,11 @@ def main(args):
 
     hparams = json.load(epiml_options.hyperparameters)
 
+
     # --- LOAD useful info ---
     # hdf5_resolution = my_datasource.hdf5_resolution()
     # chroms = my_datasource.load_chrom_sizes()
+
 
     # --- LOAD DATA ---
     my_metadata = metadata.Metadata.from_epidatasource(my_datasource)
@@ -76,6 +79,7 @@ def main(args):
     # my_metadata.create_healthy_category()
     # my_metadata.merge_molecule_classes()
     # my_metadata.merge_fetal_tissues()
+
 
     # --- Dataset selection ---
 
@@ -88,6 +92,7 @@ def main(args):
     # my_metadata = metadata.five_cell_types_selection(my_metadata)
     # assays_to_remove = [os.getenv(var, "") for var in ["REMOVE_ASSAY1", "REMOVE_ASSAY2", "REMOVE_ASSAY3"]]
     # my_metadata.remove_category_subsets(assays_to_remove, "assay")
+
 
     # --- CREATE training/validation/test SETS (and change metadata according to what is used) ---
     my_data = data.DataSetFactory.from_epidata(
@@ -116,14 +121,17 @@ def main(args):
 
     my_data.save_mapping(os.path.join(epiml_options.logdir, "training_mapping.tsv"))
 
+
     # --- DEFINE sizes for input and output LAYERS of the network ---
     input_size = my_data.train.signals[0].size
     output_size = my_data.train.labels[0].size
     hl_units = int(os.getenv("LAYER_SIZE", default="3000"))
     nb_layers = int(os.getenv("NB_LAYER", default="1"))
 
+
     # --- Assert the resolution is correct so the importance bedgraph works later ---
     # analysis.assert_correct_resolution(chroms, hdf5_resolution, input_size)
+
 
     # --- CREATE a brand new MODEL ---
     my_model = LightningDenseClassifier(
@@ -135,10 +143,10 @@ def main(args):
         )
 
     print("--MODEL STRUCTURE--\n", my_model)
-    my_model.print_info_summary()
+    my_model.print_model_summary()
+
 
     # --- TRAIN the model ---
-
     is_training = hparams.get("is_training", True)
     if is_training:
 
@@ -158,8 +166,7 @@ def main(args):
             max_epochs=hparams.get("training_epochs", 50),
             check_val_every_n_epoch=hparams.get("measure_frequency", 1),
             logger=comet_logger,
-            callbacks=callbacks,
-            enable_model_summary=False
+            callbacks=callbacks
             )
 
         trainer.print_hyperparameters()
@@ -169,29 +176,21 @@ def main(args):
 
         print(f"training time: {time_now() - before_train}")
 
+
     # --- RESTORE old model ---
     if not is_training:
         print("No training, loading last best model from given logdir")
+        # Note : Training accuracy can vary since reloaded model
+        # is not last model (saved when monitored metric does not move anymore)
         my_model = LightningDenseClassifier.restore_model(epiml_options.logdir)
 
+
     # --- OUTPUTS ---
-    my_analyzer = analysis.Analysis(my_model, train_dataset=train_dataset)
+    my_analyzer = analysis.Analysis(my_model, train_dataset=train_dataset, val_dataset=valid_dataset)
 
     # --- Print metrics ---
-    train_metrics = my_model.compute_metrics(train_dataset)
-    valid_metrics = my_model.compute_metrics(valid_dataset)
-    analysis.print_metrics(train_metrics, "TRAINING")
-    analysis.print_metrics(valid_metrics, "VALIDATION")
-
-    # - test how to compute fonctional metric -
-    # another_trainer = pl.Trainer()
-    # preds = another_trainer.predict(my_model, valid_signals)
-    # predicted_classes = torch.tensor([torch.argmax(pred) for pred in preds])
-    # func_acc = torchmetrics.functional.accuracy(predicted_classes, valid_classes)
-    # print(func_acc)
-
     my_analyzer.training_metrics()
-    # my_analyzer.validation_metrics()
+    my_analyzer.validation_metrics()
     # my_analyzer.test_metrics()
 
     # --- Create prediction file ---
@@ -203,18 +202,19 @@ def main(args):
     # my_analyzer.write_validation_prediction(outpath2)
     # my_analyzer.write_test_prediction(outpath3)
 
+
     # --- Create confusion matrix ---
     # my_analyzer.training_confusion_matrix(epiml_options.logdir)
     # my_analyzer.validation_confusion_matrix(epiml_options.logdir)
     # my_analyzer.test_confusion_matrix(epiml_options.logdir)
 
-    # --- Create visualisation ---
 
+    # --- Create visualisation ---
     # vis = visualization.Pca()
     # my_trainer.visualize(vis)
 
-    # --- Compute/write importance ---
 
+    # --- Compute/write importance ---
     # importance = pickle.load(open("importance.pickle", 'rb'))
     # importance = my_analyzer.importance() #TODO: generalize, probably put in model
     # pickle.dump(importance, open("importance.pickle", 'wb'))

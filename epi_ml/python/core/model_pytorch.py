@@ -82,7 +82,7 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
     # --- Define format of output ---
     def forward(self, x):
         """Return probabilities."""
-        return F.softmax(self.forward_train(x))
+        return F.softmax(self.forward_train(x), dim=1)
 
     def forward_train(self, x):
         """Return logits."""
@@ -95,8 +95,8 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
         x, y = train_batch
         logits = self.forward_train(x)
         loss = F.cross_entropy(logits, y)
-        preds = F.softmax(logits)
-        return {"loss": loss, "preds": preds, "target": y}
+        preds = F.softmax(logits, dim=1)
+        return {"loss": loss, "preds": preds.detach(), "target": y}
 
     def training_step_end(self, outputs):
         """Update and log training metrics."""
@@ -106,7 +106,7 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
         metrics = {
             "train_acc" : self.train_acc,
             "train_loss" : outputs["loss"],
-            "step" : self.current_epoch + 1
+            "step" : self.current_epoch + 1.0
             }
         self.log_dict(metrics, on_step=False, on_epoch=True)
 
@@ -115,7 +115,7 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
         x, y = val_batch
         logits = self.forward_train(x)
         loss = F.cross_entropy(logits, y)
-        preds = F.softmax(logits)
+        preds = F.softmax(logits, dim=1)
         return {"loss": loss, "preds": preds, "target": y}
 
     def validation_step_end(self, outputs):
@@ -126,13 +126,13 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
         metrics = {
             "valid_acc" : self.valid_acc,
             "valid_loss" : outputs["loss"],
-            "step" : self.current_epoch + 1
+            "step" : self.current_epoch + 1.0
             }
         self.log_dict(metrics, on_step=False, on_epoch=True)
 
 
     # --- Other information fonctions ---
-    def print_info_summary(self, batch_size=1):
+    def print_model_summary(self, batch_size=1):
         """Print torchinfo summary."""
         print("--MODEL SUMMARY--")
         summary(
@@ -143,6 +143,7 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
 
     def compute_metrics(self, dataset):
         """Return dict of metrics for given dataset."""
+        self.eval()
         x, y = dataset[:]
         preds = self(x)
         return self.metrics(preds, y)
@@ -159,3 +160,16 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
 
         print(f"Loading model from {ckpt_path}")
         return LightningDenseClassifier.load_from_checkpoint(ckpt_path)
+
+
+def print_params(model, n=3000):
+    """Print first n model parameters"""
+    params = []
+    for param in model.parameters():
+        params.append(param.view(-1))
+    params = torch.cat(params)
+    for i, param in enumerate(params):
+        print(f"{param.item():.3f}")
+        if i >= n:
+            break
+    return

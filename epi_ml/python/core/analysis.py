@@ -24,20 +24,26 @@ class Analysis(object):
         self._val = val_dataset
         self._test = test_dataset
 
-    def training_metrics(self):
-        if self._train is None:
-            print("Cannot compute training metrics : No training dataset given")
+
+    def _generic_metrics(self, dataset, name):
+        """General treatment to compute and print metrics"""
+        if dataset is None:
+            print(f"Cannot compute {name} metrics : No {name} dataset given")
         else :
-            metrics_dict = self._model.compute_metrics(self._train)
-            print_metrics(metrics_dict, name="Training set")
+            metrics_dict = self._model.compute_metrics(dataset)
+            print_metrics(metrics_dict, name=f"{name} set")
 
-    # def validation_metrics(self):
-    #     print("Validation set metrics")
-    #     metrics(self._trainer.validation_acc(), self._trainer.validation_pred(), self._data.validation)
+    def training_metrics(self):
+        """Compute and print training set metrics."""
+        self._generic_metrics(self._train, "training")
 
-    # def test_metrics(self):
-    #     print("Test set metrics")
-    #     metrics(self._trainer.test_acc(), self._trainer.test_pred(), self._data.test)
+    def validation_metrics(self):
+        """Compute and print validation set metrics."""
+        self._generic_metrics(self._val, "validation")
+
+    def test_metrics(self):
+        """Compute and print test set metrics."""
+        self._generic_metrics(self._test, "test")
 
     # def write_training_prediction(self, path):
     #     write_pred_table(self._trainer.training_pred(), self._data.classes, self._data.train, path)
