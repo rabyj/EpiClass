@@ -17,13 +17,19 @@ class Analysis(object):
     """Class containing main analysis methods desired."""
     def __init__(self,
     model : Union[pl.LightningModule, LightningDenseClassifier],
-    train_dataset=None, val_dataset=None, test_dataset=None
+    train_dataset=None, val_dataset=None, test_dataset=None,
+    logger=None
     ):
         self._model = model
         self._train = train_dataset
         self._val = val_dataset
         self._test = test_dataset
+        self._logger = logger
 
+    def _log_metrics(self, metric_dict, prefix=""):
+        """Log metrics from TorchMetrics metrics dict object. (key : tensor(val))"""
+        for metric, val in metric_dict.items():
+            self._logger.experiment.log_metric(f"{prefix[0:3]}_{metric}", val.item())
 
     def _generic_metrics(self, dataset, name):
         """General treatment to compute and print metrics"""
@@ -31,6 +37,8 @@ class Analysis(object):
             print(f"Cannot compute {name} metrics : No {name} dataset given")
         else :
             metrics_dict = self._model.compute_metrics(dataset)
+            if self._logger is not None :
+                self._log_metrics(metrics_dict, prefix=name)
             print_metrics(metrics_dict, name=f"{name} set")
 
     def training_metrics(self):
@@ -160,6 +168,7 @@ class ConfusionMatrix(object):
 
 
 def write_pred_table(pred, classes, data_subset, path):
+    """Write to "path" a csv containing class probability predictions of data_subset."""
     labels = data_subset.labels
     md5s = data_subset.ids
 
@@ -171,23 +180,9 @@ def write_pred_table(pred, classes, data_subset, path):
     df.to_csv(path, encoding="utf8")
 
 def convert_matrix_csv_to_png(in_path, out_path):
+    """Convert csv of confusion matrix to a png, and write it to out_path."""
     mat = ConfusionMatrix.from_csv(in_path)
     mat.to_png(out_path)
-
-def metrics(acc, pred, data_subset):
-    #TODO: separate metrics
-    y_true = np.argmax(data_subset.labels, 1)
-    y_pred = np.argmax(pred, 1)
-    precision = sklearn.metrics.precision_score(y_true, y_pred, average="macro")
-    recall = sklearn.metrics.recall_score(y_true, y_pred, average="macro")
-    f1 = sklearn.metrics.f1_score(y_true, y_pred, average="macro")
-    mcc = sklearn.metrics.matthews_corrcoef(y_true, y_pred)
-    print(f"Accuracy: {acc:.3f}")
-    print(f"Precision: {precision:.3f}")
-    print(f"Recall: {recall:.3f}")
-    print(f"f1_score: {f1:.3f}")
-    print(f"MCC: {mcc:.3f}")
-    print(f"{acc:.3f}\t{precision:.3f}\t{recall:.3f}\t{f1:.3f}\t{mcc:.3f}")
 
 def print_metrics(metric_dict, name):
     """Print metrics from torchmetrics dict."""
@@ -200,7 +195,7 @@ def print_metrics(metric_dict, name):
     print(*vals)
 
 def importance(w):
-    #garson algorithm, w for weights
+    """garson algorithm, w for weights."""
     #TODO: generalise, put in model
     total_w = w[0]
     for i in range(2, len(w), 2):

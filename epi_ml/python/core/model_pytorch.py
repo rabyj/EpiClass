@@ -39,8 +39,6 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
             F1Score(num_classes=self._y_size, average="macro"),
             MatthewsCorrCoef(num_classes=self._y_size)
             ])
-        # self.train_metrics = metrics.clone(prefix='train_')
-        # self.valid_metrics = metrics.clone(prefix='valid_')
         self.metrics = metrics
         self.train_acc = Accuracy(num_classes=self._y_size, average="micro")
         self.valid_acc = Accuracy(num_classes=self._y_size, average="micro")
@@ -128,7 +126,7 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
             "valid_loss" : outputs["loss"],
             "step" : self.current_epoch + 1.0
             }
-        self.log_dict(metrics, on_step=False, on_epoch=True)
+        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True)
 
 
     # --- Other information fonctions ---
@@ -144,8 +142,9 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
     def compute_metrics(self, dataset):
         """Return dict of metrics for given dataset."""
         self.eval()
-        x, y = dataset[:]
-        preds = self(x)
+        with torch.no_grad():
+            x, y = dataset[:]
+            preds = self(x)
         return self.metrics(preds, y)
 
     @classmethod
@@ -160,16 +159,3 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
 
         print(f"Loading model from {ckpt_path}")
         return LightningDenseClassifier.load_from_checkpoint(ckpt_path)
-
-
-def print_params(model, n=3000):
-    """Print first n model parameters"""
-    params = []
-    for param in model.parameters():
-        params.append(param.view(-1))
-    params = torch.cat(params)
-    for i, param in enumerate(params):
-        print(f"{param.item():.3f}")
-        if i >= n:
-            break
-    return

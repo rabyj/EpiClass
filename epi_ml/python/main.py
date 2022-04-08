@@ -66,6 +66,7 @@ def main(args):
 
     hparams = json.load(epiml_options.hyperparameters)
 
+    IsOffline = False
 
     # --- LOAD useful info ---
     # hdf5_resolution = my_datasource.hdf5_resolution()
@@ -145,19 +146,21 @@ def main(args):
     print("--MODEL STRUCTURE--\n", my_model)
     my_model.print_model_summary()
 
+    #api key in config file
+    comet_logger = pl_loggers.CometLogger(
+        project_name="EpiLaP",
+        save_dir=epiml_options.logdir,
+        offline=IsOffline,
+        auto_metric_logging=False
+    )
+    exp_key = comet_logger.experiment.get_key()
+
 
     # --- TRAIN the model ---
     is_training = hparams.get("is_training", True)
     if is_training:
 
-        callbacks = define_callbacks(early_stop_limit=hparams.get("early_stop_limit", 15))
-
-        #api key in config file
-        comet_logger = pl_loggers.CometLogger(
-            project_name="EpiLaP",
-            save_dir=epiml_options.logdir,
-            offline=True
-        )
+        callbacks = define_callbacks(early_stop_limit=hparams.get("early_stop_limit", 20))
 
         before_train = time_now()
         trainer = MyTrainer(
@@ -166,7 +169,8 @@ def main(args):
             max_epochs=hparams.get("training_epochs", 50),
             check_val_every_n_epoch=hparams.get("measure_frequency", 1),
             logger=comet_logger,
-            callbacks=callbacks
+            callbacks=callbacks,
+            enable_model_summary=False
             )
 
         trainer.print_hyperparameters()
@@ -186,7 +190,14 @@ def main(args):
 
 
     # --- OUTPUTS ---
-    my_analyzer = analysis.Analysis(my_model, train_dataset=train_dataset, val_dataset=valid_dataset)
+    comet_logger = pl_loggers.CometLogger(
+        project_name="EpiLaP",
+        save_dir=epiml_options.logdir,
+        offline=IsOffline,
+        auto_metric_logging=False,
+        experiment_key=exp_key
+    )
+    my_analyzer = analysis.Analysis(my_model, train_dataset=train_dataset, val_dataset=valid_dataset, logger=comet_logger)
 
     # --- Print metrics ---
     my_analyzer.training_metrics()

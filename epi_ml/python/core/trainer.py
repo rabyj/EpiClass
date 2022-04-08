@@ -30,7 +30,7 @@ class MyTrainer(pl.Trainer):
     def save_model_path(self):
         """Save best checkpoint path to a file."""
         print(f"Saving model to {self.checkpoint_callback.best_model_path}")
-        with open(self.best_checkpoint_file, "a") as ckpt_file:
+        with open(self.best_checkpoint_file, "a", encoding="utf-8") as ckpt_file:
             ckpt_file.write(f"{self.checkpoint_callback.best_model_path} {datetime.now()}\n")
 
     def print_hyperparameters(self):
@@ -50,7 +50,7 @@ def define_callbacks(early_stop_limit: int):
     """
     summary = torch_callbacks.RichModelSummary(max_depth=3)
 
-    monitored_value = "valid_acc"
+    monitored_value = "valid_acc" #have same name as TorchMetrics
     mode = "max"
 
     early_stop = torch_callbacks.EarlyStopping(
@@ -70,6 +70,6 @@ def define_callbacks(early_stop_limit: int):
         save_on_train_epoch_end=False
     )
 
-    my_bar = torch_callbacks.RichProgressBar()
+    my_bar = torch_callbacks.RichProgressBar(leave=True)
 
     return [summary, early_stop, checkpoint, my_bar]
