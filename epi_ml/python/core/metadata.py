@@ -17,7 +17,7 @@ class Metadata(object):
     @classmethod
     def from_path(cls, path):
         """Initialize from metadata filepath."""
-        with open(path, 'r') as meta_file:
+        with open(path, "r", encoding="utf-8") as meta_file:
             return cls(meta_file)
 
     @classmethod
@@ -87,6 +87,8 @@ class Metadata(object):
     def remove_small_classes(self, min_class_size, label_category):
         """Remove classes with less than min_class_size examples
         for a given metatada category.
+
+        Returns string of class ratio left if verbose.
         """
         data = self.md5_per_class(label_category)
         nb_class = len(data)
@@ -98,8 +100,12 @@ class Metadata(object):
                 for md5 in data[label]:
                     del self._metadata[md5]
 
-        print("{}/{} labels left from \"{}\" after removing classes with less than {} signals.".format(
-            nb_class - nb_removed_class, nb_class, label_category, min_class_size))
+        remaining = nb_class - nb_removed_class
+        ratio = f"{remaining}/{nb_class}"
+        print(
+            f"{ratio} labels left from {label_category} "
+            f"after removing classes with less than {min_class_size} signals."
+        )
 
     def select_category_subsets(self, labels, label_category):
         """Select only datasets which possess the given labels
@@ -128,9 +134,9 @@ class Metadata(object):
         print('\nExamples')
         i = 0
         for label, count in self.label_counter(label_category).most_common():
-            print('{}: {}'.format(label, count))
+            print(f'{label}: {count}')
             i += count
-        print('For a total of {} examples\n'.format(i))
+        print(f"For a total of {i} examples\n")
 
     # def category_class_weights(self, label_category):
     #     """Return class weights for the given category, ordered
@@ -202,15 +208,15 @@ class HealthyCategory(object):
 
     def list_healthy_pairs(self, datasets):
         """List unique (disease, donor_health_status) pairs."""
-        for pair in sorted(self.get_healthy_pairs(datasets)):
-            print("{}\t{}".format(*pair))
+        for x1, x2 in sorted(self.get_healthy_pairs(datasets)):
+            print(f"{x1}\t{x2}")
 
     def read_healthy_pairs(self):
         """Return a (disease, donor_health_status):healthy dict defined in
         a tsv file with disease|donor_health_status|healthy columns.
         """
         healthy_dict = {}
-        with open(self.pairs_file, "r") as tsv_file:
+        with open(self.pairs_file, "r", encoding="utf-8") as tsv_file:
             next(tsv_file) # skip header
             for line in tsv_file:
                 disease, donor_health_status, healthy = line.rstrip('\n').split('\t')

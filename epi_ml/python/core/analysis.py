@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
-import sklearn.metrics
 
 from core.model_pytorch import LightningDenseClassifier
 
@@ -31,27 +30,30 @@ class Analysis(object):
         for metric, val in metric_dict.items():
             self._logger.experiment.log_metric(f"{prefix[0:3]}_{metric}", val.item())
 
-    def _generic_metrics(self, dataset, name):
+    def _generic_metrics(self, dataset, name, verbose):
         """General treatment to compute and print metrics"""
         if dataset is None:
             print(f"Cannot compute {name} metrics : No {name} dataset given")
-        else :
+            metrics_dict = None
+        else:
             metrics_dict = self._model.compute_metrics(dataset)
             if self._logger is not None :
                 self._log_metrics(metrics_dict, prefix=name)
-            print_metrics(metrics_dict, name=f"{name} set")
+            if verbose:
+                print_metrics(metrics_dict, name=f"{name} set")
+        return metrics_dict
 
-    def training_metrics(self):
+    def get_training_metrics(self, verbose=True):
         """Compute and print training set metrics."""
-        self._generic_metrics(self._train, "training")
+        return self._generic_metrics(self._train, "training", verbose)
 
-    def validation_metrics(self):
+    def get_validation_metrics(self, verbose=True):
         """Compute and print validation set metrics."""
-        self._generic_metrics(self._val, "validation")
+        return self._generic_metrics(self._val, "validation", verbose)
 
-    def test_metrics(self):
+    def get_test_metrics(self, verbose=True):
         """Compute and print test set metrics."""
-        self._generic_metrics(self._test, "test")
+        return self._generic_metrics(self._test, "test", verbose)
 
     # def write_training_prediction(self, path):
     #     write_pred_table(self._trainer.training_pred(), self._data.classes, self._data.train, path)

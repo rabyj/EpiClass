@@ -1,4 +1,5 @@
 """Main"""
+from tabnanny import verbose
 import comet_ml #needed because special snowflake
 import pytorch_lightning #in case GCC or CUDA needs it
 
@@ -68,13 +69,27 @@ def main(args):
 
     IsOffline = False
 
+    #api key in config file
+    comet_logger = pl_loggers.CometLogger(
+        project_name="EpiLaP",
+        save_dir=epiml_options.logdir,
+        offline=IsOffline,
+        auto_metric_logging=False
+    )
+    exp_key = comet_logger.experiment.get_key()
+    comet_logger.experiment.add_tag(f"{epiml_options.category}")
+
     # --- LOAD useful info ---
-    # hdf5_resolution = my_datasource.hdf5_resolution()
+    hdf5_resolution = my_datasource.hdf5_resolution()
+    comet_logger.experiment.log_other("HDF5 Resolution", f"{hdf5_resolution/1000}kb")
     # chroms = my_datasource.load_chrom_sizes()
 
 
     # --- LOAD DATA ---
     my_metadata = metadata.Metadata.from_epidatasource(my_datasource)
+    assembly = next(iter(my_metadata.datasets)).get("assembly", "NA")
+    comet_logger.experiment.add_tag(assembly)
+    comet_logger.experiment.log_other("assembly", assembly)
 
     # --- Categories creation/change ---
     # my_metadata.create_healthy_category()
@@ -99,6 +114,8 @@ def main(args):
     my_data = data.DataSetFactory.from_epidata(
         my_datasource, my_metadata, epiml_options.category, oversample=True, min_class_size=10
         )
+    comet_logger.experiment.log_other("Training size", my_data.train.num_examples)
+    comet_logger.experiment.log_other("Total nb of files", len(my_metadata))
 
     print(f"Data+metadata loading time: {time_now() - begin}")
 
@@ -120,7 +137,9 @@ def main(args):
     train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True)
     valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset))
 
-    my_data.save_mapping(os.path.join(epiml_options.logdir, "training_mapping.tsv"))
+    mapping_file = os.path.join(epiml_options.logdir, "training_mapping.tsv")
+    my_data.save_mapping(mapping_file)
+    comet_logger.experiment.log_asset(mapping_file)
 
 
     # --- DEFINE sizes for input and output LAYERS of the network ---
@@ -145,16 +164,6 @@ def main(args):
 
     print("--MODEL STRUCTURE--\n", my_model)
     my_model.print_model_summary()
-
-    #api key in config file
-    comet_logger = pl_loggers.CometLogger(
-        project_name="EpiLaP",
-        save_dir=epiml_options.logdir,
-        offline=IsOffline,
-        auto_metric_logging=False
-    )
-    exp_key = comet_logger.experiment.get_key()
-
 
     # --- TRAIN the model ---
     is_training = hparams.get("is_training", True)
@@ -197,12 +206,14 @@ def main(args):
         auto_metric_logging=False,
         experiment_key=exp_key
     )
-    my_analyzer = analysis.Analysis(my_model, train_dataset=train_dataset, val_dataset=valid_dataset, logger=comet_logger)
+    my_analyzer = analysis.Analysis(
+        my_model, train_dataset=train_dataset, val_dataset=valid_dataset, logger=comet_logger
+        )
 
     # --- Print metrics ---
-    my_analyzer.training_metrics()
-    my_analyzer.validation_metrics()
-    # my_analyzer.test_metrics()
+    train_metrics = my_analyzer.get_training_metrics(verbose=True)
+    val_metrics = my_analyzer.get_validation_metrics(verbose=True)
+    # my_analyzer.get_test_metrics()
 
     # --- Create prediction file ---
     # outpath1 = os.path.join(epiml_options.logdir, "training_predict.csv")
