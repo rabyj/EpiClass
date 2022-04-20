@@ -1,7 +1,6 @@
 """Main"""
-from tabnanny import verbose
-import comet_ml #needed because special snowflake
-import pytorch_lightning #in case GCC or CUDA needs it
+import comet_ml #needed because special snowflake # pylint: disable=unused-import
+import pytorch_lightning #in case GCC or CUDA needs it # pylint: disable=unused-import
 
 import argparse
 from argparseutils.directorytype import DirectoryType
@@ -67,7 +66,7 @@ def main(args):
 
     hparams = json.load(epiml_options.hyperparameters)
 
-    IsOffline = False
+    IsOffline = True
 
     #api key in config file
     comet_logger = pl_loggers.CometLogger(
@@ -125,12 +124,12 @@ def main(args):
 
 
     train_dataset = TensorDataset(
-        torch.from_numpy(my_data.train.signals),
+        torch.from_numpy(my_data.train.signals).float(),
         torch.from_numpy(np.argmax(my_data.train.labels, axis=-1))
         )
 
     valid_dataset = TensorDataset(
-        torch.from_numpy(my_data.validation.signals),
+        torch.from_numpy(my_data.validation.signals).float(),
         torch.from_numpy(np.argmax(my_data.validation.labels, axis=-1))
         )
 
@@ -179,7 +178,9 @@ def main(args):
             check_val_every_n_epoch=hparams.get("measure_frequency", 1),
             logger=comet_logger,
             callbacks=callbacks,
-            enable_model_summary=False
+            enable_model_summary=False,
+            accelerator="auto",
+            devices="auto"
             )
 
         trainer.print_hyperparameters()
@@ -238,7 +239,7 @@ def main(args):
 
     # --- Compute/write importance ---
     # importance = pickle.load(open("importance.pickle", 'rb'))
-    # importance = my_analyzer.importance() #TODO: generalize, probably put in model
+    # importance = my_analyzer.importance()
     # pickle.dump(importance, open("importance.pickle", 'wb'))
 
     # bedgraph_path = os.path.join(epiml_options.logdir, "importance.bedgraph")
