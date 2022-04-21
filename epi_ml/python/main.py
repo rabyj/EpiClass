@@ -2,18 +2,21 @@
 import comet_ml #needed because special snowflake # pylint: disable=unused-import
 import pytorch_lightning #in case GCC or CUDA needs it # pylint: disable=unused-import
 
+
 import argparse
 from argparseutils.directorytype import DirectoryType
 from datetime import datetime
 import json
 import os
 import os.path
+from os.path import normpath
 import sys
 import warnings
 warnings.simplefilter("ignore", category=FutureWarning)
 
 import numpy as np
 from pytorch_lightning import loggers as pl_loggers
+from pytorch_lightning.profiler import PyTorchProfiler, SimpleProfiler
 import torch
 from torch.utils.data import TensorDataset
 from torch.utils.data import DataLoader
@@ -48,35 +51,39 @@ def main(args):
     print(f"begin {begin}")
 
     # --- PARSE params ---
-    epiml_options = parse_arguments(args)
+    cli = parse_arguments(args)
 
     # if only want to convert confusion matrix csv to png
-    # in_path = os.path.join(epiml_options.logdir, "confusion_matrix.csv")
-    # out_path = os.path.join(epiml_options.logdir, "confusion_matrix.png")
+    # in_path = os.path.join(cli.logdir, "confusion_matrix.csv")
+    # out_path = os.path.join(cli.logdir, "confusion_matrix.png")
     # analysis.convert_matrix_csv_to_png(in_path, out_path)
     # sys.exit()
 
 
     # --- LOAD external files ---
     my_datasource = data.EpiDataSource(
-        epiml_options.hdf5,
-        epiml_options.chromsize,
-        epiml_options.metadata
+        cli.hdf5,
+        cli.chromsize,
+        cli.metadata
         )
 
-    hparams = json.load(epiml_options.hyperparameters)
+    hparams = json.load(cli.hyperparameters)
 
-    IsOffline = True
-
+    # --- Startup LOGGER ---
     #api key in config file
+    IsOffline = False #additional logging fails with True
+    exp_name = '-'.join(normpath(cli.logdir).split(os.path.sep)[-2:])
     comet_logger = pl_loggers.CometLogger(
         project_name="EpiLaP",
-        save_dir=epiml_options.logdir,
+        experiment_name=exp_name,
+        save_dir=cli.logdir,
         offline=IsOffline,
         auto_metric_logging=False
     )
     exp_key = comet_logger.experiment.get_key()
-    comet_logger.experiment.add_tag(f"{epiml_options.category}")
+    comet_logger.experiment.add_tag(f"{cli.category}")
+    print(f"The current experiment key is {exp_key}")
+
 
     # --- LOAD useful info ---
     hdf5_resolution = my_datasource.hdf5_resolution()
@@ -111,14 +118,14 @@ def main(args):
 
     # --- CREATE training/validation/test SETS (and change metadata according to what is used) ---
     my_data = data.DataSetFactory.from_epidata(
-        my_datasource, my_metadata, epiml_options.category, oversample=True, min_class_size=10
+        my_datasource, my_metadata, cli.category, oversample=True, min_class_size=10
         )
     comet_logger.experiment.log_other("Training size", my_data.train.num_examples)
     comet_logger.experiment.log_other("Total nb of files", len(my_metadata))
 
     print(f"Data+metadata loading time: {time_now() - begin}")
 
-    to_display = set(["assay", epiml_options.category])
+    to_display = set(["assay", cli.category])
     for category in to_display:
         my_metadata.display_labels(category)
 
@@ -133,10 +140,10 @@ def main(args):
         torch.from_numpy(np.argmax(my_data.validation.labels, axis=-1))
         )
 
-    train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True)
-    valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset))
+    train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True, num_workers=4)
+    valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset), num_workers=4)
 
-    mapping_file = os.path.join(epiml_options.logdir, "training_mapping.tsv")
+    mapping_file = os.path.join(cli.logdir, "training_mapping.tsv")
     my_data.save_mapping(mapping_file)
     comet_logger.experiment.log_asset(mapping_file)
 
@@ -171,42 +178,61 @@ def main(args):
         callbacks = define_callbacks(early_stop_limit=hparams.get("early_stop_limit", 20))
 
         before_train = time_now()
-        trainer = MyTrainer(
-            general_log_dir=epiml_options.logdir,
-            last_trained_model=my_model,
-            max_epochs=hparams.get("training_epochs", 50),
-            check_val_every_n_epoch=hparams.get("measure_frequency", 1),
-            logger=comet_logger,
-            callbacks=callbacks,
-            enable_model_summary=False,
-            accelerator="auto",
-            devices="auto"
-            )
+
+        if torch.cuda.device_count():
+            trainer = MyTrainer(
+                general_log_dir=cli.logdir,
+                last_trained_model=my_model,
+                max_epochs=hparams.get("training_epochs", 50),
+                check_val_every_n_epoch=hparams.get("measure_frequency", 1),
+                logger=comet_logger,
+                callbacks=callbacks,
+                enable_model_summary=False,
+                accelerator="gpu",
+                devices=1,
+                precision=16
+                )
+        else :
+            trainer = MyTrainer(
+                general_log_dir=cli.logdir,
+                last_trained_model=my_model,
+                max_epochs=hparams.get("training_epochs", 50),
+                check_val_every_n_epoch=hparams.get("measure_frequency", 1),
+                logger=comet_logger,
+                callbacks=callbacks,
+                enable_model_summary=False,
+                accelerator="cpu",
+                devices=1,
+                )
 
         trainer.print_hyperparameters()
         trainer.fit(my_model, train_dataloaders=train_dataloader, val_dataloaders=valid_dataloader)
 
         trainer.save_model_path()
 
-        print(f"training time: {time_now() - before_train}")
+        training_time = time_now() - before_train
+        print(f"training time: {training_time}")
 
+        # reload comet logger for further logging, will fail in offline mode
+
+        comet_logger = pl_loggers.CometLogger(
+            project_name="EpiLaP",
+            save_dir=cli.logdir,
+            offline=IsOffline,
+            auto_metric_logging=False,
+            experiment_key=exp_key
+        )
+        comet_logger.experiment.log_other("Training time", training_time)
 
     # --- RESTORE old model ---
     if not is_training:
         print("No training, loading last best model from given logdir")
         # Note : Training accuracy can vary since reloaded model
         # is not last model (saved when monitored metric does not move anymore)
-        my_model = LightningDenseClassifier.restore_model(epiml_options.logdir)
+        my_model = LightningDenseClassifier.restore_model(cli.logdir)
 
 
     # --- OUTPUTS ---
-    comet_logger = pl_loggers.CometLogger(
-        project_name="EpiLaP",
-        save_dir=epiml_options.logdir,
-        offline=IsOffline,
-        auto_metric_logging=False,
-        experiment_key=exp_key
-    )
     my_analyzer = analysis.Analysis(
         my_model, train_dataset=train_dataset, val_dataset=valid_dataset, logger=comet_logger
         )
@@ -217,9 +243,9 @@ def main(args):
     # my_analyzer.get_test_metrics()
 
     # --- Create prediction file ---
-    # outpath1 = os.path.join(epiml_options.logdir, "training_predict.csv")
-    # outpath2 = os.path.join(epiml_options.logdir, "validation_predict.csv")
-    # outpath3 = os.path.join(epiml_options.logdir, "test_predict.csv")
+    # outpath1 = os.path.join(cli.logdir, "training_predict.csv")
+    # outpath2 = os.path.join(cli.logdir, "validation_predict.csv")
+    # outpath3 = os.path.join(cli.logdir, "test_predict.csv")
 
     # my_analyzer.write_training_prediction(outpath1)
     # my_analyzer.write_validation_prediction(outpath2)
@@ -227,9 +253,9 @@ def main(args):
 
 
     # --- Create confusion matrix ---
-    # my_analyzer.training_confusion_matrix(epiml_options.logdir)
-    # my_analyzer.validation_confusion_matrix(epiml_options.logdir)
-    # my_analyzer.test_confusion_matrix(epiml_options.logdir)
+    # my_analyzer.training_confusion_matrix(cli.logdir)
+    # my_analyzer.validation_confusion_matrix(cli.logdir)
+    # my_analyzer.test_confusion_matrix(cli.logdir)
 
 
     # --- Create visualisation ---
@@ -242,12 +268,14 @@ def main(args):
     # importance = my_analyzer.importance()
     # pickle.dump(importance, open("importance.pickle", 'wb'))
 
-    # bedgraph_path = os.path.join(epiml_options.logdir, "importance.bedgraph")
+    # bedgraph_path = os.path.join(cli.logdir, "importance.bedgraph")
     # analysis.values_to_bedgraph(importance, chroms, hdf5_resolution, bedgraph_path)
 
     end = time_now()
+    main_time = end - begin
     print(f"end {end}")
-    print(f"Main() time: {end - begin}")
+    print(f"Main() duration: {main_time}")
+    comet_logger.experiment.log_other("Main duration", main_time)
 
 if __name__ == "__main__":
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
