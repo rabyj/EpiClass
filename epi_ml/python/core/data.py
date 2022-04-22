@@ -1,7 +1,6 @@
 import collections
-import io
 import math
-import os.path
+from pathlib import Path
 import random
 
 import h5py
@@ -16,6 +15,7 @@ class DataSetFactory(object):
     @classmethod
     def from_epidata(cls, datasource: EpiDataSource, metadata: Metadata, label_category: str, oversample=False,
                      normalization=True, min_class_size=3, validation_ratio=0.1, test_ratio=0.1):
+        """TODO : Write docstring"""
 
         return EpiData(
             datasource, metadata, label_category, oversample, normalization, min_class_size, validation_ratio, test_ratio
@@ -41,6 +41,7 @@ class EpiData(object):
 
     @property
     def dataset(self):
+        """TODO : Write docstring"""
         return DataSet(self._train, self._validation, self._test, self._sorted_classes)
 
     @staticmethod
@@ -48,7 +49,7 @@ class EpiData(object):
         """Verify that splitting ratios make sense."""
         if valid_ratio + test_ratio > 1:
             raise ValueError(
-                "Validation and test ratios are bigger than 100%: {} and {}".format(valid_ratio, test_ratio)
+                f"Validation and test ratios are bigger than 100%: {valid_ratio} and {test_ratio}"
                 )
 
     def _load_metadata(self, metadata):
@@ -66,7 +67,7 @@ class EpiData(object):
         self._hdf5s = {md5:self._hdf5s[md5] for md5 in self._metadata.md5s}
 
     def _oversample_rates(self):
-        """"""
+        """TODO : Write docstring"""
         sorted_md5 = sorted(self._metadata.md5s)
         label_count = {}
         for md5 in sorted_md5:
@@ -86,13 +87,13 @@ class EpiData(object):
         return oversample_rates
 
     def _split_data(self, validation_ratio, test_ratio):
-        """"""
+        """TODO : Write docstring"""
         size_all_dict = self._metadata.label_counter(self._label_category)
 
         # A minimum of 3 examples are needed for each label (1 for each set), when splitting into three sets
         for label, size in size_all_dict.items():
             if size < 3:
-                print('The label `{}` countains only {} datasets.'.format(label, size))
+                print(f"The label `{label}` countains only {size} datasets.")
 
         size_validation_dict = collections.Counter({label:math.ceil(size*validation_ratio) for label, size in size_all_dict.items()})
         size_test_dict = collections.Counter({label:math.ceil(size*test_ratio) for label, size in size_all_dict.items()})
@@ -132,9 +133,9 @@ class EpiData(object):
         self._test = Data(test_md5s, test_signals, test_labels, self._metadata)
         self._train = Data(train_md5s, train_signals, train_labels, self._metadata)
 
-        print('validation size {}'.format(len(validation_labels)))
-        print('test size {}'.format(len(test_labels)))
-        print('training size {}'.format(len(train_labels)))
+        print(f"validation size {len(validation_labels)}")
+        print(f"test size {len(test_labels)}")
+        print(f"training size {len(train_labels)}")
 
     def _oversample_data(self, signals, labels):
         oversample_rates = self._oversample_rates()
@@ -145,7 +146,7 @@ class EpiData(object):
             sample_rate = int(1/rate)
             if random.random() < (1/rate) % 1:
                 sample_rate += 1
-            for i in range(sample_rate):
+            for _ in range(sample_rate):
                 new_signals.append(signal)
                 new_labels.append(label)
         return new_signals, new_labels
@@ -177,9 +178,11 @@ class Data(object): #class DataSet?
         self._metadata = metadata
 
     def preprocess(self, f):
+        """TODO : Write docstring"""
         self._signals = np.apply_along_axis(f, 1, self._signals)
 
     def next_batch(self, batch_size, shuffle=True):
+        """TODO : Write docstring"""
         #if index exceeded num examples, start over
         if self._index >= self._num_examples:
             self._index = 0
@@ -192,29 +195,35 @@ class Data(object): #class DataSet?
         return self._signals[start:end], self._labels[start:end]
 
     def _shuffle(self):
+        """TODO : Write docstring"""
         rng_state = np.random.get_state()
         for array in [self._shuffle_order, self._signals, self._labels]:
             np.random.shuffle(array)
             np.random.set_state(rng_state)
 
     def get_metadata(self, index):
+        """TODO : Write docstring"""
         #TODO: account for oversampling, ids don't match x for oversampled training set
         return self._metadata.get(self._ids[index])
 
     @property
     def ids(self):
+        """TODO : Write docstring"""
         return self._ids
 
     @property
     def signals(self):
+        """TODO : Write docstring"""
         return self._signals
 
     @property
     def labels(self):
+        """TODO : Write docstring"""
         return self._labels
 
     @property
     def num_examples(self):
+        """TODO : Write docstring"""
         return self._num_examples
 
 
@@ -228,21 +237,26 @@ class DataSet(object): #class Data?
 
     @property
     def train(self):
+        """TODO : Write docstring"""
         return self._train
 
     @property
     def validation(self):
+        """TODO : Write docstring"""
         return self._validation
 
     @property
     def test(self):
+        """TODO : Write docstring"""
         return self._test
 
     @property
     def classes(self):
+        """TODO : Write docstring"""
         return self._sorted_classes
 
     def preprocess(self, f):
+        """TODO : Write docstring"""
         if self._train.num_examples:
             self._train.preprocess(f)
         if self._validation.num_examples:
@@ -251,12 +265,14 @@ class DataSet(object): #class Data?
             self._test.preprocess(f)
 
     def save_mapping(self, path):
-        with open(path, 'w') as map_file:
+        """TODO : Write docstring"""
+        with open(path, 'w', encoding="utf-8") as map_file:
             for i, label in enumerate(self._sorted_classes):
-                map_file.write("{}\t{}\n".format(i, label))
+                map_file.write(f"{i}\t{label}\n")
 
     def load_mapping(self, path):
-        with open(path, 'r') as map_file:
+        """TODO : Write docstring"""
+        with open(path, 'r', encoding="utf-8") as map_file:
             mapping = {}
             for line in map_file:
                 i, label = line.rstrip().split('\t')
@@ -265,8 +281,8 @@ class DataSet(object): #class Data?
 
 
 class Hdf5Loader(object):
-
-    def __init__(self, chrom_file: io.IOBase, data_file: io.IOBase, normalization: bool):
+    """TODO : Write docstring"""
+    def __init__(self, chrom_file, data_file, normalization: bool):
         self._normalization = normalization
         self._chroms = self._load_chroms(chrom_file)
         self._hdf5s = self._load_hdf5s(data_file)
@@ -276,28 +292,30 @@ class Hdf5Loader(object):
         """Return a md5:norm_concat_chroms dict."""
         return self._hdf5s
 
-    def _load_chroms(self, chrom_file: io.IOBase):
+    def _load_chroms(self, chrom_file):
         """Return sorted chromosome names list."""
-        chrom_file.seek(0)
-        chroms = []
-        for line in chrom_file:
-            line = line.strip()
-            if line:
-                chroms.append(line.split()[0])
-        chroms.sort()
-        return chroms
+        with open(chrom_file, 'r', encoding="utf-8") as file:
+            chroms = []
+            for line in file:
+                line = line.rstrip()
+                if line:
+                    chroms.append(line.split()[0])
+            chroms.sort()
+            return chroms
 
-    def _load_hdf5s(self, data_file: io.IOBase):
-        data_file.seek(0)
-        hdf5s = {}
-        for file_path in [line.strip() for line in data_file]:
-            md5 = self._extract_md5(file_path)
-            datasets = []
-            for chrom in self._chroms:
-                f = h5py.File(file_path)
-                array = f[md5][chrom][...]
-                datasets.append(array)
-            hdf5s[md5] = self._normalize(np.concatenate(datasets))
+    def _load_hdf5s(self, data_file):
+        """TODO : Write docstring"""
+        with open(data_file, 'r', encoding="utf-8") as file_of_paths:
+            hdf5s = {}
+            for path in file_of_paths:
+                path = Path(path.rstrip())
+                md5 = self._extract_md5(path)
+                datasets = []
+                for chrom in self._chroms:
+                    f = h5py.File(path)
+                    array = f[md5][chrom][...]
+                    datasets.append(array)
+                hdf5s[md5] = self._normalize(np.concatenate(datasets))
         return hdf5s
 
     def _normalize(self, array):
@@ -306,5 +324,5 @@ class Hdf5Loader(object):
         else:
             return array
 
-    def _extract_md5(self, file_name):
-        return os.path.basename(file_name).split("_")[0]
+    def _extract_md5(self, file_name: Path):
+        return file_name.name.split("_")[0]

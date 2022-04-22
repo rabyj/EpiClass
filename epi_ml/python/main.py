@@ -2,14 +2,11 @@
 import comet_ml #needed because special snowflake # pylint: disable=unused-import
 import pytorch_lightning #in case GCC or CUDA needs it # pylint: disable=unused-import
 
-
 import argparse
-from argparseutils.directorytype import DirectoryType
 from datetime import datetime
 import json
 import os
-import os.path
-from os.path import normpath
+from pathlib import Path
 import sys
 import warnings
 warnings.simplefilter("ignore", category=FutureWarning)
@@ -21,6 +18,7 @@ import torch
 from torch.utils.data import TensorDataset
 from torch.utils.data import DataLoader
 
+from argparseutils.directorytype import DirectoryType
 from core import metadata
 from core import data
 from core.model_pytorch import LightningDenseClassifier
@@ -37,11 +35,11 @@ def parse_arguments(args: list) -> argparse.Namespace:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('category', type=str, help='The metatada category to analyse.')
     arg_parser.add_argument(
-        'hyperparameters', type=argparse.FileType('r'), help='A json file containing model hyperparameters.'
+        'hyperparameters', type=Path, help='A json file containing model hyperparameters.'
         )
-    arg_parser.add_argument('hdf5', type=argparse.FileType('r'), help='A file with hdf5 filenames. Use absolute path!')
-    arg_parser.add_argument('chromsize', type=argparse.FileType('r'), help='A file with chrom sizes.')
-    arg_parser.add_argument('metadata', type=argparse.FileType('r'), help='A metadata JSON file.')
+    arg_parser.add_argument('hdf5', type=Path, help='A file with hdf5 filenames. Use absolute path!')
+    arg_parser.add_argument('chromsize', type=Path, help='A file with chrom sizes.')
+    arg_parser.add_argument('metadata', type=Path, help='A metadata JSON file.')
     arg_parser.add_argument('logdir', type=DirectoryType(), help='A directory for the logs.')
     return arg_parser.parse_args(args)
 
@@ -54,8 +52,8 @@ def main(args):
     cli = parse_arguments(args)
 
     # if only want to convert confusion matrix csv to png
-    # in_path = os.path.join(cli.logdir, "confusion_matrix.csv")
-    # out_path = os.path.join(cli.logdir, "confusion_matrix.png")
+    # in_path = cli.logdir / "confusion_matrix.csv"
+    # out_path = cli.logdir / "confusion_matrix.png"
     # analysis.convert_matrix_csv_to_png(in_path, out_path)
     # sys.exit()
 
@@ -67,12 +65,13 @@ def main(args):
         cli.metadata
         )
 
-    hparams = json.load(cli.hyperparameters)
+    with open(cli.hyperparameters, "r", encoding="utf-8") as file:
+        hparams = json.load(file)
 
     # --- Startup LOGGER ---
     #api key in config file
-    IsOffline = False #additional logging fails with True
-    exp_name = '-'.join(normpath(cli.logdir).split(os.path.sep)[-2:])
+    IsOffline = False # additional logging fails with True
+    exp_name = '-'.join(cli.logdir.parts[-2:])
     comet_logger = pl_loggers.CometLogger(
         project_name="EpiLaP",
         experiment_name=exp_name,
@@ -92,7 +91,7 @@ def main(args):
 
 
     # --- LOAD DATA ---
-    my_metadata = metadata.Metadata.from_epidatasource(my_datasource)
+    my_metadata = metadata.Metadata(my_datasource.metadata_file)
     assembly = next(iter(my_metadata.datasets)).get("assembly", "NA")
     comet_logger.experiment.add_tag(assembly)
     comet_logger.experiment.log_other("assembly", assembly)
@@ -141,9 +140,9 @@ def main(args):
         )
 
     train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True, num_workers=4)
-    valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset), num_workers=4)
+    valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset), num_workers=1)
 
-    mapping_file = os.path.join(cli.logdir, "training_mapping.tsv")
+    mapping_file = cli.logdir / "training_mapping.tsv"
     my_data.save_mapping(mapping_file)
     comet_logger.experiment.log_asset(mapping_file)
 
@@ -243,9 +242,9 @@ def main(args):
     # my_analyzer.get_test_metrics()
 
     # --- Create prediction file ---
-    # outpath1 = os.path.join(cli.logdir, "training_predict.csv")
-    # outpath2 = os.path.join(cli.logdir, "validation_predict.csv")
-    # outpath3 = os.path.join(cli.logdir, "test_predict.csv")
+    # outpath1 = cli.logdir / "training_predict.csv"
+    # outpath2 = cli.logdir / "validation_predict.csv"
+    # outpath3 = cli.logdir / "test_predict.csv"
 
     # my_analyzer.write_training_prediction(outpath1)
     # my_analyzer.write_validation_prediction(outpath2)
@@ -268,7 +267,7 @@ def main(args):
     # importance = my_analyzer.importance()
     # pickle.dump(importance, open("importance.pickle", 'wb'))
 
-    # bedgraph_path = os.path.join(cli.logdir, "importance.bedgraph")
+    # bedgraph_path = cli.logdir / "importance.bedgraph"
     # analysis.values_to_bedgraph(importance, chroms, hdf5_resolution, bedgraph_path)
 
     end = time_now()

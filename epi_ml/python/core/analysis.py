@@ -1,6 +1,6 @@
 """Module containing result analysis code."""
 import itertools
-import os
+from pathlib import Path
 from typing import Union
 
 import matplotlib
@@ -164,9 +164,9 @@ class ConfusionMatrix(object):
         self._confusion_matrix.to_csv(path, encoding="utf8", float_format='%.4f')
 
     def to_all_formats(self, logdir, name):
-        outpath = os.path.join(logdir, name)
-        self.to_csv(outpath + ".csv")
-        self.to_png(outpath + ".png")
+        outpath = Path(logdir) / name
+        self.to_csv(outpath.with_suffix(".csv"))
+        self.to_png(outpath.with_suffix(".png"))
 
 
 def write_pred_table(pred, classes, data_subset, path):

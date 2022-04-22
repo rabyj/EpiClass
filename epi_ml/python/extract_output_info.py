@@ -4,14 +4,14 @@ Extract specific information from what epiML prints.
 Useful to get several results for the Excel sheet at once.
 """
 import argparse
-import io
+from pathlib import Path
 import re
 import sys
 
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('epiML_output', type=argparse.FileType('r'), help='File to extract info from.')
+    arg_parser.add_argument('epiML_output', type=Path, help='File to extract info from.')
     return arg_parser.parse_args(args)
 
 
@@ -59,18 +59,17 @@ class EpiMLOutputReader():
         """Print info in order of given fields. Print all info with keys if no field is given."""
         if fields is None:
             for key, val in sorted(self._info.items()):
-                print("{} : {}".format(key, val))
+                print(f"{key} : {val}")
         else:
             infos = [self._info.get(field, "--") for field in fields]
             print('\t'.join(infos))
 
 
-    def read_file(self, file: io.IOBase):
+    def read_file(self, file):
         """Read file and extract important information."""
-        self._file = file
+        self._file = open(file, 'r', encoding="utf-8")
         self._info = {} #empty if another file was read before
 
-        file.seek(0)
         while True:
             try:
                 self._next_line()
@@ -81,6 +80,8 @@ class EpiMLOutputReader():
             first_word = self._get_current_first_word()
             if first_word in self._tokens:
                 self._read_section(first_word)
+
+        self._file.close()
 
 
     def _get_current_first_word(self):
@@ -106,7 +107,7 @@ class EpiMLOutputReader():
         elif token == self.EXAMPLES_TOKEN:
             self._read_examples()
         else:
-            raise InvalidTokenError("Invalid token: {}".format(token))
+            raise InvalidTokenError(f"Invalid token: {token}")
 
 
     def _read_hyperparams(self):
@@ -129,9 +130,9 @@ class EpiMLOutputReader():
         """Extract set size from "[SetName] size [SetSize]" line."""
         dataset, word, size = self._current_line.strip('\n').split(' ')
         if word == "size":
-            self._info["{}_size".format(dataset)] = size
+            self._info[f"{dataset}_size"] = size
         else:
-            raise InvalidTokenError("Not a set size section. Problematic token:{}".format(dataset))
+            raise InvalidTokenError(f"Not a set size section. Problematic token:{dataset}")
 
     def _read_examples(self):
         """Extract the total number of examples from "For a total of [Nb] examples" line."""
@@ -189,7 +190,7 @@ class EpiMLOutputReader():
 
             if first_word in self.METRICS:
 
-                field_name = "{}_{}".format(dataset, first_word).lower()
+                field_name = f"{dataset}_{first_word}".lower()
                 self._info[field_name] = line[1].strip(' ')
 
             # another metrics section

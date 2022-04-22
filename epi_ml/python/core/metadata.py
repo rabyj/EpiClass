@@ -1,29 +1,13 @@
 import copy
 import collections
 import json
-import io
-import os.path
+from pathlib import Path
 
-# import tensorflow as tf
-import numpy as np
-
-from .data_source import EpiDataSource
 
 class Metadata(object):
     """Wrapper around metadata md5:dataset dict."""
-    def __init__(self, meta_file: io.IOBase):
+    def __init__(self, meta_file : Path):
         self._metadata = self._load_metadata(meta_file)
-
-    @classmethod
-    def from_path(cls, path):
-        """Initialize from metadata filepath."""
-        with open(path, "r", encoding="utf-8") as meta_file:
-            return cls(meta_file)
-
-    @classmethod
-    def from_epidatasource(cls, datasource: EpiDataSource):
-        """Initialize from EpiDataSource"""
-        return cls(datasource.metadata_file)
 
     def empty(self):
         """Remove all entries."""
@@ -58,10 +42,10 @@ class Metadata(object):
         """Return values."""
         return self._metadata.values()
 
-    def _load_metadata(self, meta_file: io.IOBase):
+    def _load_metadata(self, meta_file):
         """Return md5:dataset dict."""
-        meta_file.seek(0)
-        meta_raw = json.load(meta_file)
+        with open(meta_file, 'r', encoding="utf-8") as file:
+            meta_raw = json.load(file)
         return {dset["md5sum"]:dset for dset in meta_raw["datasets"]}
 
     def apply_filter(self, meta_filter=lambda item: True):
@@ -138,15 +122,6 @@ class Metadata(object):
             i += count
         print(f"For a total of {i} examples\n")
 
-    # def category_class_weights(self, label_category):
-    #     """Return class weights for the given category, ordered
-    #     by alphabetical order of labels.
-    #     """
-    #     counter = self.label_counter(label_category)
-    #     weights = np.array([class_size for label, class_size in sorted(counter.most_common())])
-    #     weights = 1. / (weights / np.amax(weights))
-    #     return tf.constant(weights, shape=[1, weights.size], dtype=tf.float32)
-
     def create_healthy_category(self):
         """Combine "disease" and "donor_health_status" to create a "healthy" category.
 
@@ -191,9 +166,7 @@ class Metadata(object):
 class HealthyCategory(object):
     """Create/Represent/manipulate the "healthy" metadata category"""
     def __init__(self):
-        self.pairs_file = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "healthy_category.tsv"
-            )
+        self.pairs_file = Path(__file__).parent / "healthy_category.tsv"
         self.healthy_dict = self.read_healthy_pairs()
 
     @staticmethod

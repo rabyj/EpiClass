@@ -1,5 +1,5 @@
 """Trainer class extensions module"""
-import os.path
+from pathlib import Path
 from datetime import datetime
 
 import pytorch_lightning as pl
@@ -12,10 +12,7 @@ class MyTrainer(pl.Trainer):
         """Metrics expect probabilities and not logits."""
         super().__init__(**kwargs)
 
-        self.best_checkpoint_file = os.path.join(
-            general_log_dir,
-            "best_checkpoint.list"
-            )
+        self.best_checkpoint_file = Path(general_log_dir) / "best_checkpoint.list"
         self.model = last_trained_model
         self.batch_size = None
 
