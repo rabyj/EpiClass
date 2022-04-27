@@ -222,6 +222,7 @@ def main(args):
             experiment_key=exp_key
         )
         comet_logger.experiment.log_other("Training time", training_time)
+        comet_logger.experiment.log_other("Last epoch", my_model.current_epoch)
 
     # --- RESTORE old model ---
     if not is_training:
