@@ -1,6 +1,6 @@
 """Main"""
 import comet_ml #needed because special snowflake # pylint: disable=unused-import
-import pytorch_lightning #in case GCC or CUDA needs it # pylint: disable=unused-import
+import pytorch_lightning as pl #in case GCC or CUDA needs it # pylint: disable=unused-import
 
 import argparse
 from datetime import datetime
@@ -139,8 +139,8 @@ def main(args):
         torch.from_numpy(np.argmax(my_data.validation.labels, axis=-1))
         )
 
-    train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True, num_workers=4)
-    valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset), num_workers=1)
+    train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True, pin_memory=True)
+    valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset), pin_memory=True)
 
     mapping_file = cli.logdir / "training_mapping.tsv"
     my_data.save_mapping(mapping_file)
@@ -189,9 +189,11 @@ def main(args):
                 enable_model_summary=False,
                 accelerator="gpu",
                 devices=1,
-                precision=16
+                precision=16,
+                enable_progress_bar=False
                 )
         else :
+            callbacks.append(pl.callbacks.RichProgressBar(leave=True))
             trainer = MyTrainer(
                 general_log_dir=cli.logdir,
                 last_trained_model=my_model,

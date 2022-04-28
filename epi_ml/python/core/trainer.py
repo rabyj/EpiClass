@@ -43,7 +43,7 @@ class MyTrainer(pl.Trainer):
 
 def define_callbacks(early_stop_limit: int):
     """Returns list of PyTorch trainer callbacks.
-    RichModelSummary, EarlyStopping, ModelCheckpoint, RichProgressBar
+    RichModelSummary, EarlyStopping, ModelCheckpoint
     """
     summary = torch_callbacks.RichModelSummary(max_depth=3)
 
@@ -67,6 +67,4 @@ def define_callbacks(early_stop_limit: int):
         save_on_train_epoch_end=False
     )
 
-    my_bar = torch_callbacks.RichProgressBar(leave=True)
-
-    return [summary, early_stop, checkpoint, my_bar]
+    return [summary, early_stop, checkpoint]
