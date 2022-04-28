@@ -83,6 +83,10 @@ def main(args):
     comet_logger.experiment.add_tag(f"{cli.category}")
     print(f"The current experiment key is {exp_key}")
 
+    if "SLURM_JOB_ID" in os.environ:
+        comet_logger.experiment.log_other("SLURM_JOB_ID", os.environ["SLURM_JOB_ID"])
+        comet_logger.experiment.add_tag("Cluster")
+
 
     # --- LOAD useful info ---
     hdf5_resolution = my_datasource.hdf5_resolution()
