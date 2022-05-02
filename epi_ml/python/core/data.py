@@ -123,7 +123,7 @@ class EpiData(object):
         train_labels = [self._metadata[md5][self._label_category] for md5 in train_md5s]
 
         if self._oversample:
-            train_signals, train_labels = self._oversample_data(train_signals, train_labels)
+            train_signals, train_labels, train_md5s = self._oversample_data(train_signals, train_labels, train_md5s)
 
         self._to_onehot(validation_labels)
         self._to_onehot(test_labels)
@@ -137,11 +137,12 @@ class EpiData(object):
         print(f"test size {len(test_labels)}")
         print(f"training size {len(train_labels)}")
 
-    def _oversample_data(self, signals, labels):
+    def _oversample_data(self, signals, labels, md5s):
         oversample_rates = self._oversample_rates()
         new_signals = []
         new_labels = []
-        for signal, label in zip(signals, labels):
+        new_md5s = []
+        for i, (signal, label) in enumerate(zip(signals, labels)):
             rate = oversample_rates[label]
             sample_rate = int(1/rate)
             if random.random() < (1/rate) % 1:
@@ -149,9 +150,11 @@ class EpiData(object):
             for _ in range(sample_rate):
                 new_signals.append(signal)
                 new_labels.append(label)
-        return new_signals, new_labels
+                new_md5s.append(md5s[i])
+        return new_signals, new_labels, new_md5s
 
     def _to_onehot(self, labels):
+        """Transform labels into onehot matrix."""
         sorted_md5 = sorted(self._metadata.md5s)
         uniq = set()
         for md5 in sorted_md5:
@@ -202,8 +205,7 @@ class Data(object): #class DataSet?
             np.random.set_state(rng_state)
 
     def get_metadata(self, index):
-        """TODO : Write docstring"""
-        #TODO: account for oversampling, ids don't match x for oversampled training set
+        """Get the metadata from the signal at the given position in the set."""
         return self._metadata.get(self._ids[index])
 
     @property

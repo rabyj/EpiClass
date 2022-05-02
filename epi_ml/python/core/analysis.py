@@ -1,7 +1,7 @@
 """Module containing result analysis code."""
 import itertools
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional
 
 import matplotlib
 matplotlib.use('Agg')
@@ -9,21 +9,36 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
+import torch
+from torch.utils.data import TensorDataset
 
+from core.data import Data, DataSet
 from core.model_pytorch import LightningDenseClassifier
-
 class Analysis(object):
     """Class containing main analysis methods desired."""
     def __init__(self,
-    model : Union[pl.LightningModule, LightningDenseClassifier],
-    train_dataset=None, val_dataset=None, test_dataset=None,
-    logger=None
+    model: Union[pl.LightningModule, LightningDenseClassifier],
+    datasets_info: DataSet,
+    logger: pl.loggers.CometLogger,
+    train_dataset: Optional[TensorDataset] = None,
+    val_dataset: Optional[TensorDataset] = None,
+    test_dataset: Optional[TensorDataset] = None
     ):
         self._model = model
+        self._logger = logger
+
+        # Original DataSet object
+        self.datasets = datasets_info
+        self._set_dict = {
+            "training" : self.datasets.train,
+            "validation" : self.datasets.validation,
+            "test" : self.datasets.test
+            }
+
+        # TensorDataset objects
         self._train = train_dataset
         self._val = val_dataset
         self._test = test_dataset
-        self._logger = logger
 
     def _log_metrics(self, metric_dict, prefix=""):
         """Log metrics from TorchMetrics metrics dict object. (key : tensor(val))"""
@@ -55,14 +70,35 @@ class Analysis(object):
         """Compute and print test set metrics."""
         return self._generic_metrics(self._test, "test", verbose)
 
-    # def write_training_prediction(self, path):
-    #     write_pred_table(self._trainer.training_pred(), self._data.classes, self._data.train, path)
+    def write_training_prediction(self, path=None):
+        """Compute and write training predictions to file."""
+        self._generic_write_prediction(self._train, name="training", path=path)
 
-    # def write_validation_prediction(self, path):
-    #     write_pred_table(self._trainer.validation_pred(), self._data.classes, self._data.validation, path)
+    def write_validation_prediction(self, path=None):
+        """Compute and write validation predictions to file."""
+        self._generic_write_prediction(self._val, name="validation", path=path)
 
-    # def write_test_prediction(self, path):
-    #     write_pred_table(self._trainer.test_pred(), self._data.classes, self._data.test, path)
+    def write_test_prediction(self, path=None):
+        """Compute and write test predictions to file."""
+        self._generic_write_prediction(self._test, name="test", path=path)
+
+    def _generic_write_prediction(self, dataset, name, path):
+        """General treatment to write predictions
+        Name can be {training, validation, test}.
+        """
+        if path is None :
+            path = self._logger.save_dir / f"{name}_prediction.csv"
+
+        if dataset is None:
+            print(f"Cannot compute {name} predictions : No {name} dataset given")
+            return
+
+        features = dataset[:][0]
+        with torch.no_grad():
+            preds = self._model(features)
+
+        write_pred_table(preds, self.datasets.classes, self._set_dict[name], path=path)
+        self._logger.experiment.log_asset(file_data=path, file_name=f"{name}_prediction")
 
     # def training_confusion_matrix(self, logdir, name="training_confusion_matrix"):
     #     mat = ConfusionMatrix(self._data.classes, self._trainer.training_mat())
@@ -169,7 +205,7 @@ class ConfusionMatrix(object):
         self.to_png(outpath.with_suffix(".png"))
 
 
-def write_pred_table(pred, classes, data_subset, path):
+def write_pred_table(pred, classes, data_subset : Data, path):
     """Write to "path" a csv containing class probability predictions of data_subset."""
     labels = data_subset.labels
     md5s = data_subset.ids

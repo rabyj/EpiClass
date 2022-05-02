@@ -80,8 +80,10 @@ def main(args):
         auto_metric_logging=False
     )
     exp_key = comet_logger.experiment.get_key()
-    comet_logger.experiment.add_tag(f"{cli.category}")
     print(f"The current experiment key is {exp_key}")
+    comet_logger.experiment.log_other("Experience key", f"{exp_key}")
+
+    comet_logger.experiment.add_tag(f"{cli.category}")
 
     if "SLURM_JOB_ID" in os.environ:
         comet_logger.experiment.log_other("SLURM_JOB_ID", os.environ["SLURM_JOB_ID"])
@@ -218,8 +220,7 @@ def main(args):
         training_time = time_now() - before_train
         print(f"training time: {training_time}")
 
-        # reload comet logger for further logging, will fail in offline mode
-
+        # reload comet logger for further logging, will create new experience in offline mode
         comet_logger = pl_loggers.CometLogger(
             project_name="EpiLaP",
             save_dir=cli.logdir,
@@ -240,7 +241,7 @@ def main(args):
 
     # --- OUTPUTS ---
     my_analyzer = analysis.Analysis(
-        my_model, train_dataset=train_dataset, val_dataset=valid_dataset, logger=comet_logger
+        my_model, my_data, comet_logger, train_dataset=train_dataset, val_dataset=valid_dataset,
         )
 
     # --- Print metrics ---
@@ -249,13 +250,9 @@ def main(args):
     # my_analyzer.get_test_metrics()
 
     # --- Create prediction file ---
-    # outpath1 = cli.logdir / "training_predict.csv"
-    # outpath2 = cli.logdir / "validation_predict.csv"
-    # outpath3 = cli.logdir / "test_predict.csv"
-
-    # my_analyzer.write_training_prediction(outpath1)
-    # my_analyzer.write_validation_prediction(outpath2)
-    # my_analyzer.write_test_prediction(outpath3)
+    # my_analyzer.write_training_prediction() # Oversampling = OFF when using this please!
+    my_analyzer.write_validation_prediction()
+    # my_analyzer.write_test_prediction()
 
 
     # --- Create confusion matrix ---
@@ -282,6 +279,7 @@ def main(args):
     print(f"end {end}")
     print(f"Main() duration: {main_time}")
     comet_logger.experiment.log_other("Main duration", main_time)
+    comet_logger.experiment.add_tag("Finished")
 
 if __name__ == "__main__":
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'

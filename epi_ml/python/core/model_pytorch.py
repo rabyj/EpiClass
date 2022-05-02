@@ -78,7 +78,7 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
 
 
     # --- Define format of output ---
-    def forward(self, x):
+    def forward(self, x : torch.Tensor):
         """Return probabilities."""
         return F.softmax(self.forward_train(x), dim=1)
 
