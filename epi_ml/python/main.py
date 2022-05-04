@@ -261,7 +261,7 @@ def main(args):
 
 
     # --- Create confusion matrix ---
-    # my_analyzer.training_confusion_matrix(cli.logdir)
+    my_analyzer.train_confusion_matrix()
     my_analyzer.validation_confusion_matrix()
     # my_analyzer.test_confusion_matrix(cli.logdir)
 

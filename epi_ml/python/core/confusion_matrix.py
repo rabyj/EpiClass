@@ -1,9 +1,12 @@
 """ConfusionMatrixWriter class"""
+import math
 from pathlib import Path
 
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from matplotlib import cm
+from matplotlib.colors import ListedColormap
 import numpy as np
 import pandas as pd
 import torch
@@ -49,28 +52,45 @@ class ConfusionMatrixWriter(object):
         return confusion_mat2.T
 
     def to_png(self, path):
-        """Write to path an image of the confusion matrix."""
+        """Write to path an image of the confusion matrix.
+        Colors : https://i.stack.imgur.com/cmk1J.png
+        Ref code : https://matplotlib.org/3.1.0/tutorials/colors/colormap-manipulation.html
+        https://stackoverflow.com/questions/35710931/remove-a-section-of-a-colormap
+        """
         plt.figure()
 
+        # Check matrix type https://stackoverflow.com/questions/1342601/pythonic-way-of-checking-if-a-condition-holds-for-any-element-of-a-list
+        # compute color bar ranges
+        relative = True
+        if np.any(self.pd_confusion_matrix > 1):
+            relative = False
+
+        if relative:
+            vmax = 0.999 #this is so exactly 1.0 is a different color from the rest
+            vmin = 0.0
+        else:
+            vmax = np.max(self.pd_confusion_matrix)
+            vmin = 1.0
+
+        # mask empty values, so they are white in the image
         data_mask = np.ma.masked_where(self.pd_confusion_matrix == 0, self.pd_confusion_matrix)
 
-        cdict = {'red': ((0.0, 0.1, 0.1),
-                         (1.0, 1.0, 1.0)),
+        # prep colormap
+        nb_colors = 20
+        gnuplot = cm.get_cmap("gnuplot", nb_colors) #20 colors
+        newcolors = gnuplot(np.linspace(0., 1., nb_colors))
+        new_cmap = ListedColormap(newcolors)
+        new_cmap.set_over(matplotlib.colors.to_rgba("GreenYellow")) # color for max values, do it LAST
 
-                 'green': ((0.0, 0.1, 0.1),
-                           (1.0, 0.1, 0.1)),
-
-                 'blue': ((0.0, 1.0, 1.0),
-                          (1.0, 0.1, 0.1))}
-
-        blue_red = matplotlib.colors.LinearSegmentedColormap('BlueRed', cdict, N=1000)
-
+        # prep labels / ticks
         nb_labels = len(self.pd_confusion_matrix.columns)
         grid_width = 0.5 - nb_labels/400.0
         label_size = 15*np.exp(-0.02*nb_labels)
 
+        # create color mesh and arrange ticks
         fig, ax = plt.subplots()
-        cm = ax.pcolormesh(data_mask, cmap=blue_red, alpha=0.8, edgecolors='k', linewidths=grid_width)
+        mesh = ax.pcolormesh(data_mask, cmap=new_cmap, vmin=vmin, vmax=vmax, edgecolors='k', linewidths=grid_width)
+
         ax.set_frame_on(False)
         ax.set_xticks(np.arange(nb_labels) + 0.5, minor=False)
         ax.set_yticks(np.arange(nb_labels) + 0.5, minor=False)
@@ -89,29 +109,29 @@ class ConfusionMatrixWriter(object):
             t.tick1On = False
             t.tick2On = False
 
-        cbar = fig.colorbar(cm, ax=ax, shrink=0.75)
+        # arrange color bar
+        bounds = np.linspace(vmin, math.ceil(vmax), nb_colors+1) #just to have the max tick appear properly
+        ticks = np.linspace(vmin, math.ceil(vmax), 11)
+        cbar = fig.colorbar(mesh, ax=ax, shrink=0.75, boundaries=bounds, ticks=ticks)
         cbar.ax.tick_params(labelsize=4)
 
         plt.tight_layout()
         plt.savefig(path, format='png', dpi=500)
 
-        # buf = io.BytesIO()
-        # plt.savefig(buf, format='png', dpi=400)
-        # buf.seek(0)
-        # image = tf.image.decode_png(buf.getvalue(), channels=4)
-        # image = tf.expand_dims(image, 0)
-        # summary = tf.summary.image("Confusion Matrix", image, max_outputs=1)
-        # self._writer.add_summary(summary.eval(session=self._sess))
 
     def to_csv(self, path):
         """Write to path a csv file of the confusion matrix."""
         self.pd_confusion_matrix.to_csv(path, encoding="utf8", float_format='%.4f')
+        return path
 
     def to_all_formats(self, logdir, name):
         """Write to path both a png and csv file of the confusion matrix."""
         outpath = Path(logdir) / name
-        self.to_csv(outpath.with_suffix(".csv"))
-        self.to_png(outpath.with_suffix(".png"))
+        out1 = outpath.with_suffix(".csv")
+        out2 = outpath.with_suffix(".png")
+        self.to_csv(out1)
+        self.to_png(out2)
+        return out1, out2
 
     @staticmethod
     def convert_matrix_csv_to_png(in_path, out_path):

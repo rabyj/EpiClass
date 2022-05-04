@@ -149,7 +149,9 @@ class Analysis(object):
         else:
             parent = path.parent
             name = path.with_suffix("").name
-        mat.to_all_formats(logdir=parent, name=name)
+        csv, png = mat.to_all_formats(logdir=parent, name=name)
+        self._logger.experiment.log_asset(file_data=csv, file_name=f"{csv.name}")
+        self._logger.experiment.log_asset(file_data=png, file_name=f"{png.name}")
 
     def train_confusion_matrix(self, path=None):
         """Compute and write train confusion matrix to file."""
