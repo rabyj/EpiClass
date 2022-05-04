@@ -51,17 +51,9 @@ def main(args):
     begin = time_now()
     print(f"begin {begin}")
 
-    # --- PARSE params ---
+    # --- PARSE params and LOAD external files ---
     cli = parse_arguments(args)
 
-    # if only want to convert confusion matrix csv to png
-    # in_path = cli.logdir / "confusion_matrix.csv"
-    # out_path = cli.logdir / "confusion_matrix.png"
-    # ConfusionMatrixWriter.convert_matrix_csv_to_png(in_path, out_path)
-    # sys.exit()
-
-
-    # --- LOAD external files ---
     my_datasource = data.EpiDataSource(
         cli.hdf5,
         cli.chromsize,
@@ -70,6 +62,7 @@ def main(args):
 
     with open(cli.hyperparameters, "r", encoding="utf-8") as file:
         hparams = json.load(file)
+
 
     # --- Startup LOGGER ---
     #api key in config file
@@ -272,19 +265,6 @@ def main(args):
     my_analyzer.validation_confusion_matrix()
     # my_analyzer.test_confusion_matrix(cli.logdir)
 
-
-    # --- Create visualisation ---
-    # vis = visualization.Pca()
-    # my_trainer.visualize(vis)
-
-
-    # --- Compute/write importance ---
-    # importance = pickle.load(open("importance.pickle", 'rb'))
-    # importance = my_analyzer.importance()
-    # pickle.dump(importance, open("importance.pickle", 'wb'))
-
-    # bedgraph_path = cli.logdir / "importance.bedgraph"
-    # analysis.values_to_bedgraph(importance, chroms, hdf5_resolution, bedgraph_path)
 
     end = time_now()
     main_time = end - begin

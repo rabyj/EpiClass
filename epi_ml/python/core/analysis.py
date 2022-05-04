@@ -151,9 +151,12 @@ class Analysis(object):
             name = path.with_suffix("").name
         mat.to_all_formats(logdir=parent, name=name)
 
-    # def training_confusion_matrix(self, logdir, name="training_confusion_matrix"):
-    #     mat = ConfusionMatrix(self._data.classes, self._trainer.training_mat())
-    #     mat.to_all_formats(logdir, name)
+    def train_confusion_matrix(self, path=None):
+        """Compute and write train confusion matrix to file."""
+        set_name = "train"
+        mat = self._generic_confusion_matrix(self._train, name=set_name)
+        mat = ConfusionMatrixWriter(labels=self._classes, confusion_mat=mat)
+        self._save_matrix(mat, set_name, path)
 
     def validation_confusion_matrix(self, path=None):
         """Compute and write validation confusion matrix to file."""
@@ -162,12 +165,12 @@ class Analysis(object):
         mat = ConfusionMatrixWriter(labels=self._classes, confusion_mat=mat)
         self._save_matrix(mat, set_name, path)
 
-    # def test_confusion_matrix(self, logdir, name="test_confusion_matrix"):
-    #     mat = ConfusionMatrix(self._data.classes, self._trainer.test_mat())
-    #     mat.to_all_formats(logdir, name)
-
-    # def importance(self):
-    #     return importance(self._trainer.weights())
+    def test_confusion_matrix(self, path=None):
+        """Compute and write test confusion matrix to file."""
+        set_name = "test"
+        mat = self._generic_confusion_matrix(self._test, name=set_name)
+        mat = ConfusionMatrixWriter(labels=self._classes, confusion_mat=mat)
+        self._save_matrix(mat, set_name, path)
 
 
 
