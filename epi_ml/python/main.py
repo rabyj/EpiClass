@@ -24,6 +24,8 @@ from core import data
 from core.model_pytorch import LightningDenseClassifier
 from core.trainer import MyTrainer, define_callbacks
 from core import analysis
+from core.confusion_matrix import ConfusionMatrixWriter
+
 
 def time_now():
     """Return datetime of call without microseconds"""
@@ -33,14 +35,15 @@ def time_now():
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('category', type=str, help='The metatada category to analyse.')
+    arg_parser.add_argument("category", type=str, help="The metatada category to analyse.")
     arg_parser.add_argument(
-        'hyperparameters', type=Path, help='A json file containing model hyperparameters.'
+        "hyperparameters", type=Path, help="A json file containing model hyperparameters."
         )
-    arg_parser.add_argument('hdf5', type=Path, help='A file with hdf5 filenames. Use absolute path!')
-    arg_parser.add_argument('chromsize', type=Path, help='A file with chrom sizes.')
-    arg_parser.add_argument('metadata', type=Path, help='A metadata JSON file.')
-    arg_parser.add_argument('logdir', type=DirectoryType(), help='A directory for the logs.')
+    arg_parser.add_argument("hdf5", type=Path, help="A file with hdf5 filenames. Use absolute path!")
+    arg_parser.add_argument("chromsize", type=Path, help="A file with chrom sizes.")
+    arg_parser.add_argument("metadata", type=Path, help="A metadata JSON file.")
+    arg_parser.add_argument("logdir", type=DirectoryType(), help="A directory for the logs.")
+    arg_parser.add_argument("--offline", action="store_true", help="Will log data offline instead of online. Currently cannot merge comet-ml offline outputs.")
     return arg_parser.parse_args(args)
 
 def main(args):
@@ -54,7 +57,7 @@ def main(args):
     # if only want to convert confusion matrix csv to png
     # in_path = cli.logdir / "confusion_matrix.csv"
     # out_path = cli.logdir / "confusion_matrix.png"
-    # analysis.convert_matrix_csv_to_png(in_path, out_path)
+    # ConfusionMatrixWriter.convert_matrix_csv_to_png(in_path, out_path)
     # sys.exit()
 
 
@@ -70,7 +73,7 @@ def main(args):
 
     # --- Startup LOGGER ---
     #api key in config file
-    IsOffline = False # additional logging fails with True
+    IsOffline = cli.offline # additional logging fails with True
     exp_name = '-'.join(cli.logdir.parts[-2:])
     comet_logger = pl_loggers.CometLogger(
         project_name="EpiLaP",
@@ -120,6 +123,11 @@ def main(args):
     # assays_to_remove = [os.getenv(var, "") for var in ["REMOVE_ASSAY1", "REMOVE_ASSAY2", "REMOVE_ASSAY3"]]
     # my_metadata.remove_category_subsets(assays_to_remove, "assay")
 
+    # epiatlas_assay_list = [
+    #     "h3k27ac", "h3k27me3", "h3k36me3", "h3k4me1", "h3k4me3", "h3k9me3",
+    #     ]
+    # my_metadata.select_category_subsets(epiatlas_assay_list, "assay")
+
 
     # --- CREATE training/validation/test SETS (and change metadata according to what is used) ---
     my_data = data.DataSetFactory.from_epidata(
@@ -148,36 +156,47 @@ def main(args):
     train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True, pin_memory=True)
     valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset), pin_memory=True)
 
+    is_training = hparams.get("is_training", True)
+    is_tuning = False
+
+    # Warning : output mapping of model created from training dataset
     mapping_file = cli.logdir / "training_mapping.tsv"
-    my_data.save_mapping(mapping_file)
-    comet_logger.experiment.log_asset(mapping_file)
-
-
-    # --- DEFINE sizes for input and output LAYERS of the network ---
-    input_size = my_data.train.signals[0].size
-    output_size = my_data.train.labels[0].size
-    hl_units = int(os.getenv("LAYER_SIZE", default="3000"))
-    nb_layers = int(os.getenv("NB_LAYER", default="1"))
-
-
-    # --- Assert the resolution is correct so the importance bedgraph works later ---
-    # analysis.assert_correct_resolution(chroms, hdf5_resolution, input_size)
-
 
     # --- CREATE a brand new MODEL ---
-    my_model = LightningDenseClassifier(
-        input_size,
-        output_size,
-        hparams,
-        hl_units=hl_units,
-        nb_layer=nb_layers
-        )
+    if is_training and not is_tuning:
+        my_data.save_mapping(mapping_file)
+        mapping = my_data.load_mapping(mapping_file)
+        comet_logger.experiment.log_asset(mapping_file)
 
-    print("--MODEL STRUCTURE--\n", my_model)
-    my_model.print_model_summary()
+
+        #  DEFINE sizes for input and output LAYERS of the network
+        input_size = my_data.train.signals[0].size
+        output_size = my_data.train.labels[0].size
+        hl_units = int(os.getenv("LAYER_SIZE", default="3000"))
+        nb_layers = int(os.getenv("NB_LAYER", default="1"))
+
+        my_model = LightningDenseClassifier(
+            input_size=input_size,
+            output_size=output_size,
+            mapping=mapping,
+            hparams=hparams,
+            hl_units=hl_units,
+            nb_layer=nb_layers
+            )
+
+        print("--MODEL STRUCTURE--\n", my_model)
+        my_model.print_model_summary()
+
+
+    # --- RESTORE old model (if just for computing new metrics, or for tuning further) ---
+    if not is_training or is_tuning:
+        print("No training, loading last best model from given logdir")
+        # Note : Training accuracy can vary since reloaded model
+        # is not last model (saved when monitored metric does not move anymore)
+        my_model = LightningDenseClassifier.restore_model(cli.logdir)
+
 
     # --- TRAIN the model ---
-    is_training = hparams.get("is_training", True)
     if is_training:
 
         callbacks = define_callbacks(early_stop_limit=hparams.get("early_stop_limit", 20))
@@ -231,13 +250,6 @@ def main(args):
         comet_logger.experiment.log_other("Training time", training_time)
         comet_logger.experiment.log_other("Last epoch", my_model.current_epoch)
 
-    # --- RESTORE old model ---
-    if not is_training:
-        print("No training, loading last best model from given logdir")
-        # Note : Training accuracy can vary since reloaded model
-        # is not last model (saved when monitored metric does not move anymore)
-        my_model = LightningDenseClassifier.restore_model(cli.logdir)
-
 
     # --- OUTPUTS ---
     my_analyzer = analysis.Analysis(
@@ -257,7 +269,7 @@ def main(args):
 
     # --- Create confusion matrix ---
     # my_analyzer.training_confusion_matrix(cli.logdir)
-    # my_analyzer.validation_confusion_matrix(cli.logdir)
+    my_analyzer.validation_confusion_matrix()
     # my_analyzer.test_confusion_matrix(cli.logdir)
 
 
@@ -282,5 +294,5 @@ def main(args):
     comet_logger.experiment.add_tag("Finished")
 
 if __name__ == "__main__":
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
     main(sys.argv[1:])

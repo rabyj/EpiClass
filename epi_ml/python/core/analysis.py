@@ -5,15 +5,18 @@ from typing import Union, Optional
 
 import matplotlib
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
 import torch
 from torch.utils.data import TensorDataset
+import torchmetrics
 
-from core.data import Data, DataSet
+from core.data import DataSet
 from core.model_pytorch import LightningDenseClassifier
+from core.confusion_matrix import ConfusionMatrixWriter
+
+
 class Analysis(object):
     """Class containing main analysis methods desired."""
     def __init__(self,
@@ -25,9 +28,10 @@ class Analysis(object):
     test_dataset: Optional[TensorDataset] = None
     ):
         self._model = model
+        self._classes = sorted(list(self._model.mapping.values()))
         self._logger = logger
 
-        # Original DataSet object
+        # Original DataSet object (legacy)
         self.datasets = datasets_info
         self._set_dict = {
             "training" : self.datasets.train,
@@ -35,7 +39,7 @@ class Analysis(object):
             "test" : self.datasets.test
             }
 
-        # TensorDataset objects
+        # TensorDataset objects (pytorch)
         self._train = train_dataset
         self._val = val_dataset
         self._test = test_dataset
@@ -43,7 +47,19 @@ class Analysis(object):
     def _log_metrics(self, metric_dict, prefix=""):
         """Log metrics from TorchMetrics metrics dict object. (key : tensor(val))"""
         for metric, val in metric_dict.items():
-            self._logger.experiment.log_metric(f"{prefix[0:3]}_{metric}", val.item())
+            name = f"{prefix[0:3]}_{metric}"
+            self._logger.experiment.log_metric(name, val.item())
+
+    @staticmethod
+    def print_metrics(metric_dict, name):
+        """Print metrics from TorchMetrics dict."""
+        print(f"--- {name} METRICS ---")
+        vals = []
+        for metric, val in metric_dict.items():
+            str_val = f"{val.item():.3f}"
+            print(metric, str_val)
+            vals.append(str_val)
+        print(*vals)
 
     def _generic_metrics(self, dataset, name, verbose):
         """General treatment to compute and print metrics"""
@@ -55,7 +71,7 @@ class Analysis(object):
             if self._logger is not None :
                 self._log_metrics(metrics_dict, prefix=name)
             if verbose:
-                print_metrics(metrics_dict, name=f"{name} set")
+                Analysis.print_metrics(metrics_dict, name=f"{name} set")
         return metrics_dict
 
     def get_training_metrics(self, verbose=True):
@@ -70,6 +86,31 @@ class Analysis(object):
         """Compute and print test set metrics."""
         return self._generic_metrics(self._test, "test", verbose)
 
+    def _generic_write_prediction(self, dataset, name, path, verbose=True):
+        """General treatment to write predictions
+        Name can be {training, validation, test}.
+        """
+        if path is None :
+            path = self._logger.save_dir / f"{name}_prediction.csv"
+
+        if dataset is None:
+            print(f"Cannot compute {name} predictions : No {name} dataset given")
+            return
+
+        preds, targets = self._model.compute_predictions(dataset)
+
+        write_pred_table(
+            predictions=preds,
+            str_targets=[self._model.mapping[int(val.item())] for val in targets],
+            md5s=self._set_dict[name].ids,
+            classes=self._classes,
+            path=path
+        )
+        self._logger.experiment.log_asset(file_data=path, file_name=f"{name}_prediction")
+
+        if verbose:
+            print(f"'{path.name}' written to '{path.parent}'")
+
     def write_training_prediction(self, path=None):
         """Compute and write training predictions to file."""
         self._generic_write_prediction(self._train, name="training", path=path)
@@ -82,31 +123,44 @@ class Analysis(object):
         """Compute and write test predictions to file."""
         self._generic_write_prediction(self._test, name="test", path=path)
 
-    def _generic_write_prediction(self, dataset, name, path):
-        """General treatment to write predictions
-        Name can be {training, validation, test}.
-        """
-        if path is None :
-            path = self._logger.save_dir / f"{name}_prediction.csv"
-
+    def _generic_confusion_matrix(self, dataset, name)  -> torch.Tensor:
+        """General treatment to write confusion matrices."""
         if dataset is None:
-            print(f"Cannot compute {name} predictions : No {name} dataset given")
+            print(f"Cannot compute {name} confusion matrix : No {name} dataset given")
             return
 
-        features = dataset[:][0]
-        with torch.no_grad():
-            preds = self._model(features)
+        preds, targets = self._model.compute_predictions(dataset)
 
-        write_pred_table(preds, self.datasets.classes, self._set_dict[name], path=path)
-        self._logger.experiment.log_asset(file_data=path, file_name=f"{name}_prediction")
+        final_pred = torch.argmax(preds, dim=-1)
+
+        mat = torchmetrics.functional.confusion_matrix(
+            final_pred,
+            targets,
+            num_classes=len(self._classes),
+            normalize=None
+            )
+        return mat
+
+    def _save_matrix(self, mat : ConfusionMatrixWriter, set_name, path : Path):
+        """Save matrix to files"""
+        if path is None:
+            parent = self._logger.save_dir
+            name = f"{set_name}_confusion_matrix"
+        else:
+            parent = path.parent
+            name = path.with_suffix("").name
+        mat.to_all_formats(logdir=parent, name=name)
 
     # def training_confusion_matrix(self, logdir, name="training_confusion_matrix"):
     #     mat = ConfusionMatrix(self._data.classes, self._trainer.training_mat())
     #     mat.to_all_formats(logdir, name)
 
-    # def validation_confusion_matrix(self, logdir, name="validation_confusion_matrix"):
-    #     mat = ConfusionMatrix(self._data.classes, self._trainer.validation_mat())
-    #     mat.to_all_formats(logdir, name)
+    def validation_confusion_matrix(self, path=None):
+        """Compute and write validation confusion matrix to file."""
+        set_name = "validation"
+        mat = self._generic_confusion_matrix(self._val, name=set_name)
+        mat = ConfusionMatrixWriter(labels=self._classes, confusion_mat=mat)
+        self._save_matrix(mat, set_name, path)
 
     # def test_confusion_matrix(self, logdir, name="test_confusion_matrix"):
     #     mat = ConfusionMatrix(self._data.classes, self._trainer.test_mat())
@@ -116,121 +170,21 @@ class Analysis(object):
     #     return importance(self._trainer.weights())
 
 
-class ConfusionMatrix(object):
-    """Class to create/handle confusion matrices"""
-    def __init__(self, labels, tf_confusion_mat):
-        self._labels = labels
-        self._confusion_matrix = self._create_confusion_matrix(tf_confusion_mat) #pd dataframe
 
-    @classmethod
-    def from_csv(cls, csv_path):
-        obj = cls.__new__(cls)  # Does not call __init__
-        obj._confusion_matrix = pd.read_csv(csv_path, sep=',', index_col=0)
-        return obj
+def write_pred_table(predictions, str_targets, md5s, classes, path):
+    """Write to "path" a csv containing class probability predictions.
 
-    def _create_confusion_matrix(self, tf_confusion_mat):
-        labels_count = tf_confusion_mat.sum(axis=0)
-        labels_w_count = [f"{label}({label_count})" for label, label_count in zip(self._labels, labels_count)]
+    pred : Prediction vectors
+    str_targets : List of corresponding targets, but in string form
+    md5s : List of corresponding md5s
+    classes : Ordered list of the output classes
+    path : Where to write the file
+    """
+    df = pd.DataFrame(data=predictions, index=md5s, columns=classes)
 
-        confusion_mat = self._to_relative_confusion_matrix(labels_count, tf_confusion_mat)
-
-        return pd.DataFrame(data=confusion_mat, index=labels_w_count, columns=self._labels)
-
-    def _to_relative_confusion_matrix(self, labels_count, tf_confusion_mat):
-        confusion_mat = tf_confusion_mat/labels_count
-        confusion_mat = np.nan_to_num(confusion_mat)
-        confusion_mat = confusion_mat.T #one label per row instead of column
-        return confusion_mat
-
-    def to_png(self, path):
-        plt.figure()
-
-        data_mask = np.ma.masked_where(self._confusion_matrix == 0, self._confusion_matrix)
-
-        cdict = {'red': ((0.0, 0.1, 0.1),
-                         (1.0, 1.0, 1.0)),
-
-                 'green': ((0.0, 0.1, 0.1),
-                           (1.0, 0.1, 0.1)),
-
-                 'blue': ((0.0, 1.0, 1.0),
-                          (1.0, 0.1, 0.1))}
-
-        blue_red = matplotlib.colors.LinearSegmentedColormap('BlueRed', cdict, N=1000)
-
-        nb_labels = len(self._confusion_matrix.columns)
-        grid_width = 0.5 - nb_labels/400.0
-        label_size = 15*np.exp(-0.02*nb_labels)
-
-        fig, ax = plt.subplots()
-        cm = ax.pcolormesh(data_mask, cmap=blue_red, alpha=0.8, edgecolors='k', linewidths=grid_width)
-        ax.set_frame_on(False)
-        ax.set_xticks(np.arange(nb_labels) + 0.5, minor=False)
-        ax.set_yticks(np.arange(nb_labels) + 0.5, minor=False)
-        ax.invert_yaxis()
-        ax.xaxis.tick_top()
-
-        ax.set_xticklabels(self._confusion_matrix.columns, fontsize=label_size)
-        ax.set_yticklabels(self._confusion_matrix.index, fontsize=label_size)
-        plt.xticks(rotation=90)
-
-        ax = plt.gca()
-        for t in ax.xaxis.get_major_ticks():
-            t.tick1On = False
-            t.tick2On = False
-        for t in ax.yaxis.get_major_ticks():
-            t.tick1On = False
-            t.tick2On = False
-
-        cbar = fig.colorbar(cm, ax=ax, shrink=0.75)
-        cbar.ax.tick_params(labelsize=4)
-
-        plt.tight_layout()
-        plt.savefig(path, format='png', dpi=500)
-
-        # buf = io.BytesIO()
-        # plt.savefig(buf, format='png', dpi=400)
-        # buf.seek(0)
-        # image = tf.image.decode_png(buf.getvalue(), channels=4)
-        # image = tf.expand_dims(image, 0)
-        # summary = tf.summary.image("Confusion Matrix", image, max_outputs=1)
-        # self._writer.add_summary(summary.eval(session=self._sess))
-
-    def to_csv(self, path):
-        self._confusion_matrix.to_csv(path, encoding="utf8", float_format='%.4f')
-
-    def to_all_formats(self, logdir, name):
-        outpath = Path(logdir) / name
-        self.to_csv(outpath.with_suffix(".csv"))
-        self.to_png(outpath.with_suffix(".png"))
-
-
-def write_pred_table(pred, classes, data_subset : Data, path):
-    """Write to "path" a csv containing class probability predictions of data_subset."""
-    labels = data_subset.labels
-    md5s = data_subset.ids
-
-    string_labels = [classes[np.argmax(label)] for label in labels]
-    df = pd.DataFrame(data=pred, index=md5s, columns=classes)
-
-    df.insert(loc=0, column="class", value=string_labels)
+    df.insert(loc=0, column="class", value=str_targets)
 
     df.to_csv(path, encoding="utf8")
-
-def convert_matrix_csv_to_png(in_path, out_path):
-    """Convert csv of confusion matrix to a png, and write it to out_path."""
-    mat = ConfusionMatrix.from_csv(in_path)
-    mat.to_png(out_path)
-
-def print_metrics(metric_dict, name):
-    """Print metrics from torchmetrics dict."""
-    print(f"--- {name} METRICS ---")
-    vals = []
-    for metric, val in metric_dict.items():
-        str_val = f"{val.item():.3f}"
-        print(metric, str_val)
-        vals.append(str_val)
-    print(*vals)
 
 def importance(w):
     """garson algorithm, w for weights."""

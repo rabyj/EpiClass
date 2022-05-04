@@ -1,5 +1,5 @@
 """Model creation module"""
-import os.path
+from pathlib import Path
 
 import torch
 from torch import nn
@@ -12,7 +12,7 @@ from torchmetrics import Accuracy, Precision, Recall, F1Score, MatthewsCorrCoef,
 class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-ancestors
     """Simple dense network handler"""
 
-    def __init__(self, input_size, output_size, hparams, hl_units=3000, nb_layer=1):
+    def __init__(self, input_size, output_size, mapping, hparams, hl_units=3000, nb_layer=1):
         """Metrics expect probabilities and not logits"""
         super().__init__()
 
@@ -21,6 +21,8 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
         self._y_size = output_size
         self._hl_size = hl_units # hl = hidden layer
         self._nb_layer = nb_layer # number of intermediary/hidden layers
+
+        self.mapping = mapping
 
         # -- hyperparameters --
         self.l2_scale = hparams.get("l2_scale", 0.01)
@@ -42,6 +44,7 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
         self.metrics = metrics
         self.train_acc = Accuracy(num_classes=self._y_size, average="micro")
         self.valid_acc = Accuracy(num_classes=self._y_size, average="micro")
+
 
     # --- Define general model structure ---
     def define_model(self):
@@ -143,15 +146,22 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
         """Return dict of metrics for given dataset."""
         self.eval()
         with torch.no_grad():
-            x, y = dataset[:]
-            preds = self(x)
-        return self.metrics(preds, y)
+            features, targets = dataset[:]
+            preds = self(features)
+        return self.metrics(preds, targets)
+
+    def compute_predictions(self, dataset, ):
+        """Return predictions and targets from dataset."""
+        self.eval()
+        with torch.no_grad():
+            features, targets = dataset[:]
+            preds = self(features)
+        return preds, targets
 
     @classmethod
     def restore_model(cls, logdir):
         """Load the checkpoint of the best model from the last run."""
-
-        path = os.path.join(logdir, "best_checkpoint.list")
+        path = Path(logdir) / "best_checkpoint.list"
 
         with open(path, "r", encoding="utf-8") as ckpt_file:
             lines = ckpt_file.read().splitlines()

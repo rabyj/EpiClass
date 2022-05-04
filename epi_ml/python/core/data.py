@@ -254,7 +254,8 @@ class DataSet(object): #class Data?
 
     @property
     def classes(self):
-        """TODO : Write docstring"""
+        """Return sorted classes present in datasets.
+        Not necessarily all classes corresponding to output"""
         return self._sorted_classes
 
     def preprocess(self, f):
@@ -267,13 +268,13 @@ class DataSet(object): #class Data?
             self._test.preprocess(f)
 
     def save_mapping(self, path):
-        """TODO : Write docstring"""
+        """Write the 'output position --> label' mapping to path."""
         with open(path, 'w', encoding="utf-8") as map_file:
             for i, label in enumerate(self._sorted_classes):
                 map_file.write(f"{i}\t{label}\n")
 
     def load_mapping(self, path):
-        """TODO : Write docstring"""
+        """Return dict object representation 'output position --> label' mapping from path."""
         with open(path, 'r', encoding="utf-8") as map_file:
             mapping = {}
             for line in map_file:
