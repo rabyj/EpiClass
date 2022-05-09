@@ -44,6 +44,7 @@ def parse_arguments(args: list) -> argparse.Namespace:
     arg_parser.add_argument("metadata", type=Path, help="A metadata JSON file.")
     arg_parser.add_argument("logdir", type=DirectoryType(), help="A directory for the logs.")
     arg_parser.add_argument("--offline", action="store_true", help="Will log data offline instead of online. Currently cannot merge comet-ml offline outputs.")
+    arg_parser.add_argument("--predict", action="store_const", const=True, help="Enter prediction mode. Overwrites hparameter file setting. Default mode is training mode.")
     return arg_parser.parse_args(args)
 
 def main(args):
@@ -149,8 +150,12 @@ def main(args):
     train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True, pin_memory=True)
     valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset), pin_memory=True)
 
+    # Define current mode (training, predict or tuning)
     is_training = hparams.get("is_training", True)
     is_tuning = False
+
+    if cli.predict is not None:
+        is_training = False
 
     # Warning : output mapping of model created from training dataset
     mapping_file = cli.logdir / "training_mapping.tsv"

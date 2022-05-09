@@ -191,19 +191,6 @@ def write_pred_table(predictions, str_targets, md5s, classes, path):
 
     df.to_csv(path, encoding="utf8")
 
-def importance(w):
-    """garson algorithm, w for weights."""
-    #TODO: generalise, put in model
-    total_w = w[0]
-    for i in range(2, len(w), 2):
-        total_w = np.dot(total_w, w[i])
-    total_w = np.absolute(total_w)
-    sum_w = np.sum(total_w, axis=None)
-    total_w = np.sum(total_w/sum_w, axis=1)
-    # print((total_w > 1e-04).sum())
-    # return ','.join([str(x) for x in total_w])
-    return [x for x in total_w]
-
 def predict_concat_size(chroms, resolution):
     """Compute the size of a concatenated genome from the resolution of each chromosome."""
     concat_size = 0
