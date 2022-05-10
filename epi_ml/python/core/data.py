@@ -23,9 +23,13 @@ class DataSetFactory(object):
 
 
 class EpiData(object):
-    """Used to load and preprocess epigenomic data. Data factory."""
+    """Used to load and preprocess epigenomic data. Data factory.
+
+    Test ratio computed from validation ratio and test ratio. Be sure to set both correctly.
+    """
     def __init__(self, datasource: EpiDataSource, metadata: Metadata, label_category: str, oversample=False,
                  normalization=True, min_class_size=3, validation_ratio=0.1, test_ratio=0.1):
+        EpiData._assert_ratios(validation_ratio, test_ratio, verbose=True)
         self._label_category = label_category
         self._oversample = oversample
         self._sorted_classes = []
@@ -45,12 +49,16 @@ class EpiData(object):
         return DataSet(self._train, self._validation, self._test, self._sorted_classes)
 
     @staticmethod
-    def _assert_ratios(valid_ratio, test_ratio):
+    def _assert_ratios(val_ratio, test_ratio, verbose):
         """Verify that splitting ratios make sense."""
-        if valid_ratio + test_ratio > 1:
+        if val_ratio + test_ratio > 1:
             raise ValueError(
-                f"Validation and test ratios are bigger than 100%: {valid_ratio} and {test_ratio}"
+                f"Validation and test ratios are bigger than 100%: {val_ratio} and {test_ratio}"
                 )
+        elif verbose:
+            print(
+            f"training/validation/test split: {(1-val_ratio-test_ratio)*100}%/{val_ratio*100}%/{test_ratio*100}%"
+            )
 
     def _load_metadata(self, metadata):
         metadata.remove_missing_labels(self._label_category)

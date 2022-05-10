@@ -32,6 +32,7 @@ def time_now():
     return datetime.utcnow().replace(microsecond=0)
 
 
+
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = argparse.ArgumentParser()
@@ -42,9 +43,11 @@ def parse_arguments(args: list) -> argparse.Namespace:
     arg_parser.add_argument("hdf5", type=Path, help="A file with hdf5 filenames. Use absolute path!")
     arg_parser.add_argument("chromsize", type=Path, help="A file with chrom sizes.")
     arg_parser.add_argument("metadata", type=Path, help="A metadata JSON file.")
-    arg_parser.add_argument("logdir", type=DirectoryType(), help="A directory for the logs.")
+    arg_parser.add_argument("logdir", type=DirectoryType(), help="Directory for the output logs.")
     arg_parser.add_argument("--offline", action="store_true", help="Will log data offline instead of online. Currently cannot merge comet-ml offline outputs.")
-    arg_parser.add_argument("--predict", action="store_const", const=True, help="Enter prediction mode. Overwrites hparameter file setting. Default mode is training mode.")
+    arg_parser.add_argument("--predict", action="store_const", const=True, help="Enter prediction mode. Will use all data for the test set. Overwrites hparameter file setting. Default mode is training mode.")
+    arg_parser.add_argument("--model", type=DirectoryType(), help="Directory from which to load the desired model. Default is logdir.")
+
     return arg_parser.parse_args(args)
 
 def main(args):
@@ -116,16 +119,29 @@ def main(args):
     # my_metadata = metadata.five_cell_types_selection(my_metadata)
     # assays_to_remove = [os.getenv(var, "") for var in ["REMOVE_ASSAY1", "REMOVE_ASSAY2", "REMOVE_ASSAY3"]]
     # my_metadata.remove_category_subsets(assays_to_remove, "assay")
+    if os.getenv("ASSAY_LIST") is not None:
+        assay_list = json.loads(os.environ["ASSAY_LIST"])
+        my_metadata.select_category_subsets(assay_list, "assay")
+    else:
+        print("No assay list")
 
-    # epiatlas_assay_list = [
-    #     "h3k27ac", "h3k27me3", "h3k36me3", "h3k4me1", "h3k4me3", "h3k9me3",
-    #     ]
-    # my_metadata.select_category_subsets(epiatlas_assay_list, "assay")
+
+    # --- Define current MODE (training, predict or tuning) ---
+    is_training = hparams.get("is_training", True)
+    is_tuning = False # HARDCODED FOR THE MOMENT, FINE-TUNNING NOT HANDLED WELL
+
+    if cli.predict is not None:
+        is_training = False
+        val_ratio = 0
+        test_ratio = 1
+    else:
+        val_ratio = 0.1
+        test_ratio = 0.1
 
 
     # --- CREATE training/validation/test SETS (and change metadata according to what is used) ---
     my_data = data.DataSetFactory.from_epidata(
-        my_datasource, my_metadata, cli.category, oversample=True, min_class_size=10
+        my_datasource, my_metadata, cli.category, oversample=True, min_class_size=10, validation_ratio=val_ratio, test_ratio=test_ratio
         )
     comet_logger.experiment.log_other("Training size", my_data.train.num_examples)
     comet_logger.experiment.log_other("Total nb of files", len(my_metadata))
@@ -150,18 +166,14 @@ def main(args):
     train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True, pin_memory=True)
     valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset), pin_memory=True)
 
-    # Define current mode (training, predict or tuning)
-    is_training = hparams.get("is_training", True)
-    is_tuning = False
 
-    if cli.predict is not None:
-        is_training = False
 
-    # Warning : output mapping of model created from training dataset
-    mapping_file = cli.logdir / "training_mapping.tsv"
 
     # --- CREATE a brand new MODEL ---
     if is_training and not is_tuning:
+
+        # Warning : output mapping of model created from training dataset
+        mapping_file = cli.logdir / "training_mapping.tsv"
         my_data.save_mapping(mapping_file)
         mapping = my_data.load_mapping(mapping_file)
         comet_logger.experiment.log_asset(mapping_file)
@@ -187,11 +199,16 @@ def main(args):
 
 
     # --- RESTORE old model (if just for computing new metrics, or for tuning further) ---
+
+    # Note : Training accuracy can vary since reloaded model
+    # is not last model (saved when monitored metric does not move anymore)
+    # unless the best_checkpoint.list file is modified
     if not is_training or is_tuning:
-        print("No training, loading last best model from given logdir")
-        # Note : Training accuracy can vary since reloaded model
-        # is not last model (saved when monitored metric does not move anymore)
-        my_model = LightningDenseClassifier.restore_model(cli.logdir)
+        print("No training, loading last best model from model flag.")
+        model_dir = cli.logdir
+        if cli.model is not None:
+            model_dir = cli.model
+        my_model = LightningDenseClassifier.restore_model(model_dir)
 
 
     # --- TRAIN the model ---
@@ -226,7 +243,7 @@ def main(args):
                 callbacks=callbacks,
                 enable_model_summary=False,
                 accelerator="cpu",
-                devices=1,
+                devices=1
                 )
 
         trainer.print_hyperparameters()
@@ -255,20 +272,27 @@ def main(args):
         )
 
     # --- Print metrics ---
-    train_metrics = my_analyzer.get_training_metrics(verbose=True)
-    val_metrics = my_analyzer.get_validation_metrics(verbose=True)
-    # my_analyzer.get_test_metrics()
+    if is_training or is_tuning:
+        train_metrics = my_analyzer.get_training_metrics(verbose=True)
+        val_metrics = my_analyzer.get_validation_metrics(verbose=True)
+    elif cli.predict:
+        my_analyzer.get_test_metrics()
+
 
     # --- Create prediction file ---
-    # my_analyzer.write_training_prediction() # Oversampling = OFF when using this please!
-    my_analyzer.write_validation_prediction()
-    # my_analyzer.write_test_prediction()
+    if is_training or is_tuning:
+        # my_analyzer.write_training_prediction() # Oversampling = OFF when using this please!
+        my_analyzer.write_validation_prediction()
+    elif cli.predict:
+        my_analyzer.write_test_prediction()
 
 
     # --- Create confusion matrix ---
-    my_analyzer.train_confusion_matrix()
-    my_analyzer.validation_confusion_matrix()
-    # my_analyzer.test_confusion_matrix(cli.logdir)
+    if is_training or is_tuning:
+        my_analyzer.train_confusion_matrix()
+        my_analyzer.validation_confusion_matrix()
+    elif cli.predict:
+        my_analyzer.test_confusion_matrix()
 
 
     end = time_now()
