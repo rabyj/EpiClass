@@ -6,7 +6,7 @@ from pathlib import Path
 
 class Metadata(object):
     """Wrapper around metadata md5:dataset dict."""
-    def __init__(self, meta_file : Path):
+    def __init__(self, meta_file: Path):
         self._metadata = self._load_metadata(meta_file)
 
     def empty(self):

@@ -8,7 +8,7 @@ import pytorch_lightning.callbacks as torch_callbacks
 class MyTrainer(pl.Trainer):
     """Personalized trainer"""
 
-    def __init__(self, general_log_dir : str, last_trained_model = None, **kwargs):
+    def __init__(self, general_log_dir: str, last_trained_model = None, **kwargs):
         """Metrics expect probabilities and not logits."""
         super().__init__(**kwargs)
 
@@ -19,7 +19,7 @@ class MyTrainer(pl.Trainer):
     def fit(self, *args, verbose = True, **kwargs):
         """Base pl.Trainer.fit function, but also prints the batch size."""
         self.batch_size = kwargs["train_dataloaders"].batch_size
-        if verbose :
+        if verbose:
             print(f"Training batch size : {self.batch_size}")
         super().fit(*args, **kwargs)
 

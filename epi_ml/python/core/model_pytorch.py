@@ -81,7 +81,7 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
 
 
     # --- Define format of output ---
-    def forward(self, x : torch.Tensor):
+    def forward(self, x: torch.Tensor):
         """Return probabilities."""
         return F.softmax(self.forward_train(x), dim=1)
 
@@ -105,9 +105,9 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
 
         # changing "step" for x-axis change
         metrics = {
-            "train_acc" : self.train_acc,
-            "train_loss" : outputs["loss"],
-            "step" : self.current_epoch + 1.0
+            "train_acc": self.train_acc,
+            "train_loss": outputs["loss"],
+            "step": self.current_epoch + 1.0
             }
         self.log_dict(metrics, on_step=False, on_epoch=True)
 
@@ -125,9 +125,9 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
 
         # changing "step" for x-axis change
         metrics = {
-            "valid_acc" : self.valid_acc,
-            "valid_loss" : outputs["loss"],
-            "step" : self.current_epoch + 1.0
+            "valid_acc": self.valid_acc,
+            "valid_loss": outputs["loss"],
+            "step": self.current_epoch + 1.0
             }
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True)
 

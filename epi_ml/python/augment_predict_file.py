@@ -27,7 +27,7 @@ def augment_line(line, metadata, categories):
         ]
     return line[:1] + labels + line[1:]
 
-def augment_predict(metadata : Path, predict_path : Path, categories):
+def augment_predict(metadata: Path, predict_path: Path, categories):
     """Read -> augment -> write, row by row."""
     root, ext = os.path.splitext(predict_path)
     new_root = root + "_augmented"
