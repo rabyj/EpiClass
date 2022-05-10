@@ -34,9 +34,9 @@ class Analysis(object):
         # Original DataSet object (legacy)
         self.datasets = datasets_info
         self._set_dict = {
-            "training" : self.datasets.train,
-            "validation" : self.datasets.validation,
-            "test" : self.datasets.test
+            "training": self.datasets.train,
+            "validation": self.datasets.validation,
+            "test": self.datasets.test
             }
 
         # TensorDataset objects (pytorch)
@@ -45,7 +45,7 @@ class Analysis(object):
         self._test = test_dataset
 
     def _log_metrics(self, metric_dict, prefix=""):
-        """Log metrics from TorchMetrics metrics dict object. (key : tensor(val))"""
+        """Log metrics from TorchMetrics metrics dict object. (key: tensor(val))"""
         for metric, val in metric_dict.items():
             name = f"{prefix[0:3]}_{metric}"
             self._logger.experiment.log_metric(name, val.item())
@@ -68,7 +68,7 @@ class Analysis(object):
             metrics_dict = None
         else:
             metrics_dict = self._model.compute_metrics(dataset)
-            if self._logger is not None :
+            if self._logger is not None:
                 self._log_metrics(metrics_dict, prefix=name)
             if verbose:
                 Analysis.print_metrics(metrics_dict, name=f"{name} set")
@@ -90,7 +90,7 @@ class Analysis(object):
         """General treatment to write predictions
         Name can be {training, validation, test}.
         """
-        if path is None :
+        if path is None:
             path = self._logger.save_dir / f"{name}_prediction.csv"
 
         if dataset is None:
@@ -123,7 +123,7 @@ class Analysis(object):
         """Compute and write test predictions to file."""
         self._generic_write_prediction(self._test, name="test", path=path)
 
-    def _generic_confusion_matrix(self, dataset, name)  -> torch.Tensor:
+    def _generic_confusion_matrix(self, dataset, name) -> np.array:
         """General treatment to write confusion matrices."""
         if dataset is None:
             print(f"Cannot compute {name} confusion matrix : No {name} dataset given")
@@ -139,9 +139,9 @@ class Analysis(object):
             num_classes=len(self._classes),
             normalize=None
             )
-        return mat
+        return mat.detach().cpu().numpy()
 
-    def _save_matrix(self, mat : ConfusionMatrixWriter, set_name, path : Path):
+    def _save_matrix(self, mat: ConfusionMatrixWriter, set_name, path: Path):
         """Save matrix to files"""
         if path is None:
             parent = self._logger.save_dir
@@ -149,29 +149,30 @@ class Analysis(object):
         else:
             parent = path.parent
             name = path.with_suffix("").name
-        csv, png = mat.to_all_formats(logdir=parent, name=name)
+        csv, csv_rel, png = mat.to_all_formats(logdir=parent, name=name)
         self._logger.experiment.log_asset(file_data=csv, file_name=f"{csv.name}")
+        self._logger.experiment.log_asset(file_data=csv_rel, file_name=f"{csv_rel.name}")
         self._logger.experiment.log_asset(file_data=png, file_name=f"{png.name}")
 
     def train_confusion_matrix(self, path=None):
         """Compute and write train confusion matrix to file."""
         set_name = "train"
         mat = self._generic_confusion_matrix(self._train, name=set_name)
-        mat = ConfusionMatrixWriter(labels=self._classes, confusion_mat=mat)
+        mat = ConfusionMatrixWriter(labels=self._classes, confusion_matrix=mat)
         self._save_matrix(mat, set_name, path)
 
     def validation_confusion_matrix(self, path=None):
         """Compute and write validation confusion matrix to file."""
         set_name = "validation"
         mat = self._generic_confusion_matrix(self._val, name=set_name)
-        mat = ConfusionMatrixWriter(labels=self._classes, confusion_mat=mat)
+        mat = ConfusionMatrixWriter(labels=self._classes, confusion_matrix=mat)
         self._save_matrix(mat, set_name, path)
 
     def test_confusion_matrix(self, path=None):
         """Compute and write test confusion matrix to file."""
         set_name = "test"
         mat = self._generic_confusion_matrix(self._test, name=set_name)
-        mat = ConfusionMatrixWriter(labels=self._classes, confusion_mat=mat)
+        mat = ConfusionMatrixWriter(labels=self._classes, confusion_matrix=mat)
         self._save_matrix(mat, set_name, path)
 
 

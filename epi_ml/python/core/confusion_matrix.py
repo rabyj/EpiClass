@@ -1,6 +1,8 @@
 """ConfusionMatrixWriter class"""
 import math
 from pathlib import Path
+import re
+from typing import Tuple
 
 import matplotlib
 matplotlib.use('Agg')
@@ -9,45 +11,72 @@ from matplotlib import cm
 from matplotlib.colors import ListedColormap
 import numpy as np
 import pandas as pd
-import torch
 
 
 class ConfusionMatrixWriter(object):
-    """Class to create/handle confusion matrices"""
-    def __init__(self, labels, confusion_mat):
-        """Confusion mat is a matrix that counts each final prediction (int matrix)
-        Expects a confusion matrix input with prediction rows and target colomns."""
-        self._labels = labels
-        self.confusion_mat = confusion_mat
-        self.pd_confusion_matrix = self.create_confusion_matrix(relative=True) #pd dataframe
+    """Class to create/handle confusion matrices.
+
+    labels : list of classes string representation
+    confusion_matrix : A confusion matrix that counts each final prediction (int matrix)
+    Expects a confusion matrix input with prediction rows (row val: pred1 pred2 pred3 ...) and target columns.
+    """
+    def __init__(self, labels, confusion_matrix: np.array):
+        self._labels = sorted(labels)
+        self._og_confusion_mat = np.array(confusion_matrix)
+        self._pd_matrix, self._pd_rel_matrix = self._init_confusion_matrices(confusion_matrix) #pd dataframe
 
     @classmethod
-    def from_csv(cls, csv_path):
-        """Create instance from file."""
+    def from_csv(cls, csv_path, relative):
+        """Create instance from already written file.
+        The state of the matrix (relative or not) needs to be specified.
+        """
         obj = cls.__new__(cls)  # Does not call __init__
-        obj.pd_confusion_matrix = pd.read_csv(csv_path, sep=',', index_col=0)
+        content = pd.read_csv(csv_path, sep=',', index_col=0)
+        if relative:
+            obj._pd_rel_matrix = content
+            obj._labels = content.index.tolist()
+
+            labels_count = re.findall(r"\(([0-9]+)\)", "".join(obj._labels))
+            labels_count = np.array(labels_count, dtype=int)
+
+            mat = np.array((content.values.T * labels_count).T, dtype=float)
+            obj._og_confusion_mat = np.around(mat).astype(int)
+
+            obj._pd_matrix = pd.DataFrame(data=obj._og_confusion_mat, index=content.index, columns=content.columns) # pylint: disable=no-member
+        else:
+            obj._pd_matrix = content
+            obj._labels = content.index.tolist() # pylint: disable=no-member
+
+            obj._og_confusion_mat = content.to_numpy() # pylint: disable=no-member
+
+            rel_mat = ConfusionMatrixWriter.to_relative_confusion_matrix(
+                labels_count=obj._og_confusion_mat.sum(axis=1),
+                confusion_matrix=obj._og_confusion_mat
+            )
+            obj._pd_rel_matrix = pd.DataFrame(data=rel_mat, index=content.index, columns=content.columns) # pylint: disable=no-member
         return obj
 
-    def create_confusion_matrix(self, relative):
-        """Returns confusion matrix with labels (pandas df) from int matrix.
-        Expects prediction rows and target columns.
-        Can be normalized on rows (relative) or not.
+    def _init_confusion_matrices(self, confusion_matrix: np.array):
+        """Returns confusion matrices with labels (pandas df) from int matrix.
+        Expects prediction rows (target pred1 pred2 pred3 ....) and target columns.
+        Returns original and normalized on rows matrices.
         """
-        labels_count = self.confusion_mat.sum(axis=1) # total nb examples of each label
+        labels_count = confusion_matrix.sum(axis=1) # total nb examples of each label
         labels_w_count = [f"{label}({label_count})" for label, label_count in zip(self._labels, labels_count)]
 
-        confusion_mat = self.confusion_mat
-        if relative:
-            confusion_mat = ConfusionMatrixWriter.to_relative_confusion_matrix(labels_count, self.confusion_mat)
+        count_matrix = pd.DataFrame(data=confusion_matrix, index=labels_w_count, columns=self._labels)
 
-        return pd.DataFrame(data=confusion_mat, index=labels_w_count, columns=self._labels)
+        rel_confusion_mat = ConfusionMatrixWriter.to_relative_confusion_matrix(labels_count, confusion_matrix)
+        rel_matrix = pd.DataFrame(data=rel_confusion_mat, index=labels_w_count, columns=self._labels)
+
+        return count_matrix, rel_matrix
 
     @staticmethod
-    def to_relative_confusion_matrix(labels_count, confusion_mat : np.array):
+    def to_relative_confusion_matrix(labels_count: np.array, confusion_matrix: np.array):
         """Normalize confusion matrix per row.
-        Expects prediction rows and target columns.
+        Expects prediction rows (target pred1 pred2 pred3 ....) and target columns.
         """
-        confusion_mat1 = torch.div(confusion_mat.T, labels_count)
+        confusion_mat1 = np.divide(confusion_matrix.T, labels_count)
         confusion_mat2 = np.nan_to_num(confusion_mat1)
         return confusion_mat2.T
 
@@ -59,21 +88,14 @@ class ConfusionMatrixWriter(object):
         """
         plt.figure()
 
-        # Check matrix type https://stackoverflow.com/questions/1342601/pythonic-way-of-checking-if-a-condition-holds-for-any-element-of-a-list
+        # Check matrix type: https://stackoverflow.com/questions/1342601/pythonic-way-of-checking-if-a-condition-holds-for-any-element-of-a-list
         # compute color bar ranges
-        relative = True
-        if np.any(self.pd_confusion_matrix > 1):
-            relative = False
 
-        if relative:
-            vmax = 0.999 #this is so exactly 1.0 is a different color from the rest
-            vmin = 0.0
-        else:
-            vmax = np.max(self.pd_confusion_matrix)
-            vmin = 1.0
+        vmax = 0.999 #this is so exactly 1.0 is a different color from the rest
+        vmin = 0.0
 
         # mask empty values, so they are white in the image
-        data_mask = np.ma.masked_where(self.pd_confusion_matrix == 0, self.pd_confusion_matrix)
+        data_mask = np.ma.masked_where(self._pd_rel_matrix == 0, self._pd_rel_matrix)
 
         # prep colormap
         nb_colors = 20
@@ -83,7 +105,7 @@ class ConfusionMatrixWriter(object):
         new_cmap.set_over(matplotlib.colors.to_rgba("GreenYellow")) # color for max values, do it LAST
 
         # prep labels / ticks
-        nb_labels = len(self.pd_confusion_matrix.columns)
+        nb_labels = len(self._pd_rel_matrix.columns)
         grid_width = 0.5 - nb_labels/400.0
         label_size = 15*np.exp(-0.02*nb_labels)
 
@@ -97,8 +119,8 @@ class ConfusionMatrixWriter(object):
         ax.invert_yaxis()
         ax.xaxis.tick_top()
 
-        ax.set_xticklabels(self.pd_confusion_matrix.columns, fontsize=label_size)
-        ax.set_yticklabels(self.pd_confusion_matrix.index, fontsize=label_size)
+        ax.set_xticklabels(self._pd_rel_matrix.columns, fontsize=label_size)
+        ax.set_yticklabels(self._pd_rel_matrix.index, fontsize=label_size)
         plt.xticks(rotation=90)
 
         ax = plt.gca()
@@ -118,23 +140,41 @@ class ConfusionMatrixWriter(object):
         plt.tight_layout()
         plt.savefig(path, format='png', dpi=500)
 
+    def to_csv(self, path, relative):
+        """Write to path a csv file of the confusion matrix.
 
-    def to_csv(self, path):
-        """Write to path a csv file of the confusion matrix."""
-        self.pd_confusion_matrix.to_csv(path, encoding="utf8", float_format='%.4f')
-        return path
+        The type of matrix (relative by row, or not) needs to be specified.
+        """
+        if relative:
+            self._pd_rel_matrix.to_csv(path, encoding="utf8", float_format='%.4f')
+        else:
+            self._pd_matrix.to_csv(path, encoding="utf8")
 
-    def to_all_formats(self, logdir, name):
-        """Write to path both a png and csv file of the confusion matrix."""
+    def to_all_formats(self, logdir, name) -> Tuple[Path, Path, Path]:
+        """Write to logdir files of the confusion matrix.
+        out 1 : Path of csv of non-normalized matrix
+        out 2 : Path of csv of normalized matrix
+        out 3 : Path of png of matrix
+        """
         outpath = Path(logdir) / name
+
         out1 = outpath.with_suffix(".csv")
+        out1_rel = outpath.with_name(f"{name}_relative.csv")
         out2 = outpath.with_suffix(".png")
-        self.to_csv(out1)
+
+        print(f"\n{out1}\n{out1_rel}\n{out2}\n")
+
+        self.to_csv(out1, relative=False)
+        self.to_csv(out1_rel, relative=True)
         self.to_png(out2)
-        return out1, out2
+
+        return out1, out1_rel, out2
 
     @staticmethod
-    def convert_matrix_csv_to_png(in_path, out_path):
-        """Convert csv of confusion matrix to a png, and write it to out_path."""
-        mat = ConfusionMatrixWriter.from_csv(in_path)
-        mat.to_png(out_path)
+    def convert_matrix_csv_to_png(in_path, out_path, relative):
+        """Convert csv of confusion matrix to a png, and write it to out_path.
+
+        The state of the read matrix (relative by row or not) needs to be specified.
+        """
+        writer = ConfusionMatrixWriter.from_csv(in_path, relative)
+        writer.to_png(out_path)

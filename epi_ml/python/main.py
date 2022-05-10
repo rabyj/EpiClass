@@ -24,13 +24,11 @@ from core import data
 from core.model_pytorch import LightningDenseClassifier
 from core.trainer import MyTrainer, define_callbacks
 from core import analysis
-from core.confusion_matrix import ConfusionMatrixWriter
 
 
 def time_now():
     """Return datetime of call without microseconds"""
     return datetime.utcnow().replace(microsecond=0)
-
 
 
 def parse_arguments(args: list) -> argparse.Namespace:
@@ -49,6 +47,7 @@ def parse_arguments(args: list) -> argparse.Namespace:
     arg_parser.add_argument("--model", type=DirectoryType(), help="Directory from which to load the desired model. Default is logdir.")
 
     return arg_parser.parse_args(args)
+
 
 def main(args):
     """main called from command line, edit to change behavior"""
@@ -126,11 +125,12 @@ def main(args):
         print("No assay list")
 
 
-    # --- Define current MODE (training, predict or tuning) ---
+    # --- DEFINE current MODE (training, predict or tuning) ---
     is_training = hparams.get("is_training", True)
     is_tuning = False # HARDCODED FOR THE MOMENT, FINE-TUNNING NOT HANDLED WELL
 
     if cli.predict is not None:
+        is_training = False
         is_training = False
         val_ratio = 0
         test_ratio = 1
@@ -152,26 +152,33 @@ def main(args):
     for category in to_display:
         my_metadata.display_labels(category)
 
+    train_dataset = None #the variables all need to exist for the analyzer later
+    valid_dataset = None
+    test_dataset = None
 
-    train_dataset = TensorDataset(
-        torch.from_numpy(my_data.train.signals).float(),
-        torch.from_numpy(np.argmax(my_data.train.labels, axis=-1))
-        )
+    if is_training or is_tuning:
+        train_dataset = TensorDataset(
+            torch.from_numpy(my_data.train.signals).float(),
+            torch.from_numpy(np.argmax(my_data.train.labels, axis=-1))
+            )
 
-    valid_dataset = TensorDataset(
-        torch.from_numpy(my_data.validation.signals).float(),
-        torch.from_numpy(np.argmax(my_data.validation.labels, axis=-1))
-        )
+        valid_dataset = TensorDataset(
+            torch.from_numpy(my_data.validation.signals).float(),
+            torch.from_numpy(np.argmax(my_data.validation.labels, axis=-1))
+            )
 
-    train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True, pin_memory=True)
-    valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset), pin_memory=True)
+        train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True, pin_memory=True)
+        valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset), pin_memory=True)
 
-
+    if cli.predict:
+        test_dataset = TensorDataset(
+            torch.from_numpy(my_data.test.signals).float(),
+            torch.from_numpy(np.argmax(my_data.test.labels, axis=-1))
+            )
 
 
     # --- CREATE a brand new MODEL ---
     if is_training and not is_tuning:
-
         # Warning : output mapping of model created from training dataset
         mapping_file = cli.logdir / "training_mapping.tsv"
         my_data.save_mapping(mapping_file)
@@ -232,7 +239,7 @@ def main(args):
                 precision=16,
                 enable_progress_bar=False
                 )
-        else :
+        else:
             callbacks.append(pl.callbacks.RichProgressBar(leave=True))
             trainer = MyTrainer(
                 general_log_dir=cli.logdir,
@@ -268,22 +275,23 @@ def main(args):
 
     # --- OUTPUTS ---
     my_analyzer = analysis.Analysis(
-        my_model, my_data, comet_logger, train_dataset=train_dataset, val_dataset=valid_dataset,
+        my_model, my_data, comet_logger,
+        train_dataset=train_dataset, val_dataset=valid_dataset, test_dataset=test_dataset
         )
 
     # --- Print metrics ---
     if is_training or is_tuning:
         train_metrics = my_analyzer.get_training_metrics(verbose=True)
         val_metrics = my_analyzer.get_validation_metrics(verbose=True)
-    elif cli.predict:
-        my_analyzer.get_test_metrics()
+    if cli.predict:
+        test_metrics = my_analyzer.get_test_metrics()
 
 
     # --- Create prediction file ---
     if is_training or is_tuning:
         # my_analyzer.write_training_prediction() # Oversampling = OFF when using this please!
         my_analyzer.write_validation_prediction()
-    elif cli.predict:
+    if cli.predict:
         my_analyzer.write_test_prediction()
 
 
@@ -291,7 +299,7 @@ def main(args):
     if is_training or is_tuning:
         my_analyzer.train_confusion_matrix()
         my_analyzer.validation_confusion_matrix()
-    elif cli.predict:
+    if cli.predict:
         my_analyzer.test_confusion_matrix()
 
 
