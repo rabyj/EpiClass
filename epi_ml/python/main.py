@@ -130,8 +130,8 @@ def main(args):
     is_tuning = False # HARDCODED FOR THE MOMENT, FINE-TUNNING NOT HANDLED WELL
 
     if cli.predict is not None:
-        is_training = False
-        is_training = False
+        is_training = False #overwrite hparams option
+        is_tuning = False
         val_ratio = 0
         test_ratio = 1
     else:
