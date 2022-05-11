@@ -162,8 +162,6 @@ class ConfusionMatrixWriter(object):
         out1_rel = outpath.with_name(f"{name}_relative.csv")
         out2 = outpath.with_suffix(".png")
 
-        print(f"\n{out1}\n{out1_rel}\n{out2}\n")
-
         self.to_csv(out1, relative=False)
         self.to_csv(out1_rel, relative=True)
         self.to_png(out2)
