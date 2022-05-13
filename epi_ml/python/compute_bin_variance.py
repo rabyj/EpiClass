@@ -4,7 +4,7 @@ import sys
 
 import numpy as np
 
-from argparseutils.directorytype import DirectoryType
+from argparseutils.directorychecker import DirectoryChecker
 from core import data
 from core import analysis
 
@@ -14,7 +14,7 @@ def parse_arguments(args: list) -> argparse.Namespace:
     arg_parser.add_argument('hdf5', type=Path, help='A file with hdf5 filenames. Use absolute path!')
     arg_parser.add_argument('chromsize', type=Path, help='A file with chrom sizes.')
     arg_parser.add_argument('metadata', type=Path, help='A metadata JSON file.')
-    arg_parser.add_argument('logdir', type=DirectoryType(), help='A directory for the logs.')
+    arg_parser.add_argument('logdir', type=DirectoryChecker(), help='A directory for the logs.')
     return arg_parser.parse_args(args)
 
 def compute_variance(hdf5s):

@@ -18,7 +18,7 @@ import torch
 from torch.utils.data import TensorDataset
 from torch.utils.data import DataLoader
 
-from argparseutils.directorytype import DirectoryType
+from argparseutils.directorychecker import DirectoryChecker
 from core import metadata
 from core import data
 from core.model_pytorch import LightningDenseClassifier
@@ -41,10 +41,10 @@ def parse_arguments(args: list) -> argparse.Namespace:
     arg_parser.add_argument("hdf5", type=Path, help="A file with hdf5 filenames. Use absolute path!")
     arg_parser.add_argument("chromsize", type=Path, help="A file with chrom sizes.")
     arg_parser.add_argument("metadata", type=Path, help="A metadata JSON file.")
-    arg_parser.add_argument("logdir", type=DirectoryType(), help="Directory for the output logs.")
+    arg_parser.add_argument("logdir", type=DirectoryChecker(), help="Directory for the output logs.")
     arg_parser.add_argument("--offline", action="store_true", help="Will log data offline instead of online. Currently cannot merge comet-ml offline outputs.")
     arg_parser.add_argument("--predict", action="store_const", const=True, help="Enter prediction mode. Will use all data for the test set. Overwrites hparameter file setting. Default mode is training mode.")
-    arg_parser.add_argument("--model", type=DirectoryType(), help="Directory from which to load the desired model. Default is logdir.")
+    arg_parser.add_argument("--model", type=DirectoryChecker(), help="Directory from which to load the desired model. Default is logdir.")
 
     return arg_parser.parse_args(args)
 
@@ -140,13 +140,16 @@ def main(args):
 
 
     # --- CREATE training/validation/test SETS (and change metadata according to what is used) ---
+    time_before_split = time_now()
     my_data = data.DataSetFactory.from_epidata(
-        my_datasource, my_metadata, cli.category, oversample=True, min_class_size=10, validation_ratio=val_ratio, test_ratio=test_ratio
+        my_datasource, my_metadata, cli.category, oversample=True, min_class_size=10,
+        validation_ratio=val_ratio, test_ratio=test_ratio
         )
+    print(f"Set loading/splitting time: {time_now() - time_before_split}")
+
     comet_logger.experiment.log_other("Training size", my_data.train.num_examples)
     comet_logger.experiment.log_other("Total nb of files", len(my_metadata))
 
-    print(f"Data+metadata loading time: {time_now() - begin}")
 
     to_display = set(["assay", cli.category])
     for category in to_display:
