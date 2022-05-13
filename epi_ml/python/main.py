@@ -179,15 +179,15 @@ def main(args):
             torch.from_numpy(np.argmax(my_data.test.labels, axis=-1))
             )
 
-
+    # Warning : output mapping of model created from training dataset
+    mapping_file = cli.logdir / "training_mapping.tsv"
     # --- CREATE a brand new MODEL ---
     if is_training and not is_tuning:
-        # Warning : output mapping of model created from training dataset
-        mapping_file = cli.logdir / "training_mapping.tsv"
+
+        # Create mapping (i --> class string) file
         my_data.save_mapping(mapping_file)
         mapping = my_data.load_mapping(mapping_file)
         comet_logger.experiment.log_asset(mapping_file)
-
 
         #  DEFINE sizes for input and output LAYERS of the network
         input_size = my_data.train.signals[0].size

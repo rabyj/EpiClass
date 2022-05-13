@@ -15,6 +15,10 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
     def __init__(self, input_size, output_size, mapping, hparams, hl_units=3000, nb_layer=1):
         """Metrics expect probabilities and not logits"""
         super().__init__()
+        # this is recommended Lightning way to save model arguments
+        # it saves everything passed into __init__
+        # and allows you to access it as self.myparam1, self.myparam2
+        self.save_hyperparameters() #saves values given to __init__
 
         # -- general structure --
         self._x_size = input_size
@@ -28,8 +32,6 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
         self.l2_scale = hparams.get("l2_scale", 0.01)
         self.dropout_rate = 1 - hparams.get("keep_prob", 0.5)
         self.learning_rate = hparams.get("learning_rate", 1e-5)
-
-        self.save_hyperparameters()
 
         self._pt_model = self.define_model()
 
@@ -159,9 +161,9 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
         return preds, targets
 
     @classmethod
-    def restore_model(cls, logdir):
+    def restore_model(cls, model_dir):
         """Load the checkpoint of the best model from the last run."""
-        path = Path(logdir) / "best_checkpoint.list"
+        path = Path(model_dir) / "best_checkpoint.list"
 
         with open(path, "r", encoding="utf-8") as ckpt_file:
             lines = ckpt_file.read().splitlines()
