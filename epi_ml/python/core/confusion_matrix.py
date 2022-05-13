@@ -7,6 +7,7 @@ from typing import Tuple
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.patheffects as path_effects
 from matplotlib import cm
 from matplotlib.colors import ListedColormap
 import numpy as np
@@ -20,7 +21,7 @@ class ConfusionMatrixWriter(object):
     confusion_matrix : A confusion matrix that counts each final prediction (int matrix)
     Expects a confusion matrix input with prediction rows (row val: pred1 pred2 pred3 ...) and target columns.
     """
-    def __init__(self, labels, confusion_matrix: np.array):
+    def __init__(self, labels, confusion_matrix: np.ndarray):
         self._labels = sorted(labels)
         self._og_confusion_mat = np.array(confusion_matrix)
         self._pd_matrix, self._pd_rel_matrix = self._init_confusion_matrices(confusion_matrix) #pd dataframe
@@ -56,7 +57,7 @@ class ConfusionMatrixWriter(object):
             obj._pd_rel_matrix = pd.DataFrame(data=rel_mat, index=content.index, columns=content.columns) # pylint: disable=no-member
         return obj
 
-    def _init_confusion_matrices(self, confusion_matrix: np.array):
+    def _init_confusion_matrices(self, confusion_matrix: np.ndarray):
         """Returns confusion matrices with labels (pandas df) from int matrix.
         Expects prediction rows (target pred1 pred2 pred3 ....) and target columns.
         Returns original and normalized on rows matrices.
@@ -64,7 +65,7 @@ class ConfusionMatrixWriter(object):
         labels_count = confusion_matrix.sum(axis=1) # total nb examples of each label
         labels_w_count = [f"{label}({label_count})" for label, label_count in zip(self._labels, labels_count)]
 
-        count_matrix = pd.DataFrame(data=confusion_matrix, index=labels_w_count, columns=self._labels)
+        count_matrix = pd.DataFrame(data=confusion_matrix, index=labels_w_count, columns=self._labels, dtype=int)
 
         rel_confusion_mat = ConfusionMatrixWriter.to_relative_confusion_matrix(labels_count, confusion_matrix)
         rel_matrix = pd.DataFrame(data=rel_confusion_mat, index=labels_w_count, columns=self._labels)
@@ -72,7 +73,7 @@ class ConfusionMatrixWriter(object):
         return count_matrix, rel_matrix
 
     @staticmethod
-    def to_relative_confusion_matrix(labels_count: np.array, confusion_matrix: np.array):
+    def to_relative_confusion_matrix(labels_count: np.ndarray, confusion_matrix: np.ndarray):
         """Normalize confusion matrix per row.
         Expects prediction rows (target pred1 pred2 pred3 ....) and target columns.
         """
@@ -88,10 +89,7 @@ class ConfusionMatrixWriter(object):
         """
         plt.figure()
 
-        # Check matrix type: https://stackoverflow.com/questions/1342601/pythonic-way-of-checking-if-a-condition-holds-for-any-element-of-a-list
-        # compute color bar ranges
-
-        vmax = 0.999 #this is so exactly 1.0 is a different color from the rest
+        vmax = 0.9999 #this is so exactly 1.0 is a different color from the rest
         vmin = 0.0
 
         # mask empty values, so they are white in the image
@@ -104,24 +102,22 @@ class ConfusionMatrixWriter(object):
         new_cmap = ListedColormap(newcolors)
         new_cmap.set_over(matplotlib.colors.to_rgba("GreenYellow")) # color for max values, do it LAST
 
-        # prep labels / ticks
-        nb_labels = len(self._pd_rel_matrix.columns)
-        grid_width = 0.5 - nb_labels/400.0
-        label_size = 15*np.exp(-0.02*nb_labels)
 
         # create color mesh and arrange ticks
         fig, ax = plt.subplots()
-        mesh = ax.pcolormesh(data_mask, cmap=new_cmap, vmin=vmin, vmax=vmax, edgecolors='k', linewidths=grid_width)
+        mesh = ax.pcolormesh(data_mask, cmap=new_cmap, vmin=vmin, vmax=vmax, edgecolors='k')
 
+        nb_labels = self._pd_rel_matrix.columns.shape[0]
         ax.set_frame_on(False)
-        ax.set_xticks(np.arange(nb_labels) + 0.5, minor=False)
-        ax.set_yticks(np.arange(nb_labels) + 0.5, minor=False)
+        ax.set_xticks(np.arange(nb_labels), minor=False)
+        ax.set_yticks(np.arange(nb_labels), minor=False)
         ax.invert_yaxis()
         ax.xaxis.tick_top()
 
-        ax.set_xticklabels(self._pd_rel_matrix.columns, fontsize=label_size)
-        ax.set_yticklabels(self._pd_rel_matrix.index, fontsize=label_size)
-        plt.xticks(rotation=90)
+        ax.set_xticklabels(self._pd_rel_matrix.columns)
+        ax.set_yticklabels(self._pd_rel_matrix.index)
+        plt.xticks(rotation=70, ha="left")
+        plt.yticks(va="top")
 
         ax = plt.gca()
         for t in ax.xaxis.get_major_ticks():
@@ -131,11 +127,29 @@ class ConfusionMatrixWriter(object):
             t.tick1On = False
             t.tick2On = False
 
-        # arrange color bar
+        # annotate each matrix value position
+        for i in np.arange(nb_labels):
+            for j in np.arange(nb_labels):
+                count = self._pd_matrix.iat[i, j]
+                if count != 0:
+                    text = f"{count}\n{self._pd_rel_matrix.iat[i, j]*100:.1f}%"
+                    text_obj = plt.text(
+                        x=j+0.5, y=i+0.5, s=text,
+                        horizontalalignment='center',
+                        verticalalignment='center',
+                        color="w",
+                        size=5
+                        )
+                    text_obj.set_path_effects(
+                        [path_effects.Stroke(linewidth=1, foreground='black'), path_effects.Normal()]
+                        )
+
+        # Color bar
         bounds = np.linspace(vmin, math.ceil(vmax), nb_colors+1) #just to have the max tick appear properly
         ticks = np.linspace(vmin, math.ceil(vmax), 11)
-        cbar = fig.colorbar(mesh, ax=ax, shrink=0.75, boundaries=bounds, ticks=ticks)
-        cbar.ax.tick_params(labelsize=4)
+        cbar = fig.colorbar(mesh, ax=ax, shrink=0.75, boundaries=bounds, ticks=ticks, extend="max")
+        cbar.ax.tick_params(labelsize=7)
+
 
         plt.tight_layout()
         plt.savefig(path, format='png', dpi=500)

@@ -123,7 +123,7 @@ class Analysis(object):
         """Compute and write test predictions to file."""
         self._generic_write_prediction(self._test, name="test", path=path)
 
-    def _generic_confusion_matrix(self, dataset, name) -> np.array:
+    def _generic_confusion_matrix(self, dataset, name) -> np.ndarray:
         """General treatment to write confusion matrices."""
         if dataset is None:
             print(f"Cannot compute {name} confusion matrix : No {name} dataset given")
