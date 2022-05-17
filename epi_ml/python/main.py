@@ -25,6 +25,8 @@ from core.model_pytorch import LightningDenseClassifier
 from core.trainer import MyTrainer, define_callbacks
 from core import analysis
 
+from core.confusion_matrix import ConfusionMatrixWriter
+
 
 def time_now():
     """Return datetime of call without microseconds"""
@@ -65,6 +67,13 @@ def main(args):
 
     with open(cli.hyperparameters, "r", encoding="utf-8") as file:
         hparams = json.load(file)
+
+
+    # # --- Just redo a matrix ---
+    # matrix = "test_confusion_matrix"
+    # matrix_writer = ConfusionMatrixWriter.from_csv(csv_path=cli.logdir/f"{matrix}.csv", relative=False)
+    # matrix_writer.to_png(cli.logdir/f"{matrix}.png")
+    # sys.exit()
 
 
     # --- Startup LOGGER ---

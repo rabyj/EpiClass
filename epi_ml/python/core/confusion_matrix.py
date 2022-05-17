@@ -27,7 +27,7 @@ class ConfusionMatrixWriter(object):
         self._pd_matrix, self._pd_rel_matrix = self._init_confusion_matrices(confusion_matrix) #pd dataframe
 
     @classmethod
-    def from_csv(cls, csv_path, relative):
+    def from_csv(cls, csv_path, relative: bool):
         """Create instance from already written file.
         The state of the matrix (relative or not) needs to be specified.
         """
