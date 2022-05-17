@@ -2,7 +2,7 @@ import copy
 import collections
 import json
 from pathlib import Path
-
+from typing import List
 
 class Metadata(object):
     """Wrapper around metadata md5:dataset dict."""
@@ -52,12 +52,12 @@ class Metadata(object):
         """Apply a filter on items (md5:dataset)."""
         self._metadata = dict(filter(meta_filter, self._metadata.items()))
 
-    def remove_missing_labels(self, label_category):
+    def remove_missing_labels(self, label_category: str):
         """Remove datasets where the metadata category is missing."""
         filt = lambda item: label_category in item[1]
         self.apply_filter(filt)
 
-    def md5_per_class(self, label_category):
+    def md5_per_class(self, label_category: str):
         """Return {label/class:md5 list} dict for a given metadata category.
 
         Can fail if remove_missing_labels has not been ran before.
@@ -68,7 +68,7 @@ class Metadata(object):
             data[self._metadata[md5][label_category]].append(md5)
         return data
 
-    def remove_small_classes(self, min_class_size, label_category):
+    def remove_small_classes(self, min_class_size, label_category: str):
         """Remove classes with less than min_class_size examples
         for a given metatada category.
 
@@ -91,21 +91,21 @@ class Metadata(object):
             f"after removing classes with less than {min_class_size} signals."
         )
 
-    def select_category_subsets(self, labels, label_category):
+    def select_category_subsets(self, labels, label_category: str):
         """Select only datasets which possess the given labels
         for the given label category.
         """
         filt = lambda item: item[1].get(label_category) in set(labels)
         self.apply_filter(filt)
 
-    def remove_category_subsets(self, labels, label_category):
+    def remove_category_subsets(self, labels, label_category: str):
         """Remove datasets which possess the given labels
         for the given label category.
         """
         filt = lambda item: item[1].get(label_category) not in set(labels)
         self.apply_filter(filt)
 
-    def label_counter(self, label_category):
+    def label_counter(self, label_category: str):
         """Return a Counter() with label count from the given category."""
         counter = collections.Counter()
         for labels in self._metadata.values():
@@ -113,7 +113,15 @@ class Metadata(object):
             counter.update([label])
         return counter
 
-    def display_labels(self, label_category):
+    def unique_classes(self, label_category: str) -> List[str]:
+        """Return sorted list of unique classes currently existing for the given category."""
+        sorted_md5 = sorted(self.md5s)
+        uniq = set()
+        for md5 in sorted_md5:
+            uniq.add(self[md5][label_category])
+        return sorted(list(uniq))
+
+    def display_labels(self, label_category: str):
         """Print number of examples for each label in given category."""
         print('\nExamples')
         i = 0

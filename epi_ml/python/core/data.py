@@ -2,6 +2,7 @@ import collections
 import math
 from pathlib import Path
 import random
+from typing import List
 
 import h5py
 import numpy as np
@@ -32,7 +33,6 @@ class EpiData(object):
         EpiData._assert_ratios(validation_ratio, test_ratio, verbose=True)
         self._label_category = label_category
         self._oversample = oversample
-        self._sorted_classes = []
 
         #load
         self._hdf5s = Hdf5Loader(datasource.chromsize_file, datasource.hdf5_file, normalization).hdf5s
@@ -41,6 +41,10 @@ class EpiData(object):
         #preprocess
         self._keep_meta_overlap()
         self._metadata.remove_small_classes(min_class_size, self._label_category)
+
+        self._sorted_classes = self._metadata.unique_classes(label_category)
+        self._onehot_dict = EpiData._create_onehot_dict(self._sorted_classes)
+
         self._split_data(validation_ratio, test_ratio)
 
     @property
@@ -60,7 +64,7 @@ class EpiData(object):
             f"training/validation/test split: {(1-val_ratio-test_ratio)*100}%/{val_ratio*100}%/{test_ratio*100}%"
             )
 
-    def _load_metadata(self, metadata):
+    def _load_metadata(self, metadata: Metadata) -> Metadata:
         metadata.remove_missing_labels(self._label_category)
         return metadata
 
@@ -161,20 +165,23 @@ class EpiData(object):
                 new_md5s.append(md5s[i])
         return new_signals, new_labels, new_md5s
 
-    def _to_onehot(self, labels):
-        """Transform labels into onehot matrix."""
-        sorted_md5 = sorted(self._metadata.md5s)
-        uniq = set()
-        for md5 in sorted_md5:
-            uniq.add(self._metadata[md5][self._label_category])
-        self._sorted_classes = sorted(list(uniq))
+    @staticmethod
+    def _create_onehot_dict(classes):
+        """Returns {label:onehot vector} dict corresponding given classes.
+
+        Onehot vectors defined with given classes, no sorting done.
+        """
         onehot_dict = {}
-        for i in range(len(self._sorted_classes)):
-            onehot = np.zeros(len(self._sorted_classes))
+        for i, label in enumerate(classes):
+            onehot = np.zeros(len(classes))
             onehot[i] = 1
-            onehot_dict[self._sorted_classes[i]] = onehot
-        for i in range(len(labels)):
-            labels[i] = onehot_dict[labels[i]]
+            onehot_dict[label] = onehot
+        return onehot_dict
+
+    def _to_onehot(self, labels):
+        """Transform labels into onehot vectors list."""
+        for i, val in enumerate(labels):
+            labels[i] = self._onehot_dict[val]
 
 
 class Data(object): #class DataSet?
@@ -246,24 +253,23 @@ class DataSet(object): #class Data?
         self._sorted_classes = sorted_classes
 
     @property
-    def train(self):
-        """TODO : Write docstring"""
+    def train(self) -> Data:
+        """Training set"""
         return self._train
 
     @property
-    def validation(self):
-        """TODO : Write docstring"""
+    def validation(self) -> Data:
+        """Validation set"""
         return self._validation
 
     @property
-    def test(self):
-        """TODO : Write docstring"""
+    def test(self) -> Data:
+        """Test set"""
         return self._test
 
     @property
-    def classes(self):
-        """Return sorted classes present in datasets.
-        Not necessarily all classes corresponding to output"""
+    def classes(self) -> List[str]:
+        """Return sorted classes present through datasets"""
         return self._sorted_classes
 
     def preprocess(self, f):
