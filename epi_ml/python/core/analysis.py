@@ -101,6 +101,7 @@ class Analysis(object):
 
         write_pred_table(
             predictions=preds,
+            str_preds=[self._model.mapping[int(val.item())] for val in torch.argmax(preds, dim=-1)],
             str_targets=[self._model.mapping[int(val.item())] for val in targets],
             md5s=self._set_dict[name].ids,
             classes=self._classes,
@@ -177,10 +178,11 @@ class Analysis(object):
 
 
 
-def write_pred_table(predictions, str_targets, md5s, classes, path):
+def write_pred_table(predictions, str_preds, str_targets, md5s, classes, path):
     """Write to "path" a csv containing class probability predictions.
 
     pred : Prediction vectors
+    str_preds : List of predictions, but in string form
     str_targets : List of corresponding targets, but in string form
     md5s : List of corresponding md5s
     classes : Ordered list of the output classes
@@ -188,7 +190,8 @@ def write_pred_table(predictions, str_targets, md5s, classes, path):
     """
     df = pd.DataFrame(data=predictions, index=md5s, columns=classes)
 
-    df.insert(loc=0, column="class", value=str_targets)
+    df.insert(loc=0, column="True class", value=str_targets)
+    df.insert(loc=1, column="Predicted class", value=str_preds)
 
     df.to_csv(path, encoding="utf8")
 
