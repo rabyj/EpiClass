@@ -168,6 +168,7 @@ def main(args):
     valid_dataset = None
     test_dataset = None
 
+    # if tuning, all training labels need to be present
     if is_training or is_tuning:
         train_dataset = TensorDataset(
             torch.from_numpy(my_data.train.signals).float(),
@@ -182,11 +183,6 @@ def main(args):
         train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True, pin_memory=True)
         valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset), pin_memory=True)
 
-    if cli.predict:
-        test_dataset = TensorDataset(
-            torch.from_numpy(my_data.test.signals).float(),
-            torch.from_numpy(np.argmax(my_data.test.labels, axis=-1))
-            )
 
     # Warning : output mapping of model created from training dataset
     mapping_file = cli.logdir / "training_mapping.tsv"
@@ -228,6 +224,19 @@ def main(args):
         if cli.model is not None:
             model_dir = cli.model
         my_model = LightningDenseClassifier.restore_model(model_dir)
+
+
+    if cli.predict:
+        # remap targets index to correct model mapping
+        targets_index = [
+            my_model.invert_mapping[my_data.classes[i]]
+            for i in np.argmax(my_data.test.labels, axis=-1)
+        ]
+
+        test_dataset = TensorDataset(
+            torch.from_numpy(my_data.test.signals).float(),
+            torch.tensor(targets_index, dtype=int)
+            )
 
 
     # --- TRAIN the model ---

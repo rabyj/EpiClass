@@ -26,7 +26,7 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
         self._hl_size = hl_units # hl = hidden layer
         self._nb_layer = nb_layer # number of intermediary/hidden layers
 
-        self.mapping = mapping
+        self._mapping = mapping
 
         # -- hyperparameters --
         self.l2_scale = hparams.get("l2_scale", 0.01)
@@ -46,6 +46,17 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
         self.metrics = metrics
         self.train_acc = Accuracy(num_classes=self._y_size, average="micro")
         self.valid_acc = Accuracy(num_classes=self._y_size, average="micro")
+
+
+    @property
+    def mapping(self):
+        """Return {output index:label} mapping."""
+        return self._mapping
+
+    @property
+    def invert_mapping(self):
+        """Return {label:output index} mapping."""
+        return {val:key for key,val in self._mapping.items()}
 
 
     # --- Define general model structure ---
@@ -152,7 +163,7 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
             preds = self(features)
         return self.metrics(preds, targets)
 
-    def compute_predictions(self, dataset, ):
+    def compute_predictions(self, dataset):
         """Return predictions and targets from dataset."""
         self.eval()
         with torch.no_grad():
