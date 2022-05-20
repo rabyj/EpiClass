@@ -1,29 +1,13 @@
 import copy
 import collections
 import json
-import io
-import os.path
-
-import tensorflow as tf
-import numpy as np
-
-from .data_source import EpiDataSource
+from pathlib import Path
+from typing import List
 
 class Metadata(object):
     """Wrapper around metadata md5:dataset dict."""
-    def __init__(self, meta_file: io.IOBase):
+    def __init__(self, meta_file: Path):
         self._metadata = self._load_metadata(meta_file)
-
-    @classmethod
-    def from_path(cls, path):
-        """Initialize from metadata filepath."""
-        with open(path, 'r') as meta_file:
-            return cls(meta_file)
-
-    @classmethod
-    def from_epidatasource(cls, datasource: EpiDataSource):
-        """Initialize from EpiDataSource"""
-        return cls(datasource.metadata_file)
 
     def empty(self):
         """Remove all entries."""
@@ -58,22 +42,22 @@ class Metadata(object):
         """Return values."""
         return self._metadata.values()
 
-    def _load_metadata(self, meta_file: io.IOBase):
+    def _load_metadata(self, meta_file):
         """Return md5:dataset dict."""
-        meta_file.seek(0)
-        meta_raw = json.load(meta_file)
+        with open(meta_file, 'r', encoding="utf-8") as file:
+            meta_raw = json.load(file)
         return {dset["md5sum"]:dset for dset in meta_raw["datasets"]}
 
     def apply_filter(self, meta_filter=lambda item: True):
         """Apply a filter on items (md5:dataset)."""
         self._metadata = dict(filter(meta_filter, self._metadata.items()))
 
-    def remove_missing_labels(self, label_category):
+    def remove_missing_labels(self, label_category: str):
         """Remove datasets where the metadata category is missing."""
         filt = lambda item: label_category in item[1]
         self.apply_filter(filt)
 
-    def md5_per_class(self, label_category):
+    def md5_per_class(self, label_category: str):
         """Return {label/class:md5 list} dict for a given metadata category.
 
         Can fail if remove_missing_labels has not been ran before.
@@ -84,9 +68,11 @@ class Metadata(object):
             data[self._metadata[md5][label_category]].append(md5)
         return data
 
-    def remove_small_classes(self, min_class_size, label_category):
+    def remove_small_classes(self, min_class_size, label_category: str):
         """Remove classes with less than min_class_size examples
         for a given metatada category.
+
+        Returns string of class ratio left if verbose.
         """
         data = self.md5_per_class(label_category)
         nb_class = len(data)
@@ -98,24 +84,28 @@ class Metadata(object):
                 for md5 in data[label]:
                     del self._metadata[md5]
 
-        print("{}/{} labels left from \"{}\" after removing classes with less than {} signals.".format(
-            nb_class - nb_removed_class, nb_class, label_category, min_class_size))
+        remaining = nb_class - nb_removed_class
+        ratio = f"{remaining}/{nb_class}"
+        print(
+            f"{ratio} labels left from {label_category} "
+            f"after removing classes with less than {min_class_size} signals."
+        )
 
-    def select_category_subsets(self, labels, label_category):
+    def select_category_subsets(self, labels, label_category: str):
         """Select only datasets which possess the given labels
         for the given label category.
         """
         filt = lambda item: item[1].get(label_category) in set(labels)
         self.apply_filter(filt)
 
-    def remove_category_subsets(self, labels, label_category):
+    def remove_category_subsets(self, labels, label_category: str):
         """Remove datasets which possess the given labels
         for the given label category.
         """
         filt = lambda item: item[1].get(label_category) not in set(labels)
         self.apply_filter(filt)
 
-    def label_counter(self, label_category):
+    def label_counter(self, label_category: str):
         """Return a Counter() with label count from the given category."""
         counter = collections.Counter()
         for labels in self._metadata.values():
@@ -123,23 +113,22 @@ class Metadata(object):
             counter.update([label])
         return counter
 
-    def display_labels(self, label_category):
+    def unique_classes(self, label_category: str) -> List[str]:
+        """Return sorted list of unique classes currently existing for the given category."""
+        sorted_md5 = sorted(self.md5s)
+        uniq = set()
+        for md5 in sorted_md5:
+            uniq.add(self[md5][label_category])
+        return sorted(list(uniq))
+
+    def display_labels(self, label_category: str):
         """Print number of examples for each label in given category."""
         print('\nExamples')
         i = 0
         for label, count in self.label_counter(label_category).most_common():
-            print('{}: {}'.format(label, count))
+            print(f'{label}: {count}')
             i += count
-        print('For a total of {} examples\n'.format(i))
-
-    def category_class_weights(self, label_category):
-        """Return class weights for the given category, ordered
-        by alphabetical order of labels.
-        """
-        counter = self.label_counter(label_category)
-        weights = np.array([class_size for label, class_size in sorted(counter.most_common())])
-        weights = 1. / (weights / np.amax(weights))
-        return tf.constant(weights, shape=[1, weights.size], dtype=tf.float32)
+        print(f"For a total of {i} examples\n")
 
     def create_healthy_category(self):
         """Combine "disease" and "donor_health_status" to create a "healthy" category.
@@ -185,9 +174,7 @@ class Metadata(object):
 class HealthyCategory(object):
     """Create/Represent/manipulate the "healthy" metadata category"""
     def __init__(self):
-        self.pairs_file = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "healthy_category.tsv"
-            )
+        self.pairs_file = Path(__file__).parent / "healthy_category.tsv"
         self.healthy_dict = self.read_healthy_pairs()
 
     @staticmethod
@@ -202,15 +189,15 @@ class HealthyCategory(object):
 
     def list_healthy_pairs(self, datasets):
         """List unique (disease, donor_health_status) pairs."""
-        for pair in sorted(self.get_healthy_pairs(datasets)):
-            print("{}\t{}".format(*pair))
+        for x1, x2 in sorted(self.get_healthy_pairs(datasets)):
+            print(f"{x1}\t{x2}")
 
     def read_healthy_pairs(self):
         """Return a (disease, donor_health_status):healthy dict defined in
         a tsv file with disease|donor_health_status|healthy columns.
         """
         healthy_dict = {}
-        with open(self.pairs_file, "r") as tsv_file:
+        with open(self.pairs_file, "r", encoding="utf-8") as tsv_file:
             next(tsv_file) # skip header
             for line in tsv_file:
                 disease, donor_health_status, healthy = line.rstrip('\n').split('\t')

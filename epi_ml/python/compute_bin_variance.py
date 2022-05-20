@@ -1,22 +1,20 @@
-import tensorflow as tf #import first because of library linking (cuda) reasons
-
 import argparse
-import os.path
+from pathlib import Path
 import sys
 
 import numpy as np
 
-from argparseutils.directorytype import DirectoryType
+from argparseutils.directorychecker import DirectoryChecker
 from core import data
 from core import analysis
 
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('hdf5', type=argparse.FileType('r'), help='A file with hdf5 filenames. Use absolute path!')
-    arg_parser.add_argument('chromsize', type=argparse.FileType('r'), help='A file with chrom sizes.')
-    arg_parser.add_argument('metadata', type=argparse.FileType('r'), help='A metadata JSON file.')
-    arg_parser.add_argument('logdir', type=DirectoryType(), help='A directory for the logs.')
+    arg_parser.add_argument('hdf5', type=Path, help='A file with hdf5 filenames. Use absolute path!')
+    arg_parser.add_argument('chromsize', type=Path, help='A file with chrom sizes.')
+    arg_parser.add_argument('metadata', type=Path, help='A metadata JSON file.')
+    arg_parser.add_argument('logdir', type=DirectoryChecker(), help='A directory for the logs.')
     return arg_parser.parse_args(args)
 
 def compute_variance(hdf5s):
@@ -46,7 +44,7 @@ def main(args):
 
     variance = compute_variance(hdf5s)
 
-    bedgraph_path = os.path.join(epiml_options.logdir, "variance.bedgraph")
+    bedgraph_path = epiml_options.logdir / "variance.bedgraph"
     analysis.values_to_bedgraph(variance, chroms, hdf5_resolution, bedgraph_path)
 
 if __name__ == "__main__":

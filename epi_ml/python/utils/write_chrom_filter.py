@@ -4,9 +4,9 @@ HUNDRED_KB = 100 * 1000
 def load_chroms(chromsizes_filepath):
     """Return chrom_name:size dict."""
     chroms = {}
-    with open(chromsizes_filepath, 'r') as chrom_file:
+    with open(chromsizes_filepath, 'r', encoding="utf-8") as chrom_file:
         for line in chrom_file:
-            chrom_name, size = line.strip().split()
+            chrom_name, size = line.rstrip().split()
             chroms[chrom_name] = int(size)
     return chroms
 
@@ -14,9 +14,9 @@ def load_chroms(chromsizes_filepath):
 def load_centromeres(bed_filepath):
     """Return chrom_name:(centromere_begin, centromere_end) dict."""
     centromeres = {}
-    with open(bed_filepath, 'r') as centromere_file:
+    with open(bed_filepath, 'r', encoding="utf-8") as centromere_file:
         for line in centromere_file:
-            chrom_name, begin, end = line.strip().split()
+            chrom_name, begin, end = line.rstrip().split()
             centromeres[chrom_name] = (int(begin), int(end))
     return centromeres
 
@@ -47,10 +47,11 @@ def print_chr14_filter():
     start = 50*million
     stop = start + 303*step #303 regions of 100kb
     for val in range(start, stop, step):
-        print("chr14\t{}\t{}".format(val, val+step))
+        print(f"chr14\t{val}\t{val+step}")
 
 
 def main():
+    """TODO : Write docstring"""
 
     chrom_filepath = "./chromsizes/hg19.noy.chrom.sizes"
     centromere_filepath = "./filter/hg19.centromeres.bed"
@@ -63,8 +64,8 @@ def main():
         begin, end = compute_second_arm_region(centromere_end=centro[name][1],
                                                chromsize=size)
 
-        with open("./temp/hg19.{}_1.bed".format(name), "w") as filter_file:
-            filter_file.write("{}\t{}\t{}\n".format(name, begin, end))
+        with open(f"./temp/hg19.{name}_1.bed", "w", encoding="utf-8") as filter_file:
+            filter_file.write(f"{name}\t{begin}\t{end}\n")
 
 
 if __name__ == "__main__":

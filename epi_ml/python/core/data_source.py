@@ -1,5 +1,5 @@
-import io
-import os.path
+"""Module for reading source data files."""
+from pathlib import Path
 
 HDF5_RESOLUTION = {
     "1kb":1000,
@@ -10,35 +10,44 @@ HDF5_RESOLUTION = {
 
 class EpiDataSource(object):
     """Used to contain source files."""
-    def __init__(self, hdf5: io.IOBase, chromsize: io.IOBase, metadata: io.IOBase):
+    def __init__(self, hdf5: Path, chromsize: Path, metadata: Path):
         self._hdf5 = hdf5
         self._chromsize = chromsize
         self._metadata = metadata
+        self.check_paths()
 
     @property
-    def hdf5_file(self) -> io.IOBase:
+    def hdf5_file(self) -> Path:
+        """Return hdf5 file path."""
         return self._hdf5
 
     @property
-    def chromsize_file(self) -> io.IOBase:
+    def chromsize_file(self) -> Path:
+        """Return chromsize file path."""
         return self._chromsize
 
     @property
-    def metadata_file(self) -> io.IOBase:
+    def metadata_file(self) -> Path:
+        """Return metadata file path."""
         return self._metadata
+
+    def check_paths(self):
+        """Make sure files exist. Raise error otherwise"""
+        for path in [self._hdf5, self._chromsize, self._metadata]:
+            if not path.is_file():
+                raise OSError(f"File does not exist : {path}.\n Expected file at : {path.resolve()}")
 
     def hdf5_resolution(self):
         """Return resolution as an integer."""
-        self.hdf5_file.seek(0)
-        first_path = next(self.hdf5_file).rstrip('\n')
-        resolution_string = os.path.basename(first_path).split('_')[1]
-        self.hdf5_file.seek(0)
+        with open(self.hdf5_file, "r", encoding="utf-8") as my_file:
+            first_path = Path(next(my_file).rstrip())
+            resolution_string = first_path.name.split('_')[1]
         return HDF5_RESOLUTION[resolution_string]
 
     def load_chrom_sizes(self):
         """Return sorted list with chromosome (name, size) pairs. This order
         is the same as the order of chroms in the concatenated signals.
         """
-        self.chromsize_file.seek(0)
-        pairs = [line.rstrip('\n').split() for line in self.chromsize_file]
+        with open(self.chromsize_file, "r", encoding="utf-8") as my_file:
+            pairs = [line.rstrip('\n').split() for line in my_file]
         return sorted([(name, int(size)) for name, size in pairs])
