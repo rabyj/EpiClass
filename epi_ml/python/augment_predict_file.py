@@ -4,7 +4,7 @@ import os.path
 from pathlib import Path
 import sys
 
-from core.metadata import Metadata
+from epi_ml.python.core.metadata import Metadata
 
 def parse_args(argv):
     """Return argument line parser."""

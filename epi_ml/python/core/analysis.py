@@ -12,9 +12,10 @@ import torch
 from torch.utils.data import TensorDataset
 import torchmetrics
 
-from core.data import DataSet
-from core.model_pytorch import LightningDenseClassifier
-from core.confusion_matrix import ConfusionMatrixWriter
+
+from .data import DataSet
+from .model_pytorch import LightningDenseClassifier
+from .confusion_matrix import ConfusionMatrixWriter
 
 
 class Analysis(object):

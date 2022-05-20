@@ -145,6 +145,7 @@ class Metadata(object):
 
     def merge_molecule_classes(self):
         """Combine similar classes pairs in the molecule category."""
+        #TODO : No more specific merges, use a generic method w converter
         for dataset in self.datasets:
             molecule = dataset.get("molecule", None)
             if molecule == "rna":

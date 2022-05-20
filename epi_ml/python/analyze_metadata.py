@@ -1,24 +1,24 @@
 import collections
 import copy
+from pathlib import Path
 import os
-import os.path
 
 import pandas as pd
 
-from core import metadata
+from epi_ml.python.core.metadata import Metadata
 
-def two_step_long_analysis(my_metadata, category1, category2):
+def two_step_long_analysis(my_metadata: Metadata, category1, category2):
 
-    print("First we remove small classes from {} and only keep datasets which have a {}.".format(category1, category2))
+    print(f"First we remove small classes from {category1} and only keep datasets which have a {category2}.")
     my_metadata.remove_small_classes(10, category1)
     my_metadata.remove_missing_labels(category2)
     my_metadata.display_labels(category1)
 
-    print("Then we examine the content of {} for each {}".format(category2, category1))
+    print(f"Then we examine the content of {category2} for each {category1}")
     nb_classes_kept = 0
     labels = my_metadata.label_counter(category1).keys()
     for label in sorted(labels):
-        print("--{}--".format(label))
+        print(f"--{label}--")
         temp_metadata = copy.deepcopy(my_metadata)
         temp_metadata.select_category_subset(label, category1)
         temp_metadata.remove_small_classes(10, category2)
@@ -26,10 +26,10 @@ def two_step_long_analysis(my_metadata, category1, category2):
             nb_classes_kept += 1
         temp_metadata.display_labels(category2)
 
-    print("number of classes with >1 cell_type label, from {}: {}/{}".format(category1, nb_classes_kept, len(labels)))
+    print(f"Number of classes with >1 cell_type label, from {category1}: {nb_classes_kept}/{len(labels)}")
 
 
-def two_step_table_analysis(my_metadata, category1, category2):
+def two_step_table_analysis(my_metadata: Metadata, category1, category2):
 
     my_metadata.remove_small_classes(10, category1)
     my_metadata.remove_small_classes(10, category2)
@@ -63,7 +63,7 @@ def two_step_table_analysis(my_metadata, category1, category2):
         print(label + line.format(**infos) + str(ratio))
 
 
-def test(my_metadata, category1):
+def test(my_metadata: Metadata, category1):
 
     my_metadata.remove_small_classes(10, category1)
     counter_cat1 = my_metadata.label_counter(category1)
@@ -72,7 +72,7 @@ def test(my_metadata, category1):
         temp_metadata.select_category_subset(label, category1)
 
 
-def count_pairs(my_metadata, cat1, cat2):
+def count_pairs(my_metadata: Metadata, cat1, cat2):
     """Return label pairs counter from the given metadata categories."""
     counter = collections.Counter(
         (dset.get(cat1, "--empty--"), dset.get(cat2, "--empty--"))
@@ -81,13 +81,14 @@ def count_pairs(my_metadata, cat1, cat2):
     return counter
 
 
-def print_pairs(my_metadata, cat1, cat2):
+def print_pairs(my_metadata: Metadata, cat1, cat2):
     """Print label pairs from the given metadata categories."""
     counter = count_pairs(my_metadata, cat1, cat2)
-    for pair, count in sorted(counter.items()): print(pair, count)
+    for pair, count in sorted(counter.items()):
+        print(pair, count)
 
 
-def make_table(my_metadata, cat1, cat2, filepath):
+def make_table(my_metadata: Metadata, cat1, cat2, filepath):
     """Write metadata content tsv table for given metadata categories"""
     counter = count_pairs(my_metadata, cat1, cat2)
     triplets = [(pair[0], pair[1], count) for pair, count in sorted(counter.items())]
@@ -97,7 +98,7 @@ def make_table(my_metadata, cat1, cat2, filepath):
     table.to_csv(filepath, sep='\t')
 
 
-def analyze_chromatin_acc(my_metadata):
+def analyze_chromatin_acc(my_metadata: Metadata):
     counter = collections.Counter(
         my_metadata[md5]["cell_type"] for md5 in my_metadata.md5s
         if my_metadata[md5]["assay"] == "chromatin_acc"
@@ -112,9 +113,9 @@ def analyze_chromatin_acc(my_metadata):
 
 def main():
 
-    base = "/home/local/USHERBROOKE/rabj2301/Projects/ihec/2018-10/"
-    path = os.path.join(base, "hg19_2018-10_final.json")
-    my_metadata = metadata.Metadata.from_path(path)
+    base = Path("/home/local/USHERBROOKE/rabj2301/Projects/ihec/2018-10/")
+    path = base / "hg19_2018-10_final.json"
+    my_metadata = Metadata(path)
 
     cat1 = "assay"
     cat2 = "cell_type"
@@ -138,7 +139,7 @@ def main():
 
     # my_metadata.display_labels("assay")
     # my_metadata.display_labels("cell_type")
-    
+
     # my_metadata.display_labels("publishing_group")
     # my_metadata.display_labels("releasing_group")
 

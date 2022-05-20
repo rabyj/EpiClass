@@ -18,14 +18,21 @@ import torch
 from torch.utils.data import TensorDataset
 from torch.utils.data import DataLoader
 
-from argparseutils.directorychecker import DirectoryChecker
-from core import metadata
-from core import data
-from core.model_pytorch import LightningDenseClassifier
-from core.trainer import MyTrainer, define_callbacks
-from core import analysis
+from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
+from epi_ml.python.core import metadata
+from epi_ml.python.core import data
+from epi_ml.python.core.model_pytorch import LightningDenseClassifier
+from epi_ml.python.core.trainer import MyTrainer, define_callbacks
+from epi_ml.python.core import analysis
 
-from core.confusion_matrix import ConfusionMatrixWriter
+from epi_ml.python.core.confusion_matrix import ConfusionMatrixWriter
+
+
+class DatasetError(Exception):
+    """Custom error"""
+    def __init__(self, *args: object) -> None:
+        print("\n--- ERROR : Verify source files, filters, and min_class_size. ---\n", file=sys.stderr)
+        super().__init__(*args)
 
 
 def time_now():
@@ -170,6 +177,10 @@ def main(args):
 
     # if tuning, all training labels need to be present
     if is_training or is_tuning:
+
+        if my_data.train.num_examples == 0 or my_data.validation.num_examples == 0:
+            raise DatasetError("Trying to train without any training or validation data.")
+
         train_dataset = TensorDataset(
             torch.from_numpy(my_data.train.signals).float(),
             torch.from_numpy(np.argmax(my_data.train.labels, axis=-1))
@@ -227,6 +238,10 @@ def main(args):
 
 
     if cli.predict:
+
+        if my_data.test.num_examples == 0:
+            raise DatasetError("Trying to test without any test data.")
+
         # remap targets index to correct model mapping
         targets_index = [
             my_model.invert_mapping[my_data.classes[i]]

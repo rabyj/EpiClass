@@ -7,9 +7,8 @@ in the following scripts.
 """
 import argparse
 import sys
-sys.path.insert(0, "/home/rabyj/project-rabyj/sources/epi_ml/epi_ml/python/argparseutils")
 
-from directorychecker import DirectoryChecker, DirectoryCheckerError
+from epi_ml.python.argparseutils.directorychecker import DirectoryChecker, DirectoryCheckerError
 
 
 def parse_arguments(args: list) -> argparse.Namespace:

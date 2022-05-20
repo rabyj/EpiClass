@@ -4,9 +4,9 @@ import sys
 
 import numpy as np
 
-from argparseutils.directorychecker import DirectoryChecker
-from core import data
-from core import analysis
+from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
+from epi_ml.python.core import data
+from epi_ml.python.core import analysis
 
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
