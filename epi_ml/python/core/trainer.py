@@ -1,187 +1,70 @@
-import numpy as np
-import pandas
-import tensorflow as tf
-import os.path
-from scipy import signal
-from abc import ABC
-import math
-import datetime
+"""Trainer class extensions module"""
+from pathlib import Path
+from datetime import datetime
 
-class Trainer(object):
-    def __init__(self, data, model, logdir, **kwargs):
-        self._data = data
-        self._model = model
-        self._logdir = logdir
-        self._data.preprocess(model.preprocess)
-        self._hparams = {
-            "learning_rate": kwargs.get("learning_rate", 1e-5),
-            "training_epochs": kwargs.get("training_epochs", 50),
-            "batch_size": kwargs.get("batch_size", 64),
-            "measure_frequency": kwargs.get("measure_frequency", 1),
-            "l1_scale": kwargs.get("l1_scale", 0.001),
-            "l2_scale": kwargs.get("l2_scale", 0.01),
-            "keep_prob": kwargs.get("keep_prob", 0.5),
-            "is_training": kwargs.get("is_training", True),
-            "early_stop_limit": kwargs.get("early_stop_limit", 15)
-        }
-        self._print_hparams()
-        self._train_accuracy = self._init_accuracy("Training_Accuracy")
-        self._valid_accuracy = self._init_accuracy("Validation_Accuracy")
-        self._test_accuracy = self._init_accuracy("Test_Accuracy")
-        self._writer = self._init_writer()
-        self._summary = self._init_summary()
-        self._v_sum = self._init_v_sum()
-        self._sess = self._start_sess()
-        self._run_metadata = tf.RunMetadata()
-        self._run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+import pytorch_lightning as pl
+import pytorch_lightning.callbacks as torch_callbacks
 
-    def __del__(self):
-        if hasattr(self, "_writer"):
-            self._writer.close()
-        if hasattr(self, "_sess"):
-            self._sess.close()
+class MyTrainer(pl.Trainer):
+    """Personalized trainer"""
 
-    def _start_sess(self):
-        sess = tf.Session()
-        sess.run(tf.global_variables_initializer())
-        return sess
+    def __init__(self, general_log_dir: str, last_trained_model = None, **kwargs):
+        """Metrics expect probabilities and not logits."""
+        super().__init__(**kwargs)
 
-    def _init_writer(self):
-        return tf.summary.FileWriter(self._logdir, graph=tf.get_default_graph())
+        self.best_checkpoint_file = Path(general_log_dir) / "best_checkpoint.list"
+        self.model = last_trained_model
+        self.batch_size = None
 
-    def _init_summary(self):
-        l_sum = tf.summary.scalar("loss", self._model.loss)
-        t_sum = tf.summary.scalar("training_accuracy", self._train_accuracy)
-        return tf.summary.merge([l_sum, t_sum])
+    def fit(self, *args, verbose = True, **kwargs):
+        """Base pl.Trainer.fit function, but also prints the batch size."""
+        self.batch_size = kwargs["train_dataloaders"].batch_size
+        if verbose:
+            print(f"Training batch size : {self.batch_size}")
+        super().fit(*args, **kwargs)
 
-    def _init_v_sum(self):
-        return tf.summary.scalar("validation_accuracy", self._valid_accuracy)
 
-    def _init_accuracy(self, name):
-        with tf.name_scope(name):
-            accuracy = tf.equal(tf.argmax(self._model.model, 1), tf.argmax(self._model.y, 1))
-            accuracy = tf.reduce_mean(tf.cast(accuracy, tf.float32))
-        return accuracy
+    def save_model_path(self):
+        """Save best checkpoint path to a file."""
+        print(f"Saving model to {self.checkpoint_callback.best_model_path}")
+        with open(self.best_checkpoint_file, "a", encoding="utf-8") as ckpt_file:
+            ckpt_file.write(f"{self.checkpoint_callback.best_model_path} {datetime.now()}\n")
 
-    def _make_dict(self, signals, labels, keep_prob=None, l1_scale=None, l2_scale=None, learning_rate=None, is_training=None):
-        if keep_prob is None:
-            keep_prob = self._hparams.get("keep_prob")
-        if l1_scale is None:
-            l1_scale = self._hparams.get("l1_scale")
-        if l2_scale is None:
-            l2_scale = self._hparams.get("l2_scale")
-        if learning_rate is None:
-            learning_rate = self._hparams.get("learning_rate")
-        if is_training is None:
-            is_training = self._hparams.get("is_training")
-        default_dict = {
-            self._model.x: signals,
-            self._model.y: labels,
-            self._model.keep_prob: keep_prob,
-            self._model.l1_scale: l1_scale,
-            self._model.l2_scale: l2_scale,
-            self._model.learning_rate: learning_rate,
-            self._model.is_training: is_training
-        }
-        return default_dict
+    def print_hyperparameters(self):
+        """Print training hyperparameters."""
+        stop_callback = self.early_stopping_callback
+        print("--TRAINING HYPERPARAMETERS--")
+        print(f"L2 scale : {self.model.l2_scale}")
+        print(f"Dropout rate : {self.model.dropout_rate}")
+        print(f"Learning rate : {self.model.learning_rate}")
+        print(f"Patience : {stop_callback.patience}")
+        print(f"Monitored value : {stop_callback.monitor}")
 
-    def _print_hparams(self):
-        for hparam, value in sorted(self._hparams.items()):
-            print('{}: {}'.format(hparam, value))
 
-    def train(self):
-        nb_batch = math.ceil(self._data.train.num_examples/self._hparams.get("batch_size"))
+def define_callbacks(early_stop_limit: int):
+    """Returns list of PyTorch trainer callbacks.
+    RichModelSummary, EarlyStopping, ModelCheckpoint
+    """
+    summary = torch_callbacks.RichModelSummary(max_depth=3)
 
-        saver = tf.train.Saver()
-        save_path = os.path.join(self._logdir, "save")
-        max_v_acc = -1
-        nb_since_max = 0
+    monitored_value = "valid_acc" #have same name as TorchMetrics
+    mode = "max"
 
-        for epoch in range(self._hparams.get("training_epochs")):
-            for batch in range(nb_batch):
-                batch_xs, batch_ys = self._data.train.next_batch(self._hparams.get("batch_size"))
-                if epoch % self._hparams.get("measure_frequency") == 0 and batch == 0:
+    early_stop = torch_callbacks.EarlyStopping(
+        monitor=monitored_value,
+        mode=mode,
+        patience=early_stop_limit,
+        check_on_train_epoch_end=False
+    )
 
-                    # train
-                    _, _, summary = self._sess.run([self._model.minimize, self._model.loss, self._summary], feed_dict=self._make_dict(batch_xs, batch_ys), run_metadata=self._run_metadata, options=self._run_options)
-                    self._writer.add_summary(summary, epoch)
+    checkpoint = torch_callbacks.ModelCheckpoint(
+        monitor=monitored_value,
+        mode=mode,
+        save_last=True,
+        auto_insert_metric_name=True,
+        every_n_epochs=1,
+        save_top_k=2,
+        save_on_train_epoch_end=False
+    )
 
-                    # training accuracy
-                    t_acc = self._sess.run(self._train_accuracy, feed_dict=self._make_dict(batch_xs, batch_ys, keep_prob=1.0))
-
-                    # validation accuracy
-                    v_acc, v_summary = self._sess.run([self._valid_accuracy, self._v_sum], feed_dict=self._make_dict(self._data.validation.signals, self._data.validation.labels, keep_prob=1.0, is_training=False))
-                    self._writer.add_summary(v_summary, epoch)
-
-                    self._writer.add_run_metadata(self._run_metadata, 'epoch{}'.format(epoch))
-
-                    if v_acc > max_v_acc:
-                        max_v_acc = v_acc
-                        saver.save(self._sess, save_path)
-                        nb_since_max = 0
-                    else:
-                        nb_since_max += 1
-
-                    if nb_since_max == self._hparams.get("early_stop_limit"):
-                        break
-                    
-                    print('epoch {0}, training accuracy {1:.4f}, validation accuracy {2:.4f} {3}'.format(epoch, t_acc, v_acc, datetime.datetime.now()))
-
-                else:
-                    # train
-                    _, _, summary = self._sess.run([self._model.minimize, self._model.loss, self._summary], feed_dict=self._make_dict(batch_xs, batch_ys))
-                    self._writer.add_summary(summary, epoch)
-                
-            if nb_since_max == self._hparams.get("early_stop_limit"):
-                break
-
-        # load best model
-        saver.restore(self._sess, save_path)
-
-    def _compute_acc(self, set_accuracy, data_set):
-        return self._sess.run(set_accuracy, feed_dict=self._make_dict(data_set.signals, data_set.labels, keep_prob=1.0, is_training=False))
-
-    def training_acc(self):
-        return self._compute_acc(self._train_accuracy, self._data.train)
-
-    def validation_acc(self):
-        return self._compute_acc(self._valid_accuracy, self._data.validation)
-
-    def test_acc(self):
-        return self._compute_acc(self._test_accuracy, self._data.test)
-
-    def _compute_pred(self, data_set):
-        return self._sess.run(self._model.predictor, feed_dict=self._make_dict(data_set.signals, data_set.labels, keep_prob=1.0, is_training=False))
-
-    def training_pred(self):
-        return self._compute_pred(self._data.train)
-
-    def validation_pred(self):
-        return self._compute_pred(self._data.validation)
-
-    def test_pred(self):
-        return self._compute_pred(self._data.test)
-
-    def _compute_conf_mat(self, data_set):
-        confusion_mat = tf.confusion_matrix(tf.argmax(self._model.model,1), tf.argmax(self._model.y,1))
-        return self._sess.run(confusion_mat, feed_dict=self._make_dict(data_set.signals, data_set.labels, keep_prob=1.0, is_training=False))
-
-    def training_mat(self):
-        return self._compute_conf_mat(self._data.train)
-
-    def validation_mat(self):
-        return self._compute_conf_mat(self._data.validation)
-
-    def test_mat(self):
-        return self._compute_conf_mat(self._data.test)
-
-    def weights(self):
-        return self._sess.run(tf.trainable_variables())
-
-    def visualize(self, vis):
-        #TODO: maybe send to analysis module
-        outputs = self._sess.run(self._model.layers, feed_dict=self._make_dict(self._data.train.signals, self._data.train.labels, keep_prob=1.0, is_training=False))
-
-        for idx, output in enumerate(outputs):
-            vis.run(output, self._data.train.labels, self._sess, self._writer, str(idx))
-
+    return [summary, early_stop, checkpoint]
