@@ -6,6 +6,7 @@ from typing import List
 
 import h5py
 import numpy as np
+from sklearn import preprocessing
 
 from .data_source import EpiDataSource
 from .metadata import Metadata
@@ -14,12 +15,13 @@ from .metadata import Metadata
 class DataSetFactory(object):
     """Creation of DataSet from different sources."""
     @classmethod
-    def from_epidata(cls, datasource: EpiDataSource, metadata: Metadata, label_category: str, oversample=False,
+    def from_epidata(cls, datasource: EpiDataSource, metadata: Metadata, label_category: str, onehot=False, oversample=False,
                      normalization=True, min_class_size=3, validation_ratio=0.1, test_ratio=0.1):
         """TODO : Write docstring"""
 
         return EpiData(
-            datasource, metadata, label_category, oversample, normalization, min_class_size, validation_ratio, test_ratio
+            datasource, metadata, label_category, onehot, oversample, normalization, min_class_size,
+            validation_ratio, test_ratio
             ).dataset
 
 
@@ -28,7 +30,7 @@ class EpiData(object):
 
     Test ratio computed from validation ratio and test ratio. Be sure to set both correctly.
     """
-    def __init__(self, datasource: EpiDataSource, metadata: Metadata, label_category: str, oversample=False,
+    def __init__(self, datasource: EpiDataSource, metadata: Metadata, label_category: str, onehot=False, oversample=False,
                  normalization=True, min_class_size=3, validation_ratio=0.1, test_ratio=0.1):
         EpiData._assert_ratios(validation_ratio, test_ratio, verbose=True)
         self._label_category = label_category
@@ -43,9 +45,8 @@ class EpiData(object):
         self._metadata.remove_small_classes(min_class_size, self._label_category)
 
         self._sorted_classes = self._metadata.unique_classes(label_category)
-        self._onehot_dict = EpiData._create_onehot_dict(self._sorted_classes)
 
-        self._split_data(validation_ratio, test_ratio)
+        self._split_data(validation_ratio, test_ratio, onehot=onehot)
 
     @property
     def dataset(self):
@@ -79,7 +80,9 @@ class EpiData(object):
         self._hdf5s = {md5:self._hdf5s[md5] for md5 in self._metadata.md5s}
 
     def _oversample_rates(self):
-        """TODO : Write docstring"""
+        """Return a {label:oversampling_rate} dict
+        where the oversampling rates are label_count/max(label_counts)
+        """
         sorted_md5 = sorted(self._metadata.md5s)
         label_count = {}
         for md5 in sorted_md5:
@@ -98,8 +101,11 @@ class EpiData(object):
             oversample_rates[label] = count/max_count
         return oversample_rates
 
-    def _split_data(self, validation_ratio, test_ratio):
-        """TODO : Write docstring"""
+    def _split_data(self, validation_ratio, test_ratio, onehot):
+        """Split loaded data into three sets : Training/Validation/Test.
+
+        Categorical targets can be encoded as one-hots or integers.
+        """
         size_all_dict = self._metadata.label_counter(self._label_category)
 
         # A minimum of 3 examples are needed for each label (1 for each set), when splitting into three sets
@@ -137,13 +143,20 @@ class EpiData(object):
         if self._oversample:
             train_signals, train_labels, train_md5s = self._oversample_data(train_signals, train_labels, train_md5s)
 
-        self._to_onehot(validation_labels)
-        self._to_onehot(test_labels)
-        self._to_onehot(train_labels)
+        if onehot:
+            onehot_dict = EpiData._create_onehot_dict(self._sorted_classes)
+            encoded_validation_labels = EpiData._to_onehot(validation_labels, onehot_dict)
+            encoded_test_labels = EpiData._to_onehot(test_labels, onehot_dict)
+            encoded_train_labels = EpiData._to_onehot(train_labels, onehot_dict)
+        else:
+            int_mapping = preprocessing.LabelEncoder().fit(self._sorted_classes)
+            encoded_validation_labels = EpiData._to_int(validation_labels, int_mapping)
+            encoded_test_labels = EpiData._to_int(test_labels, int_mapping)
+            encoded_train_labels = EpiData._to_int(train_labels, int_mapping)
 
-        self._validation = Data(validation_md5s, validation_signals, validation_labels, self._metadata)
-        self._test = Data(test_md5s, test_signals, test_labels, self._metadata)
-        self._train = Data(train_md5s, train_signals, train_labels, self._metadata)
+        self._validation = Data(validation_md5s, validation_signals, encoded_validation_labels, validation_labels, self._metadata)
+        self._test = Data(test_md5s, test_signals, encoded_test_labels, test_labels, self._metadata)
+        self._train = Data(train_md5s, train_signals, encoded_train_labels, train_labels, self._metadata)
 
         print(f"validation size {len(validation_labels)}")
         print(f"test size {len(test_labels)}")
@@ -178,19 +191,33 @@ class EpiData(object):
             onehot_dict[label] = onehot
         return onehot_dict
 
-    def _to_onehot(self, labels):
-        """Transform labels into onehot vectors list."""
-        for i, val in enumerate(labels):
-            labels[i] = self._onehot_dict[val]
+    @staticmethod
+    def _to_onehot(labels, onehot_encoder):
+        """Return a onehot vector list of encoded labels.
+
+        Requires a {label:onehot vector} encoder.
+        """
+        encoded_labels = [onehot_encoder[val] for val in labels]
+        return encoded_labels
+
+    @staticmethod
+    def _to_int(labels, int_encoder: preprocessing.LabelEncoder):
+        """Return a list of encoded labels.
+
+        Requires a fitted label encoder.
+        """
+        encoded_labels = int_encoder.transform(labels)
+        return encoded_labels
 
 
 class Data(object): #class DataSet?
     """Generalised object to deal with data."""
-    def __init__(self, ids, x, y, metadata: Metadata):
+    def __init__(self, ids, x, y, y_str, metadata: Metadata):
         self._ids = ids
         self._num_examples = len(x)
         self._signals = np.array(x)
         self._labels = np.array(y)
+        self._labels_str = y_str
         self._shuffle_order = np.arange(self._num_examples)
         self._index = 0
         self._metadata = metadata
@@ -234,13 +261,18 @@ class Data(object): #class DataSet?
         return self._signals
 
     @property
-    def labels(self):
-        """TODO : Write docstring"""
+    def encoded_labels(self):
+        """Return encoded labels of examples"""
         return self._labels
 
     @property
+    def original_labels(self):
+        """Return string labels of examples"""
+        return self._labels_str
+
+    @property
     def num_examples(self):
-        """TODO : Write docstring"""
+        """Return the number of examples contained in the set."""
         return self._num_examples
 
 
@@ -295,6 +327,17 @@ class DataSet(object): #class Data?
                 i, label = line.rstrip().split('\t')
                 mapping[int(i)] = label
         return mapping
+
+    def get_encoder(self, mapping, using_file=False) -> preprocessing.LabelEncoder:
+        """Load and return int label encoder.
+
+        Requires the model mapping file itself, or its path (with using_file=True)
+        """
+        if using_file:
+            mapping = self.load_mapping(mapping)
+
+        labels = sorted(list(mapping.values()))
+        return preprocessing.LabelEncoder().fit(labels)
 
 
 class Hdf5Loader(object):
