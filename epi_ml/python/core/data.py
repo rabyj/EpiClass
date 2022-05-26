@@ -218,16 +218,16 @@ class Data(object): #class DataSet?
         self._signals = np.array(x)
         self._labels = np.array(y)
         self._labels_str = y_str
-        self._shuffle_order = np.arange(self._num_examples)
+        self._shuffle_order = np.arange(self._num_examples) # To be able to find back ids correctly
         self._index = 0
         self._metadata = metadata
 
     def preprocess(self, f):
-        """TODO : Write docstring"""
+        """Apply a preprocessing function on signals."""
         self._signals = np.apply_along_axis(f, 1, self._signals)
 
     def next_batch(self, batch_size, shuffle=True):
-        """TODO : Write docstring"""
+        """Return next (signals, targets) batch"""
         #if index exceeded num examples, start over
         if self._index >= self._num_examples:
             self._index = 0
@@ -240,7 +240,7 @@ class Data(object): #class DataSet?
         return self._signals[start:end], self._labels[start:end]
 
     def _shuffle(self):
-        """TODO : Write docstring"""
+        """Shuffle signals and labels together"""
         rng_state = np.random.get_state()
         for array in [self._shuffle_order, self._signals, self._labels]:
             np.random.shuffle(array)
@@ -252,23 +252,23 @@ class Data(object): #class DataSet?
 
     @property
     def ids(self):
-        """TODO : Write docstring"""
-        return self._ids
+        """Return md5s in current signals order."""
+        return np.take(self._ids, list(self._shuffle_order))
 
     @property
     def signals(self):
-        """TODO : Write docstring"""
+        """Return signals in current order."""
         return self._signals
 
     @property
     def encoded_labels(self):
-        """Return encoded labels of examples"""
+        """Return encoded labels of examples in current signal order."""
         return self._labels
 
     @property
     def original_labels(self):
-        """Return string labels of examples"""
-        return self._labels_str
+        """Return string labels of examples in current signal order."""
+        return np.take(self._labels_str, list(self._shuffle_order))
 
     @property
     def num_examples(self):
