@@ -2,7 +2,7 @@ import collections
 import math
 from pathlib import Path
 import random
-from typing import List
+from typing import List, Dict
 
 import h5py
 import numpy as np
@@ -37,16 +37,23 @@ class EpiData(object):
         self._oversample = oversample
 
         #load
-        self._hdf5s = Hdf5Loader(datasource.chromsize_file, datasource.hdf5_file, normalization).hdf5s
         self._metadata = self._load_metadata(metadata)
+        self._files = Hdf5Loader.read_list(datasource.hdf5_file)
 
         #preprocess
         self._keep_meta_overlap()
         self._metadata.remove_small_classes(min_class_size, self._label_category)
 
+        self._hdf5s = Hdf5Loader(
+            datasource.chromsize_file, normalization
+            ).load_hdf5s(datasource.hdf5_file, md5s=self._files.keys()).signals
+
         self._sorted_classes = self._metadata.unique_classes(label_category)
 
-        self._split_data(validation_ratio, test_ratio, onehot=onehot)
+        # TODO : Create encoder class separate from EpiData
+        encoder = EpiData._make_encoder(self._sorted_classes, onehot=onehot)
+
+        self._split_data(validation_ratio, test_ratio, encoder)
 
     @property
     def dataset(self):
@@ -74,10 +81,10 @@ class EpiData(object):
         self._remove_hdf5_without_md5()
 
     def _remove_md5_without_hdf5(self):
-        self._metadata.apply_filter(lambda item: item[0] in self._hdf5s)
+        self._metadata.apply_filter(lambda item: item[0] in self._files)
 
     def _remove_hdf5_without_md5(self):
-        self._hdf5s = {md5:self._hdf5s[md5] for md5 in self._metadata.md5s}
+        self._files = {md5:self._files[md5] for md5 in self._metadata.md5s}
 
     @staticmethod
     def _create_onehot_dict(classes):
@@ -334,16 +341,24 @@ class DataSet(object): #class Data?
 
 
 class Hdf5Loader(object):
-    """TODO : Write docstring"""
-    def __init__(self, chrom_file, data_file, normalization: bool):
+    """Handles loading/creating signals from hdf5 files"""
+    def __init__(self, chrom_file, normalization: bool):
         self._normalization = normalization
         self._chroms = self._load_chroms(chrom_file)
-        self._hdf5s = self._load_hdf5s(data_file)
+        self._files = None
+        self._signals = None
 
     @property
-    def hdf5s(self):
-        """Return a md5:norm_concat_chroms dict."""
-        return self._hdf5s
+    def loaded_files(self) -> Dict[str, Path]:
+        """Return a {md5:path} dict with last loaded files."""
+        return self._files
+
+    @property
+    def signals(self) -> Dict[str, np.ndarray]:
+        """Return a {md5:signal dict} with the last loaded signals,
+        where the signal has concanenated chromosomes, and is normalized if set so.
+        """
+        return self._signals
 
     def _load_chroms(self, chrom_file):
         """Return sorted chromosome names list."""
@@ -356,20 +371,52 @@ class Hdf5Loader(object):
             chroms.sort()
             return chroms
 
-    def _load_hdf5s(self, data_file):
-        """TODO : Write docstring"""
+    @staticmethod
+    def read_list(data_file:Path) -> Dict[str, Path]:
+        """Return {md5:file} dict from file of paths list."""
         with open(data_file, 'r', encoding="utf-8") as file_of_paths:
-            hdf5s = {}
+            files = {}
             for path in file_of_paths:
                 path = Path(path.rstrip())
-                md5 = self._extract_md5(path)
-                datasets = []
-                for chrom in self._chroms:
-                    f = h5py.File(path)
-                    array = f[md5][chrom][...]
-                    datasets.append(array)
-                hdf5s[md5] = self._normalize(np.concatenate(datasets))
-        return hdf5s
+                files[Hdf5Loader.extract_md5(path)] = path
+        return files
+
+    def load_hdf5s(self, data_file: Path, md5s=None, verbose=True):
+        """Load hdf5s from path list file.
+
+        If a list of md5s is given, load only the corresponding files.
+        Normalize if internal flag set so."""
+        files = self.read_list(data_file)
+
+        #Remove undesired files
+        if md5s is not None:
+            md5s = set(md5s)
+            files = {
+                md5:path for md5,path in files.items()
+                if md5 in md5s
+            }
+        self._files = files
+
+        #Load hdf5s and concatenate chroms into signals
+        signals = {}
+        for md5, file in files.items():
+            f = h5py.File(file)
+            chrom_signals = []
+            for chrom in self._chroms:
+                array = f[md5][chrom][...]
+                chrom_signals.append(array)
+            signals[md5] = self._normalize(np.concatenate(chrom_signals))
+
+        self._signals = signals
+
+        absent_md5s = md5s - set(files.keys())
+        if absent_md5s and verbose:
+            print("Following given md5s are absent of hdf5 list")
+            for md5 in absent_md5s:
+                print(md5)
+
+        return self
+
 
     def _normalize(self, array):
         if self._normalization:
@@ -377,5 +424,7 @@ class Hdf5Loader(object):
         else:
             return array
 
-    def _extract_md5(self, file_name: Path):
+    @staticmethod
+    def extract_md5(file_name: Path):
+        """Extract the md5 string from file path with specific naming convention."""
         return file_name.name.split("_")[0]

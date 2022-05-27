@@ -38,12 +38,11 @@ def main(args):
     chroms = my_datasource.load_chrom_sizes()
 
     # md5:signal dict
-    hdf5s = data.Hdf5Loader(my_datasource.chromsize_file,
-                            my_datasource.hdf5_file,
-                            normalization=True).hdf5s
+    signals = data.Hdf5Loader(
+        my_datasource.chromsize_file, normalization=True
+        ).load_hdf5s(my_datasource.hdf5_file).signals
 
-    variance = compute_variance(hdf5s)
-
+    variance = compute_variance(signals)
     bedgraph_path = epiml_options.logdir / "variance.bedgraph"
     analysis.values_to_bedgraph(variance, chroms, hdf5_resolution, bedgraph_path)
 

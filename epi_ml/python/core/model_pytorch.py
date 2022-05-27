@@ -145,7 +145,7 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True)
 
 
-    # --- Other information fonctions ---
+    # --- Other information functions ---
     def print_model_summary(self, batch_size=1):
         """Print torchinfo summary."""
         print("--MODEL SUMMARY--")
