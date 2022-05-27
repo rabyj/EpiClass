@@ -1,15 +1,144 @@
 import collections
 import math
-from pathlib import Path
 import random
-from typing import List, Dict
+from typing import List
 
-import h5py
 import numpy as np
 from sklearn import preprocessing
 
 from .data_source import EpiDataSource
+from .hdf5_loader import Hdf5Loader
 from .metadata import Metadata
+
+
+class Data(object): #class DataSet?
+    """Generalised object to deal with data."""
+    def __init__(self, ids, x, y, y_str, metadata: Metadata):
+        self._ids = ids
+        self._num_examples = len(x)
+        self._signals = np.array(x)
+        self._labels = np.array(y)
+        self._labels_str = y_str
+        self._shuffle_order = np.arange(self._num_examples) # To be able to find back ids correctly
+        self._index = 0
+        self._metadata = metadata
+
+    def preprocess(self, f):
+        """Apply a preprocessing function on signals."""
+        self._signals = np.apply_along_axis(f, 1, self._signals)
+
+    def next_batch(self, batch_size, shuffle=True):
+        """Return next (signals, targets) batch"""
+        #if index exceeded num examples, start over
+        if self._index >= self._num_examples:
+            self._index = 0
+        if self._index == 0:
+            if shuffle:
+                self._shuffle()
+        start = self._index
+        self._index += batch_size
+        end = self._index
+        return self._signals[start:end], self._labels[start:end]
+
+    def _shuffle(self):
+        """Shuffle signals and labels together"""
+        rng_state = np.random.get_state()
+        for array in [self._shuffle_order, self._signals, self._labels]:
+            np.random.shuffle(array)
+            np.random.set_state(rng_state)
+
+    def get_metadata(self, index):
+        """Get the metadata from the signal at the given position in the set."""
+        return self._metadata.get(self._ids[index])
+
+    @property
+    def ids(self):
+        """Return md5s in current signals order."""
+        return np.take(self._ids, list(self._shuffle_order))
+
+    @property
+    def signals(self):
+        """Return signals in current order."""
+        return self._signals
+
+    @property
+    def encoded_labels(self):
+        """Return encoded labels of examples in current signal order."""
+        return self._labels
+
+    @property
+    def original_labels(self):
+        """Return string labels of examples in current signal order."""
+        return np.take(self._labels_str, list(self._shuffle_order))
+
+    @property
+    def num_examples(self):
+        """Return the number of examples contained in the set."""
+        return self._num_examples
+
+
+class DataSet(object): #class Data?
+    """Contains training/valid/test Data objects."""
+    def __init__(self, training: Data, validation: Data, test: Data, sorted_classes):
+        self._train = training
+        self._validation = validation
+        self._test = test
+        self._sorted_classes = sorted_classes
+
+    @property
+    def train(self) -> Data:
+        """Training set"""
+        return self._train
+
+    @property
+    def validation(self) -> Data:
+        """Validation set"""
+        return self._validation
+
+    @property
+    def test(self) -> Data:
+        """Test set"""
+        return self._test
+
+    @property
+    def classes(self) -> List[str]:
+        """Return sorted classes present through datasets"""
+        return self._sorted_classes
+
+    def preprocess(self, f):
+        """TODO : Write docstring"""
+        if self._train.num_examples:
+            self._train.preprocess(f)
+        if self._validation.num_examples:
+            self._validation.preprocess(f)
+        if self._test.num_examples:
+            self._test.preprocess(f)
+
+    def save_mapping(self, path):
+        """Write the 'output position --> label' mapping to path."""
+        with open(path, 'w', encoding="utf-8") as map_file:
+            for i, label in enumerate(self._sorted_classes):
+                map_file.write(f"{i}\t{label}\n")
+
+    def load_mapping(self, path):
+        """Return dict object representation 'output position --> label' mapping from path."""
+        with open(path, 'r', encoding="utf-8") as map_file:
+            mapping = {}
+            for line in map_file:
+                i, label = line.rstrip().split('\t')
+                mapping[int(i)] = label
+        return mapping
+
+    def get_encoder(self, mapping, using_file=False) -> preprocessing.LabelEncoder:
+        """Load and return int label encoder.
+
+        Requires the model mapping file itself, or its path (with using_file=True)
+        """
+        if using_file:
+            mapping = self.load_mapping(mapping)
+
+        labels = sorted(list(mapping.values()))
+        return preprocessing.LabelEncoder().fit(labels)
 
 
 class DataSetFactory(object):
@@ -56,8 +185,8 @@ class EpiData(object):
         self._split_data(validation_ratio, test_ratio, encoder)
 
     @property
-    def dataset(self):
-        """Return DataSet object of processed data/metadata."""
+    def dataset(self) -> DataSet:
+        """Return data/metadata processed into separate sets."""
         return DataSet(self._train, self._validation, self._test, self._sorted_classes)
 
     @staticmethod
@@ -208,223 +337,3 @@ class EpiData(object):
                 new_labels.append(label)
                 new_md5s.append(md5s[i])
         return new_signals, new_labels, new_md5s
-
-
-class Data(object): #class DataSet?
-    """Generalised object to deal with data."""
-    def __init__(self, ids, x, y, y_str, metadata: Metadata):
-        self._ids = ids
-        self._num_examples = len(x)
-        self._signals = np.array(x)
-        self._labels = np.array(y)
-        self._labels_str = y_str
-        self._shuffle_order = np.arange(self._num_examples) # To be able to find back ids correctly
-        self._index = 0
-        self._metadata = metadata
-
-    def preprocess(self, f):
-        """Apply a preprocessing function on signals."""
-        self._signals = np.apply_along_axis(f, 1, self._signals)
-
-    def next_batch(self, batch_size, shuffle=True):
-        """Return next (signals, targets) batch"""
-        #if index exceeded num examples, start over
-        if self._index >= self._num_examples:
-            self._index = 0
-        if self._index == 0:
-            if shuffle:
-                self._shuffle()
-        start = self._index
-        self._index += batch_size
-        end = self._index
-        return self._signals[start:end], self._labels[start:end]
-
-    def _shuffle(self):
-        """Shuffle signals and labels together"""
-        rng_state = np.random.get_state()
-        for array in [self._shuffle_order, self._signals, self._labels]:
-            np.random.shuffle(array)
-            np.random.set_state(rng_state)
-
-    def get_metadata(self, index):
-        """Get the metadata from the signal at the given position in the set."""
-        return self._metadata.get(self._ids[index])
-
-    @property
-    def ids(self):
-        """Return md5s in current signals order."""
-        return np.take(self._ids, list(self._shuffle_order))
-
-    @property
-    def signals(self):
-        """Return signals in current order."""
-        return self._signals
-
-    @property
-    def encoded_labels(self):
-        """Return encoded labels of examples in current signal order."""
-        return self._labels
-
-    @property
-    def original_labels(self):
-        """Return string labels of examples in current signal order."""
-        return np.take(self._labels_str, list(self._shuffle_order))
-
-    @property
-    def num_examples(self):
-        """Return the number of examples contained in the set."""
-        return self._num_examples
-
-
-class DataSet(object): #class Data?
-    """Contains training/valid/test Data objects."""
-    def __init__(self, training: Data, validation: Data, test: Data, sorted_classes):
-        self._train = training
-        self._validation = validation
-        self._test = test
-        self._sorted_classes = sorted_classes
-
-    @property
-    def train(self) -> Data:
-        """Training set"""
-        return self._train
-
-    @property
-    def validation(self) -> Data:
-        """Validation set"""
-        return self._validation
-
-    @property
-    def test(self) -> Data:
-        """Test set"""
-        return self._test
-
-    @property
-    def classes(self) -> List[str]:
-        """Return sorted classes present through datasets"""
-        return self._sorted_classes
-
-    def preprocess(self, f):
-        """TODO : Write docstring"""
-        if self._train.num_examples:
-            self._train.preprocess(f)
-        if self._validation.num_examples:
-            self._validation.preprocess(f)
-        if self._test.num_examples:
-            self._test.preprocess(f)
-
-    def save_mapping(self, path):
-        """Write the 'output position --> label' mapping to path."""
-        with open(path, 'w', encoding="utf-8") as map_file:
-            for i, label in enumerate(self._sorted_classes):
-                map_file.write(f"{i}\t{label}\n")
-
-    def load_mapping(self, path):
-        """Return dict object representation 'output position --> label' mapping from path."""
-        with open(path, 'r', encoding="utf-8") as map_file:
-            mapping = {}
-            for line in map_file:
-                i, label = line.rstrip().split('\t')
-                mapping[int(i)] = label
-        return mapping
-
-    def get_encoder(self, mapping, using_file=False) -> preprocessing.LabelEncoder:
-        """Load and return int label encoder.
-
-        Requires the model mapping file itself, or its path (with using_file=True)
-        """
-        if using_file:
-            mapping = self.load_mapping(mapping)
-
-        labels = sorted(list(mapping.values()))
-        return preprocessing.LabelEncoder().fit(labels)
-
-
-class Hdf5Loader(object):
-    """Handles loading/creating signals from hdf5 files"""
-    def __init__(self, chrom_file, normalization: bool):
-        self._normalization = normalization
-        self._chroms = self._load_chroms(chrom_file)
-        self._files = None
-        self._signals = None
-
-    @property
-    def loaded_files(self) -> Dict[str, Path]:
-        """Return a {md5:path} dict with last loaded files."""
-        return self._files
-
-    @property
-    def signals(self) -> Dict[str, np.ndarray]:
-        """Return a {md5:signal dict} with the last loaded signals,
-        where the signal has concanenated chromosomes, and is normalized if set so.
-        """
-        return self._signals
-
-    def _load_chroms(self, chrom_file):
-        """Return sorted chromosome names list."""
-        with open(chrom_file, 'r', encoding="utf-8") as file:
-            chroms = []
-            for line in file:
-                line = line.rstrip()
-                if line:
-                    chroms.append(line.split()[0])
-            chroms.sort()
-            return chroms
-
-    @staticmethod
-    def read_list(data_file:Path) -> Dict[str, Path]:
-        """Return {md5:file} dict from file of paths list."""
-        with open(data_file, 'r', encoding="utf-8") as file_of_paths:
-            files = {}
-            for path in file_of_paths:
-                path = Path(path.rstrip())
-                files[Hdf5Loader.extract_md5(path)] = path
-        return files
-
-    def load_hdf5s(self, data_file: Path, md5s=None, verbose=True):
-        """Load hdf5s from path list file.
-
-        If a list of md5s is given, load only the corresponding files.
-        Normalize if internal flag set so."""
-        files = self.read_list(data_file)
-
-        #Remove undesired files
-        if md5s is not None:
-            md5s = set(md5s)
-            files = {
-                md5:path for md5,path in files.items()
-                if md5 in md5s
-            }
-        self._files = files
-
-        #Load hdf5s and concatenate chroms into signals
-        signals = {}
-        for md5, file in files.items():
-            f = h5py.File(file)
-            chrom_signals = []
-            for chrom in self._chroms:
-                array = f[md5][chrom][...]
-                chrom_signals.append(array)
-            signals[md5] = self._normalize(np.concatenate(chrom_signals))
-
-        self._signals = signals
-
-        absent_md5s = md5s - set(files.keys())
-        if absent_md5s and verbose:
-            print("Following given md5s are absent of hdf5 list")
-            for md5 in absent_md5s:
-                print(md5)
-
-        return self
-
-
-    def _normalize(self, array):
-        if self._normalization:
-            return (array - array.mean()) / array.std()
-        else:
-            return array
-
-    @staticmethod
-    def extract_md5(file_name: Path):
-        """Extract the md5 string from file path with specific naming convention."""
-        return file_name.name.split("_")[0]
