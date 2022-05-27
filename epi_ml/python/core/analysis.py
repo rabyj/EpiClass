@@ -1,4 +1,5 @@
 """Module containing result analysis code."""
+from __future__ import annotations
 import itertools
 from pathlib import Path
 from typing import Union, Optional

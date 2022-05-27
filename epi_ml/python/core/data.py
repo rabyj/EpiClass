@@ -50,7 +50,7 @@ class EpiData(object):
 
     @property
     def dataset(self):
-        """TODO : Write docstring"""
+        """Return DataSet object of processed data/metadata."""
         return DataSet(self._train, self._validation, self._test, self._sorted_classes)
 
     @staticmethod
@@ -79,9 +79,44 @@ class EpiData(object):
     def _remove_hdf5_without_md5(self):
         self._hdf5s = {md5:self._hdf5s[md5] for md5 in self._metadata.md5s}
 
+    @staticmethod
+    def _create_onehot_dict(classes):
+        """Returns {label:onehot vector} dict corresponding given classes.
+        TODO : put into an encoder class
+        Onehot vectors defined with given classes, no sorting done.
+        """
+        onehot_dict = {}
+        for i, label in enumerate(classes):
+            onehot = np.zeros(len(classes))
+            onehot[i] = 1
+            onehot_dict[label] = onehot
+        return onehot_dict
+
+    @staticmethod
+    def _make_encoder(classes, onehot=False):
+        """Return an int (default) or onehot vector encoder that takes label sets as entry.
+        TODO : put into an encoder class
+        Classes are sorted beforehand.
+        """
+        labels = sorted(classes)
+        if onehot:
+            encoding = EpiData._create_onehot_dict(labels)
+            def to_onehot(labels):
+                return [encoding[label] for label in labels]
+            return to_onehot
+        else:
+            encoding = preprocessing.LabelEncoder().fit(labels) #int mapping
+            def to_int(labels):
+                if labels:
+                    return encoding.transform(labels)
+                else:
+                    return []
+            return to_int
+
     def _oversample_rates(self):
-        """Return a {label:oversampling_rate} dict
-        where the oversampling rates are label_count/max(label_counts)
+        """Return a {label:oversampling_rate} dict.
+
+        The oversampling rates are label_count/max(label_counts).
         """
         sorted_md5 = sorted(self._metadata.md5s)
         label_count = {}
@@ -90,21 +125,19 @@ class EpiData(object):
             label_count[label] = label_count.get(label, 0) + 1
 
         max_count = 0
-        max_label = ""
         for label, count in label_count.items():
             if count > max_count:
                 max_count = count
-                max_label = label
 
         oversample_rates = {}
         for label, count in label_count.items():
             oversample_rates[label] = count/max_count
         return oversample_rates
 
-    def _split_data(self, validation_ratio, test_ratio, onehot):
+    def _split_data(self, validation_ratio, test_ratio, encoder):
         """Split loaded data into three sets : Training/Validation/Test.
 
-        Categorical targets can be encoded as one-hots or integers.
+        The encoder/encoding function for a label list needs to be provided.
         """
         size_all_dict = self._metadata.label_counter(self._label_category)
 
@@ -124,39 +157,30 @@ class EpiData(object):
             for label in size_all_dict.keys()
         ], [])
 
+        train_md5s = slice_data(begin=split_index_dict)
         validation_md5s = slice_data(end=size_validation_dict)
         test_md5s = slice_data(begin=size_validation_dict, end=split_index_dict)
-        train_md5s = slice_data(begin=split_index_dict)
 
         assert len(self._metadata.md5s) == len(set(sum([validation_md5s, test_md5s, train_md5s], [])))
 
         # separate hdf5 files
+        train_signals = [self._hdf5s[md5] for md5 in train_md5s]
         validation_signals = [self._hdf5s[md5] for md5 in validation_md5s]
         test_signals = [self._hdf5s[md5] for md5 in test_md5s]
-        train_signals = [self._hdf5s[md5] for md5 in train_md5s]
 
         # separate label values
+        train_labels = [self._metadata[md5][self._label_category] for md5 in train_md5s]
         validation_labels = [self._metadata[md5][self._label_category] for md5 in validation_md5s]
         test_labels = [self._metadata[md5][self._label_category] for md5 in test_md5s]
-        train_labels = [self._metadata[md5][self._label_category] for md5 in train_md5s]
 
         if self._oversample:
             train_signals, train_labels, train_md5s = self._oversample_data(train_signals, train_labels, train_md5s)
 
-        if onehot:
-            onehot_dict = EpiData._create_onehot_dict(self._sorted_classes)
-            encoded_validation_labels = EpiData._to_onehot(validation_labels, onehot_dict)
-            encoded_test_labels = EpiData._to_onehot(test_labels, onehot_dict)
-            encoded_train_labels = EpiData._to_onehot(train_labels, onehot_dict)
-        else:
-            int_mapping = preprocessing.LabelEncoder().fit(self._sorted_classes)
-            encoded_validation_labels = EpiData._to_int(validation_labels, int_mapping)
-            encoded_test_labels = EpiData._to_int(test_labels, int_mapping)
-            encoded_train_labels = EpiData._to_int(train_labels, int_mapping)
+        encoded_labels = [encoder(labels) for labels in [train_labels, validation_labels, test_labels]]
 
-        self._validation = Data(validation_md5s, validation_signals, encoded_validation_labels, validation_labels, self._metadata)
-        self._test = Data(test_md5s, test_signals, encoded_test_labels, test_labels, self._metadata)
-        self._train = Data(train_md5s, train_signals, encoded_train_labels, train_labels, self._metadata)
+        self._train = Data(train_md5s, train_signals, encoded_labels[0], train_labels, self._metadata)
+        self._validation = Data(validation_md5s, validation_signals, encoded_labels[1], validation_labels, self._metadata)
+        self._test = Data(test_md5s, test_signals, encoded_labels[2], test_labels, self._metadata)
 
         print(f"validation size {len(validation_labels)}")
         print(f"test size {len(test_labels)}")
@@ -177,37 +201,6 @@ class EpiData(object):
                 new_labels.append(label)
                 new_md5s.append(md5s[i])
         return new_signals, new_labels, new_md5s
-
-    @staticmethod
-    def _create_onehot_dict(classes):
-        """Returns {label:onehot vector} dict corresponding given classes.
-
-        Onehot vectors defined with given classes, no sorting done.
-        """
-        onehot_dict = {}
-        for i, label in enumerate(classes):
-            onehot = np.zeros(len(classes))
-            onehot[i] = 1
-            onehot_dict[label] = onehot
-        return onehot_dict
-
-    @staticmethod
-    def _to_onehot(labels, onehot_encoder):
-        """Return a onehot vector list of encoded labels.
-
-        Requires a {label:onehot vector} encoder.
-        """
-        encoded_labels = [onehot_encoder[val] for val in labels]
-        return encoded_labels
-
-    @staticmethod
-    def _to_int(labels, int_encoder: preprocessing.LabelEncoder):
-        """Return a list of encoded labels.
-
-        Requires a fitted label encoder.
-        """
-        encoded_labels = int_encoder.transform(labels)
-        return encoded_labels
 
 
 class Data(object): #class DataSet?

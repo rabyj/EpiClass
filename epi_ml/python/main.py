@@ -14,7 +14,6 @@ warnings.simplefilter("ignore", category=FutureWarning)
 from functools import partial
 import numpy as np
 from pytorch_lightning import loggers as pl_loggers
-from pytorch_lightning.profiler import PyTorchProfiler, SimpleProfiler
 import torch
 from torch.utils.data import TensorDataset
 from torch.utils.data import DataLoader
@@ -22,11 +21,12 @@ from torch.utils.data import DataLoader
 from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
 from epi_ml.python.core import metadata
 from epi_ml.python.core import data
+from epi_ml.python.core.data_source import EpiDataSource
 from epi_ml.python.core.model_pytorch import LightningDenseClassifier
 from epi_ml.python.core.trainer import MyTrainer, define_callbacks
 from epi_ml.python.core import analysis
 
-from epi_ml.python.core.confusion_matrix import ConfusionMatrixWriter
+# from epi_ml.python.core.confusion_matrix import ConfusionMatrixWriter
 
 
 class DatasetError(Exception):
@@ -67,7 +67,7 @@ def main(args):
     # --- PARSE params and LOAD external files ---
     cli = parse_arguments(args)
 
-    my_datasource = data.EpiDataSource(
+    my_datasource = EpiDataSource(
         cli.hdf5,
         cli.chromsize,
         cli.metadata
