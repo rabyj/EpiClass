@@ -211,7 +211,7 @@ class DataSetFactory(object):
     """Creation of DataSet from different sources."""
     @classmethod
     def from_epidata(cls, datasource: EpiDataSource, metadata: Metadata, label_category: str, onehot=False, oversample=False,
-                     normalization=True, min_class_size=3, validation_ratio=0.1, test_ratio=0.1):
+                     normalization=True, min_class_size=3, validation_ratio=0.1, test_ratio=0.1) -> DataSet:
         """TODO : Write docstring"""
 
         return EpiData(
@@ -227,7 +227,7 @@ class EpiData(object):
     """
     def __init__(self, datasource: EpiDataSource, metadata: Metadata, label_category: str, onehot=False, oversample=False,
                  normalization=True, min_class_size=3, validation_ratio=0.1, test_ratio=0.1):
-        EpiData._assert_ratios(validation_ratio, test_ratio, verbose=True)
+        EpiData._assert_ratios(val_ratio=validation_ratio, test_ratio=test_ratio, verbose=True)
         self._label_category = label_category
         self._oversample = oversample
 
@@ -336,34 +336,46 @@ class EpiData(object):
             oversample_rates[label] = count/max_count
         return oversample_rates
 
-    def _split_data(self, validation_ratio, test_ratio, encoder):
-        """Split loaded data into three sets : Training/Validation/Test.
-
-        The encoder/encoding function for a label list needs to be provided.
-        """
+    def _split_md5s(self, validation_ratio, test_ratio):
+        """Return md5s for each set, according to given ratios."""
         size_all_dict = self._metadata.label_counter(self._label_category)
+        data = self._metadata.md5_per_class(self._label_category)
 
         # A minimum of 3 examples are needed for each label (1 for each set), when splitting into three sets
         for label, size in size_all_dict.items():
             if size < 3:
                 print(f"The label `{label}` countains only {size} datasets.")
 
+        # The point is to try to create indexes for the slices of each different class
+        # the indexes would split this way [valid, test, training]
         size_validation_dict = collections.Counter({label:math.ceil(size*validation_ratio) for label, size in size_all_dict.items()})
         size_test_dict = collections.Counter({label:math.ceil(size*test_ratio) for label, size in size_all_dict.items()})
-        split_index_dict = size_validation_dict + size_test_dict
 
-        data = self._metadata.md5_per_class(self._label_category)
+        # sum(size_validation_dict, size_test_dict) ignores zeros, giving counter without labels, which breaks following lambda
+        split_index_dict = collections.Counter(size_validation_dict)
+        split_index_dict.update(size_test_dict)
 
+        # Will grab the indexes from the dicts and return md5 slices
+        # no end means : [i:None]=[i:]=slice from i to end
         slice_data = lambda begin={}, end={}: sum([
             data[label][begin.get(label, 0):end.get(label, None)]
             for label in size_all_dict.keys()
         ], [])
 
-        train_md5s = slice_data(begin=split_index_dict)
         validation_md5s = slice_data(end=size_validation_dict)
         test_md5s = slice_data(begin=size_validation_dict, end=split_index_dict)
+        train_md5s = slice_data(begin=split_index_dict)
 
-        assert len(self._metadata.md5s) == len(set(sum([validation_md5s, test_md5s, train_md5s], [])))
+        assert len(self._metadata.md5s) == len(set(sum([train_md5s, validation_md5s, test_md5s], [])))
+
+        return [train_md5s, validation_md5s, test_md5s]
+
+    def _split_data(self, validation_ratio, test_ratio, encoder):
+        """Split loaded data into three sets : Training/Validation/Test.
+
+        The encoder/encoding function for a label list needs to be provided.
+        """
+        train_md5s, validation_md5s, test_md5s = self._split_md5s(validation_ratio, test_ratio)
 
         # separate hdf5 files
         train_signals = [self._hdf5s[md5] for md5 in train_md5s]
@@ -384,9 +396,10 @@ class EpiData(object):
         self._validation = Data(validation_md5s, validation_signals, encoded_labels[1], validation_labels, self._metadata)
         self._test = Data(test_md5s, test_signals, encoded_labels[2], test_labels, self._metadata)
 
+        print(f"training size {len(train_labels)}")
         print(f"validation size {len(validation_labels)}")
         print(f"test size {len(test_labels)}")
-        print(f"training size {len(train_labels)}")
+
 
     def _oversample_data(self, signals, labels, md5s):
         oversample_rates = self._oversample_rates()
