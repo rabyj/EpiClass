@@ -1,3 +1,4 @@
+from __future__ import annotations
 import collections
 import math
 import random
@@ -47,34 +48,69 @@ class Data(object): #class DataSet?
             np.random.shuffle(array)
             np.random.set_state(rng_state)
 
-    def get_metadata(self, index):
-        """Get the metadata from the signal at the given position in the set."""
-        return self._metadata.get(self._ids[index])
-
     @property
-    def ids(self):
+    def ids(self) -> np.ndarray:
         """Return md5s in current signals order."""
         return np.take(self._ids, list(self._shuffle_order))
 
+    def get_id(self, index: int):
+        """Return unique identifier associated with signal position."""
+        return self._ids[self._shuffle_order[index]]
+
     @property
-    def signals(self):
+    def signals(self) -> np.ndarray:
         """Return signals in current order."""
         return self._signals
 
+    def get_signal(self, index: int):
+        """Return current signal at given position. (signals can be shuffled)"""
+        return self._signals[index]
+
     @property
-    def encoded_labels(self):
+    def encoded_labels(self) -> np.ndarray:
         """Return encoded labels of examples in current signal order."""
         return self._labels
 
+    def get_encoded_label(self, index: int):
+        """Return encoded label at given signal position."""
+        return self._labels[index]
+
     @property
-    def original_labels(self):
+    def original_labels(self) -> np.ndarray:
         """Return string labels of examples in current signal order."""
         return np.take(self._labels_str, list(self._shuffle_order))
 
+    def get_original_label(self, index: int):
+        """Return original label at given signal position."""
+        return self._labels_str[self._shuffle_order[index]]
+
     @property
-    def num_examples(self):
+    def num_examples(self) -> int:
         """Return the number of examples contained in the set."""
         return self._num_examples
+
+    @property
+    def metadata(self) -> Metadata:
+        """Return the metadata of the dataset. Careful, modifications to it will affect this object."""
+        return self._metadata
+
+    def get_metadata(self, index: int) -> dict:
+        """Get the metadata from the signal at the given position in the set."""
+        return self._metadata[self.get_id(index)]
+
+    @classmethod
+    def empty_collection(cls) -> Data:
+        """Returns an empty Data object."""
+        obj = cls.__new__(cls)
+        obj._ids = []
+        obj._num_examples = 0
+        obj._signals = []
+        obj._labels = []
+        obj._labels_str = []
+        obj._shuffle_order = [] # To be able to find back ids correctly
+        obj._index = 0
+        obj._metadata = {}
+        return obj
 
 
 class DataSet(object): #class Data?
@@ -105,14 +141,44 @@ class DataSet(object): #class Data?
         """Return sorted classes present through datasets"""
         return self._sorted_classes
 
+    @classmethod
+    def empty_collection(cls) -> DataSet:
+        """Returns an empty DataSet object"""
+        obj = cls.__new__(cls)
+        obj._train = Data.empty_collection()
+        obj._validation = Data.empty_collection()
+        obj._test = Data.empty_collection()
+        obj._sorted_classes = []
+        return obj
+
+    def set_train(self, dset: Data):
+        """Set training set."""
+        self._train = dset
+        self._reset_classes()
+
+    def set_validation(self, dset: Data):
+        """Set validation set."""
+        self._validation = dset
+        self._reset_classes()
+
+    def set_test(self, dset: Data):
+        """Set testing set."""
+        self._test = dset
+        self._reset_classes()
+
+    def _reset_classes(self):
+        """Reset classes property."""
+        new_classes = []
+        for dset in [self._train, self._validation, self._test]:
+            if dset.num_examples:
+                new_classes.extend(dset.original_labels)
+        self._sorted_classes = sorted(list(set(new_classes)))
+
     def preprocess(self, f):
-        """TODO : Write docstring"""
-        if self._train.num_examples:
-            self._train.preprocess(f)
-        if self._validation.num_examples:
-            self._validation.preprocess(f)
-        if self._test.num_examples:
-            self._test.preprocess(f)
+        """Apply preprocessing function to all datasets."""
+        for dset in [self._train, self._validation, self._test]:
+            if dset.num_examples:
+                dset.preprocess(f)
 
     def save_mapping(self, path):
         """Write the 'output position --> label' mapping to path."""

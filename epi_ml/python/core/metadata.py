@@ -1,3 +1,4 @@
+"""Module from Metadata class and HealthyCategory."""
 from __future__ import annotations
 import copy
 import collections
@@ -9,6 +10,17 @@ class Metadata(object):
     """Wrapper around metadata md5:dataset dict."""
     def __init__(self, meta_file: Path):
         self._metadata = self._load_metadata(meta_file)
+
+    @classmethod
+    def from_dict(cls, metadata: dict) -> Metadata:
+        """Creates an object from a dict conforming to {md5sum:dset} format."""
+        first_key = list(metadata.keys())[0]
+        if len(first_key) != 32:
+            raise Exception(f"Incorrect format of metadata. Key need to be md5sum (len=32). Is: {first_key}")
+
+        obj = cls.__new__(cls)
+        obj._metadata = copy.deepcopy(metadata)
+        return obj
 
     def empty(self):
         """Remove all entries."""
@@ -33,15 +45,24 @@ class Metadata(object):
         """Dict .get"""
         return self._metadata.get(md5, default)
 
+    def update(self, info: Metadata) -> None:
+        """Dict .update equivalent. Info needs to respect {md5sum:dset} format."""
+        self._metadata.update(info.items)
+
     @property
     def md5s(self):
-        """Return keys."""
+        """Return md5s (iterator). dict.keys() equivalent."""
         return self._metadata.keys()
 
     @property
     def datasets(self):
-        """Return values."""
+        """Return datasets (iterator). dict.values() equivalent."""
         return self._metadata.values()
+
+    @property
+    def items(self):
+        """Return pairs (iterator). dict.items() equivalent"""
+        return self._metadata.items()
 
     def _load_metadata(self, meta_file):
         """Return md5:dataset dict."""
@@ -69,7 +90,7 @@ class Metadata(object):
             data[self._metadata[md5][label_category]].append(md5)
         return data
 
-    def remove_small_classes(self, min_class_size, label_category: str):
+    def remove_small_classes(self, min_class_size, label_category: str, verbose=True):
         """Remove classes with less than min_class_size examples
         for a given metatada category.
 
@@ -85,12 +106,13 @@ class Metadata(object):
                 for md5 in data[label]:
                     del self._metadata[md5]
 
-        remaining = nb_class - nb_removed_class
-        ratio = f"{remaining}/{nb_class}"
-        print(
-            f"{ratio} labels left from {label_category} "
-            f"after removing classes with less than {min_class_size} signals."
-        )
+        if verbose:
+            remaining = nb_class - nb_removed_class
+            ratio = f"{remaining}/{nb_class}"
+            print(
+                f"{ratio} labels left from {label_category} "
+                f"after removing classes with less than {min_class_size} signals."
+            )
 
     def select_category_subsets(self, labels, label_category: str):
         """Select only datasets which possess the given labels
