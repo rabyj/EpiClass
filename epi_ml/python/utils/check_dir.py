@@ -6,6 +6,7 @@ This permits proper redirection of stdout and stderr to files in bash to said di
 in the following scripts.
 """
 import argparse
+from pathlib import Path
 import sys
 
 from epi_ml.python.argparseutils.directorychecker import DirectoryChecker, DirectoryCheckerError
@@ -18,13 +19,21 @@ def parse_arguments(args: list) -> argparse.Namespace:
     arg_parser.add_argument('--exists', action="store_true", help='Specifies that the directory should already exist.')
     return arg_parser.parse_args(args)
 
+def create_dirs(dir):
+    """Create recursively needed directories to directory."""
+    path = Path(dir)
+    for parent in reversed(path.parents):
+        parent.mkdir(mode=0o2750, exist_ok=True)
+    path.mkdir(mode=0o2750, exist_ok=True)
+
+
 def main(args):
     """main called from command line, edit to change behavior"""
 
     try:
         cli = parse_arguments(args)
         dir_checker = DirectoryChecker()
-        my_dir = dir_checker(cli.dir)
+        dir_checker(cli.dir)
     except DirectoryCheckerError as dir_err:
 
         faulty_path = dir_err.path
@@ -32,14 +41,12 @@ def main(args):
             raise dir_err from None
         else:
             #Create missing dir
-            for parent in reversed(faulty_path.parents):
-                parent.mkdir(mode=0o2750, exist_ok=True)
-            faulty_path.mkdir(mode=0o2750, exist_ok=True)
+            create_dirs(faulty_path)
 
             print(f"Created missing logdir and needed parents : {faulty_path}")
 
             # Reverify everything was done properly
-            my_dir = dir_checker(cli.dir)
+            dir_checker(cli.dir)
 
 
 if __name__ == "__main__":
