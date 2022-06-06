@@ -10,6 +10,7 @@ from pathlib import Path
 import sys
 import warnings
 warnings.simplefilter("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
 
 from pytorch_lightning import loggers as pl_loggers
 import torch
@@ -174,8 +175,22 @@ def main(args):
             nb_layer=nb_layers
             )
 
-        print("--MODEL STRUCTURE--\n", my_model)
-        my_model.print_model_summary()
+        if i == 0:
+            print("--MODEL STRUCTURE--\n", my_model)
+            my_model.print_model_summary()
+
+
+        # --- TRAIN the model ---
+        if i == 0:
+            callbacks = define_callbacks(
+                early_stop_limit=hparams.get("early_stop_limit", 20),
+                show_summary=True
+                )
+        else:
+            callbacks = define_callbacks(
+                early_stop_limit=hparams.get("early_stop_limit", 20),
+                show_summary=False
+                )
 
 
         # --- TRAIN the model ---
@@ -211,9 +226,11 @@ def main(args):
                 devices=1
                 )
 
-        trainer.print_hyperparameters()
-        trainer.fit(my_model, train_dataloaders=train_dataloader, val_dataloaders=valid_dataloader)
-
+        if i == 0:
+            trainer.print_hyperparameters()
+            trainer.fit(my_model, train_dataloaders=train_dataloader, val_dataloaders=valid_dataloader, verbose=True)
+        else:
+            trainer.fit(my_model, train_dataloaders=train_dataloader, val_dataloaders=valid_dataloader, verbose=False)
         trainer.save_model_path()
 
         training_time = time_now() - before_train
