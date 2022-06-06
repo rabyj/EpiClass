@@ -1,6 +1,8 @@
+"""Module for hdf5 loading handling."""
 from __future__ import annotations
-from typing import Dict
+import os
 from pathlib import Path
+from typing import Dict
 
 import h5py
 import numpy as np
@@ -52,6 +54,8 @@ class Hdf5Loader(object):
         Normalize if internal flag set so."""
         files = self.read_list(data_file)
 
+        files = Hdf5Loader.adapt_to_environment(files)
+
         #Remove undesired files
         if md5s is not None:
             md5s = set(md5s)
@@ -92,3 +96,18 @@ class Hdf5Loader(object):
     def extract_md5(file_name: Path):
         """Extract the md5 string from file path with specific naming convention."""
         return file_name.name.split("_")[0]
+
+    @staticmethod
+    def adapt_to_environment(files: dict, new_parent="hdf5s"):
+        """Change files paths if they exist on cluster scratch.
+
+        Files : {md5:path} dict.
+        new_parent : directory after $SLURM_TMPDIR.
+        """
+        local_tmp = Path(os.getenv("$SLURM_TMPDIR", "./bleh")) / new_parent
+
+        if local_tmp.exists():
+            for md5, path in list(files.items()):
+                files[md5] = local_tmp / Path(path).name
+
+        return files
