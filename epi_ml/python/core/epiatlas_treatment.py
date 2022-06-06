@@ -39,7 +39,7 @@ def _create_raw_dataset(datasource: EpiDataSource) -> data.DataSet:
     my_data = data.DataSetFactory.from_epidata(
         datasource, meta, LABEL_CATEGORY, min_class_size=10,
         validation_ratio=0, test_ratio=0,
-        onehot=False, oversample=True
+        onehot=False, oversample=False
         )
     return my_data
 
@@ -77,19 +77,30 @@ def _load_other_tracks(datasource: EpiDataSource, raw_to_others: dict) -> dict:
     return hdf5_loader.signals
 
 
-def _add_other_tracks(selected_positions, other_signals: dict, raw_to_others: dict, dset: data.Data) -> data.Data:
+def _add_other_tracks(selected_positions, other_signals: dict, raw_to_others: dict, dset: data.Data, resample: bool) -> data.Data:
     """Return a modified dset object with added tracks (pval + fc) for selected signals.
 
     The hdf5loader needs to contain at least the fc and pval tracks.
     """
     new_signals, new_str_labels, new_encoded_labels, new_md5s = [], [], [], []
+    raw_dset = dset
+
+    if resample:
+        resampled_X, resampled_y, idxs = data.EpiData.oversample_data(dset.signals, dset.encoded_labels)
+        raw_dset = data.Data(
+            ids=np.take(dset.ids, idxs),
+            x=resampled_X,
+            y=resampled_y,
+            y_str=np.take(dset.original_labels, idxs),
+            metadata=dset.metadata
+        )
 
     for selected_index in selected_positions:
-        og_dset_metadata = dset.get_metadata(selected_index)
-        md5 = dset.get_id(selected_index)
-        label = dset.get_original_label(selected_index)
-        encoded_label = dset.get_encoded_label(selected_index)
-        signal = dset.get_signal(selected_index)
+        og_dset_metadata = raw_dset.get_metadata(selected_index)
+        md5 = raw_dset.get_id(selected_index)
+        label = raw_dset.get_original_label(selected_index)
+        encoded_label = raw_dset.get_encoded_label(selected_index)
+        signal = raw_dset.get_signal(selected_index)
 
         if md5 != og_dset_metadata["md5sum"]:
             raise Exception("You dun fucked up")
@@ -142,10 +153,10 @@ def epiatlas_yield_split(datasource: EpiDataSource) -> data.DataSet:
         ):
 
         new_train = copy.deepcopy(partial_data.train)
-        new_train = _add_other_tracks(train_idxs, other_signals, raw_to_others, new_train)
+        new_train = _add_other_tracks(train_idxs, other_signals, raw_to_others, new_train, resample=True)
 
         new_valid = copy.deepcopy(partial_data.train)
-        new_valid = _add_other_tracks(valid_idxs, other_signals, raw_to_others, new_valid)
+        new_valid = _add_other_tracks(valid_idxs, other_signals, raw_to_others, new_valid, resample=False)
 
         new_datasets.set_train(new_train)
         new_datasets.set_validation(new_valid)
