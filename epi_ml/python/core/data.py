@@ -1,9 +1,9 @@
 from __future__ import annotations
 import collections
 import math
-import random
 from typing import List
 
+from imblearn.over_sampling import RandomOverSampler
 import numpy as np
 from sklearn import preprocessing
 
@@ -315,27 +315,6 @@ class EpiData(object):
                     return []
             return to_int
 
-    def _oversample_rates(self):
-        """Return a {label:oversampling_rate} dict.
-
-        The oversampling rates are label_count/max(label_counts).
-        """
-        sorted_md5 = sorted(self._metadata.md5s)
-        label_count = {}
-        for md5 in sorted_md5:
-            label = self._metadata[md5][self._label_category]
-            label_count[label] = label_count.get(label, 0) + 1
-
-        max_count = 0
-        for label, count in label_count.items():
-            if count > max_count:
-                max_count = count
-
-        oversample_rates = {}
-        for label, count in label_count.items():
-            oversample_rates[label] = count/max_count
-        return oversample_rates
-
     def _split_md5s(self, validation_ratio, test_ratio):
         """Return md5s for each set, according to given ratios."""
         size_all_dict = self._metadata.label_counter(self._label_category)
@@ -388,7 +367,8 @@ class EpiData(object):
         test_labels = [self._metadata[md5][self._label_category] for md5 in test_md5s]
 
         if self._oversample:
-            train_signals, train_labels, train_md5s = self._oversample_data(train_signals, train_labels, train_md5s)
+            train_signals, train_labels, idxs = EpiData.oversample_data(train_signals, train_labels)
+            train_md5s = np.take(train_md5s, idxs)
 
         encoded_labels = [encoder(labels) for labels in [train_labels, validation_labels, test_labels]]
 
@@ -400,19 +380,9 @@ class EpiData(object):
         print(f"validation size {len(validation_labels)}")
         print(f"test size {len(test_labels)}")
 
-
-    def _oversample_data(self, signals, labels, md5s):
-        oversample_rates = self._oversample_rates()
-        new_signals = []
-        new_labels = []
-        new_md5s = []
-        for i, (signal, label) in enumerate(zip(signals, labels)):
-            rate = oversample_rates[label]
-            sample_rate = int(1/rate)
-            if random.random() < (1/rate) % 1:
-                sample_rate += 1
-            for _ in range(sample_rate):
-                new_signals.append(signal)
-                new_labels.append(label)
-                new_md5s.append(md5s[i])
-        return new_signals, new_labels, new_md5s
+    @staticmethod
+    def oversample_data(X, y):
+        """Return oversampled data with sampled indexes. X=signals, y=targets."""
+        ros = RandomOverSampler(random_state=42)
+        X_resampled, y_resampled = ros.fit_resample(X, y)
+        return X_resampled, y_resampled, ros.sample_indices_
