@@ -8,7 +8,7 @@ import pytorch_lightning.callbacks as torch_callbacks
 class MyTrainer(pl.Trainer):
     """Personalized trainer"""
 
-    def __init__(self, general_log_dir: str, last_trained_model = None, **kwargs):
+    def __init__(self, general_log_dir: str, last_trained_model=None, **kwargs):
         """Metrics expect probabilities and not logits."""
         super().__init__(**kwargs)
 
@@ -16,7 +16,7 @@ class MyTrainer(pl.Trainer):
         self.model = last_trained_model
         self.batch_size = None
 
-    def fit(self, *args, verbose = True, **kwargs):
+    def fit(self, *args, verbose=True, **kwargs):
         """Base pl.Trainer.fit function, but also prints the batch size."""
         self.batch_size = kwargs["train_dataloaders"].batch_size
         if verbose:
@@ -41,11 +41,14 @@ class MyTrainer(pl.Trainer):
         print(f"Monitored value : {stop_callback.monitor}")
 
 
-def define_callbacks(early_stop_limit: int):
+def define_callbacks(early_stop_limit: int, show_summary=True):
     """Returns list of PyTorch trainer callbacks.
     RichModelSummary, EarlyStopping, ModelCheckpoint
     """
-    summary = torch_callbacks.RichModelSummary(max_depth=3)
+    if show_summary:
+        summary = torch_callbacks.RichModelSummary(max_depth=3)
+    else:
+        summary = None
 
     monitored_value = "valid_acc" #have same name as TorchMetrics
     mode = "max"

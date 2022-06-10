@@ -1,8 +1,11 @@
 """ConfusionMatrixWriter class"""
+from __future__ import annotations
 import math
 from pathlib import Path
 import re
 from typing import Tuple
+import warnings
+
 
 import matplotlib
 matplotlib.use('Agg')
@@ -13,18 +16,35 @@ from matplotlib.colors import ListedColormap
 import numpy as np
 import pandas as pd
 
+class InputMatrixError(Exception):
+    pass
+
 
 class ConfusionMatrixWriter(object):
     """Class to create/handle confusion matrices.
 
     labels : list of classes string representation
     confusion_matrix : A confusion matrix that counts each final prediction (int matrix)
-    Expects a confusion matrix input with prediction rows (row val: pred1 pred2 pred3 ...) and target columns.
+    Expects a confusion matrix input with prediction rows (row value: pred1 pred2 pred3 ...) and target columns.
     """
     def __init__(self, labels, confusion_matrix: np.ndarray):
         self._labels = sorted(labels)
         self._og_confusion_mat = np.array(confusion_matrix)
-        self._pd_matrix, self._pd_rel_matrix = self._init_confusion_matrices(confusion_matrix) #pd dataframe
+        self._pd_matrix, self._pd_rel_matrix = self.init_confusion_matrices(confusion_matrix) #pd dataframe
+
+    def __add__(self, other: ConfusionMatrixWriter) -> ConfusionMatrixWriter:
+        if set(self._labels) != set(other._labels):
+            warnings.warn("Cannot add matrices with different labels")
+            return None
+
+        new_mat = self._og_confusion_mat + other._og_confusion_mat
+        new_mat = ConfusionMatrixWriter(self._labels, new_mat)
+        return new_mat
+
+    @staticmethod
+    def _extract_class(label: str):
+        """Extract class for a label with count, e.g. input(42)."""
+        return str(label).split("(", 1)[0]
 
     @classmethod
     def from_csv(cls, csv_path, relative: bool):
@@ -32,12 +52,17 @@ class ConfusionMatrixWriter(object):
         The state of the matrix (relative or not) needs to be specified.
         """
         obj = cls.__new__(cls)  # Does not call __init__
-        content = pd.read_csv(csv_path, sep=',', index_col=0)
+        content = pd.DataFrame(pd.read_csv(csv_path, sep=',', index_col=0))
+        labels_w_count = content.index.tolist()
+        values = content.values
         if relative:
-            obj._pd_rel_matrix = content
-            obj._labels = content.index.tolist()
+            if np.any(a=values>=2, axis=None):
+                raise InputMatrixError("Inputed file seems to contain count values, but relative=True was given.")
 
-            labels_count = re.findall(r"\(([0-9]+)\)", "".join(obj._labels))
+            obj._pd_rel_matrix = content
+            obj._labels = sorted([ConfusionMatrixWriter._extract_class(val) for val in labels_w_count])
+
+            labels_count = re.findall(r"\(([0-9]+)\)", "".join(labels_w_count))
             labels_count = np.array(labels_count, dtype=int)
 
             mat = np.array((content.values.T * labels_count).T, dtype=float)
@@ -45,8 +70,11 @@ class ConfusionMatrixWriter(object):
 
             obj._pd_matrix = pd.DataFrame(data=obj._og_confusion_mat, index=content.index, columns=content.columns) # pylint: disable=no-member
         else:
+            if np.any(a=(values<=0.99)&(values>=0.01), axis=None):
+                raise InputMatrixError("Inputed file seems to contain relative values, but relative=False was given.")
+
             obj._pd_matrix = content
-            obj._labels = content.index.tolist() # pylint: disable=no-member
+            obj._labels = sorted([ConfusionMatrixWriter._extract_class(val) for val in labels_w_count]) # pylint: disable=no-member
 
             obj._og_confusion_mat = content.to_numpy() # pylint: disable=no-member
 
@@ -57,7 +85,7 @@ class ConfusionMatrixWriter(object):
             obj._pd_rel_matrix = pd.DataFrame(data=rel_mat, index=content.index, columns=content.columns) # pylint: disable=no-member
         return obj
 
-    def _init_confusion_matrices(self, confusion_matrix: np.ndarray):
+    def init_confusion_matrices(self, confusion_matrix: np.ndarray):
         """Returns confusion matrices with labels (pandas df) from int matrix.
         Expects prediction rows (target pred1 pred2 pred3 ....) and target columns.
         Returns original and normalized on rows matrices.
@@ -164,7 +192,7 @@ class ConfusionMatrixWriter(object):
         else:
             self._pd_matrix.to_csv(path, encoding="utf8")
 
-    def to_all_formats(self, logdir, name) -> Tuple[Path, Path, Path]:
+    def to_all_formats(self, logdir: str, name: str) -> Tuple[Path, Path, Path]:
         """Write to logdir files of the confusion matrix.
         out 1 : Path of csv of non-normalized matrix
         out 2 : Path of csv of normalized matrix
