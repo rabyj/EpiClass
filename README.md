@@ -1,7 +1,14 @@
-# epi_ml
-Use machine learning on epigenomic data
+# EpiLaP - Epigenomic Label Predictor
+
+Use machine learning on epigenomic data.
 
 See `input-format` folder for examples of mandatory files.
+
+To install in dev/editable mode:
+
+- Clone the git
+- Create a virtual environment, activate it
+- In the root directory (setup.py), run "`pip install -e .`"
 
 ~~~text
 usage: main.py [-h] [--offline] [--predict] [--model MODEL]
