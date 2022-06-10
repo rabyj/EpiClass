@@ -114,14 +114,14 @@ class Metadata(object):
                 f"after removing classes with less than {min_class_size} signals."
             )
 
-    def select_category_subsets(self, labels, label_category: str):
+    def select_category_subsets(self, label_category: str, labels):
         """Select only datasets which possess the given labels
         for the given label category.
         """
         filt = lambda item: item[1].get(label_category) in set(labels)
         self.apply_filter(filt)
 
-    def remove_category_subsets(self, labels, label_category: str):
+    def remove_category_subsets(self, label_category: str, labels):
         """Remove datasets which possess the given labels
         for the given label category.
         """
@@ -300,7 +300,7 @@ def keep_major_cell_types_alt(my_metadata: Metadata):
         "chromatin_acc", "h3k27ac", "h3k27me3", "h3k36me3", "h3k4me1",
         "h3k4me3", "h3k9me3", "input", "mrna_seq", "rna_seq", "wgb_seq"
         ]
-    my_meta.select_category_subsets(assays, "assay")
+    my_meta.select_category_subsets("assay", assays)
     my_meta.remove_small_classes(10, "cell_type")
     my_meta.merge_fetal_tissues()
 
@@ -308,7 +308,7 @@ def keep_major_cell_types_alt(my_metadata: Metadata):
     new_meta.empty()
     for assay in assays:
         temp_meta = copy.deepcopy(my_meta)
-        temp_meta.select_category_subsets([assay], "assay")
+        temp_meta.select_category_subsets("assay", [assay])
         temp_meta.remove_small_classes(10, "cell_type")
         for md5 in temp_meta.md5s:
             new_meta[md5] = temp_meta[md5]
@@ -326,8 +326,8 @@ def five_cell_types_selection(my_metadata: Metadata):
         "chromatin_acc", "h3k27ac", "h3k27me3", "h3k36me3", "h3k4me1",
         "h3k4me3", "h3k9me3", "input", "mrna_seq", "rna_seq", "wgb_seq"
         ]
-    my_metadata.select_category_subsets(cell_types, "cell_type")
-    my_metadata.select_category_subsets(assays, "assay")
+    my_metadata.select_category_subsets("cell_type", cell_types)
+    my_metadata.select_category_subsets("assay", assays)
     return my_metadata
 
 
@@ -342,11 +342,11 @@ def special_case(my_metadata):
 
     # get some thyroid examples md5s, there are none in rna_seq
     temp_meta = copy.deepcopy(my_metadata)
-    temp_meta.select_category_subsets(["h3k9me3"], "assay")
+    temp_meta.select_category_subsets("assay", ["h3k9me3"])
     md5s = temp_meta.md5_per_class("cell_type")["thyroid"][0:3]
 
     # select only rna_seq examples + 3 thyroid examples for model making
-    my_metadata.select_category_subsets(["rna_seq"], "assay")
+    my_metadata.select_category_subsets("assay", ["rna_seq"])
     for md5 in md5s:
         my_metadata[md5] = temp_meta[md5]
 
@@ -358,13 +358,13 @@ def special_case_2(my_metadata):
     from all assay/cell_type pairs, and all mrna_seq.
     """
     my_metadata = five_cell_types_selection(my_metadata)
-    my_metadata.remove_category_subsets(["mrna_seq"], "assay")
+    my_metadata.remove_category_subsets("assay", ["mrna_seq"],)
 
     cell_types = my_metadata.md5_per_class("cell_type").keys()
     to_del = []
     for cell_type in cell_types:
         temp_meta = copy.deepcopy(my_metadata)
-        temp_meta.select_category_subsets([cell_type], "cell_type")
+        temp_meta.select_category_subsets("cell_type", [cell_type])
         for md5s in temp_meta.md5_per_class("assay").values():
             to_del.extend(md5s[0:2])
 
@@ -380,7 +380,7 @@ def keep_major_assays_2019(my_metadata):
     """
     print("Filtering, removing smrna_seq, and then merging rna/polr2a similar labels")
     my_metadata.remove_small_classes(10, "assay")
-    my_metadata.remove_category_subsets(["smrna_seq"], "assay")
+    my_metadata.remove_category_subsets("assay", ["smrna_seq"],)
     for dataset in my_metadata.datasets:
         assay = dataset.get("assay", None)
         if assay == "mrna_seq":
@@ -413,6 +413,6 @@ def keep_major_cell_types_2019(my_metadata):
             dataset["cell_type"] = "large_intestine_colon"
 
     selected_cell_types = set(["myeloid_cell", "venous_blood", "monocyte", "thyroid", "mature_neutrophil", "macrophage", "b_cells", "cd14_positive,_cd16_negative_classical_monocyte", "normal_human_colon_absorptive_epithelial_cells", "cd4_positive,_alpha_beta_t_cell", "precursor_b_cell", "naive_b_cell", "stomach", "lymph_node", "muscle_of_leg", "neoplastic_plasma_cell", "plasma_cell", "brain", "hepatocytes", "large_intestine_colon"])
-    my_metadata.select_category_subsets(selected_cell_types, "cell_type")
+    my_metadata.select_category_subsets("cell_type", selected_cell_types,)
 
     return my_metadata

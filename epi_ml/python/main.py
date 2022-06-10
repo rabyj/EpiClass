@@ -126,18 +126,9 @@ def main(args):
 
     # --- Dataset selection ---
 
-    # my_metadata = metadata.keep_major_cell_types(my_metadata)
-    # my_metadata = metadata.keep_major_cell_types_alt(my_metadata)
-    # my_metadata.remove_category_subsets([os.getenv("REMOVE_ASSAY", "")], "assay")
-    # my_metadata.select_category_subsets([os.getenv("SELECT_ASSAY", "")], "assay")
-    # my_metadata = metadata.special_case_2(my_metadata)
-
-    # my_metadata = metadata.five_cell_types_selection(my_metadata)
-    # assays_to_remove = [os.getenv(var, "") for var in ["REMOVE_ASSAY1", "REMOVE_ASSAY2", "REMOVE_ASSAY3"]]
-    # my_metadata.remove_category_subsets(assays_to_remove, "assay")
     if os.getenv("ASSAY_LIST") is not None:
         assay_list = json.loads(os.environ["ASSAY_LIST"])
-        my_metadata.select_category_subsets(assay_list, "assay")
+        my_metadata.select_category_subsets("assay", assay_list)
     else:
         print("No assay list")
 

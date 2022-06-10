@@ -125,8 +125,8 @@ def main():
 
     # my_metadata = metadata.five_cell_types_selection(my_metadata)
     # assays_to_remove = [os.getenv(var, "") for var in ["REMOVE_ASSAY1", "REMOVE_ASSAY2", "REMOVE_ASSAY3"]]
-    # my_metadata.remove_category_subsets(assays_to_remove, "assay")
-    # my_metadata.select_category_subsets(["h3k4me1"], "assay")
+    # my_metadata.remove_category_subsets("assay", assays_to_remove)
+    # my_metadata.select_category_subsets("assay", ["h3k4me1"])
     # my_metadata.remove_small_classes(10, "cell_type")
 
     # ---
