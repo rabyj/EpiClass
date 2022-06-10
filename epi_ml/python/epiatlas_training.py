@@ -25,7 +25,7 @@ from epi_ml.python.core.data_source import EpiDataSource
 from epi_ml.python.core.model_pytorch import LightningDenseClassifier
 from epi_ml.python.core.trainer import MyTrainer, define_callbacks
 from epi_ml.python.core import analysis
-from epi_ml.python.core.epiatlas_treatment import epiatlas_yield_split
+from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment
 
 
 class DatasetError(Exception):
@@ -96,7 +96,20 @@ def main(args):
     # --- DO THE STUFF ---
     time_before_split = time_now()
 
-    for i, my_data in enumerate(epiatlas_yield_split(my_datasource)):
+    if os.getenv("ASSAY_LIST") is not None:
+        assay_list = json.loads(os.environ["ASSAY_LIST"])
+        print(f"Going to only keep targets with {assay_list}")
+    else:
+        assay_list = my_metadata.unique_classes(cli.category)
+        print("No assay list")
+
+    loading_begin = time_now()
+    ea_handler = EpiAtlasTreatment(my_datasource, cli.category, assay_list)
+    loading_time = time_now() - loading_begin
+    print(f"Initial hdf5 loading time: {loading_time}")
+
+
+    for i, my_data in enumerate(ea_handler.yield_split()):
         iteration_time = time_now() - time_before_split
         print(f"Set loading/splitting time: {iteration_time}")
 
@@ -117,6 +130,7 @@ def main(args):
             offline=IsOffline,
             auto_metric_logging=False
         )
+        comet_logger.experiment.log_other("Initial hdf5 loading time", loading_time)
 
         comet_logger.experiment.log_metric("Split_time", f"{iteration_time}", step=i)
 

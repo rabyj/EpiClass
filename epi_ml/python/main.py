@@ -125,10 +125,10 @@ def main(args):
 
 
     # --- Dataset selection ---
-
     if os.getenv("ASSAY_LIST") is not None:
         assay_list = json.loads(os.environ["ASSAY_LIST"])
-        my_metadata.select_category_subsets("assay", assay_list)
+        my_metadata.select_category_subsets(cli.category, assay_list)
+        print(f"Filtered on {cli.category} to keep {assay_list}")
     else:
         print("No assay list")
 
