@@ -4,7 +4,7 @@ import os.path
 from pathlib import Path
 import sys
 
-from core.metadata import Metadata
+from epi_ml.python.core.metadata import Metadata
 
 def parse_args(argv):
     """Return argument line parser."""
@@ -18,7 +18,7 @@ def augment_header(header, categories):
     """Augment the file header with new metadata categories."""
     return header[:1] + categories + header[1:]
 
-def augment_line(line, metadata, categories):
+def augment_line(line, metadata: Metadata, categories):
     """Augment a non-header line with new metadata labels."""
     md5 = line[0]
     labels = [
@@ -27,7 +27,7 @@ def augment_line(line, metadata, categories):
         ]
     return line[:1] + labels + line[1:]
 
-def augment_predict(metadata: Path, predict_path: Path, categories):
+def augment_predict(metadata: Metadata, predict_path: Path, categories):
     """Read -> augment -> write, row by row."""
     root, ext = os.path.splitext(predict_path)
     new_root = root + "_augmented"

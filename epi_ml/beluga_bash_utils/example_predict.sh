@@ -71,11 +71,11 @@ printf '\n%s\n' "Launching following command"
 printf '%s\n' "python ${program_path}/python/main.py --predict $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} --model ${model} > ${out1} 2> ${out2}"
 python ${program_path}/python/main.py --predict $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} --model ${model} > ${out1} 2> ${out2}
 
+to_augment="${log}/test_prediction.csv"
 
 categories="dataset_name reference_registry_id releasing_group"
-to_augment="${log}/test_prediction.csv"
 metadata="${arg5}"
 
 printf '\n%s\n' "Launching following command"
-printf '%s\n' "python ${program_path}/python/augment_predict_file.py ${to_augment} ${metadata} ${categories} >> ${out1} 2>> ${out2}"
+printf '%s\n' "python ${program_path}/python/utils/augment_predict_file.py ${to_augment} ${metadata} ${categories} >> ${out1} 2>> ${out2}"
 python ${program_path}/python/augment_predict_file.py ${to_augment} ${metadata} ${categories} >> ${out1} 2>> ${out2}

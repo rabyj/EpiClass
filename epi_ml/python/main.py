@@ -11,21 +11,29 @@ import sys
 import warnings
 warnings.simplefilter("ignore", category=FutureWarning)
 
+from functools import partial
 import numpy as np
 from pytorch_lightning import loggers as pl_loggers
-from pytorch_lightning.profiler import PyTorchProfiler, SimpleProfiler
 import torch
 from torch.utils.data import TensorDataset
 from torch.utils.data import DataLoader
 
-from argparseutils.directorychecker import DirectoryChecker
-from core import metadata
-from core import data
-from core.model_pytorch import LightningDenseClassifier
-from core.trainer import MyTrainer, define_callbacks
-from core import analysis
+from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
+from epi_ml.python.core import metadata
+from epi_ml.python.core import data
+from epi_ml.python.core.data_source import EpiDataSource
+from epi_ml.python.core.model_pytorch import LightningDenseClassifier
+from epi_ml.python.core.trainer import MyTrainer, define_callbacks
+from epi_ml.python.core import analysis
 
-from core.confusion_matrix import ConfusionMatrixWriter
+# from epi_ml.python.core.confusion_matrix import ConfusionMatrixWriter
+
+
+class DatasetError(Exception):
+    """Custom error"""
+    def __init__(self, *args: object) -> None:
+        print("\n--- ERROR : Verify source files, filters, and min_class_size. ---\n", file=sys.stderr)
+        super().__init__(*args)
 
 
 def time_now():
@@ -59,7 +67,7 @@ def main(args):
     # --- PARSE params and LOAD external files ---
     cli = parse_arguments(args)
 
-    my_datasource = data.EpiDataSource(
+    my_datasource = EpiDataSource(
         cli.hdf5,
         cli.chromsize,
         cli.metadata
@@ -150,9 +158,13 @@ def main(args):
 
     # --- CREATE training/validation/test SETS (and change metadata according to what is used) ---
     time_before_split = time_now()
+    oversampling = True
+    onehot = False # current code does not support target onehot encoding anymore
+
     my_data = data.DataSetFactory.from_epidata(
-        my_datasource, my_metadata, cli.category, oversample=True, min_class_size=10,
-        validation_ratio=val_ratio, test_ratio=test_ratio
+        my_datasource, my_metadata, cli.category, min_class_size=10,
+        validation_ratio=val_ratio, test_ratio=test_ratio,
+        onehot=onehot, oversample=oversampling
         )
     print(f"Set loading/splitting time: {time_now() - time_before_split}")
 
@@ -170,14 +182,24 @@ def main(args):
 
     # if tuning, all training labels need to be present
     if is_training or is_tuning:
+
+        if my_data.train.num_examples == 0 or my_data.validation.num_examples == 0:
+            raise DatasetError("Trying to train without any training or validation data.")
+
+        # transform target labels into int encoding
+        if onehot:
+            transform = partial(np.argmax, axis=-1)
+        else:
+            transform = np.array #already correct encoding
+
         train_dataset = TensorDataset(
             torch.from_numpy(my_data.train.signals).float(),
-            torch.from_numpy(np.argmax(my_data.train.labels, axis=-1))
+            torch.from_numpy(transform(my_data.train.encoded_labels))
             )
 
         valid_dataset = TensorDataset(
             torch.from_numpy(my_data.validation.signals).float(),
-            torch.from_numpy(np.argmax(my_data.validation.labels, axis=-1))
+            torch.from_numpy(transform(my_data.validation.encoded_labels))
             )
 
         train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True, pin_memory=True)
@@ -196,7 +218,7 @@ def main(args):
 
         #  DEFINE sizes for input and output LAYERS of the network
         input_size = my_data.train.signals[0].size
-        output_size = my_data.train.labels[0].size
+        output_size = len(my_data.classes)
         hl_units = int(os.getenv("LAYER_SIZE", default="3000"))
         nb_layers = int(os.getenv("NB_LAYER", default="1"))
 
@@ -227,15 +249,16 @@ def main(args):
 
 
     if cli.predict:
+
+        if my_data.test.num_examples == 0:
+            raise DatasetError("Trying to test without any test data.")
+
         # remap targets index to correct model mapping
-        targets_index = [
-            my_model.invert_mapping[my_data.classes[i]]
-            for i in np.argmax(my_data.test.labels, axis=-1)
-        ]
+        encoder = my_data.get_encoder(mapping=my_model.mapping)
 
         test_dataset = TensorDataset(
             torch.from_numpy(my_data.test.signals).float(),
-            torch.tensor(targets_index, dtype=int)
+            torch.tensor(encoder.transform(my_data.test.original_labels), dtype=int)
             )
 
 
