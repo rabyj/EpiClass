@@ -94,7 +94,7 @@ def main(args):
     my_metadata = metadata.Metadata(my_datasource.metadata_file)
 
     # --- DO THE STUFF ---
-    time_before_split = time_now()
+
 
     if os.getenv("ASSAY_LIST") is not None:
         assay_list = json.loads(os.environ["ASSAY_LIST"])
@@ -108,7 +108,7 @@ def main(args):
     loading_time = time_now() - loading_begin
     print(f"Initial hdf5 loading time: {loading_time}")
 
-
+    time_before_split = time_now()
     for i, my_data in enumerate(ea_handler.yield_split()):
         iteration_time = time_now() - time_before_split
         print(f"Set loading/splitting time: {iteration_time}")

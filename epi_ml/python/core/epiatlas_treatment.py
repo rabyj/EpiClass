@@ -1,6 +1,7 @@
 """Functions to split epiatlas datasets properly, keeping track types together in the different sets."""
 from __future__ import annotations
 import copy
+import collections
 import itertools
 from typing import List
 
@@ -63,9 +64,10 @@ class EpiAtlasTreatment(object):
         print("Theoretical maximum with complete dataset:")
         meta.display_labels("track_type")
 
-        print("Selected signals:")
+        print("Selected raw signals:")
         meta.display_labels("track_type")
 
+        # important to not oversample now, because the train would bleed into valid during kfold.
         my_data = data.DataSetFactory.from_epidata(
             self.datasource, meta, self.target_category, min_class_size=10,
             validation_ratio=0, test_ratio=0,
@@ -110,6 +112,7 @@ class EpiAtlasTreatment(object):
         new_signals, new_str_labels, new_encoded_labels, new_md5s = [], [], [], []
 
         raw_dset = dset
+        idxs = collections.Counter(i for i in np.arange(raw_dset.num_examples))
         if resample:
             resampled_X, resampled_y, idxs = data.EpiData.oversample_data(dset.signals, dset.encoded_labels)
             raw_dset = data.Data(
@@ -119,6 +122,7 @@ class EpiAtlasTreatment(object):
                 y_str=np.take(dset.original_labels, idxs),
                 metadata=dset.metadata
             )
+            idxs = collections.Counter(i for i in idxs)
 
         for selected_index in selected_positions:
             og_dset_metadata = raw_dset.get_metadata(selected_index)
@@ -130,26 +134,28 @@ class EpiAtlasTreatment(object):
             if md5 != og_dset_metadata["md5sum"]:
                 raise Exception("You dun fucked up")
 
-            if og_dset_metadata["track_type"] == "raw":
+            for _ in range(idxs[selected_index]):
 
-                pval_md5 = self._raw_to_others[md5]["pval"]
-                fc_md5 = self._raw_to_others[md5]["fc"]
+                if og_dset_metadata["track_type"] == "raw":
 
-                pval_signal = self._other_tracks[pval_md5]
-                fc_signal = self._other_tracks[fc_md5]
+                    pval_md5 = self._raw_to_others[md5]["pval"]
+                    fc_md5 = self._raw_to_others[md5]["fc"]
 
-                new_md5s.extend([md5, fc_md5, pval_md5])
-                new_signals.extend([signal, fc_signal, pval_signal])
-                new_encoded_labels.extend([encoded_label for _ in range(3)])
-                new_str_labels.extend([label for _ in range(3)])
+                    pval_signal = self._other_tracks[pval_md5]
+                    fc_signal = self._other_tracks[fc_md5]
 
-            elif og_dset_metadata["track_type"] == "ctl_raw":
-                new_md5s.append(md5)
-                new_signals.append(signal)
-                new_encoded_labels.append(encoded_label)
-                new_str_labels.append(label)
-            else:
-                raise Exception("You dun fucked up")
+                    new_md5s.extend([md5, fc_md5, pval_md5])
+                    new_signals.extend([signal, fc_signal, pval_signal])
+                    new_encoded_labels.extend([encoded_label for _ in range(3)])
+                    new_str_labels.extend([label for _ in range(3)])
+
+                elif og_dset_metadata["track_type"] == "ctl_raw":
+                    new_md5s.append(md5)
+                    new_signals.append(signal)
+                    new_encoded_labels.append(encoded_label)
+                    new_str_labels.append(label)
+                else:
+                    raise Exception("You dun fucked up")
 
         new_dset = data.Data(new_md5s, new_signals, new_encoded_labels, new_str_labels, dset.metadata)
 
