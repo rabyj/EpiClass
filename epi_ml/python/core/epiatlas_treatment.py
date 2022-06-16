@@ -68,6 +68,7 @@ class EpiAtlasTreatment(object):
         meta.display_labels("track_type")
 
         # important to not oversample now, because the train would bleed into valid during kfold.
+        print("Raw dataset before oversampling:")
         my_data = data.DataSetFactory.from_epidata(
             self.datasource, meta, self.target_category, min_class_size=10,
             validation_ratio=0, test_ratio=0,

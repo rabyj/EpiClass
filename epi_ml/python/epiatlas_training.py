@@ -141,10 +141,6 @@ def main(args):
         comet_logger.experiment.add_tag(f"{cli.category}")
         comet_logger.experiment.add_tag("EpiAtlas")
 
-        assembly = next(iter(my_metadata.datasets)).get("assembly", "NA")
-        comet_logger.experiment.add_tag(assembly)
-        comet_logger.experiment.log_other("assembly", assembly)
-
         if "SLURM_JOB_ID" in os.environ:
             comet_logger.experiment.log_other("SLURM_JOB_ID", os.environ["SLURM_JOB_ID"])
             comet_logger.experiment.add_tag("Cluster")
@@ -152,6 +148,7 @@ def main(args):
         comet_logger.experiment.log_other("HDF5 Resolution", f"{hdf5_resolution/1000}kb")
 
         comet_logger.experiment.log_other("Training size", my_data.train.num_examples)
+        print(f"Split {i} training size: {my_data.train.num_examples}")
 
         nb_files = len(set(my_data.train.ids.tolist() + my_data.validation.ids.tolist()))
         comet_logger.experiment.log_other("Total nb of files", nb_files)
