@@ -25,7 +25,7 @@ from epi_ml.python.core.data_source import EpiDataSource
 from epi_ml.python.core.model_pytorch import LightningDenseClassifier
 from epi_ml.python.core.trainer import MyTrainer, define_callbacks
 from epi_ml.python.core import analysis
-from epi_ml.python.core.epiatlas_treatment import epiatlas_yield_split
+from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment
 
 
 class DatasetError(Exception):
@@ -94,9 +94,22 @@ def main(args):
     my_metadata = metadata.Metadata(my_datasource.metadata_file)
 
     # --- DO THE STUFF ---
-    time_before_split = time_now()
 
-    for i, my_data in enumerate(epiatlas_yield_split(my_datasource)):
+
+    if os.getenv("ASSAY_LIST") is not None:
+        assay_list = json.loads(os.environ["ASSAY_LIST"])
+        print(f"Going to only keep targets with {assay_list}")
+    else:
+        assay_list = my_metadata.unique_classes(cli.category)
+        print("No assay list")
+
+    loading_begin = time_now()
+    ea_handler = EpiAtlasTreatment(my_datasource, cli.category, assay_list)
+    loading_time = time_now() - loading_begin
+    print(f"Initial hdf5 loading time: {loading_time}")
+
+    time_before_split = time_now()
+    for i, my_data in enumerate(ea_handler.yield_split()):
         iteration_time = time_now() - time_before_split
         print(f"Set loading/splitting time: {iteration_time}")
 
@@ -117,6 +130,7 @@ def main(args):
             offline=IsOffline,
             auto_metric_logging=False
         )
+        comet_logger.experiment.log_other("Initial hdf5 loading time", loading_time)
 
         comet_logger.experiment.log_metric("Split_time", f"{iteration_time}", step=i)
 
@@ -127,10 +141,6 @@ def main(args):
         comet_logger.experiment.add_tag(f"{cli.category}")
         comet_logger.experiment.add_tag("EpiAtlas")
 
-        assembly = next(iter(my_metadata.datasets)).get("assembly", "NA")
-        comet_logger.experiment.add_tag(assembly)
-        comet_logger.experiment.log_other("assembly", assembly)
-
         if "SLURM_JOB_ID" in os.environ:
             comet_logger.experiment.log_other("SLURM_JOB_ID", os.environ["SLURM_JOB_ID"])
             comet_logger.experiment.add_tag("Cluster")
@@ -138,6 +148,7 @@ def main(args):
         comet_logger.experiment.log_other("HDF5 Resolution", f"{hdf5_resolution/1000}kb")
 
         comet_logger.experiment.log_other("Training size", my_data.train.num_examples)
+        print(f"Split {i} training size: {my_data.train.num_examples}")
 
         nb_files = len(set(my_data.train.ids.tolist() + my_data.validation.ids.tolist()))
         comet_logger.experiment.log_other("Total nb of files", nb_files)
