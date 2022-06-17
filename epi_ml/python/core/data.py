@@ -227,9 +227,10 @@ class EpiData(object):
     """
     def __init__(self, datasource: EpiDataSource, metadata: Metadata, label_category: str, onehot=False, oversample=False,
                  normalization=True, min_class_size=3, validation_ratio=0.1, test_ratio=0.1):
-        EpiData._assert_ratios(val_ratio=validation_ratio, test_ratio=test_ratio, verbose=True)
+
         self._label_category = label_category
         self._oversample = oversample
+        self._assert_ratios(val_ratio=validation_ratio, test_ratio=test_ratio, verbose=True)
 
         #load
         self._metadata = self._load_metadata(metadata)
@@ -255,17 +256,20 @@ class EpiData(object):
         """Return data/metadata processed into separate sets."""
         return DataSet(self._train, self._validation, self._test, self._sorted_classes)
 
-    @staticmethod
-    def _assert_ratios(val_ratio, test_ratio, verbose):
+    def _assert_ratios(self, val_ratio, test_ratio, verbose):
         """Verify that splitting ratios make sense."""
+        train_ratio = 1 - val_ratio - test_ratio
         if val_ratio + test_ratio > 1:
             raise ValueError(
                 f"Validation and test ratios are bigger than 100%: {val_ratio} and {test_ratio}"
                 )
         elif verbose:
             print(
-            f"training/validation/test split: {(1-val_ratio-test_ratio)*100}%/{val_ratio*100}%/{test_ratio*100}%"
+            f"training/validation/test split: {train_ratio*100}%/{val_ratio*100}%/{test_ratio*100}%"
             )
+        if np.isclose(train_ratio, 0.0):
+            self._oversample = False
+            print("Forcing oversampling off, training set is empty.")
 
     def _load_metadata(self, metadata: Metadata) -> Metadata:
         metadata.remove_missing_labels(self._label_category)
@@ -366,6 +370,7 @@ class EpiData(object):
         validation_labels = [self._metadata[md5][self._label_category] for md5 in validation_md5s]
         test_labels = [self._metadata[md5][self._label_category] for md5 in test_md5s]
 
+        print(self._oversample)
         if self._oversample:
             train_signals, train_labels, idxs = EpiData.oversample_data(train_signals, train_labels)
             train_md5s = np.take(train_md5s, idxs)

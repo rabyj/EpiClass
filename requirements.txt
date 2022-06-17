@@ -1,9 +1,0 @@
-comet-ml
-h5py
-matplotlib
-pandas
-pytorch-lightning
-rich
-sklearn
-torchmetrics>=0.7
-torchinfo
