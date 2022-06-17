@@ -1,5 +1,6 @@
 import argparse
 import csv
+import decimal
 import os.path
 from pathlib import Path
 import sys
@@ -21,7 +22,7 @@ def augment_header(header, categories):
     """Augment the file header with new metadata categories"""
     targets_headers = header[1:3]
     pred_labels = header[3:]
-    second_pred_info = ["2nd pred class", "1rst/2nd prob diff", "1rst/2nd prob ratio"]
+    second_pred_info = ["Same?", "Max pred", "2nd pred class", "1rst/2nd prob diff", "1rst/2nd prob ratio"]
 
     new_header = ["md5sum"] + categories + targets_headers + second_pred_info + pred_labels
     return new_header
@@ -30,13 +31,23 @@ def augment_line(line, metadata: Metadata, categories, classes):
     """Augment a non-header line with new metadata labels and additional info on 2nd highest prob."""
     md5 = line[0]
     targets = line[1:3]
-    preds = [float(val) for val in line[3:]]
+    is_same = targets[0] == targets[1]
+
+    prec4 = decimal.Decimal(".0001")
+    prec2 = decimal.Decimal(".01")
+    decimal.setcontext(decimal.ExtendedContext)
+
+    preds = [
+        decimal.Decimal(val).quantize(prec4)
+    for val in line[3:]
+    ]
 
     order = np.argsort(preds)
     i_1 = order[-1]
     i_2 = order[-2]
     diff = preds[i_1] - preds[i_2]
-    ratio = preds[i_1]/preds[i_2]
+    ratio = (preds[i_1]/preds[i_2]).quantize(prec2)
+
     class_2 = classes[i_2]
 
     new_labels = [
@@ -44,7 +55,7 @@ def augment_line(line, metadata: Metadata, categories, classes):
         for category in categories
         ]
 
-    new_line = [md5] + new_labels + targets + [class_2] + [diff] + [ratio] + preds
+    new_line = [md5] + new_labels + targets + [is_same, preds[i_1], class_2, diff, ratio] + preds
     return new_line
 
 def augment_predict(metadata: Metadata, predict_path: Path, categories):
