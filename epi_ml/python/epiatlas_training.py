@@ -95,7 +95,6 @@ def main(args):
 
     # --- DO THE STUFF ---
 
-
     if os.getenv("ASSAY_LIST") is not None:
         assay_list = json.loads(os.environ["ASSAY_LIST"])
         print(f"Going to only keep targets with {assay_list}")
@@ -122,7 +121,7 @@ def main(args):
         logdir = Path(cli.logdir / f"split{i}")
         create_dirs(logdir)
 
-        exp_name = '-'.join(cli.logdir.parts[-2:]) + f"split{i}"
+        exp_name = '-'.join(cli.logdir.parts[-3]) + f"-split{i}"
         comet_logger = pl_loggers.CometLogger(
             project_name="EpiLaP",
             experiment_name=exp_name,
@@ -171,7 +170,9 @@ def main(args):
             torch.from_numpy(my_data.validation.encoded_labels)
             )
 
-        train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True, pin_memory=True)
+        train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64),
+                                      shuffle=True, pin_memory=True, drop_last=True
+                                      )
         valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset), pin_memory=True)
 
 
@@ -293,6 +294,15 @@ def main(args):
         comet_logger.experiment.add_tag("Finished")
         comet_logger.finalize(status="Finished")
         time_before_split = time_now()
+
+        del comet_logger
+        del my_analyzer
+        del my_model
+        del trainer
+        del train_dataset
+        del valid_dataset
+        del train_dataloader
+        del valid_dataloader
 
 
 if __name__ == "__main__":
