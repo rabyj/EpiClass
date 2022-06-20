@@ -12,9 +12,14 @@ from epi_ml.python.core.metadata import Metadata
 def parse_args(argv):
     """Return argument line parser."""
     parser = argparse.ArgumentParser()
+
     parser.add_argument("predict", type=Path, help="Predict file to augment with metadata.")
     parser.add_argument("metadata", type=Path, help="Metadata file to use.")
-    parser.add_argument("categories", nargs='+', type=str, help="Metadata categories to add.")
+
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--categories", nargs='+', type=str, help="Specific metadata categories to add.")
+    group.add_argument("--all-categories", action="store_true", help="Add all available metadata categories.")
+
     return parser.parse_args(argv)
 
 
@@ -58,13 +63,17 @@ def augment_line(line, metadata: Metadata, categories, classes):
     new_line = [md5] + new_labels + targets + [is_same, preds[i_1], class_2, diff, ratio] + preds
     return new_line
 
-def augment_predict(metadata: Metadata, predict_path: Path, categories):
+def augment_predict(metadata: Metadata, predict_path: Path, categories, append_name: str=None):
     """Read -> augment -> write, row by row.
 
     Expects [md5sum, true class, predicted class, labels] lines.
     """
     root, ext = os.path.splitext(predict_path)
+
     new_root = root + "_augmented"
+    if append_name is not None:
+        new_root = new_root + f"-{append_name}"
+
     new_path = new_root + ext
 
     with open(predict_path, 'r', encoding="utf-8") as infile, open(new_path, 'w', encoding="utf-8") as outfile:
@@ -88,7 +97,14 @@ def main(argv):
     File header format important. Expects [md5sum, true class, predicted class, labels] lines."""
     args = parse_args(argv)
     metadata = Metadata(args.metadata)
-    augment_predict(metadata, args.predict, args.categories)
+
+    categories = args.categories
+    if args.all_categories:
+        categories = metadata.get_categories()
+        augment_predict(metadata, args.predict, categories, append_name="all")
+    else:
+        augment_predict(metadata, args.predict, categories)
+
 
 def cli():
     """Ignore program path."""

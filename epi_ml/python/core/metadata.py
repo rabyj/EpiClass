@@ -2,6 +2,7 @@
 from __future__ import annotations
 import copy
 import collections
+from itertools import chain
 import json
 from pathlib import Path
 from typing import List
@@ -152,6 +153,13 @@ class Metadata(object):
             print(f'{label}: {count}')
             i += count
         print(f"For a total of {i} examples\n")
+
+    def get_categories(self):
+        """Return a sorted list of all categories."""
+        categories = set()
+        for dset in self._metadata.values():
+            categories.update(dset.keys())
+        return sorted(categories)
 
     def create_healthy_category(self):
         """Combine "disease" and "donor_health_status" to create a "healthy" category.
