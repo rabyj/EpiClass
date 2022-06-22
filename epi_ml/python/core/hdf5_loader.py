@@ -51,7 +51,10 @@ class Hdf5Loader(object):
     def load_hdf5s(self, data_file: Path, md5s=None, verbose=True) -> Hdf5Loader:
         """Load hdf5s from path list file.
         If a list of md5s is given, load only the corresponding files.
-        Normalize if internal flag set so."""
+        Normalize if internal flag set so.
+
+        Loads them as float32.
+        """
         files = self.read_list(data_file)
 
         files = Hdf5Loader.adapt_to_environment(files)
@@ -73,7 +76,7 @@ class Hdf5Loader(object):
             for chrom in self._chroms:
                 array = f[md5][chrom][...]
                 chrom_signals.append(array)
-            signals[md5] = self._normalize(np.concatenate(chrom_signals))
+            signals[md5] = self._normalize(np.concatenate(chrom_signals, dtype=np.float32)) # pylint: disable=unexpected-keyword-arg
 
         self._signals = signals
 
