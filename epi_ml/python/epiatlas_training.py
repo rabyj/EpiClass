@@ -121,7 +121,7 @@ def main(args):
         logdir = Path(cli.logdir / f"split{i}")
         create_dirs(logdir)
 
-        exp_name = '-'.join(cli.logdir.parts[-3]) + f"-split{i}"
+        exp_name = '-'.join(cli.logdir.parts[-3:]) + f"-split{i}"
         comet_logger = pl_loggers.CometLogger(
             project_name="EpiLaP",
             experiment_name=exp_name,
