@@ -40,20 +40,6 @@ def time_now():
     return datetime.utcnow().replace(microsecond=0)
 
 
-def add_matrices():
-    """Add several matrices from 10fold together."""
-    from epi_ml.python.core.confusion_matrix import ConfusionMatrixWriter as ConfusionMatrix
-    logdir = "/lustre06/project/6007017/rabyj/epilap/output/logs/2022-epiatlas/hg38_100kb_all_none_pearson/assay_1l_3000n/10fold/"
-    gen = logdir + "split{i}/validation_confusion_matrix.csv"
-    mat = ConfusionMatrix.from_csv(csv_path=gen.format(i=0), relative=False)
-    for i in range(1, 10):
-        csv_path = gen.format(i=i)
-        mat2 = ConfusionMatrix.from_csv(csv_path=csv_path, relative=False)
-        mat = mat + mat2
-
-    mat.to_all_formats(logdir=Path(logdir), name="full-10fold-validation")
-
-
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = argparse.ArgumentParser()

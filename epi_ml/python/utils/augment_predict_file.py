@@ -8,6 +8,8 @@ import sys
 import numpy as np
 
 from epi_ml.python.core.metadata import Metadata
+from epi_ml.python.core.confusion_matrix import ConfusionMatrixWriter as ConfusionMatrix
+
 
 def parse_args(argv):
     """Return argument line parser."""
@@ -91,10 +93,25 @@ def augment_predict(metadata: Metadata, predict_path: Path, categories, append_n
             writer.writerow(new_line)
 
 
+def add_matrices(logdir: str):
+    """Add several matrices from 10fold together."""
+    gen = logdir + "/split{i}/validation_confusion_matrix.csv"
+    mat = ConfusionMatrix.from_csv(csv_path=gen.format(i=0), relative=False)
+    for i in range(1, 10):
+        csv_path = gen.format(i=i)
+        mat2 = ConfusionMatrix.from_csv(csv_path=csv_path, relative=False)
+        mat = mat + mat2
+
+    mat.to_all_formats(logdir=Path(logdir), name="full-10fold-validation")
+
+
 def main(argv):
     """Augment a label prediction file with new metadata categories.
 
     File header format important. Expects [md5sum, true class, predicted class, labels] lines."""
+    logdir = os.environ["LOG"]
+    add_matrices(logdir)
+
     args = parse_args(argv)
     metadata = Metadata(args.metadata)
 
