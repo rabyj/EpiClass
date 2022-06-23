@@ -109,8 +109,9 @@ def main(argv):
     """Augment a label prediction file with new metadata categories.
 
     File header format important. Expects [md5sum, true class, predicted class, labels] lines."""
-    logdir = os.environ["LOG"]
-    add_matrices(logdir)
+    if os.getenv("LOG") is not None:
+        logdir = os.environ["LOG"]
+        add_matrices(logdir)
 
     args = parse_args(argv)
     metadata = Metadata(args.metadata)
