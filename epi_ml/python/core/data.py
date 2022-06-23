@@ -13,7 +13,14 @@ from .metadata import Metadata
 
 
 class Data(object): #class DataSet?
-    """Generalised object to deal with data."""
+    """Generalised object to deal with data.
+
+    ids : Signal identifier
+    x : features
+    y : targets (int)
+    y_str : targets (str)
+    metadata : Metadata object containing signal metadata.
+    """
     def __init__(self, ids, x, y, y_str, metadata: Metadata):
         self._ids = ids
         self._num_examples = len(x)
