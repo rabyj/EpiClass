@@ -377,7 +377,6 @@ class EpiData(object):
         validation_labels = [self._metadata[md5][self._label_category] for md5 in validation_md5s]
         test_labels = [self._metadata[md5][self._label_category] for md5 in test_md5s]
 
-        print(self._oversample)
         if self._oversample:
             train_signals, train_labels, idxs = EpiData.oversample_data(train_signals, train_labels)
             train_md5s = np.take(train_md5s, idxs)

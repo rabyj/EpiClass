@@ -73,20 +73,25 @@ def main(args):
     with open(cli.hyperparameters, "r", encoding="utf-8") as file:
         hparams = json.load(file)
 
+
     # --- LOAD useful info ---
     hdf5_resolution = my_datasource.hdf5_resolution()
 
+
     # --- LOAD DATA ---
     my_metadata = metadata.Metadata(my_datasource.metadata_file)
+    my_metadata.remove_category_subsets(label_category="track_type", labels=["Unique.raw"])
+
 
     # --- DO THE STUFF ---
-
     if os.getenv("ASSAY_LIST") is not None:
         assay_list = json.loads(os.environ["ASSAY_LIST"])
         print(f"Going to only keep targets with {assay_list}")
     else:
         assay_list = my_metadata.unique_classes(cli.category)
         print("No assay list")
+
+    # assay_list = ["h3k27ac", "h3k27me3", "h3k36me3", "h3k4me1", "h3k4me3", "h3k9me3", "input", "rna_seq", "mrna_seq", "wgbs"]
 
     loading_begin = time_now()
     ea_handler = EpiAtlasTreatment(my_datasource, cli.category, assay_list)
@@ -99,6 +104,7 @@ def main(args):
         print(f"Set loading/splitting time: {iteration_time}")
 
         begin_loop = time_now()
+
 
         # --- Startup LOGGER ---
         #api key in config file

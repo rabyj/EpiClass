@@ -14,6 +14,15 @@ from epi_ml.python.core.hdf5_loader import Hdf5Loader
 from epi_ml.python.core.data_source import EpiDataSource
 
 
+TRACKS_MAPPING = {
+    "raw" : ["pval", "fc"],
+    "ctl_raw" : [],
+    "Unique_plusRaw" : ["Unique_minusRaw"],
+    "gembs_pos" : ["gembs_neg"]
+}
+
+LEADER_TRACKS = frozenset(["raw", "Unique_plusRaw", "gembs_pos"])
+
 class EpiAtlasTreatment(object):
     """Class that handles how epiatlas data is processed into datasets.
 
@@ -55,20 +64,19 @@ class EpiAtlasTreatment(object):
 
     def _create_raw_dataset(self) -> data.DataSet:
         """Create a dataset with raw+ctl_raw signals, all in the training set."""
-        print("Creating epiatlas raw signal training dataset")
+        print("Creating epiatlas 'raw' signal training dataset")
         meta = copy.deepcopy(self._complete_metadata)
+
         print("Theoretical maximum with complete dataset:")
         meta.display_labels(self.target_category)
-
-        meta.select_category_subsets("track_type", ["raw", "ctl_raw"])
-        print("Theoretical maximum with complete dataset:")
         meta.display_labels("track_type")
 
-        print("Selected raw signals:")
+        print("Selected signals in accordance with metadata:")
+        meta.select_category_subsets("track_type", list(TRACKS_MAPPING.keys()))
         meta.display_labels("track_type")
 
         # important to not oversample now, because the train would bleed into valid during kfold.
-        print("Raw dataset before oversampling:")
+        print("'Raw' dataset before oversampling and adding associated signals:")
         my_data = data.DataSetFactory.from_epidata(
             self.datasource, meta, self.target_category, min_class_size=10,
             validation_ratio=0, test_ratio=0,
@@ -76,8 +84,11 @@ class EpiAtlasTreatment(object):
             )
         return my_data
 
-    def _epiatlas_prepare_split(self):
-        """Return { raw_md5sum : {"pval":md5sum, "fc":md5sum} } dict assuming the datasource is complete."""
+    def _epiatlas_prepare_split(self) -> dict:
+        """Return track_type mapping dict assuming the datasource is complete.
+
+        e.g. { raw_md5sum : {"pval":md5sum, "fc":md5sum} }
+        """
         meta = copy.deepcopy(self._complete_metadata)
 
         uuid_to_md5s = {} #{ uuid : {track_type1:md5sum, track_type2:md5sum, ...} }
@@ -88,14 +99,17 @@ class EpiAtlasTreatment(object):
             else:
                 uuid_to_md5s[uuid] = {dset["track_type"]:dset["md5sum"]}
 
-        raw_to_others = {} # { raw_md5sum : (pval_md5sum, fc_md5sum) }
+        raw_to_others = {}
         for val in uuid_to_md5s.values():
-            raw_to_others[val["raw"]] = {"pval":val["pval"], "fc":val["fc"]}
+            for init in LEADER_TRACKS:
+                if init in val:
+                    others = TRACKS_MAPPING[init]
+                    raw_to_others[val[init]] = {track:val[track] for track in others}
 
         return raw_to_others
 
     def _load_other_tracks(self) -> dict:
-        """Return Hdf5Loader.signals for md5s of other (fc, pval) signals"""
+        """Return Hdf5Loader.signals for md5s of other (e.g. fc and pval) signals"""
         hdf5_loader = Hdf5Loader(self.datasource.chromsize_file, normalization=True)
 
         md5s=itertools.chain.from_iterable([
@@ -127,31 +141,32 @@ class EpiAtlasTreatment(object):
 
         for selected_index in selected_positions:
             og_dset_metadata = raw_dset.get_metadata(selected_index)
-            md5 = raw_dset.get_id(selected_index)
+            chosen_md5 = raw_dset.get_id(selected_index)
             label = raw_dset.get_original_label(selected_index)
             encoded_label = raw_dset.get_encoded_label(selected_index)
             signal = raw_dset.get_signal(selected_index)
 
-            if md5 != og_dset_metadata["md5sum"]:
+            track_type = og_dset_metadata["track_type"]
+
+            if chosen_md5 != og_dset_metadata["md5sum"]:
                 raise Exception("You dun fucked up")
 
+            #oversampling specific to each "leader" signal
             for _ in range(idxs[selected_index]):
 
-                if og_dset_metadata["track_type"] == "raw":
+                if track_type in LEADER_TRACKS:
 
-                    pval_md5 = self._raw_to_others[md5]["pval"]
-                    fc_md5 = self._raw_to_others[md5]["fc"]
+                    new_md5s = list(self._raw_to_others[chosen_md5].values())
 
-                    pval_signal = self._other_tracks[pval_md5]
-                    fc_signal = self._other_tracks[fc_md5]
+                    new_signals = [self._other_tracks[md5] for md5 in new_md5s]
 
-                    new_md5s.extend([md5, fc_md5, pval_md5])
-                    new_signals.extend([signal, fc_signal, pval_signal])
-                    new_encoded_labels.extend([encoded_label for _ in range(3)])
-                    new_str_labels.extend([label for _ in range(3)])
+                    new_md5s.extend([chosen_md5]+new_md5s)
+                    new_signals.extend([signal]+new_signals)
+                    new_encoded_labels.extend([encoded_label for _ in new_md5s])
+                    new_str_labels.extend([label for _ in new_md5s])
 
-                elif og_dset_metadata["track_type"] == "ctl_raw":
-                    new_md5s.append(md5)
+                elif track_type == "ctl_raw":
+                    new_md5s.append(chosen_md5)
                     new_signals.append(signal)
                     new_encoded_labels.append(encoded_label)
                     new_str_labels.append(label)
