@@ -156,14 +156,14 @@ class EpiAtlasTreatment(object):
 
                 if track_type in LEADER_TRACKS:
 
-                    new_md5s = list(self._raw_to_others[chosen_md5].values())
+                    other_md5s = list(self._raw_to_others[chosen_md5].values())
 
-                    new_signals = [self._other_tracks[md5] for md5 in new_md5s]
+                    other_signals = [self._other_tracks[md5] for md5 in other_md5s]
 
-                    new_md5s.extend([chosen_md5]+new_md5s)
-                    new_signals.extend([signal]+new_signals)
-                    new_encoded_labels.extend([encoded_label for _ in new_md5s])
-                    new_str_labels.extend([label for _ in new_md5s])
+                    new_md5s.extend([chosen_md5]+other_md5s)
+                    new_signals.extend([signal]+other_signals)
+                    new_encoded_labels.extend([encoded_label for _ in range(len(other_md5s)+1)])
+                    new_str_labels.extend([label for _ in range(len(other_md5s)+1)])
 
                 elif track_type == "ctl_raw":
                     new_md5s.append(chosen_md5)
