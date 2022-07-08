@@ -9,6 +9,9 @@ import warnings
 warnings.simplefilter("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
+from skopt import BayesSearchCV
+from skopt.space import Real, Categorical, Integer
+
 from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
 
 from epi_ml.python.core import metadata
@@ -40,6 +43,31 @@ def parse_arguments(args: list) -> argparse.Namespace:
     return arg_parser.parse_args(args)
 
 
+def tune_svm(ea_handler: EpiAtlasTreatment):
+    """Apply Bayesian optimization over hyper parameters"""
+    my_svm = Svm(ea_handler.classes)
+
+    params = {
+        'C': Real(1e-6, 1e+6, prior='log-uniform'),
+        'gamma': Real(1e-6, 1e+1, prior='log-uniform'),
+        'degree': Integer(1,8),
+        'kernel': Categorical(['linear', 'poly', 'rbf'])
+    }
+
+    opt = BayesSearchCV(
+        my_svm, search_spaces=params, cv=ea_handler.split(),
+        n_iter=100, random_state=42, return_train_score=True, error_score=-1
+        )
+
+    total_data = ea_handler.create_total_data()
+    print(f"Number of files used globally {len(total_data)}")
+
+    opt.fit(X=total_data.signals, y=total_data.encoded_labels)
+
+    print(f"val. score: {opt.best_score_}")
+    print(f"best params: {opt.best_params_}")
+
+
 def main(args):
     """main called from command line, edit to change behavior"""
     begin = time_now()
@@ -55,12 +83,10 @@ def main(args):
         )
 
 
-    # --- LOAD DATA ---
     my_metadata = metadata.Metadata(my_datasource.metadata_file)
     my_metadata.remove_category_subsets(label_category="track_type", labels=["Unique.raw"])
 
 
-    # --- DO THE STUFF ---
     if os.getenv("ASSAY_LIST") is not None:
         assay_list = json.loads(os.environ["ASSAY_LIST"])
         print(f"Going to only keep targets with {assay_list}")
@@ -70,45 +96,11 @@ def main(args):
 
 
     loading_begin = time_now()
-    ea_handler = EpiAtlasTreatment(my_datasource, cli.category, assay_list)
+    ea_handler = EpiAtlasTreatment(my_datasource, cli.category, assay_list, n_fold=2, test_ratio=0, min_class_size=1)
     loading_time = time_now() - loading_begin
     print(f"Initial hdf5 loading time: {loading_time}")
 
-    time_before_split = time_now()
-    for i, my_data in enumerate(ea_handler.yield_split()):
-        iteration_time = time_now() - time_before_split
-        print(f"Set loading/splitting time: {iteration_time}")
-
-        begin_loop = time_now()
-
-        logdir = Path(cli.logdir)
-        print(f"\n\nSplit {i} training size: {my_data.train.num_examples}")
-
-        if my_data.train.num_examples == 0 or my_data.validation.num_examples == 0:
-            raise DatasetError("Trying to train without any training or validation data.")
-
-        # Warning : output mapping of model created from training dataset
-        if i == 0:
-            mapping_file = logdir / "training_mapping.tsv"
-            my_data.save_mapping(mapping_file)
-            nb_files = len(set(my_data.train.ids.tolist() + my_data.validation.ids.tolist()))
-            print(f"Number of files used globally {nb_files}")
-
-        # --- Create and fit estimators ---
-        for my_model in [Svm(my_data), Ensemble(my_data)]:
-            print(f"Estimator is {my_model}")
-
-            before_train = time_now()
-            my_model.train()
-            training_time = time_now() - before_train
-            print(f"training time: {training_time}")
-
-            my_model.metrics()
-
-            end_loop = time_now()
-            loop_time = end_loop - begin_loop
-            print(f"Loop time (excludes split time): {loop_time}\n")
-            time_before_split = time_now()
+    tune_svm(ea_handler)
 
 
 if __name__ == "__main__":

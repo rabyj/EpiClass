@@ -5,9 +5,9 @@ import collections
 import itertools
 from typing import List
 
-
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
+
 from epi_ml.python.core import metadata
 from epi_ml.python.core import data
 from epi_ml.python.core.hdf5_loader import Hdf5Loader
@@ -30,15 +30,24 @@ class EpiAtlasTreatment(object):
     label_category : The target category
     label_list : List of labels/classes to include from given category
     """
-    def __init__(self, datasource: EpiDataSource, label_category: str, label_list: List[str]) -> None:
+    def __init__(
+        self, datasource: EpiDataSource, label_category: str, label_list: List[str],
+        n_fold=10, test_ratio=0, min_class_size=10
+        ) -> None:
         self._datasource = datasource
         self._label_category = label_category
         self._label_list = label_list
+        self.k = n_fold
+
+        if n_fold < 2:
+            Exception(f"Need at least two folds for cross-validation. Got {n_fold}.")
 
         self._complete_metadata = self.get_complete_metadata(verbose=True)
-        self._raw_dset = self._create_raw_dataset()
+        self._raw_dset = self._create_raw_dataset(test_ratio, min_class_size)
         self._raw_to_others = self._epiatlas_prepare_split()
         self._other_tracks = self._load_other_tracks()
+
+        self.classes = self._raw_dset.classes
 
     @property
     def datasource(self):
@@ -55,6 +64,11 @@ class EpiAtlasTreatment(object):
         """Return given target labels inclusion list."""
         return self._label_list
 
+    @property
+    def raw_dataset(self):
+        """Return dataset of unmatched signals created during init."""
+        return self._raw_dset
+
     def get_complete_metadata(self, verbose: bool) -> metadata.Metadata:
         """Return metadata filtered for assay list and label_category."""
         meta = metadata.Metadata(self.datasource.metadata_file)
@@ -62,7 +76,7 @@ class EpiAtlasTreatment(object):
         meta.remove_small_classes(10, self.target_category, verbose)
         return meta
 
-    def _create_raw_dataset(self) -> data.DataSet:
+    def _create_raw_dataset(self, test_ratio, min_class_size) -> data.DataSet:
         """Create a dataset with raw+ctl_raw signals, all in the training set."""
         print("Creating epiatlas 'raw' signal training dataset")
         meta = copy.deepcopy(self._complete_metadata)
@@ -78,8 +92,8 @@ class EpiAtlasTreatment(object):
         # important to not oversample now, because the train would bleed into valid during kfold.
         print("'Raw' dataset before oversampling and adding associated signals:")
         my_data = data.DataSetFactory.from_epidata(
-            self.datasource, meta, self.target_category, min_class_size=10,
-            validation_ratio=0, test_ratio=0,
+            self.datasource, meta, self.target_category, min_class_size=min_class_size,
+            validation_ratio=0, test_ratio=test_ratio,
             onehot=False, oversample=False
             )
         return my_data
@@ -118,7 +132,8 @@ class EpiAtlasTreatment(object):
 
         hdf5_loader.load_hdf5s(
             self.datasource.hdf5_file,
-            md5s=md5s
+            md5s=md5s,
+            verbose=False
             )
         return hdf5_loader.signals
 
@@ -177,7 +192,6 @@ class EpiAtlasTreatment(object):
 
         return new_dset
 
-
     def yield_split(self) -> data.DataSet:
         """Yield train and valid tensor datasets for one split.
 
@@ -185,9 +199,9 @@ class EpiAtlasTreatment(object):
         """
         new_datasets = data.DataSet.empty_collection()
 
-        skf = StratifiedKFold(n_splits=10, shuffle=False)
+        skf = StratifiedKFold(n_splits=self.k, shuffle=False)
         for train_idxs, valid_idxs in skf.split(
-            np.zeros((self._raw_dset.train.num_examples, len(self._raw_dset.classes))),
+            np.zeros((self._raw_dset.train.num_examples, len(self.classes))),
             list(self._raw_dset.train.encoded_labels)
             ):
 
@@ -201,3 +215,68 @@ class EpiAtlasTreatment(object):
             new_datasets.set_validation(new_valid)
 
             yield new_datasets
+
+    def create_total_data(self) -> data.Data:
+        """Return a data set with all signals (no oversampling)"""
+        return self._add_other_tracks(
+            range(self._raw_dset.train.num_examples),
+            self._raw_dset.train,
+            resample=False
+            )
+
+    def _find_other_tracks(self, selected_positions, dset: data.Data, resample: bool) -> list:
+        """Return indexes that sample from complete data, i.e. all signals with their match next to them."""
+        raw_dset = dset
+        idxs = collections.Counter(i for i in np.arange(raw_dset.num_examples))
+
+        if resample:
+            _, _, idxs = data.EpiData.oversample_data(np.zeros(shape=dset.signals.shape), dset.encoded_labels)
+            repetitions = collections.Counter(i for i in idxs)
+        else:
+            repetitions = idxs
+
+        new_selected_positions = []
+        for selected_index in selected_positions:
+            og_dset_metadata = raw_dset.get_metadata(selected_index)
+            chosen_md5 = raw_dset.get_id(selected_index)
+            track_type = og_dset_metadata["track_type"]
+
+            if chosen_md5 != og_dset_metadata["md5sum"]:
+                raise Exception("You dun fucked up")
+
+            #oversampling specific to each "leader" signal
+            rep = repetitions[selected_index]
+
+            #number of matching signals (is it alone (ctl_raw), a pair, or a "fc,pval,raw" trio)
+            other_nb = len(TRACKS_MAPPING[track_type])
+
+            # add each group of indexes the required number of times (oversampling)
+            if track_type in TRACKS_MAPPING:
+
+                all_match_indexes = list(range(selected_index, selected_index+other_nb+1))
+                new_selected_positions.extend(all_match_indexes*rep)
+
+            else:
+                raise Exception("You dun fucked up")
+
+        return new_selected_positions
+
+    def split(self, X=None, y=None, groups=None): # pylint: disable=unused-argument
+        """Generate indices to split total data into training and validation set.
+
+        Indexes match positions in output of create_total_data()
+        X, y and groups :
+            Always ignored, exist for compatibility.
+        """
+        skf = StratifiedKFold(n_splits=self.k, shuffle=False)
+        for train_idxs, valid_idxs in skf.split(
+            np.zeros((self._raw_dset.train.num_examples, len(self.classes))),
+            list(self._raw_dset.train.encoded_labels)
+            ):
+
+            # The "complete" refers to the fact that the indexes are sampling over total data.
+            complete_train_idxs = self._find_other_tracks(train_idxs, self._raw_dset.train, resample=True)
+
+            complete_valid_idxs = self._find_other_tracks(valid_idxs, self._raw_dset.train, resample=False)
+
+            yield complete_train_idxs, complete_valid_idxs

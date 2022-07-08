@@ -31,6 +31,9 @@ class Data(object): #class DataSet?
         self._index = 0
         self._metadata = metadata
 
+    def __len__(self):
+        return self._num_examples
+
     def preprocess(self, f):
         """Apply a preprocessing function on signals."""
         self._signals = np.apply_along_axis(f, 1, self._signals)
