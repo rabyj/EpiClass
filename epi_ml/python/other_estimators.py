@@ -5,26 +5,49 @@ import json
 import os
 from pathlib import Path
 import sys
-import warnings
-warnings.simplefilter("ignore", category=FutureWarning)
-warnings.filterwarnings("ignore", category=UserWarning)
 
+import numpy as np
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import matthews_corrcoef, make_scorer
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
 from skopt import BayesSearchCV
 from skopt.space import Real, Categorical, Integer
+from tabulate import tabulate
+import pandas as pd
 
 from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
 
 from epi_ml.python.core import metadata
 from epi_ml.python.core.data_source import EpiDataSource
 from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment
-from epi_ml.python.core.estimators import Svm, Ensemble
+from epi_ml.python.core.estimators import EstimatorAnalyzer
 
 
-class DatasetError(Exception):
-    """Custom error"""
-    def __init__(self, *args: object) -> None:
-        print("\n--- ERROR : Verify source files, filters, and min_class_size. ---\n", file=sys.stderr)
-        super().__init__(*args)
+RNG = np.random.RandomState(42)
+SCORES = {
+    "acc":"accuracy",
+    "precision":"precision_macro",
+    "recall":"recall_macro",
+    "f1":"f1_macro",
+    "mcc":make_scorer(matthews_corrcoef)
+}
+SVM_SEARCH = {
+    "model__C": Real(1e-6, 1e+6, prior="log-uniform"),
+    "model__gamma": Real(1e-6, 1e+1, prior="log-uniform"),
+    "model__degree": Integer(1,8),
+    "model__kernel": Categorical(["linear", "poly", "rbf"])
+}
+RF_SEARCH = {
+    "model__n_estimators": Categorical([500, 1000]),
+    "model__criterion": Categorical(["gini", "entropy", "log_loss"]),
+    "model__max_features": Categorical(["sqrt", "log2", None]),
+    "model__bootstrap": Categorical([True, False]),
+    "model__random_state": Categorical([RNG]),
+    "model__min_samples_leaf": Integer(1,3),
+    "model__min_samples_split": Categorical([0.01, 0.05, 0.1, 0.3])
+}
 
 
 def time_now():
@@ -43,20 +66,17 @@ def parse_arguments(args: list) -> argparse.Namespace:
     return arg_parser.parse_args(args)
 
 
-def tune_svm(ea_handler: EpiAtlasTreatment):
-    """Apply Bayesian optimization over hyper parameters"""
-    my_svm = Svm(ea_handler.classes)
-
-    params = {
-        'C': Real(1e-6, 1e+6, prior='log-uniform'),
-        'gamma': Real(1e-6, 1e+1, prior='log-uniform'),
-        'degree': Integer(1,8),
-        'kernel': Categorical(['linear', 'poly', 'rbf'])
-    }
+def tune_estimator(my_model, ea_handler: EpiAtlasTreatment, params:dict):
+    """Apply Bayesian optimization over hyperparameters search space."""
+    pipe = Pipeline(steps=[
+        ("scaler", StandardScaler()),
+        ("model", my_model)
+    ])
 
     opt = BayesSearchCV(
-        my_svm, search_spaces=params, cv=ea_handler.split(),
-        n_iter=100, random_state=42, return_train_score=True, error_score=-1
+        pipe, search_spaces=params, cv=ea_handler.split(),
+        n_iter=100, random_state=RNG, return_train_score=True, error_score=-1, verbose=1,
+        scoring=SCORES, refit="acc"
         )
 
     total_data = ea_handler.create_total_data()
@@ -64,8 +84,8 @@ def tune_svm(ea_handler: EpiAtlasTreatment):
 
     opt.fit(X=total_data.signals, y=total_data.encoded_labels)
 
-    print(f"val. score: {opt.best_score_}")
     print(f"best params: {opt.best_params_}")
+    return opt
 
 
 def main(args):
@@ -96,11 +116,26 @@ def main(args):
 
 
     loading_begin = time_now()
-    ea_handler = EpiAtlasTreatment(my_datasource, cli.category, assay_list, n_fold=2, test_ratio=0, min_class_size=1)
+    ea_handler = EpiAtlasTreatment(my_datasource, cli.category, assay_list, n_fold=9, test_ratio=0.1, min_class_size=10)
     loading_time = time_now() - loading_begin
     print(f"Initial hdf5 loading time: {loading_time}")
 
-    tune_svm(ea_handler)
+    start_train = time_now()
+    opt = tune_estimator(RandomForestClassifier(), ea_handler, RF_SEARCH)
+    print(f"Total RF optimisation time: {time_now()-start_train}")
+
+    df = pd.DataFrame(opt.cv_results_)
+    print(tabulate(df, headers='keys', tablefmt='psql'))
+    df.to_csv(cli.logdir / "RF_optim.csv", sep=",")
+
+    start_train = time_now()
+    opt = tune_estimator(SVC(), ea_handler, SVM_SEARCH)
+    print(f"Total SVM optimisation time: {time_now()-start_train}")
+
+    df = pd.DataFrame(opt.cv_results_)
+    print(tabulate(df, headers='keys', tablefmt='psql'))
+    df.to_csv(cli.logdir / "SVM_optim.csv", sep=",")
+
 
 
 if __name__ == "__main__":

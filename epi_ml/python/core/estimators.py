@@ -1,34 +1,15 @@
 """Module for wrappers around simple sklearn machine learning estimators."""
-from abc import ABC, abstractmethod
-
 import sklearn.metrics
-from sklearn import svm
-from sklearn.ensemble import RandomForestClassifier
 
 from .analysis import write_pred_table
 
 
-class AbstractEstimator(ABC):
-    """Generic abstract estimator class"""
-    @abstractmethod
-    def __init__(self, classes=None):
-        self._clf = None
-        if classes is not None:
-            self.classes = sorted(classes)
-            self.mapping = dict(enumerate(self.classes))
-
-    def set_params(self, **params):
-        """Set estimator parameters."""
-        self._clf.set_params(**params)
-        return self._clf
-
-    def get_params(self, deep=True):
-        """Get estimator parameters"""
-        return self._clf.get_params(deep)
-
-    def fit(self, X, y):
-        """Fit model to data"""
-        self._clf = self._clf.fit(X, y)
+class EstimatorAnalyzer(object):
+    """Generic class to analyze results given by an estimator."""
+    def __init__(self, classes, estimator):
+        self.classes = sorted(classes)
+        self.mapping = dict(enumerate(self.classes))
+        self._clf = estimator
 
     def metrics(self, X, y, verbose=True):
         """Return a dict of metrics over given set"""
@@ -48,7 +29,7 @@ class AbstractEstimator(ABC):
             }
 
         if verbose:
-            AbstractEstimator.print_metrics(metrics_dict)
+            EstimatorAnalyzer.print_metrics(metrics_dict)
 
         return metrics_dict
 
@@ -76,27 +57,3 @@ class AbstractEstimator(ABC):
             md5s=ids,
             path=log
         )
-
-    def score(self, X, y, all_scores=True):
-        """Return global accuracy of predictions on X."""
-        y_pred = self._clf.predict(X)
-
-        if all_scores:
-            scores = self.metrics(X, y, verbose=False)
-            AbstractEstimator.print_metrics(scores)
-
-        return sklearn.metrics.accuracy_score(y, y_pred)
-
-
-class Ensemble(AbstractEstimator):
-    """A simple Random Forest classifier."""
-    def __init__(self, classes=None, **kwargs):
-        super().__init__(classes)
-        self._clf = RandomForestClassifier(**kwargs)
-
-
-class Svm(AbstractEstimator):
-    """A simple SVM classifier."""
-    def __init__(self, classes=None, **kwargs):
-        super().__init__(classes)
-        self._clf = svm.SVC(**kwargs)
