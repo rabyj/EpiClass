@@ -73,17 +73,20 @@ def main(args):
     with open(cli.hyperparameters, "r", encoding="utf-8") as file:
         hparams = json.load(file)
 
-
-    # --- LOAD useful info ---
     hdf5_resolution = my_datasource.hdf5_resolution()
 
-
-    # --- LOAD DATA ---
     my_metadata = metadata.Metadata(my_datasource.metadata_file)
+
+
+    # --- Prefilter metadata ---
     my_metadata.remove_category_subsets(label_category="track_type", labels=["Unique.raw"])
 
+    if os.getenv("EXCLUDE") is not None:
+        labels = os.getenv("EXCLUDE")
+        if isinstance(labels, str):
+            labels = [labels]
+        my_metadata.remove_category_subsets(label_category=cli.category, labels=labels)
 
-    # --- DO THE STUFF ---
     if os.getenv("ASSAY_LIST") is not None:
         assay_list = json.loads(os.environ["ASSAY_LIST"])
         print(f"Going to only keep targets with {assay_list}")
@@ -93,6 +96,8 @@ def main(args):
 
     # assay_list = ["h3k27ac", "h3k27me3", "h3k36me3", "h3k4me1", "h3k4me3", "h3k9me3", "input", "rna_seq", "mrna_seq", "wgbs"]
 
+
+    # --- Load signals and train ---
     loading_begin = time_now()
     ea_handler = EpiAtlasTreatment(my_datasource, cli.category, assay_list)
     loading_time = time_now() - loading_begin

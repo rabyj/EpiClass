@@ -115,14 +115,14 @@ class Metadata(object):
                 f"after removing classes with less than {min_class_size} signals."
             )
 
-    def select_category_subsets(self, label_category: str, labels):
+    def select_category_subsets(self, label_category: str, labels: list):
         """Select only datasets which possess the given labels
         for the given label category.
         """
         filt = lambda item: item[1].get(label_category) in set(labels)
         self.apply_filter(filt)
 
-    def remove_category_subsets(self, label_category: str, labels):
+    def remove_category_subsets(self, label_category: str, labels: list):
         """Remove datasets which possess the given labels
         for the given label category.
         """
