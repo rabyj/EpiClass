@@ -1,0 +1,12 @@
+comet-ml
+h5py
+imbalanced-learn
+matplotlib
+pandas
+pytorch-lightning
+rich
+scikit-learn
+git+https://github.com/QuentinSoubeyran/scikit-optimize.git@unofficial
+tabulate
+torchinfo
+torchmetrics>=0.7

@@ -40,20 +40,6 @@ def time_now():
     return datetime.utcnow().replace(microsecond=0)
 
 
-def add_matrices():
-    """Add several matrices from 10fold together."""
-    from epi_ml.python.core.confusion_matrix import ConfusionMatrixWriter as ConfusionMatrix
-    logdir = "/lustre06/project/6007017/rabyj/epilap/output/logs/2022-epiatlas/hg38_100kb_all_none_pearson/assay_1l_3000n/10fold/"
-    gen = logdir + "split{i}/validation_confusion_matrix.csv"
-    mat = ConfusionMatrix.from_csv(csv_path=gen.format(i=0), relative=False)
-    for i in range(1, 10):
-        csv_path = gen.format(i=i)
-        mat2 = ConfusionMatrix.from_csv(csv_path=csv_path, relative=False)
-        mat = mat + mat2
-
-    mat.to_all_formats(logdir=Path(logdir), name="full-10fold-validation")
-
-
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = argparse.ArgumentParser()
@@ -87,14 +73,19 @@ def main(args):
     with open(cli.hyperparameters, "r", encoding="utf-8") as file:
         hparams = json.load(file)
 
-    # --- LOAD useful info ---
     hdf5_resolution = my_datasource.hdf5_resolution()
 
-    # --- LOAD DATA ---
     my_metadata = metadata.Metadata(my_datasource.metadata_file)
 
-    # --- DO THE STUFF ---
 
+    # --- Prefilter metadata ---
+    my_metadata.remove_category_subsets(label_category="track_type", labels=["Unique.raw"])
+
+    if os.getenv("EXCLUDE") is not None:
+        labels = os.getenv("EXCLUDE")
+        if isinstance(labels, str):
+            labels = [labels]
+        my_metadata.remove_category_subsets(label_category=cli.category, labels=labels)
 
     if os.getenv("ASSAY_LIST") is not None:
         assay_list = json.loads(os.environ["ASSAY_LIST"])
@@ -103,6 +94,10 @@ def main(args):
         assay_list = my_metadata.unique_classes(cli.category)
         print("No assay list")
 
+    # assay_list = ["h3k27ac", "h3k27me3", "h3k36me3", "h3k4me1", "h3k4me3", "h3k9me3", "input", "rna_seq", "mrna_seq", "wgbs"]
+
+
+    # --- Load signals and train ---
     loading_begin = time_now()
     ea_handler = EpiAtlasTreatment(my_datasource, cli.category, assay_list)
     loading_time = time_now() - loading_begin
@@ -115,6 +110,7 @@ def main(args):
 
         begin_loop = time_now()
 
+
         # --- Startup LOGGER ---
         #api key in config file
         IsOffline = cli.offline # additional logging fails with True
@@ -122,7 +118,7 @@ def main(args):
         logdir = Path(cli.logdir / f"split{i}")
         create_dirs(logdir)
 
-        exp_name = '-'.join(cli.logdir.parts[-2:]) + f"split{i}"
+        exp_name = '-'.join(cli.logdir.parts[-3:]) + f"-split{i}"
         comet_logger = pl_loggers.CometLogger(
             project_name="EpiLaP",
             experiment_name=exp_name,
@@ -171,7 +167,9 @@ def main(args):
             torch.from_numpy(my_data.validation.encoded_labels)
             )
 
-        train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True, pin_memory=True)
+        train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64),
+                                      shuffle=True, pin_memory=True, drop_last=True
+                                      )
         valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset), pin_memory=True)
 
 
@@ -293,6 +291,15 @@ def main(args):
         comet_logger.experiment.add_tag("Finished")
         comet_logger.finalize(status="Finished")
         time_before_split = time_now()
+
+        del comet_logger
+        del my_analyzer
+        del my_model
+        del trainer
+        del train_dataset
+        del valid_dataset
+        del train_dataloader
+        del valid_dataloader
 
 
 if __name__ == "__main__":

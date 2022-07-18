@@ -114,14 +114,14 @@ class Metadata(object):
                 f"after removing classes with less than {min_class_size} signals."
             )
 
-    def select_category_subsets(self, label_category: str, labels):
+    def select_category_subsets(self, label_category: str, labels: list):
         """Select only datasets which possess the given labels
         for the given label category.
         """
         filt = lambda item: item[1].get(label_category) in set(labels)
         self.apply_filter(filt)
 
-    def remove_category_subsets(self, label_category: str, labels):
+    def remove_category_subsets(self, label_category: str, labels: list):
         """Remove datasets which possess the given labels
         for the given label category.
         """
@@ -153,46 +153,19 @@ class Metadata(object):
             i += count
         print(f"For a total of {i} examples\n")
 
-    def create_healthy_category(self):
-        """Combine "disease" and "donor_health_status" to create a "healthy" category.
+    def get_categories(self):
+        """Return a sorted list of all metadata categories."""
+        categories = set()
+        for dset in self._metadata.values():
+            categories.update(dset.keys())
+        return sorted(categories)
 
-        When a dataset has pairs with unknow correspondance, it does not add
-        the category, and so these datasets are ignored through remove_missing_labels().
-        """
-        healthy_category = HealthyCategory()
+    def merge_classes(self, category: str, converter: dict):
+        """Combine classes labels in the given category using the converter mapping."""
         for dataset in self.datasets:
-            healthy = healthy_category.get_healthy_status(dataset)
-            if healthy == "?":
-                continue
-            dataset["healthy"] = healthy
-
-    def merge_molecule_classes(self):
-        """Combine similar classes pairs in the molecule category."""
-        #TODO : No more specific merges, use a generic method w converter
-        for dataset in self.datasets:
-            molecule = dataset.get("molecule", None)
-            if molecule == "rna":
-                dataset["molecule"] = "total_rna"
-            elif molecule == "polyadenylated_mrna":
-                dataset["molecule"] = "polya_rna"
-
-    def merge_fetal_tissues(self):
-        """Combine similar fetal tissues in the cell_type category."""
-        conversion = {
-            "fetal_intestine_large":"fetal_intestine",
-            "fetal_intestine_small":"fetal_intestine",
-            "fetal_lung_left":"fetal_lung",
-            "fetal_lung_right":"fetal_lung",
-            "fetal_muscle_arm":"fetal_muscle",
-            "fetal_muscle_back":"fetal_muscle",
-            "fetal_muscle_leg":"fetal_muscle",
-            "fetal_renal_cortex":"fetal_kidney",
-            "fetal_renal_pelvis":"fetal_kidney"
-        }
-        for dataset in self.datasets:
-            cell_type = dataset.get("cell_type", None)
-            if cell_type in conversion:
-                dataset["cell_type"] = conversion[cell_type]
+            label = dataset.get(category, None)
+            if label in converter:
+                dataset[category] = converter[label]
 
 
 class HealthyCategory(object):
@@ -233,6 +206,20 @@ class HealthyCategory(object):
         disease = dataset.get("disease", "--empty--")
         donor_health_status = dataset.get("donor_health_status", "--empty--")
         return self.healthy_dict[(disease, donor_health_status)]
+
+    @staticmethod
+    def create_healthy_category(metadata: Metadata):
+        """Combine "disease" and "donor_health_status" to create a "healthy" category.
+
+        When a dataset has pairs with unknow correspondance, it does not add
+        the category, and so these datasets are ignored through remove_missing_labels().
+        """
+        healthy_category = HealthyCategory()
+        for dataset in metadata.datasets:
+            healthy = healthy_category.get_healthy_status(dataset)
+            if healthy == "?":
+                continue
+            dataset["healthy"] = healthy
 
 
 def keep_major_cell_types(my_metadata: Metadata):
@@ -416,3 +403,20 @@ def keep_major_cell_types_2019(my_metadata):
     my_metadata.select_category_subsets("cell_type", selected_cell_types,)
 
     return my_metadata
+
+merge_fetal_tissues = {
+    "fetal_intestine_large":"fetal_intestine",
+    "fetal_intestine_small":"fetal_intestine",
+    "fetal_lung_left":"fetal_lung",
+    "fetal_lung_right":"fetal_lung",
+    "fetal_muscle_arm":"fetal_muscle",
+    "fetal_muscle_back":"fetal_muscle",
+    "fetal_muscle_leg":"fetal_muscle",
+    "fetal_renal_cortex":"fetal_kidney",
+    "fetal_renal_pelvis":"fetal_kidney"
+}
+
+merge_molecule = {
+    "rna":"total_rna",
+    "polyadenylated_mrna":"polya_rna"
+}
