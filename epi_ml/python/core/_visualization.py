@@ -57,7 +57,7 @@ class Visualization(ABC):
         buf.seek(0)
         image = tf.image.decode_png(buf.getvalue(), channels=4)
         image = tf.expand_dims(image, 0)
-        summary = tf.summary.image(summary_name, image, max_outputs=1)        
+        summary = tf.summary.image(summary_name, image, max_outputs=1)
         writer.add_summary(summary.eval(session=sess))
 
     def train(self, x, y):
@@ -84,4 +84,3 @@ class Pca(Visualization):
         super().__init__()
         self._summary_name = 'Pca'
         self._clf = PCA(2)
-        
