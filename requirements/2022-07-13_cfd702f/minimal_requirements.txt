@@ -1,4 +1,3 @@
--e git+ssh://git@github.com/laperlej/epi_ml.git@5ec186c64ea5ea122969d988b9b6673e46dd415a#egg=EpiLaP
 comet-ml
 h5py
 imbalanced-learn

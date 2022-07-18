@@ -2,13 +2,18 @@
 
 Use machine learning on epigenomic data.
 
-See `input-format` folder for examples of mandatory files.
+## Setup
 
 To install in dev/editable mode:
 
 - Clone the git
 - Create a virtual environment, activate it
 - In the root directory (setup.py), run "`pip install -e .`"
+- Install other requirements with pip (see requirements folder).
+
+## General
+
+See `input-format` folder for examples of mandatory files.
 
 ~~~text
 usage: main.py [-h] [--offline] [--predict] [--model MODEL]
@@ -30,3 +35,11 @@ optional arguments:
                    setting. Default mode is training mode.
   --model MODEL    Directory from which to load the desired model. Default is logdir.
 ~~~
+
+## Metadata handling and modifications
+
+The `Metadata` class has an api to support modification of metadata as needed, like the `select_category_subsets` and `remove_category_subsets` methods. One can use them if they want to adjust label values on the fly, or perform additional filtering.
+
+As soon as a label category exists in a dataset, any value is considered the label. Be it "", "--" or "NA".
+
+If datasets containing differents keys is expected or possible, be sure to run `remove_missing_labels` on the relevant categories.
