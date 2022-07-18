@@ -1,13 +1,15 @@
 #!/bin/bash
 #SBATCH --time=2:00:00
-#SBATCH --account=def-jacquesp
+#SBATCH --account=your-account
 #SBATCH --job-name=profile-hg38
 #SBATCH --output=./slurm_files/%x-%j.out
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G
-#SBATCH --mail-user=joanny.raby@usherbrooke.ca
-#SBATCH --mail-type=END
+#SBATCH --mail-user=john.doe@domain.ca
+#SBATCH --mail-type=END,FAIL
+
+export PYTHONUNBUFFERED=TRUE
 
 if [ X"$SLURM_STEP_ID" = "X" -a X"$SLURM_PROCID" = "X"0 ]
 then

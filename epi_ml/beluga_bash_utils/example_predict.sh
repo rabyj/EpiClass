@@ -1,12 +1,15 @@
 #!/bin/bash
-#SBATCH --time=1:00:00
-#SBATCH --account=def-jacquesp
-#SBATCH --job-name=2019-11_predict
+#SBATCH --time=12:00:00
+#SBATCH --account=your-account
+#SBATCH --job-name=predict-sex
 #SBATCH --output=./slurm_files/%x-%j.out
 #SBATCH --nodes=1
-#SBATCH --mem=16G
-#SBATCH --mail-user=joanny.raby@usherbrooke.ca
-#SBATCH --mail-type=END
+#SBATCH --gres=gpu:1
+#SBATCH --mem=400G
+#SBATCH --mail-user=john.doe@domain.ca
+#SBATCH --mail-type=END,FAIL
+
+export PYTHONUNBUFFERED=TRUE
 
 if [ X"$SLURM_STEP_ID" = "X" -a X"$SLURM_PROCID" = "X"0 ]
 then
@@ -24,28 +27,40 @@ output_path="${gen_path}/epilap/output/logs"
 source ${gen_path}/epilap/venv-torch/bin/activate
 
 # --- choose category + hparams + source files ---
-category="assay"
-hparams="human_base.json"
-release="2019-11"
+# MODIFY THINGS HERE
+
+category="sex"
+release="2022-epiatlas"
 assembly="hg38"
-list_name="100kb_all_none_pearson"
+basename="100kb_all_none"
+list_name="${basename}-unknown-sex" # IMPORTANT
 
 dataset=${assembly}"_"${release}  # ex: hg38_2018-10
 
-# export ASSAY_LIST='["h3k27ac", "h3k27me3", "h3k36me3", "h3k4me1", "h3k4me3", "h3k9me3"]' # as json
+export LAYER_SIZE="3000" # IMPORTANT
+export NB_LAYER="1"
 
+# IMPORTANT # IMPORTANT # IMPORTANT
+base_log="${output_path}/${release}/${assembly}_${basename}_pearson/${category}_${NB_LAYER}l_${LAYER_SIZE}n"
 
-# --- Check used directories ---
+model="${base_log}/10fold/split0" # IMPORTANT
+log="${base_log}/predict_unknown" # IMPORTANT
 
-# set -e, in case check_dir fails, to stop bash script (not go to prediction)
-set -e
+# --- Creating correct paths for epilap and launching ---
 
-# New folders created if the ones written are not existant. Be careful with model loading.
-model="${output_path}/2021-epiatlas/hg38_100kb_all_none_pearson/assay_1l_3000n"
-log="${model}/predict_IHEC_2019-11"
+timestamp=$(date +%s)
+
+hdf5_list="${input_path}/hdf5_list/${dataset}/${list_name}.list"
+chromsizes="${input_path}/chromsizes/hg38.noy.chrom.sizes"
+out1="${log}/output_job${SLURM_JOB_ID}_${SLURM_JOB_NAME}_${timestamp}.o"
+out2="${log}/output_job${SLURM_JOB_ID}_${SLURM_JOB_NAME}_${timestamp}.e"
 
 program_path="${gen_path}/sources/epi_ml/epi_ml"
 cd ${program_path}
+
+
+# set -e, in case check_dir fails, to stop bash script (not go to prediction)
+set -e
 
 printf '\n%s\n' "Launching following command"
 printf '%s\n' "python ${program_path}/python/utils/check_dir.py ${log}"
@@ -56,26 +71,26 @@ printf '%s\n' "python ${program_path}/python/utils/check_dir.py --exists ${model
 python ${program_path}/python/utils/check_dir.py --exists ${model}
 
 
-# --- Creating correct paths for epilap and launching ---
-timestamp=$(date +%s)
+if [ X"$SLURM_STEP_ID" = "X" -a X"$SLURM_PROCID" = "X"0 ]
+then
+  newdir="$SLURM_TMPDIR/hdf5s/"
+  mkdir $newdir
+  filelist=$(cat ${arg3})
+    for FILE in ${filelist}
+    do
+      cp ${FILE} ${newdir}
+    done
+fi
 
-arg2="${input_path}/hparams/${hparams}"
-arg3="${input_path}/hdf5_list/${dataset}/${list_name}.list"
-arg4="${input_path}/chromsizes/${assembly}.noy.chrom.sizes"
-arg5="${input_path}/metadata/${dataset}_final.json"
-out1="${log}/output_job${SLURM_JOB_ID}_${SLURM_JOB_NAME}_${timestamp}.o"
-out2="${log}/output_job${SLURM_JOB_ID}_${SLURM_JOB_NAME}_${timestamp}.e"
 
-
-printf '\n%s\n' "Launching following command"
-printf '%s\n' "python ${program_path}/python/main.py --predict $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} --model ${model} > ${out1} 2> ${out2}"
-python ${program_path}/python/main.py --predict $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} --model ${model} > ${out1} 2> ${out2}
+# --- launch ---
+# printf '\n%s\n' "Launching following command"
+# printf '%s\n' "python ${program_path}/python/predict.py ${hdf5_list} ${chromsizes} ${log}  --model ${model} > ${out1} 2> ${out2}"
+# python ${program_path}/python/predict.py ${hdf5_list} ${chromsizes} ${log}  --model ${model} > ${out1} 2> ${out2}
 
 to_augment="${log}/test_prediction.csv"
-
-categories="dataset_name reference_registry_id releasing_group"
-metadata="${arg5}"
+metadata="${input_path}/metadata/${dataset}_harmonizedv8.json"
 
 printf '\n%s\n' "Launching following command"
-printf '%s\n' "python ${program_path}/python/utils/augment_predict_file.py ${to_augment} ${metadata} ${categories} >> ${out1} 2>> ${out2}"
-python ${program_path}/python/augment_predict_file.py ${to_augment} ${metadata} ${categories} >> ${out1} 2>> ${out2}
+printf '%s\n' "python ${program_path}/python/utils/augment_predict_file.py ${to_augment} ${metadata} --all-categories"
+python ${program_path}/python/utils/augment_predict_file.py ${to_augment} ${metadata} --all-categories
