@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>epi_ml.python.core.hdf5_loader API documentation</title>
+<meta name="description" content="Module for hdf5 loading handling." />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>epi_ml.python.core.hdf5_loader</code></h1>
+</header>
+<section id="section-intro">
+<p>Module for hdf5 loading handling.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">&#34;&#34;&#34;Module for hdf5 loading handling.&#34;&#34;&#34;
+from __future__ import annotations
+import os
+from pathlib import Path
+from typing import Dict
+
+import h5py
+import numpy as np
+
+class Hdf5Loader(object):
+    &#34;&#34;&#34;Handles loading/creating signals from hdf5 files&#34;&#34;&#34;
+    def __init__(self, chrom_file, normalization: bool):
+        self._normalization = normalization
+        self._chroms = self._load_chroms(chrom_file)
+        self._files = None
+        self._signals = None
+
+    @property
+    def loaded_files(self) -&gt; Dict[str, Path]:
+        &#34;&#34;&#34;Return a {md5:path} dict with last loaded files.&#34;&#34;&#34;
+        return self._files
+
+    @property
+    def signals(self) -&gt; Dict[str, np.ndarray]:
+        &#34;&#34;&#34;Return a {md5:signal dict} with the last loaded signals,
+        where the signal has concanenated chromosomes, and is normalized if set so.
+        &#34;&#34;&#34;
+        return self._signals
+
+    def _load_chroms(self, chrom_file):
+        &#34;&#34;&#34;Return sorted chromosome names list.&#34;&#34;&#34;
+        with open(chrom_file, &#39;r&#39;, encoding=&#34;utf-8&#34;) as file:
+            chroms = []
+            for line in file:
+                line = line.rstrip()
+                if line:
+                    chroms.append(line.split()[0])
+            chroms.sort()
+            return chroms
+
+    @staticmethod
+    def read_list(data_file:Path) -&gt; Dict[str, Path]:
+        &#34;&#34;&#34;Return {md5:file} dict from file of paths list.&#34;&#34;&#34;
+        with open(data_file, &#39;r&#39;, encoding=&#34;utf-8&#34;) as file_of_paths:
+            files = {}
+            for path in file_of_paths:
+                path = Path(path.rstrip())
+                files[Hdf5Loader.extract_md5(path)] = path
+        return files
+
+    def load_hdf5s(self, data_file: Path, md5s=None, verbose=True) -&gt; Hdf5Loader:
+        &#34;&#34;&#34;Load hdf5s from path list file, into self.signals
+        If a list of md5s is given, load only the corresponding files.
+        Normalize if internal flag set so.
+
+        Loads them as float32.
+        &#34;&#34;&#34;
+        files = self.read_list(data_file)
+
+        files = Hdf5Loader.adapt_to_environment(files)
+        self._files = files
+
+        #Remove undesired files
+        if md5s is not None:
+            chosen_md5s = set(md5s)
+            files = {
+                md5:path for md5,path in files.items()
+                if md5 in chosen_md5s
+            }
+
+            absent_md5s = chosen_md5s - set(files.keys())
+            if absent_md5s and verbose:
+                print(&#34;Following given md5s are absent of hdf5 list&#34;)
+                for md5 in absent_md5s:
+                    print(md5)
+
+        #Load hdf5s and concatenate chroms into signals
+        signals = {}
+        for md5, file in files.items():
+            f = h5py.File(file)
+            chrom_signals = []
+            for chrom in self._chroms:
+                array = f[md5][chrom][...]
+                chrom_signals.append(array)
+            signals[md5] = self._normalize(np.concatenate(chrom_signals, dtype=np.float32)) # pylint: disable=unexpected-keyword-arg
+
+        self._signals = signals
+
+        return self
+
+
+    def _normalize(self, array):
+        if self._normalization:
+            return (array - array.mean()) / array.std()
+        else:
+            return array
+
+    @staticmethod
+    def extract_md5(file_name: Path):
+        &#34;&#34;&#34;Extract the md5 string from file path with specific naming convention.&#34;&#34;&#34;
+        return file_name.name.split(&#34;_&#34;)[0]
+
+    @staticmethod
+    def adapt_to_environment(files: dict, new_parent=&#34;hdf5s&#34;):
+        &#34;&#34;&#34;Change files paths if they exist on cluster scratch.
+
+        Files : {md5:path} dict.
+        new_parent : directory after $SLURM_TMPDIR.
+        &#34;&#34;&#34;
+        local_tmp = Path(os.getenv(&#34;$SLURM_TMPDIR&#34;, &#34;./bleh&#34;)) / new_parent
+
+        if local_tmp.exists():
+            for md5, path in list(files.items()):
+                files[md5] = local_tmp / Path(path).name
+
+        return files</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="epi_ml.python.core.hdf5_loader.Hdf5Loader"><code class="flex name class">
+<span>class <span class="ident">Hdf5Loader</span></span>
+<span>(</span><span>chrom_file, normalization: bool)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Handles loading/creating signals from hdf5 files</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Hdf5Loader(object):
+    &#34;&#34;&#34;Handles loading/creating signals from hdf5 files&#34;&#34;&#34;
+    def __init__(self, chrom_file, normalization: bool):
+        self._normalization = normalization
+        self._chroms = self._load_chroms(chrom_file)
+        self._files = None
+        self._signals = None
+
+    @property
+    def loaded_files(self) -&gt; Dict[str, Path]:
+        &#34;&#34;&#34;Return a {md5:path} dict with last loaded files.&#34;&#34;&#34;
+        return self._files
+
+    @property
+    def signals(self) -&gt; Dict[str, np.ndarray]:
+        &#34;&#34;&#34;Return a {md5:signal dict} with the last loaded signals,
+        where the signal has concanenated chromosomes, and is normalized if set so.
+        &#34;&#34;&#34;
+        return self._signals
+
+    def _load_chroms(self, chrom_file):
+        &#34;&#34;&#34;Return sorted chromosome names list.&#34;&#34;&#34;
+        with open(chrom_file, &#39;r&#39;, encoding=&#34;utf-8&#34;) as file:
+            chroms = []
+            for line in file:
+                line = line.rstrip()
+                if line:
+                    chroms.append(line.split()[0])
+            chroms.sort()
+            return chroms
+
+    @staticmethod
+    def read_list(data_file:Path) -&gt; Dict[str, Path]:
+        &#34;&#34;&#34;Return {md5:file} dict from file of paths list.&#34;&#34;&#34;
+        with open(data_file, &#39;r&#39;, encoding=&#34;utf-8&#34;) as file_of_paths:
+            files = {}
+            for path in file_of_paths:
+                path = Path(path.rstrip())
+                files[Hdf5Loader.extract_md5(path)] = path
+        return files
+
+    def load_hdf5s(self, data_file: Path, md5s=None, verbose=True) -&gt; Hdf5Loader:
+        &#34;&#34;&#34;Load hdf5s from path list file, into self.signals
+        If a list of md5s is given, load only the corresponding files.
+        Normalize if internal flag set so.
+
+        Loads them as float32.
+        &#34;&#34;&#34;
+        files = self.read_list(data_file)
+
+        files = Hdf5Loader.adapt_to_environment(files)
+        self._files = files
+
+        #Remove undesired files
+        if md5s is not None:
+            chosen_md5s = set(md5s)
+            files = {
+                md5:path for md5,path in files.items()
+                if md5 in chosen_md5s
+            }
+
+            absent_md5s = chosen_md5s - set(files.keys())
+            if absent_md5s and verbose:
+                print(&#34;Following given md5s are absent of hdf5 list&#34;)
+                for md5 in absent_md5s:
+                    print(md5)
+
+        #Load hdf5s and concatenate chroms into signals
+        signals = {}
+        for md5, file in files.items():
+            f = h5py.File(file)
+            chrom_signals = []
+            for chrom in self._chroms:
+                array = f[md5][chrom][...]
+                chrom_signals.append(array)
+            signals[md5] = self._normalize(np.concatenate(chrom_signals, dtype=np.float32)) # pylint: disable=unexpected-keyword-arg
+
+        self._signals = signals
+
+        return self
+
+
+    def _normalize(self, array):
+        if self._normalization:
+            return (array - array.mean()) / array.std()
+        else:
+            return array
+
+    @staticmethod
+    def extract_md5(file_name: Path):
+        &#34;&#34;&#34;Extract the md5 string from file path with specific naming convention.&#34;&#34;&#34;
+        return file_name.name.split(&#34;_&#34;)[0]
+
+    @staticmethod
+    def adapt_to_environment(files: dict, new_parent=&#34;hdf5s&#34;):
+        &#34;&#34;&#34;Change files paths if they exist on cluster scratch.
+
+        Files : {md5:path} dict.
+        new_parent : directory after $SLURM_TMPDIR.
+        &#34;&#34;&#34;
+        local_tmp = Path(os.getenv(&#34;$SLURM_TMPDIR&#34;, &#34;./bleh&#34;)) / new_parent
+
+        if local_tmp.exists():
+            for md5, path in list(files.items()):
+                files[md5] = local_tmp / Path(path).name
+
+        return files</code></pre>
+</details>
+<h3>Static methods</h3>
+<dl>
+<dt id="epi_ml.python.core.hdf5_loader.Hdf5Loader.adapt_to_environment"><code class="name flex">
+<span>def <span class="ident">adapt_to_environment</span></span>(<span>files: dict, new_parent='hdf5s')</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Change files paths if they exist on cluster scratch.</p>
+<p>Files : {md5:path} dict.
+new_parent : directory after $SLURM_TMPDIR.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@staticmethod
+def adapt_to_environment(files: dict, new_parent=&#34;hdf5s&#34;):
+    &#34;&#34;&#34;Change files paths if they exist on cluster scratch.
+
+    Files : {md5:path} dict.
+    new_parent : directory after $SLURM_TMPDIR.
+    &#34;&#34;&#34;
+    local_tmp = Path(os.getenv(&#34;$SLURM_TMPDIR&#34;, &#34;./bleh&#34;)) / new_parent
+
+    if local_tmp.exists():
+        for md5, path in list(files.items()):
+            files[md5] = local_tmp / Path(path).name
+
+    return files</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.python.core.hdf5_loader.Hdf5Loader.extract_md5"><code class="name flex">
+<span>def <span class="ident">extract_md5</span></span>(<span>file_name: Path)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Extract the md5 string from file path with specific naming convention.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@staticmethod
+def extract_md5(file_name: Path):
+    &#34;&#34;&#34;Extract the md5 string from file path with specific naming convention.&#34;&#34;&#34;
+    return file_name.name.split(&#34;_&#34;)[0]</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.python.core.hdf5_loader.Hdf5Loader.read_list"><code class="name flex">
+<span>def <span class="ident">read_list</span></span>(<span>data_file: Path) ‑> Dict[str, pathlib.Path]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return {md5:file} dict from file of paths list.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@staticmethod
+def read_list(data_file:Path) -&gt; Dict[str, Path]:
+    &#34;&#34;&#34;Return {md5:file} dict from file of paths list.&#34;&#34;&#34;
+    with open(data_file, &#39;r&#39;, encoding=&#34;utf-8&#34;) as file_of_paths:
+        files = {}
+        for path in file_of_paths:
+            path = Path(path.rstrip())
+            files[Hdf5Loader.extract_md5(path)] = path
+    return files</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Instance variables</h3>
+<dl>
+<dt id="epi_ml.python.core.hdf5_loader.Hdf5Loader.loaded_files"><code class="name">var <span class="ident">loaded_files</span> : Dict[str, pathlib.Path]</code></dt>
+<dd>
+<div class="desc"><p>Return a {md5:path} dict with last loaded files.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def loaded_files(self) -&gt; Dict[str, Path]:
+    &#34;&#34;&#34;Return a {md5:path} dict with last loaded files.&#34;&#34;&#34;
+    return self._files</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.python.core.hdf5_loader.Hdf5Loader.signals"><code class="name">var <span class="ident">signals</span> : Dict[str, numpy.ndarray]</code></dt>
+<dd>
+<div class="desc"><p>Return a {md5:signal dict} with the last loaded signals,
+where the signal has concanenated chromosomes, and is normalized if set so.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def signals(self) -&gt; Dict[str, np.ndarray]:
+    &#34;&#34;&#34;Return a {md5:signal dict} with the last loaded signals,
+    where the signal has concanenated chromosomes, and is normalized if set so.
+    &#34;&#34;&#34;
+    return self._signals</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="epi_ml.python.core.hdf5_loader.Hdf5Loader.load_hdf5s"><code class="name flex">
+<span>def <span class="ident">load_hdf5s</span></span>(<span>self, data_file: Path, md5s=None, verbose=True) ‑> <a title="epi_ml.python.core.hdf5_loader.Hdf5Loader" href="#epi_ml.python.core.hdf5_loader.Hdf5Loader">Hdf5Loader</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load hdf5s from path list file, into self.signals
+If a list of md5s is given, load only the corresponding files.
+Normalize if internal flag set so.</p>
+<p>Loads them as float32.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def load_hdf5s(self, data_file: Path, md5s=None, verbose=True) -&gt; Hdf5Loader:
+    &#34;&#34;&#34;Load hdf5s from path list file, into self.signals
+    If a list of md5s is given, load only the corresponding files.
+    Normalize if internal flag set so.
+
+    Loads them as float32.
+    &#34;&#34;&#34;
+    files = self.read_list(data_file)
+
+    files = Hdf5Loader.adapt_to_environment(files)
+    self._files = files
+
+    #Remove undesired files
+    if md5s is not None:
+        chosen_md5s = set(md5s)
+        files = {
+            md5:path for md5,path in files.items()
+            if md5 in chosen_md5s
+        }
+
+        absent_md5s = chosen_md5s - set(files.keys())
+        if absent_md5s and verbose:
+            print(&#34;Following given md5s are absent of hdf5 list&#34;)
+            for md5 in absent_md5s:
+                print(md5)
+
+    #Load hdf5s and concatenate chroms into signals
+    signals = {}
+    for md5, file in files.items():
+        f = h5py.File(file)
+        chrom_signals = []
+        for chrom in self._chroms:
+            array = f[md5][chrom][...]
+            chrom_signals.append(array)
+        signals[md5] = self._normalize(np.concatenate(chrom_signals, dtype=np.float32)) # pylint: disable=unexpected-keyword-arg
+
+    self._signals = signals
+
+    return self</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="epi_ml.python.core" href="index.html">epi_ml.python.core</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="epi_ml.python.core.hdf5_loader.Hdf5Loader" href="#epi_ml.python.core.hdf5_loader.Hdf5Loader">Hdf5Loader</a></code></h4>
+<ul class="">
+<li><code><a title="epi_ml.python.core.hdf5_loader.Hdf5Loader.adapt_to_environment" href="#epi_ml.python.core.hdf5_loader.Hdf5Loader.adapt_to_environment">adapt_to_environment</a></code></li>
+<li><code><a title="epi_ml.python.core.hdf5_loader.Hdf5Loader.extract_md5" href="#epi_ml.python.core.hdf5_loader.Hdf5Loader.extract_md5">extract_md5</a></code></li>
+<li><code><a title="epi_ml.python.core.hdf5_loader.Hdf5Loader.load_hdf5s" href="#epi_ml.python.core.hdf5_loader.Hdf5Loader.load_hdf5s">load_hdf5s</a></code></li>
+<li><code><a title="epi_ml.python.core.hdf5_loader.Hdf5Loader.loaded_files" href="#epi_ml.python.core.hdf5_loader.Hdf5Loader.loaded_files">loaded_files</a></code></li>
+<li><code><a title="epi_ml.python.core.hdf5_loader.Hdf5Loader.read_list" href="#epi_ml.python.core.hdf5_loader.Hdf5Loader.read_list">read_list</a></code></li>
+<li><code><a title="epi_ml.python.core.hdf5_loader.Hdf5Loader.signals" href="#epi_ml.python.core.hdf5_loader.Hdf5Loader.signals">signals</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>

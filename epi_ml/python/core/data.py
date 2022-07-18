@@ -13,7 +13,14 @@ from .metadata import Metadata
 
 
 class Data(object): #class DataSet?
-    """Generalised object to deal with data."""
+    """Generalised object to deal with data.
+
+    ids : Signal identifier
+    x : features
+    y : targets (int)
+    y_str : targets (str)
+    metadata : Metadata object containing signal metadata.
+    """
     def __init__(self, ids, x, y, y_str, metadata: Metadata):
         self._ids = ids
         self._num_examples = len(x)
@@ -23,6 +30,9 @@ class Data(object): #class DataSet?
         self._shuffle_order = np.arange(self._num_examples) # To be able to find back ids correctly
         self._index = 0
         self._metadata = metadata
+
+    def __len__(self):
+        return self._num_examples
 
     def preprocess(self, f):
         """Apply a preprocessing function on signals."""
@@ -370,7 +380,6 @@ class EpiData(object):
         validation_labels = [self._metadata[md5][self._label_category] for md5 in validation_md5s]
         test_labels = [self._metadata[md5][self._label_category] for md5 in test_md5s]
 
-        print(self._oversample)
         if self._oversample:
             train_signals, train_labels, idxs = EpiData.oversample_data(train_signals, train_labels)
             train_md5s = np.take(train_md5s, idxs)

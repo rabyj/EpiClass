@@ -49,21 +49,30 @@ class Hdf5Loader(object):
         return files
 
     def load_hdf5s(self, data_file: Path, md5s=None, verbose=True) -> Hdf5Loader:
-        """Load hdf5s from path list file.
+        """Load hdf5s from path list file, into self.signals
         If a list of md5s is given, load only the corresponding files.
-        Normalize if internal flag set so."""
+        Normalize if internal flag set so.
+
+        Loads them as float32.
+        """
         files = self.read_list(data_file)
 
         files = Hdf5Loader.adapt_to_environment(files)
+        self._files = files
 
         #Remove undesired files
         if md5s is not None:
-            md5s = set(md5s)
+            chosen_md5s = set(md5s)
             files = {
                 md5:path for md5,path in files.items()
-                if md5 in md5s
+                if md5 in chosen_md5s
             }
-        self._files = files
+
+            absent_md5s = chosen_md5s - set(files.keys())
+            if absent_md5s and verbose:
+                print("Following given md5s are absent of hdf5 list")
+                for md5 in absent_md5s:
+                    print(md5)
 
         #Load hdf5s and concatenate chroms into signals
         signals = {}
@@ -73,15 +82,9 @@ class Hdf5Loader(object):
             for chrom in self._chroms:
                 array = f[md5][chrom][...]
                 chrom_signals.append(array)
-            signals[md5] = self._normalize(np.concatenate(chrom_signals))
+            signals[md5] = self._normalize(np.concatenate(chrom_signals, dtype=np.float32)) # pylint: disable=unexpected-keyword-arg
 
         self._signals = signals
-
-        absent_md5s = md5s - set(files.keys())
-        if absent_md5s and verbose:
-            print("Following given md5s are absent of hdf5 list")
-            for md5 in absent_md5s:
-                print(md5)
 
         return self
 

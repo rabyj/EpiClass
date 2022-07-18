@@ -142,9 +142,11 @@ def main(args):
         is_tuning = False
         val_ratio = 0
         test_ratio = 1
+        min_class_size = 1
     else:
         val_ratio = 0.1
         test_ratio = 0.1
+        min_class_size = 10
 
 
     # --- CREATE training/validation/test SETS (and change metadata according to what is used) ---
@@ -153,7 +155,7 @@ def main(args):
     onehot = False # current code does not support target onehot encoding anymore
 
     my_data = data.DataSetFactory.from_epidata(
-        my_datasource, my_metadata, cli.category, min_class_size=10,
+        my_datasource, my_metadata, cli.category, min_class_size=min_class_size,
         validation_ratio=val_ratio, test_ratio=test_ratio,
         onehot=onehot, oversample=oversampling
         )
