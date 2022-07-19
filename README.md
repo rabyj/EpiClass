@@ -43,3 +43,5 @@ The `Metadata` class has an api to support modification of metadata as needed, l
 As soon as a label category exists in a dataset, any value is considered the label. Be it "", "--" or "NA".
 
 If datasets containing differents keys is expected or possible, be sure to run `remove_missing_labels` on the relevant categories.
+
+For additional information, refer to the [documentation](https://rabyj.github.io/epi_ml/epi_ml/python/core/metadata.html)
