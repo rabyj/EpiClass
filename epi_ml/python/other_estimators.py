@@ -42,10 +42,10 @@ SVM_SEARCH = {
 RF_SEARCH = {
     "model__n_estimators": Categorical([500, 1000]),
     "model__criterion": Categorical(["gini", "entropy", "log_loss"]),
-    "model__max_features": Categorical(["sqrt", "log2", None]),
-    "model__bootstrap": Categorical([True, False]),
+    "model__max_features": Categorical(["sqrt", "log2"]),
+    "model__bootstrap": Categorical([True]),
     "model__random_state": Categorical([RNG]),
-    "model__min_samples_leaf": Integer(1,3),
+    "model__min_samples_leaf": Integer(1,5),
     "model__min_samples_split": Categorical([0.01, 0.05, 0.1, 0.3])
 }
 
@@ -66,6 +66,11 @@ def parse_arguments(args: list) -> argparse.Namespace:
     return arg_parser.parse_args(args)
 
 
+def on_step(result):
+    """BayesSearchCV callback"""
+    print(f"Best params yet: {result.x}")
+
+
 def tune_estimator(my_model, ea_handler: EpiAtlasTreatment, params:dict):
     """Apply Bayesian optimization over hyperparameters search space."""
     pipe = Pipeline(steps=[
@@ -75,14 +80,15 @@ def tune_estimator(my_model, ea_handler: EpiAtlasTreatment, params:dict):
 
     opt = BayesSearchCV(
         pipe, search_spaces=params, cv=ea_handler.split(),
-        n_iter=100, random_state=RNG, return_train_score=True, error_score=-1, verbose=1,
-        scoring=SCORES, refit="acc"
+        n_iter=10, random_state=RNG, return_train_score=True, error_score=-1, verbose=3,
+        scoring=SCORES, refit="acc",
+        n_jobs=1
         )
 
     total_data = ea_handler.create_total_data()
     print(f"Number of files used globally {len(total_data)}")
 
-    opt.fit(X=total_data.signals, y=total_data.encoded_labels)
+    opt.fit(X=total_data.signals, y=total_data.encoded_labels, callback=on_step)
 
     print(f"best params: {opt.best_params_}")
     return opt
@@ -120,6 +126,7 @@ def main(args):
     loading_time = time_now() - loading_begin
     print(f"Initial hdf5 loading time: {loading_time}")
 
+    print("Starting RF optimization")
     start_train = time_now()
     opt = tune_estimator(RandomForestClassifier(), ea_handler, RF_SEARCH)
     print(f"Total RF optimisation time: {time_now()-start_train}")
@@ -128,6 +135,8 @@ def main(args):
     print(tabulate(df, headers='keys', tablefmt='psql'))
     df.to_csv(cli.logdir / "RF_optim.csv", sep=",")
 
+
+    print("Starting SVM optimization")
     start_train = time_now()
     opt = tune_estimator(SVC(), ea_handler, SVM_SEARCH)
     print(f"Total SVM optimisation time: {time_now()-start_train}")
