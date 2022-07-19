@@ -197,7 +197,7 @@ def main(args):
             )
 
         train_dataloader = DataLoader(train_dataset, batch_size=hparams.get(&#34;batch_size&#34;, 64),
-                                      shuffle=True, pin_memory=True, drop_last=False
+                                      shuffle=True, pin_memory=True, drop_last=True
                                       )
         valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset), pin_memory=True)
 
@@ -464,7 +464,7 @@ if __name__ == &#34;__main__&#34;:
             )
 
         train_dataloader = DataLoader(train_dataset, batch_size=hparams.get(&#34;batch_size&#34;, 64),
-                                      shuffle=True, pin_memory=True, drop_last=False
+                                      shuffle=True, pin_memory=True, drop_last=True
                                       )
         valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset), pin_memory=True)
 

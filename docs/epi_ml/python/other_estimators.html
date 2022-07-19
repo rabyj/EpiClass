@@ -71,10 +71,10 @@ SVM_SEARCH = {
 RF_SEARCH = {
     &#34;model__n_estimators&#34;: Categorical([500, 1000]),
     &#34;model__criterion&#34;: Categorical([&#34;gini&#34;, &#34;entropy&#34;, &#34;log_loss&#34;]),
-    &#34;model__max_features&#34;: Categorical([&#34;sqrt&#34;, &#34;log2&#34;, None]),
-    &#34;model__bootstrap&#34;: Categorical([True, False]),
+    &#34;model__max_features&#34;: Categorical([&#34;sqrt&#34;, &#34;log2&#34;]),
+    &#34;model__bootstrap&#34;: Categorical([True]),
     &#34;model__random_state&#34;: Categorical([RNG]),
-    &#34;model__min_samples_leaf&#34;: Integer(1,3),
+    &#34;model__min_samples_leaf&#34;: Integer(1,5),
     &#34;model__min_samples_split&#34;: Categorical([0.01, 0.05, 0.1, 0.3])
 }
 
@@ -95,6 +95,11 @@ def parse_arguments(args: list) -&gt; argparse.Namespace:
     return arg_parser.parse_args(args)
 
 
+def on_step(result):
+    &#34;&#34;&#34;BayesSearchCV callback&#34;&#34;&#34;
+    print(f&#34;Best params yet: {result.x}&#34;)
+
+
 def tune_estimator(my_model, ea_handler: EpiAtlasTreatment, params:dict):
     &#34;&#34;&#34;Apply Bayesian optimization over hyperparameters search space.&#34;&#34;&#34;
     pipe = Pipeline(steps=[
@@ -104,14 +109,15 @@ def tune_estimator(my_model, ea_handler: EpiAtlasTreatment, params:dict):
 
     opt = BayesSearchCV(
         pipe, search_spaces=params, cv=ea_handler.split(),
-        n_iter=100, random_state=RNG, return_train_score=True, error_score=-1, verbose=1,
-        scoring=SCORES, refit=&#34;acc&#34;
+        n_iter=10, random_state=RNG, return_train_score=True, error_score=-1, verbose=3,
+        scoring=SCORES, refit=&#34;acc&#34;,
+        n_jobs=1
         )
 
     total_data = ea_handler.create_total_data()
     print(f&#34;Number of files used globally {len(total_data)}&#34;)
 
-    opt.fit(X=total_data.signals, y=total_data.encoded_labels)
+    opt.fit(X=total_data.signals, y=total_data.encoded_labels, callback=on_step)
 
     print(f&#34;best params: {opt.best_params_}&#34;)
     return opt
@@ -149,6 +155,7 @@ def main(args):
     loading_time = time_now() - loading_begin
     print(f&#34;Initial hdf5 loading time: {loading_time}&#34;)
 
+    print(&#34;Starting RF optimization&#34;)
     start_train = time_now()
     opt = tune_estimator(RandomForestClassifier(), ea_handler, RF_SEARCH)
     print(f&#34;Total RF optimisation time: {time_now()-start_train}&#34;)
@@ -157,6 +164,8 @@ def main(args):
     print(tabulate(df, headers=&#39;keys&#39;, tablefmt=&#39;psql&#39;))
     df.to_csv(cli.logdir / &#34;RF_optim.csv&#34;, sep=&#34;,&#34;)
 
+
+    print(&#34;Starting SVM optimization&#34;)
     start_train = time_now()
     opt = tune_estimator(SVC(), ea_handler, SVM_SEARCH)
     print(f&#34;Total SVM optimisation time: {time_now()-start_train}&#34;)
@@ -220,6 +229,7 @@ if __name__ == &#34;__main__&#34;:
     loading_time = time_now() - loading_begin
     print(f&#34;Initial hdf5 loading time: {loading_time}&#34;)
 
+    print(&#34;Starting RF optimization&#34;)
     start_train = time_now()
     opt = tune_estimator(RandomForestClassifier(), ea_handler, RF_SEARCH)
     print(f&#34;Total RF optimisation time: {time_now()-start_train}&#34;)
@@ -228,6 +238,8 @@ if __name__ == &#34;__main__&#34;:
     print(tabulate(df, headers=&#39;keys&#39;, tablefmt=&#39;psql&#39;))
     df.to_csv(cli.logdir / &#34;RF_optim.csv&#34;, sep=&#34;,&#34;)
 
+
+    print(&#34;Starting SVM optimization&#34;)
     start_train = time_now()
     opt = tune_estimator(SVC(), ea_handler, SVM_SEARCH)
     print(f&#34;Total SVM optimisation time: {time_now()-start_train}&#34;)
@@ -235,6 +247,20 @@ if __name__ == &#34;__main__&#34;:
     df = pd.DataFrame(opt.cv_results_)
     print(tabulate(df, headers=&#39;keys&#39;, tablefmt=&#39;psql&#39;))
     df.to_csv(cli.logdir / &#34;SVM_optim.csv&#34;, sep=&#34;,&#34;)</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.python.other_estimators.on_step"><code class="name flex">
+<span>def <span class="ident">on_step</span></span>(<span>result)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>BayesSearchCV callback</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def on_step(result):
+    &#34;&#34;&#34;BayesSearchCV callback&#34;&#34;&#34;
+    print(f&#34;Best params yet: {result.x}&#34;)</code></pre>
 </details>
 </dd>
 <dt id="epi_ml.python.other_estimators.parse_arguments"><code class="name flex">
@@ -289,14 +315,15 @@ if __name__ == &#34;__main__&#34;:
 
     opt = BayesSearchCV(
         pipe, search_spaces=params, cv=ea_handler.split(),
-        n_iter=100, random_state=RNG, return_train_score=True, error_score=-1, verbose=1,
-        scoring=SCORES, refit=&#34;acc&#34;
+        n_iter=10, random_state=RNG, return_train_score=True, error_score=-1, verbose=3,
+        scoring=SCORES, refit=&#34;acc&#34;,
+        n_jobs=1
         )
 
     total_data = ea_handler.create_total_data()
     print(f&#34;Number of files used globally {len(total_data)}&#34;)
 
-    opt.fit(X=total_data.signals, y=total_data.encoded_labels)
+    opt.fit(X=total_data.signals, y=total_data.encoded_labels, callback=on_step)
 
     print(f&#34;best params: {opt.best_params_}&#34;)
     return opt</code></pre>
@@ -321,6 +348,7 @@ if __name__ == &#34;__main__&#34;:
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
 <li><code><a title="epi_ml.python.other_estimators.main" href="#epi_ml.python.other_estimators.main">main</a></code></li>
+<li><code><a title="epi_ml.python.other_estimators.on_step" href="#epi_ml.python.other_estimators.on_step">on_step</a></code></li>
 <li><code><a title="epi_ml.python.other_estimators.parse_arguments" href="#epi_ml.python.other_estimators.parse_arguments">parse_arguments</a></code></li>
 <li><code><a title="epi_ml.python.other_estimators.time_now" href="#epi_ml.python.other_estimators.time_now">time_now</a></code></li>
 <li><code><a title="epi_ml.python.other_estimators.tune_estimator" href="#epi_ml.python.other_estimators.tune_estimator">tune_estimator</a></code></li>
