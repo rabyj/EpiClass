@@ -50,22 +50,22 @@ class EpiAtlasTreatment(object):
         self.classes = self._raw_dset.classes
 
     @property
-    def datasource(self):
+    def datasource(self) -> EpiDataSource:
         """Return given datasource."""
         return self._datasource
 
     @property
-    def target_category(self):
+    def target_category(self) -> str:
         """Return given label category (e.g. assay)"""
         return self._label_category
 
     @property
-    def label_list(self):
+    def label_list(self) -> list:
         """Return given target labels inclusion list."""
         return self._label_list
 
     @property
-    def raw_dataset(self):
+    def raw_dataset(self) -> data.DataSet:
         """Return dataset of unmatched signals created during init."""
         return self._raw_dset
 
@@ -76,7 +76,7 @@ class EpiAtlasTreatment(object):
         meta.remove_small_classes(10, self.target_category, verbose)
         return meta
 
-    def _create_raw_dataset(self, test_ratio, min_class_size) -> data.DataSet:
+    def _create_raw_dataset(self, test_ratio: float, min_class_size: int) -> data.DataSet:
         """Create a dataset with raw+ctl_raw signals, all in the training set."""
         print("Creating epiatlas 'raw' signal training dataset")
         meta = copy.deepcopy(self._complete_metadata)

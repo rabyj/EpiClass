@@ -81,11 +81,9 @@ def main(args):
     # --- Prefilter metadata ---
     my_metadata.remove_category_subsets(label_category="track_type", labels=["Unique.raw"])
 
-    if os.getenv("EXCLUDE") is not None:
-        labels = os.getenv("EXCLUDE")
-        if isinstance(labels, str):
-            labels = [labels]
-        my_metadata.remove_category_subsets(label_category=cli.category, labels=labels)
+    if os.getenv("EXCLUDE_LIST") is not None:
+        exclude_list = json.loads(os.environ["EXCLUDE_LIST"])
+        my_metadata.remove_category_subsets(label_category=cli.category, labels=exclude_list)
 
     if os.getenv("ASSAY_LIST") is not None:
         assay_list = json.loads(os.environ["ASSAY_LIST"])
@@ -93,8 +91,6 @@ def main(args):
     else:
         assay_list = my_metadata.unique_classes(cli.category)
         print("No assay list")
-
-    # assay_list = ["h3k27ac", "h3k27me3", "h3k36me3", "h3k4me1", "h3k4me3", "h3k9me3", "input", "rna_seq", "mrna_seq", "wgbs"]
 
     if os.getenv("MIN_CLASS_SIZE") is not None:
         min_class_size = int(os.getenv("MIN_CLASS_SIZE"))

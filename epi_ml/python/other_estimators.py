@@ -25,6 +25,7 @@ from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment
 from epi_ml.python.core.estimators import EstimatorAnalyzer
 
 
+NFOLD = 9
 RNG = np.random.RandomState(42)
 SCORES = {
     "acc":"accuracy",
@@ -50,11 +51,6 @@ RF_SEARCH = {
 }
 
 
-def time_now():
-    """Return datetime of call without microseconds"""
-    return datetime.utcnow().replace(microsecond=0)
-
-
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = argparse.ArgumentParser()
@@ -65,11 +61,14 @@ def parse_arguments(args: list) -> argparse.Namespace:
     arg_parser.add_argument("logdir", type=DirectoryChecker(), help="Directory for the output logs.")
     return arg_parser.parse_args(args)
 
+def time_now():
+    """Return datetime of call without microseconds"""
+    return datetime.utcnow().replace(microsecond=0)
+
 
 def on_step(result):
     """BayesSearchCV callback"""
     print(f"Best params yet: {result.x}")
-
 
 def tune_estimator(my_model, ea_handler: EpiAtlasTreatment, params:dict):
     """Apply Bayesian optimization over hyperparameters search space."""
@@ -80,9 +79,9 @@ def tune_estimator(my_model, ea_handler: EpiAtlasTreatment, params:dict):
 
     opt = BayesSearchCV(
         pipe, search_spaces=params, cv=ea_handler.split(),
-        n_iter=10, random_state=RNG, return_train_score=True, error_score=-1, verbose=3,
+        n_iter=20, random_state=RNG, return_train_score=True, error_score=-1, verbose=3,
         scoring=SCORES, refit="acc",
-        n_jobs=1
+        n_jobs=NFOLD
         )
 
     total_data = ea_handler.create_total_data()
@@ -113,6 +112,10 @@ def main(args):
     my_metadata.remove_category_subsets(label_category="track_type", labels=["Unique.raw"])
 
 
+    if os.getenv("EXCLUDE_LIST") is not None:
+        exclude_list = json.loads(os.environ["EXCLUDE_LIST"])
+        my_metadata.remove_category_subsets(label_category=cli.category, labels=exclude_list)
+
     if os.getenv("ASSAY_LIST") is not None:
         assay_list = json.loads(os.environ["ASSAY_LIST"])
         print(f"Going to only keep targets with {assay_list}")
@@ -120,9 +123,16 @@ def main(args):
         assay_list = my_metadata.unique_classes(cli.category)
         print("No assay list")
 
+    if os.getenv("MIN_CLASS_SIZE") is not None:
+        min_class_size = int(os.getenv("MIN_CLASS_SIZE"))
+    else:
+        min_class_size = 10
+
 
     loading_begin = time_now()
-    ea_handler = EpiAtlasTreatment(my_datasource, cli.category, assay_list, n_fold=9, test_ratio=0.1, min_class_size=10)
+    ea_handler = EpiAtlasTreatment(my_datasource, cli.category, assay_list,
+    n_fold=NFOLD, test_ratio=0.1, min_class_size=min_class_size
+    )
     loading_time = time_now() - loading_begin
     print(f"Initial hdf5 loading time: {loading_time}")
 
