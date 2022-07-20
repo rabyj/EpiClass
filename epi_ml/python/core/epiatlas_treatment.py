@@ -32,7 +32,7 @@ class EpiAtlasTreatment(object):
     """
     def __init__(
         self, datasource: EpiDataSource, label_category: str, label_list: List[str],
-        n_fold=10, test_ratio=0, min_class_size=10
+        n_fold: int=10, test_ratio: float=0, min_class_size: int=10
         ) -> None:
         self._datasource = datasource
         self._label_category = label_category

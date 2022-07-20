@@ -96,10 +96,17 @@ def main(args):
 
     # assay_list = ["h3k27ac", "h3k27me3", "h3k36me3", "h3k4me1", "h3k4me3", "h3k9me3", "input", "rna_seq", "mrna_seq", "wgbs"]
 
+    if os.getenv("MIN_CLASS_SIZE") is not None:
+        min_class_size = int(os.getenv("MIN_CLASS_SIZE"))
+    else:
+        min_class_size = 10
 
     # --- Load signals and train ---
     loading_begin = time_now()
-    ea_handler = EpiAtlasTreatment(my_datasource, cli.category, assay_list)
+    ea_handler = EpiAtlasTreatment(
+        my_datasource, cli.category, assay_list,
+        n_fold=10, test_ratio=0, min_class_size=min_class_size
+    )
     loading_time = time_now() - loading_begin
     print(f"Initial hdf5 loading time: {loading_time}")
 
