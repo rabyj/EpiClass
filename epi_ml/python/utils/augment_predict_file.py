@@ -1,3 +1,7 @@
+"""Augment a label prediction file with new metadata categories.
+
+File header format important. Expects [md5sum, true class, predicted class, labels] lines.
+"""
 import argparse
 import csv
 import decimal
@@ -96,11 +100,16 @@ def augment_predict(metadata: Metadata, predict_path: Path, categories, append_n
 def add_matrices(logdir: str):
     """Add several matrices from 10fold together."""
     gen = logdir + "/split{i}/validation_confusion_matrix.csv"
+
     mat = ConfusionMatrix.from_csv(csv_path=gen.format(i=0), relative=False)
     for i in range(1, 10):
-        csv_path = gen.format(i=i)
-        mat2 = ConfusionMatrix.from_csv(csv_path=csv_path, relative=False)
-        mat = mat + mat2
+
+        csv_path = Path(gen.format(i=i))
+        if csv_path.exists():
+            mat2 = ConfusionMatrix.from_csv(csv_path=csv_path, relative=False)
+            mat = mat + mat2
+        else:
+            print(f"File does not exist: {csv_path}")
 
     mat.to_all_formats(logdir=Path(logdir), name="full-10fold-validation")
 

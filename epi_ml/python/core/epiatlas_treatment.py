@@ -96,6 +96,8 @@ class EpiAtlasTreatment(object):
             validation_ratio=0, test_ratio=test_ratio,
             onehot=False, oversample=False
             )
+        meta.display_labels(self.target_category)
+
         return my_data
 
     def _epiatlas_prepare_split(self) -> dict:
