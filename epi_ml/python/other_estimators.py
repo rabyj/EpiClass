@@ -54,11 +54,14 @@ RF_SEARCH = {
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("--only-svm", action="store_true", help="Only test SVM estimator.")
+    arg_parser.add_argument("--only-rf", action="store_true", help="Only test random forest estimator.")
     arg_parser.add_argument("category", type=str, help="The metatada category to analyse.")
     arg_parser.add_argument("hdf5", type=Path, help="A file with hdf5 filenames. Use absolute path!")
     arg_parser.add_argument("chromsize", type=Path, help="A file with chrom sizes.")
     arg_parser.add_argument("metadata", type=Path, help="A metadata JSON file.")
     arg_parser.add_argument("logdir", type=DirectoryChecker(), help="Directory for the output logs.")
+    arg_parser.add_argument("-n", type=int, default=30, help="Number of BayesSearchCV hyperparameters iterations.")
     return arg_parser.parse_args(args)
 
 def time_now():
@@ -70,7 +73,7 @@ def on_step(result):
     """BayesSearchCV callback"""
     print(f"Best params yet: {result.x}")
 
-def tune_estimator(my_model, ea_handler: EpiAtlasTreatment, params:dict):
+def tune_estimator(my_model, ea_handler: EpiAtlasTreatment, params: dict, n_iter: int):
     """Apply Bayesian optimization over hyperparameters search space."""
     pipe = Pipeline(steps=[
         ("scaler", StandardScaler()),
@@ -79,7 +82,7 @@ def tune_estimator(my_model, ea_handler: EpiAtlasTreatment, params:dict):
 
     opt = BayesSearchCV(
         pipe, search_spaces=params, cv=ea_handler.split(),
-        n_iter=20, random_state=RNG, return_train_score=True, error_score=-1, verbose=3,
+        n_iter=n_iter, random_state=RNG, return_train_score=True, error_score=-1, verbose=3,
         scoring=SCORES, refit="acc",
         n_jobs=NFOLD
         )
@@ -91,6 +94,28 @@ def tune_estimator(my_model, ea_handler: EpiAtlasTreatment, params:dict):
 
     print(f"best params: {opt.best_params_}")
     return opt
+
+def optimize_svm(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
+    """Optimize an sklearn SVC over a hyperparameter space."""
+    print("Starting SVM optimization")
+    start_train = time_now()
+    opt = tune_estimator(SVC(), ea_handler, SVM_SEARCH, n_iter)
+    print(f"Total SVM optimisation time: {time_now()-start_train}")
+
+    df = pd.DataFrame(opt.cv_results_)
+    print(tabulate(df, headers='keys', tablefmt='psql'))
+    df.to_csv(logdir / "SVM_optim.csv", sep=",")
+
+def optimize_rf(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
+    """Optimize an sklearn random forest over a hyperparameter space."""
+    print("Starting RF optimization")
+    start_train = time_now()
+    opt = tune_estimator(RandomForestClassifier(), ea_handler, RF_SEARCH, n_iter)
+    print(f"Total RF optimisation time: {time_now()-start_train}")
+
+    df = pd.DataFrame(opt.cv_results_)
+    print(tabulate(df, headers='keys', tablefmt='psql'))
+    df.to_csv(logdir / "RF_optim.csv", sep=",")
 
 
 def main(args):
@@ -136,25 +161,16 @@ def main(args):
     loading_time = time_now() - loading_begin
     print(f"Initial hdf5 loading time: {loading_time}")
 
-    print("Starting RF optimization")
-    start_train = time_now()
-    opt = tune_estimator(RandomForestClassifier(), ea_handler, RF_SEARCH)
-    print(f"Total RF optimisation time: {time_now()-start_train}")
-
-    df = pd.DataFrame(opt.cv_results_)
-    print(tabulate(df, headers='keys', tablefmt='psql'))
-    df.to_csv(cli.logdir / "RF_optim.csv", sep=",")
-
-
-    print("Starting SVM optimization")
-    start_train = time_now()
-    opt = tune_estimator(SVC(), ea_handler, SVM_SEARCH)
-    print(f"Total SVM optimisation time: {time_now()-start_train}")
-
-    df = pd.DataFrame(opt.cv_results_)
-    print(tabulate(df, headers='keys', tablefmt='psql'))
-    df.to_csv(cli.logdir / "SVM_optim.csv", sep=",")
-
+    n_iter = cli.n
+    if cli.only_svm:
+        optimize_svm(ea_handler, cli.logdir, n_iter)
+        sys.exit()
+    elif cli.only_rf:
+        optimize_rf(ea_handler, cli.logdir, n_iter)
+        sys.exit()
+    else:
+        optimize_rf(ea_handler, cli.logdir, n_iter)
+        optimize_svm(ea_handler, cli.logdir, n_iter)
 
 
 if __name__ == "__main__":
