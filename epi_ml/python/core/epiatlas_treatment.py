@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import collections
 import itertools
-from typing import List
+from typing import List, Generator
 
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
@@ -43,8 +43,10 @@ class EpiAtlasTreatment(object):
             Exception(f"Need at least two folds for cross-validation. Got {n_fold}.")
 
         self._complete_metadata = self.get_complete_metadata(verbose=True)
-        self._raw_dset = self._create_raw_dataset(test_ratio, min_class_size)
         self._raw_to_others = self._epiatlas_prepare_split()
+
+        # Load files
+        self._raw_dset = self._create_raw_dataset(test_ratio, min_class_size)
         self._other_tracks = self._load_other_tracks()
 
         self.classes = self._raw_dset.classes
@@ -68,6 +70,14 @@ class EpiAtlasTreatment(object):
     def raw_dataset(self) -> data.DataSet:
         """Return dataset of unmatched signals created during init."""
         return self._raw_dset
+
+    @property
+    def group_mapper(self) -> dict:
+        """Return md5sum track_type mapping dict.
+
+        e.g. 1 entry { raw_md5sum : {"pval":md5sum, "fc":md5sum} }
+        """
+        return self._raw_to_others
 
     def get_complete_metadata(self, verbose: bool) -> metadata.Metadata:
         """Return metadata filtered for assay list and label_category."""
@@ -194,7 +204,7 @@ class EpiAtlasTreatment(object):
 
         return new_dset
 
-    def yield_split(self) -> data.DataSet:
+    def yield_split(self) -> Generator[data.DataSet, None, None]:
         """Yield train and valid tensor datasets for one split.
 
         Depends on given init parameters.
@@ -263,7 +273,7 @@ class EpiAtlasTreatment(object):
 
         return new_selected_positions
 
-    def split(self, X=None, y=None, groups=None): # pylint: disable=unused-argument
+    def split(self, X=None, y=None, groups=None) -> Generator[tuple[List, List], None, None]: # pylint: disable=unused-argument
         """Generate indices to split total data into training and validation set.
 
         Indexes match positions in output of create_total_data()

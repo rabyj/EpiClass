@@ -14,6 +14,7 @@ warnings.simplefilter("ignore", category=FutureWarning)
 from functools import partial
 import numpy as np
 from pytorch_lightning import loggers as pl_loggers
+from pytorch_lightning import callbacks as pl_callbacks
 import torch
 from torch.utils.data import TensorDataset
 from torch.utils.data import DataLoader
@@ -28,7 +29,7 @@ from epi_ml.python.core import analysis
 
 # from epi_ml.python.core.confusion_matrix import ConfusionMatrixWriter
 
-
+# pyright: reportUnboundVariable=false
 class DatasetError(Exception):
     """Custom error"""
     def __init__(self, *args: object) -> None:
@@ -201,6 +202,7 @@ def main(args):
 
     # Warning : output mapping of model created from training dataset
     mapping_file = cli.logdir / "training_mapping.tsv"
+
     # --- CREATE a brand new MODEL ---
     if is_training and not is_tuning:
 
@@ -251,7 +253,7 @@ def main(args):
 
         test_dataset = TensorDataset(
             torch.from_numpy(my_data.test.signals).float(),
-            torch.tensor(encoder.transform(my_data.test.original_labels), dtype=int)
+            torch.tensor(encoder.transform(my_data.test.original_labels), dtype=torch.int)
             )
 
 
@@ -277,7 +279,7 @@ def main(args):
                 enable_progress_bar=False
                 )
         else:
-            callbacks.append(pl.callbacks.RichProgressBar(leave=True))
+            callbacks.append(pl_callbacks.RichProgressBar(leave=True))
             trainer = MyTrainer(
                 general_log_dir=cli.logdir,
                 last_trained_model=my_model,

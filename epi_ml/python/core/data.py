@@ -1,3 +1,4 @@
+# pylint: disable=unnecessary-lambda-assignment
 from __future__ import annotations
 import collections
 import math
@@ -290,13 +291,13 @@ class EpiData(object):
         self._remove_hdf5_without_md5()
 
     def _remove_md5_without_hdf5(self):
-        self._metadata.apply_filter(lambda item: item[0] in self._files)
+        self._metadata.apply_filter(lambda item: item[0] in self._files) # type: ignore
 
     def _remove_hdf5_without_md5(self):
         self._files = {md5:self._files[md5] for md5 in self._metadata.md5s}
 
     @staticmethod
-    def _create_onehot_dict(classes):
+    def _create_onehot_dict(classes: List[str]) -> dict:
         """Returns {label:onehot vector} dict corresponding given classes.
         TODO : put into an encoder class
         Onehot vectors defined with given classes, no sorting done.
@@ -318,7 +319,7 @@ class EpiData(object):
         if onehot:
             encoding = EpiData._create_onehot_dict(labels)
             def to_onehot(labels):
-                return [encoding[label] for label in labels]
+                return [encoding[label] for label in labels] # type: ignore
             return to_onehot
         else:
             encoding = preprocessing.LabelEncoder().fit(labels) #int mapping
@@ -398,5 +399,5 @@ class EpiData(object):
     def oversample_data(X, y):
         """Return oversampled data with sampled indexes. X=signals, y=targets."""
         ros = RandomOverSampler(random_state=42)
-        X_resampled, y_resampled = ros.fit_resample(X, y)
+        X_resampled, y_resampled = ros.fit_resample(X, y)   # type: ignore
         return X_resampled, y_resampled, ros.sample_indices_

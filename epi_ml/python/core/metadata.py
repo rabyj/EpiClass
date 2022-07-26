@@ -1,4 +1,5 @@
 """Module from Metadata class and HealthyCategory."""
+# pylint: disable=unnecessary-lambda-assignment
 from __future__ import annotations
 import copy
 import collections
@@ -77,7 +78,7 @@ class Metadata(object):
     def remove_missing_labels(self, label_category: str):
         """Remove datasets where the metadata category is missing."""
         filt = lambda item: label_category in item[1]
-        self.apply_filter(filt)
+        self.apply_filter(filt)   # type: ignore
 
     def md5_per_class(self, label_category: str):
         """Return {label/class:md5 list} dict for a given metadata category.
@@ -119,14 +120,14 @@ class Metadata(object):
         for the given label category.
         """
         filt = lambda item: item[1].get(label_category) in set(labels)
-        self.apply_filter(filt)
+        self.apply_filter(filt)   # type: ignore
 
     def remove_category_subsets(self, label_category: str, labels: list):
         """Remove datasets which possess the given labels
         for the given label category.
         """
         filt = lambda item: item[1].get(label_category) not in set(labels)
-        self.apply_filter(filt)
+        self.apply_filter(filt)   # type: ignore
 
     def label_counter(self, label_category: str):
         """Return a Counter() with label count from the given category."""
