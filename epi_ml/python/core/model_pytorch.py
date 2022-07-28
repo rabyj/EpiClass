@@ -6,7 +6,7 @@ from torch import nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
 from torchinfo import summary
-from torchmetrics import Accuracy, Precision, Recall, F1Score, MatthewsCorrCoef, MetricCollection
+from torchmetrics import Accuracy, Precision, Recall, F1Score, MatthewsCorrCoef, MetricCollection # type: ignore
 
 
 class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-ancestors
@@ -25,6 +25,8 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
         self._y_size = output_size
         self._hl_size = hl_units # hl = hidden layer
         self._nb_layer = nb_layer # number of intermediary/hidden layers
+        if self._nb_layer < 1:
+            raise AssertionError("Nomber of layers not cannot be less than 1.")
 
         self._mapping = mapping
 
@@ -63,17 +65,20 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
     def define_model(self):
         """ref : https://stackoverflow.com/questions/62937388/pytorch-dynamic-amount-of-layers"""
         layer_list = []
+        # See the layers as matrix operations, as the weights, not the neurons.
 
         # input layer
+        layer_list.append(nn.Dropout(0.1)) # drop part of input
         layer_list.append(nn.Linear(self._x_size, self._hl_size))
+        layer_list.append(nn.Dropout(self.dropout_rate)) # apply dropout to 1rst hidden layer
+        layer_list.append(nn.ReLU()) #relu on 1rst hidden layer
 
         # hidden layers
-        for _ in range(self._nb_layer - 1):
+        for _ in range(0, self._nb_layer - 1):
             layer_list.append(nn.Linear(self._hl_size, self._hl_size))
-            # in case of ReLU, dropout should be applied before for computational efficiency
-            # https://sebastianraschka.com/faq/docs/dropout-activation.html
             layer_list.append(nn.ReLU())
-            layer_list.append(nn.Dropout(self.dropout_rate))
+            # in case of ReLU, dropout should be applied before for computational efficiency, swapping them gives same result
+            # https://sebastianraschka.com/faq/docs/dropout-activation.html
 
         # output layer
         layer_list.append(nn.Linear(self._hl_size, self._y_size))
