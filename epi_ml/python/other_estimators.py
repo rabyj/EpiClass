@@ -1,6 +1,5 @@
 """Main"""
 import argparse
-from datetime import datetime
 import json
 import os
 from pathlib import Path
@@ -19,6 +18,7 @@ import pandas as pd
 
 from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
 
+from epi_ml.python.utils.time import time_now
 from epi_ml.python.core import metadata
 from epi_ml.python.core.data_source import EpiDataSource
 from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment

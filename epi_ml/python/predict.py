@@ -16,17 +16,13 @@ from pytorch_lightning import loggers as pl_loggers
 import torch
 from torch.utils.data import TensorDataset
 
+from epi_ml.python.utils.time import time_now
 from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
 from epi_ml.python.core.model_pytorch import LightningDenseClassifier
 from epi_ml.python.core import analysis
 from epi_ml.python.core.data import Data, DataSet
 
 from epi_ml.python.core.hdf5_loader import Hdf5Loader
-
-
-def time_now():
-    """Return datetime of call without microseconds"""
-    return datetime.utcnow().replace(microsecond=0)
 
 
 def parse_arguments(args: list) -> argparse.Namespace:

@@ -20,6 +20,7 @@ from torch.utils.data import DataLoader
 from epi_ml.python.utils.check_dir import create_dirs
 from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
 
+from epi_ml.python.utils.time import time_now
 from epi_ml.python.core import metadata
 from epi_ml.python.core.data_source import EpiDataSource
 from epi_ml.python.core.model_pytorch import LightningDenseClassifier
@@ -33,11 +34,6 @@ class DatasetError(Exception):
     def __init__(self, *args: object) -> None:
         print("\n--- ERROR : Verify source files, filters, and min_class_size. ---\n", file=sys.stderr)
         super().__init__(*args)
-
-
-def time_now():
-    """Return datetime of call without microseconds"""
-    return datetime.utcnow().replace(microsecond=0)
 
 
 def parse_arguments(args: list) -> argparse.Namespace:
