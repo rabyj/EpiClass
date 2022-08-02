@@ -2,16 +2,35 @@
 import json
 import os
 import sys
+from pathlib import Path
 
+import pandas as pd
+from sklearn.svm import SVC, LinearSVC
+from tabulate import tabulate
+
+from epi_ml.python.utils.time import time_now
 from epi_ml.python.core import metadata
 from epi_ml.python.core.data_source import EpiDataSource
 from epi_ml.python.test.core.epiatlas_treatment_test import EpiAtlasTreatment as EpiTest
 from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment as EpiAtlasTreatment
 
-to_exclude = ["main"]
-from epi_ml.python.other_estimators import * # pylint: disable=wildcard-import
-for name in to_exclude:
-    del globals()[name]
+
+import epi_ml.python.other_estimators as other_estimators
+
+
+def optimize_svm(ea_handler: EpiAtlasTreatment, logdir: Path):
+    """Optimize an sklearn SVC over a hyperparameter space."""
+    print("Starting SVM optimization")
+    start_train = time_now()
+    opt = other_estimators.tune_estimator(
+        LinearSVC(), ea_handler, other_estimators.SVM_LIN_SEARCH,
+        n_iter=2, concurrent_cv=1
+    )
+    print(f"Total linear SVM optimisation time: {time_now()-start_train}")
+
+    df = pd.DataFrame(opt.cv_results_)
+    print(tabulate(df, headers='keys', tablefmt='psql'))  # type: ignore
+    df.to_csv(logdir / "SVM_lin_optim.csv", sep=",")
 
 
 def create_test_list(ea_handler: EpiTest):
@@ -31,21 +50,25 @@ def create_test_list(ea_handler: EpiTest):
                 test[label_class].append(md5)
 
     # Write md5s of groups to file
-    i = 0
+    md5_list = set({})
+    for md5s in test.values():
+        i = 0
+        for md5 in md5s:
+            md5_list.add(md5)
+
+            #other matching tracks
+            for rest in md5_mapping[md5].values():
+                md5_list.add(rest)
+
+            i += 1
+            if i % 100 == 0:
+                break
+
     with open("test.md5s", 'w', encoding="utf-8") as f:
-        for md5s in test.values():
+        for md5 in md5_list:
+            f.write(f"{md5}\n")
 
-            for md5 in md5s:
-                f.write(f"{md5}\n")
-
-                #other matching tracks
-                for rest in md5_mapping[md5].values():
-                    f.write(f"{rest}\n")
-
-                i += 1
-                if i % 50 == 0:
-                    break
-
+    return md5_list
 
 
 def main(args): # pylint: disable=function-redefined
@@ -54,7 +77,7 @@ def main(args): # pylint: disable=function-redefined
     print(f"begin {begin}")
 
     # --- PARSE params and LOAD external files ---
-    cli = parse_arguments(args)
+    cli = other_estimators.parse_arguments(args)
 
     my_datasource = EpiDataSource(
         cli.hdf5,
@@ -93,13 +116,13 @@ def main(args): # pylint: disable=function-redefined
     # n_fold=NFOLD, test_ratio=0, min_class_size=min_class_size
     # )
     # create_test_list(ea_handler) # type: ignore
-    # exit()
+
 
 
     # -- debugging time --
     loading_begin = time_now()
 
-    # with open(cli.hdf5.parent / "estimator-test.md5s", 'r', encoding="utf-8") as md5_file:
+    # with open("test.md5s", "r", encoding="utf-8") as md5_file:
     #     chosen_md5s = {line.rstrip() for line in md5_file}
 
     # for md5 in list(my_metadata.md5s):
@@ -107,7 +130,7 @@ def main(args): # pylint: disable=function-redefined
     #         del my_metadata[md5]
 
     ea_handler = EpiTest(my_datasource, cli.category, assay_list,
-    n_fold=2, test_ratio=0, min_class_size=min_class_size, meta=None
+    n_fold=9, test_ratio=0.1, min_class_size=min_class_size, meta=my_metadata
     )
 
     loading_time = time_now() - loading_begin
@@ -115,14 +138,14 @@ def main(args): # pylint: disable=function-redefined
 
     n_iter = cli.n
     if cli.only_svm:
-        optimize_svm(ea_handler, cli.logdir, n_iter)  # type: ignore
+        optimize_svm(ea_handler, cli.logdir)  # type: ignore
         sys.exit()
     elif cli.only_rf:
-        optimize_rf(ea_handler, cli.logdir, n_iter) # type: ignore
+        other_estimators.optimize_rf(ea_handler, cli.logdir, n_iter) # type: ignore
         sys.exit()
     else:
-        optimize_rf(ea_handler, cli.logdir, n_iter) # type: ignore
-        optimize_svm(ea_handler, cli.logdir, n_iter) # type: ignore
+        other_estimators.optimize_rf(ea_handler, cli.logdir, n_iter) # type: ignore
+        optimize_svm(ea_handler, cli.logdir) # type: ignore
 
 
 if __name__ == "__main__":

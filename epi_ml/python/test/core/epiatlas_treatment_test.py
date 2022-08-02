@@ -41,6 +41,9 @@ class EpiAtlasTreatment(object):
             self._complete_metadata = self.get_complete_metadata(verbose=True)
 
         self._raw_to_others = self._epiatlas_prepare_split()
+        # self._other_md5s = itertools.chain.from_iterable([
+        #         other_dict.values() for _, other_dict in self._raw_to_others.items()
+        #         ])
 
         # -- Load files --
         self._raw_dset = self._create_raw_dataset(test_ratio, min_class_size)
