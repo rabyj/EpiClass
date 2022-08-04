@@ -59,6 +59,11 @@ mapping = {
     "RF" : RandomForestClassifier()
     }
 
+if os.getenv("CONCURRENT_CV") is not None:
+    CONCURRENT_CV = os.environ["CONCURRENT_CV"]
+else:
+    CONCURRENT_CV = 1
+
 
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
@@ -90,7 +95,7 @@ def on_step(result):
     """BayesSearchCV callback"""
     print(f"Best params yet: {result.x}")
 
-def tune_estimator(my_model, ea_handler: EpiAtlasTreatment, params: dict, n_iter: int, concurrent_cv: int=2):
+def tune_estimator(my_model, ea_handler: EpiAtlasTreatment, params: dict, n_iter: int, concurrent_cv: int=1):
     """Apply Bayesian optimization over hyperparameters search space."""
     pipe = Pipeline(steps=[
         ("scaler", StandardScaler()),
@@ -124,7 +129,7 @@ def optimize_svm(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
     start_train = time_now()
     opt = tune_estimator(
         LinearSVC(), ea_handler, SVM_LIN_SEARCH,
-        n_iter=n_iter, concurrent_cv=3
+        n_iter=n_iter, concurrent_cv=CONCURRENT_CV
     )
     print(f"Total linear SVM optimisation time: {time_now()-start_train}")
 
@@ -135,7 +140,7 @@ def optimize_svm(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
     start_train = time_now()
     opt = tune_estimator(
         SVC(cache_size=3000, kernel="rbf"), ea_handler, SVM_RBF_SEARCH,
-        n_iter=n_iter, concurrent_cv=3
+        n_iter=n_iter, concurrent_cv=CONCURRENT_CV
         )
     print(f"Total rbf SVM optimisation time: {time_now()-start_train}")
 
@@ -147,7 +152,7 @@ def optimize_rf(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
     """Optimize an sklearn random forest over a hyperparameter space."""
     print("Starting RF optimization")
     start_train = time_now()
-    opt = tune_estimator(RandomForestClassifier(), ea_handler, RF_SEARCH, n_iter, concurrent_cv=5)
+    opt = tune_estimator(RandomForestClassifier(), ea_handler, RF_SEARCH, n_iter, concurrent_cv=CONCURRENT_CV)
     print(f"Total RF optimisation time: {time_now()-start_train}")
 
     df = pd.DataFrame(opt.cv_results_)
