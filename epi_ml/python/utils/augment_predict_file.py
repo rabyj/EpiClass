@@ -2,14 +2,17 @@
 
 File header format important. Expects [md5sum, true class, predicted class, labels] lines.
 """
+from __future__ import annotations
 import argparse
 import csv
 import decimal
+import os
 import os.path
 from pathlib import Path
 import sys
 
 import numpy as np
+import pandas as pd
 
 from epi_ml.python.core.metadata import Metadata
 from epi_ml.python.core.confusion_matrix import ConfusionMatrixWriter as ConfusionMatrix
@@ -53,7 +56,7 @@ def augment_line(line, metadata: Metadata, categories, classes):
     for val in line[3:]
     ]
 
-    order = np.argsort(preds)
+    order = np.argsort(preds)  # type: ignore
     i_1 = order[-1]
     i_2 = order[-2]
     diff = preds[i_1] - preds[i_2]
@@ -62,14 +65,14 @@ def augment_line(line, metadata: Metadata, categories, classes):
     class_2 = classes[i_2]
 
     new_labels = [
-        metadata.get(md5).get(category, "--empty--")
+        metadata[md5].get(category, "--empty--")
         for category in categories
         ]
 
     new_line = [md5] + new_labels + targets + [is_same, preds[i_1], class_2, diff, ratio] + preds
     return new_line
 
-def augment_predict(metadata: Metadata, predict_path: Path, categories, append_name: str=None):
+def augment_predict(metadata: Metadata, predict_path: Path, categories, append_name: str|None=None):
     """Read -> augment -> write, row by row.
 
     Expects [md5sum, true class, predicted class, labels] lines.
@@ -96,6 +99,8 @@ def augment_predict(metadata: Metadata, predict_path: Path, categories, append_n
             new_line = augment_line(line, metadata, categories, classes)
             writer.writerow(new_line)
 
+    return new_path
+
 
 def add_matrices(logdir: str):
     """Add several matrices from 10fold together."""
@@ -111,7 +116,27 @@ def add_matrices(logdir: str):
         else:
             print(f"File does not exist: {csv_path}")
 
-    mat.to_all_formats(logdir=Path(logdir), name="full-10fold-validation")
+    mat.to_all_formats(logdir=logdir, name="full-10fold-validation")
+
+
+def add_coherence(path):
+    """Add another metric based on multiple lines. Needs a file with EpiRR column.
+
+    https://stackoverflow.com/questions/17995024/how-to-assign-a-name-to-the-size-column
+    https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.transform.html
+    """
+    df = pd.read_csv(path, sep=",")
+
+    groups = df.groupby("EpiRR")
+    df["files/epiRR"] = groups["md5sum"].transform("size")
+
+    groups = df.groupby(["EpiRR", "Predicted class"])
+    df["Coherence count"] = groups["md5sum"].transform("size")
+
+    df["Coherence ratio"] = df["Coherence count"]/df["files/epiRR"]
+    df["Coherence ratio"] = pd.Series([f"{round(val, 3):,.1%}" for val in df["Coherence ratio"]], index=df.index)
+
+    df.to_csv(path, sep=",", index=False)
 
 
 def main(argv):
@@ -128,7 +153,8 @@ def main(argv):
     categories = args.categories
     if args.all_categories:
         categories = metadata.get_categories()
-        augment_predict(metadata, args.predict, categories, append_name="all")
+        new_path = augment_predict(metadata, args.predict, categories, append_name="all")
+        add_coherence(new_path)
     else:
         augment_predict(metadata, args.predict, categories)
 
