@@ -191,6 +191,7 @@ def main(args):
 
     loading_begin = time_now()
     if cli.tune is True:
+        print("Entering tuning mode")
         ea_handler = EpiAtlasTreatment(my_datasource, cli.category, assay_list,
         n_fold=NFOLD_TUNE, test_ratio=0.1, min_class_size=min_class_size
         )
@@ -208,7 +209,14 @@ def main(args):
             optimize_rf(ea_handler, cli.logdir, n_iter)
             optimize_svm(ea_handler, cli.logdir, n_iter)
 
-    elif cli.predict is True:
+
+    if cli.predict is True:
+        print("Entering fit/prediction mode")
+        if cli.hparams is None:
+            raise AssertionError("--hparams not given. Hyperparameters needed for predict mode.")
+        elif not cli.hparams.exists():
+            raise AssertionError("hparams file does not exist: {cli.hparams}")
+
         ea_handler = EpiAtlasTreatment(my_datasource, cli.category, assay_list,
         n_fold=NFOLD_PREDICT, test_ratio=0, min_class_size=min_class_size
         )
