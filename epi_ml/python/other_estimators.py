@@ -60,7 +60,7 @@ mapping = {
     }
 
 if os.getenv("CONCURRENT_CV") is not None:
-    CONCURRENT_CV = os.environ["CONCURRENT_CV"]
+    CONCURRENT_CV = int(os.environ["CONCURRENT_CV"])
 else:
     CONCURRENT_CV = 1
 
