@@ -1,11 +1,13 @@
+"""Module to define data/datasets processing and representation classes."""
 # pylint: disable=unnecessary-lambda-assignment
 from __future__ import annotations
+
 import collections
 import math
 from typing import List
 
-from imblearn.over_sampling import RandomOverSampler
 import numpy as np
+from imblearn.over_sampling import RandomOverSampler
 from sklearn import preprocessing
 
 from .data_source import EpiDataSource
@@ -13,24 +15,19 @@ from .hdf5_loader import Hdf5Loader
 from .metadata import Metadata
 
 
-class Data(object): #class DataSet?
-    """Generalised object to deal with data.
+class AbstractDataset(object):
+    """Parent of data and TestData, generalized object to deal with data."""
 
-    ids : Signal identifier
-    x : features
-    y : targets (int)
-    y_str : targets (str)
-    metadata : Metadata object containing signal metadata.
-    """
-    def __init__(self, ids, x, y, y_str, metadata: Metadata):
+    def __init__(self, ids, x, y, y_str):
         self._ids = ids
         self._num_examples = len(x)
         self._signals = np.array(x)
         self._labels = np.array(y)
         self._labels_str = y_str
-        self._shuffle_order = np.arange(self._num_examples) # To be able to find back ids correctly
+        self._shuffle_order = np.arange(
+            self._num_examples
+        )  # To be able to find back ids correctly
         self._index = 0
-        self._metadata = metadata
 
     def __len__(self):
         return self._num_examples
@@ -41,7 +38,7 @@ class Data(object): #class DataSet?
 
     def next_batch(self, batch_size, shuffle=True):
         """Return next (signals, targets) batch"""
-        #if index exceeded num examples, start over
+        # if index exceeded num examples, start over
         if self._index >= self._num_examples:
             self._index = 0
         if self._index == 0:
@@ -100,6 +97,21 @@ class Data(object): #class DataSet?
         """Return the number of examples contained in the set."""
         return self._num_examples
 
+
+class Data(AbstractDataset):
+    """Generalised object to deal with data.
+
+    ids : Signal identifier
+    x : features
+    y : targets (int)
+    y_str : targets (str)
+    metadata : Metadata object containing signal metadata.
+    """
+
+    def __init__(self, ids, x, y, y_str, metadata: Metadata):
+        super().__init__(ids, x, y, y_str)
+        self._metadata = metadata
+
     @property
     def metadata(self) -> Metadata:
         """Return the metadata of the dataset. Careful, modifications to it will affect this object."""
@@ -118,32 +130,49 @@ class Data(object): #class DataSet?
         obj._signals = []
         obj._labels = []
         obj._labels_str = []
-        obj._shuffle_order = [] # To be able to find back ids correctly
+        obj._shuffle_order = []  # To be able to find back ids correctly
         obj._index = 0
         obj._metadata = {}
         return obj
 
 
-class DataSet(object): #class Data?
+class TestData(AbstractDataset):
+    """Generalised object to deal with data, without any labels/metadata.
+
+    ids : Signal identifier
+    x : features
+    y : targets (int)
+    y_str : targets (str)
+    """
+
+
+class DataSet(object):  # class Data?
     """Contains training/valid/test Data objects."""
-    def __init__(self, training: Data, validation: Data, test: Data, sorted_classes):
+
+    def __init__(
+        self,
+        training: AbstractDataset,
+        validation: AbstractDataset,
+        test: AbstractDataset,
+        sorted_classes,
+    ):
         self._train = training
         self._validation = validation
         self._test = test
         self._sorted_classes = sorted_classes
 
     @property
-    def train(self) -> Data:
+    def train(self) -> AbstractDataset:
         """Training set"""
         return self._train
 
     @property
-    def validation(self) -> Data:
+    def validation(self) -> AbstractDataset:
         """Validation set"""
         return self._validation
 
     @property
-    def test(self) -> Data:
+    def test(self) -> AbstractDataset:
         """Test set"""
         return self._test
 
@@ -162,17 +191,17 @@ class DataSet(object): #class Data?
         obj._sorted_classes = []
         return obj
 
-    def set_train(self, dset: Data):
+    def set_train(self, dset: AbstractDataset):
         """Set training set."""
         self._train = dset
         self._reset_classes()
 
-    def set_validation(self, dset: Data):
+    def set_validation(self, dset: AbstractDataset):
         """Set validation set."""
         self._validation = dset
         self._reset_classes()
 
-    def set_test(self, dset: Data):
+    def set_test(self, dset: AbstractDataset):
         """Set testing set."""
         self._test = dset
         self._reset_classes()
@@ -193,16 +222,16 @@ class DataSet(object): #class Data?
 
     def save_mapping(self, path):
         """Write the 'output position --> label' mapping to path."""
-        with open(path, 'w', encoding="utf-8") as map_file:
+        with open(path, "w", encoding="utf-8") as map_file:
             for i, label in enumerate(self._sorted_classes):
                 map_file.write(f"{i}\t{label}\n")
 
     def load_mapping(self, path):
         """Return dict object representation 'output position --> label' mapping from path."""
-        with open(path, 'r', encoding="utf-8") as map_file:
+        with open(path, "r", encoding="utf-8") as map_file:
             mapping = {}
             for line in map_file:
-                i, label = line.rstrip().split('\t')
+                i, label = line.rstrip().split("\t")
                 mapping[int(i)] = label
         return mapping
 
@@ -220,15 +249,33 @@ class DataSet(object): #class Data?
 
 class DataSetFactory(object):
     """Creation of DataSet from different sources."""
+
     @classmethod
-    def from_epidata(cls, datasource: EpiDataSource, metadata: Metadata, label_category: str, onehot=False, oversample=False,
-                     normalization=True, min_class_size=3, validation_ratio=0.1, test_ratio=0.1) -> DataSet:
+    def from_epidata(
+        cls,
+        datasource: EpiDataSource,
+        metadata: Metadata,
+        label_category: str,
+        onehot=False,
+        oversample=False,
+        normalization=True,
+        min_class_size=3,
+        validation_ratio=0.1,
+        test_ratio=0.1,
+    ) -> DataSet:
         """TODO : Write docstring"""
 
         return EpiData(
-            datasource, metadata, label_category, onehot, oversample, normalization, min_class_size,
-            validation_ratio, test_ratio
-            ).dataset
+            datasource,
+            metadata,
+            label_category,
+            onehot,
+            oversample,
+            normalization,
+            min_class_size,
+            validation_ratio,
+            test_ratio,
+        ).dataset
 
 
 class EpiData(object):
@@ -236,24 +283,39 @@ class EpiData(object):
 
     Test ratio computed from validation ratio and test ratio. Be sure to set both correctly.
     """
-    def __init__(self, datasource: EpiDataSource, metadata: Metadata, label_category: str, onehot=False, oversample=False,
-                 normalization=True, min_class_size=3, validation_ratio=0.1, test_ratio=0.1):
+
+    def __init__(
+        self,
+        datasource: EpiDataSource,
+        metadata: Metadata,
+        label_category: str,
+        onehot=False,
+        oversample=False,
+        normalization=True,
+        min_class_size=3,
+        validation_ratio=0.1,
+        test_ratio=0.1,
+    ):
 
         self._label_category = label_category
         self._oversample = oversample
-        self._assert_ratios(val_ratio=validation_ratio, test_ratio=test_ratio, verbose=True)
+        self._assert_ratios(
+            val_ratio=validation_ratio, test_ratio=test_ratio, verbose=True
+        )
 
-        #load
+        # load
         self._metadata = self._load_metadata(metadata)
         self._files = Hdf5Loader.read_list(datasource.hdf5_file)
 
-        #preprocess
+        # preprocess
         self._keep_meta_overlap()
         self._metadata.remove_small_classes(min_class_size, self._label_category)
 
-        self._hdf5s = Hdf5Loader(
-            datasource.chromsize_file, normalization
-            ).load_hdf5s(datasource.hdf5_file, md5s=self._files.keys()).signals
+        self._hdf5s = (
+            Hdf5Loader(datasource.chromsize_file, normalization)
+            .load_hdf5s(datasource.hdf5_file, md5s=self._files.keys())
+            .signals
+        )
 
         self._sorted_classes = self._metadata.unique_classes(label_category)
 
@@ -273,10 +335,10 @@ class EpiData(object):
         if val_ratio + test_ratio > 1:
             raise ValueError(
                 f"Validation and test ratios are bigger than 100%: {val_ratio} and {test_ratio}"
-                )
+            )
         elif verbose:
             print(
-            f"training/validation/test split: {train_ratio*100}%/{val_ratio*100}%/{test_ratio*100}%"
+                f"training/validation/test split: {train_ratio*100}%/{val_ratio*100}%/{test_ratio*100}%"
             )
         if np.isclose(train_ratio, 0.0):
             self._oversample = False
@@ -291,10 +353,10 @@ class EpiData(object):
         self._remove_hdf5_without_md5()
 
     def _remove_md5_without_hdf5(self):
-        self._metadata.apply_filter(lambda item: item[0] in self._files) # type: ignore
+        self._metadata.apply_filter(lambda item: item[0] in self._files)  # type: ignore
 
     def _remove_hdf5_without_md5(self):
-        self._files = {md5:self._files[md5] for md5 in self._metadata.md5s}
+        self._files = {md5: self._files[md5] for md5 in self._metadata.md5s}
 
     @staticmethod
     def _create_onehot_dict(classes: List[str]) -> dict:
@@ -318,16 +380,20 @@ class EpiData(object):
         labels = sorted(classes)
         if onehot:
             encoding = EpiData._create_onehot_dict(labels)
+
             def to_onehot(labels):
-                return [encoding[label] for label in labels] # type: ignore
+                return [encoding[label] for label in labels]  # type: ignore
+
             return to_onehot
         else:
-            encoding = preprocessing.LabelEncoder().fit(labels) #int mapping
+            encoding = preprocessing.LabelEncoder().fit(labels)  # int mapping
+
             def to_int(labels):
                 if labels:
                     return encoding.transform(labels)
                 else:
                     return []
+
             return to_int
 
     def _split_md5s(self, validation_ratio, test_ratio):
@@ -342,8 +408,18 @@ class EpiData(object):
 
         # The point is to try to create indexes for the slices of each different class
         # the indexes would split this way [valid, test, training]
-        size_validation_dict = collections.Counter({label:math.ceil(size*validation_ratio) for label, size in size_all_dict.items()})
-        size_test_dict = collections.Counter({label:math.ceil(size*test_ratio) for label, size in size_all_dict.items()})
+        size_validation_dict = collections.Counter(
+            {
+                label: math.ceil(size * validation_ratio)
+                for label, size in size_all_dict.items()
+            }
+        )
+        size_test_dict = collections.Counter(
+            {
+                label: math.ceil(size * test_ratio)
+                for label, size in size_all_dict.items()
+            }
+        )
 
         # sum(size_validation_dict, size_test_dict) ignores zeros, giving counter without labels, which breaks following lambda
         split_index_dict = collections.Counter(size_validation_dict)
@@ -351,16 +427,21 @@ class EpiData(object):
 
         # Will grab the indexes from the dicts and return md5 slices
         # no end means : [i:None]=[i:]=slice from i to end
-        slice_data = lambda begin={}, end={}: sum([
-            data[label][begin.get(label, 0):end.get(label, None)]
-            for label in size_all_dict.keys()
-        ], [])
+        slice_data = lambda begin={}, end={}: sum(
+            [
+                data[label][begin.get(label, 0) : end.get(label, None)]
+                for label in size_all_dict.keys()
+            ],
+            [],
+        )
 
         validation_md5s = slice_data(end=size_validation_dict)
         test_md5s = slice_data(begin=size_validation_dict, end=split_index_dict)
         train_md5s = slice_data(begin=split_index_dict)
 
-        assert len(self._metadata.md5s) == len(set(sum([train_md5s, validation_md5s, test_md5s], [])))
+        assert len(self._metadata.md5s) == len(
+            set(sum([train_md5s, validation_md5s, test_md5s], []))
+        )
 
         return [train_md5s, validation_md5s, test_md5s]
 
@@ -369,7 +450,9 @@ class EpiData(object):
 
         The encoder/encoding function for a label list needs to be provided.
         """
-        train_md5s, validation_md5s, test_md5s = self._split_md5s(validation_ratio, test_ratio)
+        train_md5s, validation_md5s, test_md5s = self._split_md5s(
+            validation_ratio, test_ratio
+        )
 
         # separate hdf5 files
         train_signals = [self._hdf5s[md5] for md5 in train_md5s]
@@ -378,18 +461,34 @@ class EpiData(object):
 
         # separate label values
         train_labels = [self._metadata[md5][self._label_category] for md5 in train_md5s]
-        validation_labels = [self._metadata[md5][self._label_category] for md5 in validation_md5s]
+        validation_labels = [
+            self._metadata[md5][self._label_category] for md5 in validation_md5s
+        ]
         test_labels = [self._metadata[md5][self._label_category] for md5 in test_md5s]
 
         if self._oversample:
-            train_signals, train_labels, idxs = EpiData.oversample_data(train_signals, train_labels)
+            train_signals, train_labels, idxs = EpiData.oversample_data(
+                train_signals, train_labels
+            )
             train_md5s = np.take(train_md5s, idxs)
 
-        encoded_labels = [encoder(labels) for labels in [train_labels, validation_labels, test_labels]]
+        encoded_labels = [
+            encoder(labels) for labels in [train_labels, validation_labels, test_labels]
+        ]
 
-        self._train = Data(train_md5s, train_signals, encoded_labels[0], train_labels, self._metadata)
-        self._validation = Data(validation_md5s, validation_signals, encoded_labels[1], validation_labels, self._metadata)
-        self._test = Data(test_md5s, test_signals, encoded_labels[2], test_labels, self._metadata)
+        self._train = Data(
+            train_md5s, train_signals, encoded_labels[0], train_labels, self._metadata
+        )
+        self._validation = Data(
+            validation_md5s,
+            validation_signals,
+            encoded_labels[1],
+            validation_labels,
+            self._metadata,
+        )
+        self._test = Data(
+            test_md5s, test_signals, encoded_labels[2], test_labels, self._metadata
+        )
 
         print(f"training size {len(train_labels)}")
         print(f"validation size {len(validation_labels)}")
@@ -399,5 +498,5 @@ class EpiData(object):
     def oversample_data(X, y):
         """Return oversampled data with sampled indexes. X=signals, y=targets."""
         ros = RandomOverSampler(random_state=42)
-        X_resampled, y_resampled = ros.fit_resample(X, y)   # type: ignore
+        X_resampled, y_resampled = ros.fit_resample(X, y)  # type: ignore
         return X_resampled, y_resampled, ros.sample_indices_
