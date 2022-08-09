@@ -1,57 +1,78 @@
 """Main"""
-import comet_ml #needed because special snowflake # pylint: disable=unused-import
-import pytorch_lightning as pl #in case GCC or CUDA needs it # pylint: disable=unused-import
-
 import argparse
-from datetime import datetime
 import json
 import os
-from pathlib import Path
 import sys
 import warnings
+from functools import partial
+from pathlib import Path
+
 warnings.simplefilter("ignore", category=FutureWarning)
 
-from functools import partial
+import comet_ml  # needed because special snowflake # pylint: disable=unused-import
 import numpy as np
-from pytorch_lightning import loggers as pl_loggers
-from pytorch_lightning import callbacks as pl_callbacks
+import pytorch_lightning as pl  # in case GCC or CUDA needs it # pylint: disable=unused-import
 import torch
-from torch.utils.data import TensorDataset
-from torch.utils.data import DataLoader
+from pytorch_lightning import callbacks as pl_callbacks
+from pytorch_lightning import loggers as pl_loggers
+from torch.utils.data import DataLoader, TensorDataset
 
 from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
-from epi_ml.python.utils.time import time_now
-from epi_ml.python.core import metadata
-from epi_ml.python.core import data
+from epi_ml.python.core import analysis, data, metadata
 from epi_ml.python.core.data_source import EpiDataSource
 from epi_ml.python.core.model_pytorch import LightningDenseClassifier
 from epi_ml.python.core.trainer import MyTrainer, define_callbacks
-from epi_ml.python.core import analysis
-
-# from epi_ml.python.core.confusion_matrix import ConfusionMatrixWriter
+from epi_ml.python.utils.time import time_now
 
 # pyright: reportUnboundVariable=false
+
+
 class DatasetError(Exception):
     """Custom error"""
+
     def __init__(self, *args: object) -> None:
-        print("\n--- ERROR : Verify source files, filters, and min_class_size. ---\n", file=sys.stderr)
+        print(
+            "\n--- ERROR : Verify source files, filters, and min_class_size. ---\n",
+            file=sys.stderr,
+        )
         super().__init__(*args)
 
 
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("category", type=str, help="The metatada category to analyse.")
     arg_parser.add_argument(
-        "hyperparameters", type=Path, help="A json file containing model hyperparameters."
-        )
-    arg_parser.add_argument("hdf5", type=Path, help="A file with hdf5 filenames. Use absolute path!")
+        "category", type=str, help="The metatada category to analyse."
+    )
+    arg_parser.add_argument(
+        "hyperparameters",
+        type=Path,
+        help="A json file containing model hyperparameters.",
+    )
+    arg_parser.add_argument(
+        "hdf5", type=Path, help="A file with hdf5 filenames. Use absolute path!"
+    )
     arg_parser.add_argument("chromsize", type=Path, help="A file with chrom sizes.")
     arg_parser.add_argument("metadata", type=Path, help="A metadata JSON file.")
-    arg_parser.add_argument("logdir", type=DirectoryChecker(), help="Directory for the output logs.")
-    arg_parser.add_argument("--offline", action="store_true", help="Will log data offline instead of online. Currently cannot merge comet-ml offline outputs.")
-    arg_parser.add_argument("--predict", action="store_const", const=True, help="Enter prediction mode. Will use all data for the test set. Overwrites hparameter file setting. Default mode is training mode.")
-    arg_parser.add_argument("--model", type=DirectoryChecker(), help="Directory from which to load the desired model. Default is logdir.")
+    arg_parser.add_argument(
+        "logdir", type=DirectoryChecker(), help="Directory for the output logs."
+    )
+    arg_parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Will log data offline instead of online. Currently cannot merge comet-ml offline outputs.",
+    )
+    arg_parser.add_argument(
+        "--predict",
+        action="store_const",
+        const=True,
+        help="Enter prediction mode. Will use all data for the test set. Overwrites hparameter file setting. Default mode is training mode.",
+    )
+    arg_parser.add_argument(
+        "--model",
+        type=DirectoryChecker(),
+        help="Directory from which to load the desired model. Default is logdir.",
+    )
 
     return arg_parser.parse_args(args)
 
@@ -64,33 +85,29 @@ def main(args):
     # --- PARSE params and LOAD external files ---
     cli = parse_arguments(args)
 
-    my_datasource = EpiDataSource(
-        cli.hdf5,
-        cli.chromsize,
-        cli.metadata
-        )
+    my_datasource = EpiDataSource(cli.hdf5, cli.chromsize, cli.metadata)
 
     with open(cli.hyperparameters, "r", encoding="utf-8") as file:
         hparams = json.load(file)
 
-
     # # --- Just redo a matrix ---
     # matrix = "test_confusion_matrix"
-    # matrix_writer = ConfusionMatrixWriter.from_csv(csv_path=cli.logdir/f"{matrix}.csv", relative=False)
-    # matrix_writer.to_png(cli.logdir/f"{matrix}.png")
+    # matrix_writer = ConfusionMatrixWriter.from_csv(
+    #     csv_path=cli.logdir / f"{matrix}.csv", relative=False
+    # )
+    # matrix_writer.to_png(cli.logdir / f"{matrix}.png")
     # sys.exit()
 
-
     # --- Startup LOGGER ---
-    #api key in config file
-    IsOffline = cli.offline # additional logging fails with True
-    exp_name = '-'.join(cli.logdir.parts[-2:])
+    # api key in config file
+    IsOffline = cli.offline  # additional logging fails with True
+    exp_name = "-".join(cli.logdir.parts[-2:])
     comet_logger = pl_loggers.CometLogger(
         project_name="EpiLaP",
         experiment_name=exp_name,
         save_dir=cli.logdir,
         offline=IsOffline,
-        auto_metric_logging=False
+        auto_metric_logging=False,
     )
     exp_key = comet_logger.experiment.get_key()
     print(f"The current experiment key is {exp_key}")
@@ -102,12 +119,10 @@ def main(args):
         comet_logger.experiment.log_other("SLURM_JOB_ID", os.environ["SLURM_JOB_ID"])
         comet_logger.experiment.add_tag("Cluster")
 
-
     # --- LOAD useful info ---
     hdf5_resolution = my_datasource.hdf5_resolution()
     comet_logger.experiment.log_other("HDF5 Resolution", f"{hdf5_resolution/1000}kb")
     # chroms = my_datasource.load_chrom_sizes()
-
 
     # --- LOAD DATA ---
     my_metadata = metadata.Metadata(my_datasource.metadata_file)
@@ -120,7 +135,6 @@ def main(args):
     # my_metadata.merge_molecule_classes()
     # my_metadata.merge_fetal_tissues()
 
-
     # --- Dataset selection ---
     if os.getenv("ASSAY_LIST") is not None:
         assay_list = json.loads(os.environ["ASSAY_LIST"])
@@ -129,13 +143,12 @@ def main(args):
     else:
         print("No assay list")
 
-
     # --- DEFINE current MODE (training, predict or tuning) ---
     is_training = hparams.get("is_training", True)
-    is_tuning = False # HARDCODED FOR THE MOMENT, FINE-TUNNING NOT HANDLED WELL
+    is_tuning = False  # HARDCODED FOR THE MOMENT, FINE-TUNNING NOT HANDLED WELL
 
     if cli.predict is not None:
-        is_training = False #overwrite hparams option
+        is_training = False  # overwrite hparams option
         is_tuning = False
         val_ratio = 0
         test_ratio = 1
@@ -145,28 +158,31 @@ def main(args):
         test_ratio = 0.1
         min_class_size = 10
 
-
     # --- CREATE training/validation/test SETS (and change metadata according to what is used) ---
     time_before_split = time_now()
     oversampling = True
-    onehot = False # current code does not support target onehot encoding anymore
+    onehot = False  # current code does not support target onehot encoding anymore
 
     my_data = data.DataSetFactory.from_epidata(
-        my_datasource, my_metadata, cli.category, min_class_size=min_class_size,
-        validation_ratio=val_ratio, test_ratio=test_ratio,
-        onehot=onehot, oversample=oversampling
-        )
+        my_datasource,
+        my_metadata,
+        cli.category,
+        min_class_size=min_class_size,
+        validation_ratio=val_ratio,
+        test_ratio=test_ratio,
+        onehot=onehot,
+        oversample=oversampling,
+    )
     print(f"Set loading/splitting time: {time_now() - time_before_split}")
 
     comet_logger.experiment.log_other("Training size", my_data.train.num_examples)
     comet_logger.experiment.log_other("Total nb of files", len(my_metadata))
 
-
     to_display = set(["assay", cli.category])
     for category in to_display:
         my_metadata.display_labels(category)
 
-    train_dataset = None #the variables all need to exist for the analyzer later
+    train_dataset = None  # the variables all need to exist for the analyzer later
     valid_dataset = None
     test_dataset = None
 
@@ -174,27 +190,35 @@ def main(args):
     if is_training or is_tuning:
 
         if my_data.train.num_examples == 0 or my_data.validation.num_examples == 0:
-            raise DatasetError("Trying to train without any training or validation data.")
+            raise DatasetError(
+                "Trying to train without any training or validation data."
+            )
 
         # transform target labels into int encoding
         if onehot:
             transform = partial(np.argmax, axis=-1)
         else:
-            transform = np.array #already correct encoding
+            transform = np.array  # already correct encoding
 
         train_dataset = TensorDataset(
             torch.from_numpy(my_data.train.signals).float(),
-            torch.from_numpy(transform(my_data.train.encoded_labels))
-            )
+            torch.from_numpy(transform(my_data.train.encoded_labels)),
+        )
 
         valid_dataset = TensorDataset(
             torch.from_numpy(my_data.validation.signals).float(),
-            torch.from_numpy(transform(my_data.validation.encoded_labels))
-            )
+            torch.from_numpy(transform(my_data.validation.encoded_labels)),
+        )
 
-        train_dataloader = DataLoader(train_dataset, batch_size=hparams.get("batch_size", 64), shuffle=True, pin_memory=True)
-        valid_dataloader = DataLoader(valid_dataset, batch_size=len(valid_dataset), pin_memory=True)
-
+        train_dataloader = DataLoader(
+            train_dataset,
+            batch_size=hparams.get("batch_size", 64),
+            shuffle=True,
+            pin_memory=True,
+        )
+        valid_dataloader = DataLoader(
+            valid_dataset, batch_size=len(valid_dataset), pin_memory=True
+        )
 
     # Warning : output mapping of model created from training dataset
     mapping_file = cli.logdir / "training_mapping.tsv"
@@ -219,12 +243,11 @@ def main(args):
             mapping=mapping,
             hparams=hparams,
             hl_units=hl_units,
-            nb_layer=nb_layers
-            )
+            nb_layer=nb_layers,
+        )
 
         print("--MODEL STRUCTURE--\n", my_model)
         my_model.print_model_summary()
-
 
     # --- RESTORE old model (if just for computing new metrics, or for tuning further) ---
 
@@ -238,7 +261,6 @@ def main(args):
             model_dir = cli.model
         my_model = LightningDenseClassifier.restore_model(model_dir)
 
-
     if cli.predict:
 
         if my_data.test.num_examples == 0:
@@ -249,14 +271,17 @@ def main(args):
 
         test_dataset = TensorDataset(
             torch.from_numpy(my_data.test.signals).float(),
-            torch.tensor(encoder.transform(my_data.test.original_labels), dtype=torch.int)
-            )
-
+            torch.tensor(
+                encoder.transform(my_data.test.original_labels), dtype=torch.int
+            ),
+        )
 
     # --- TRAIN the model ---
     if is_training:
 
-        callbacks = define_callbacks(early_stop_limit=hparams.get("early_stop_limit", 20))
+        callbacks = define_callbacks(
+            early_stop_limit=hparams.get("early_stop_limit", 20)
+        )
 
         before_train = time_now()
 
@@ -272,8 +297,8 @@ def main(args):
                 accelerator="gpu",
                 devices=1,
                 precision=16,
-                enable_progress_bar=False
-                )
+                enable_progress_bar=False,
+            )
         else:
             callbacks.append(pl_callbacks.RichProgressBar(leave=True))
             trainer = MyTrainer(
@@ -285,11 +310,15 @@ def main(args):
                 callbacks=callbacks,
                 enable_model_summary=False,
                 accelerator="cpu",
-                devices=1
-                )
+                devices=1,
+            )
 
         trainer.print_hyperparameters()
-        trainer.fit(my_model, train_dataloaders=train_dataloader, val_dataloaders=valid_dataloader)
+        trainer.fit(
+            my_model,
+            train_dataloaders=train_dataloader,
+            val_dataloaders=valid_dataloader,
+        )
 
         trainer.save_model_path()
 
@@ -302,17 +331,20 @@ def main(args):
             save_dir=cli.logdir,
             offline=IsOffline,
             auto_metric_logging=False,
-            experiment_key=exp_key
+            experiment_key=exp_key,
         )
         comet_logger.experiment.log_other("Training time", training_time)
         comet_logger.experiment.log_other("Last epoch", my_model.current_epoch)
 
-
     # --- OUTPUTS ---
     my_analyzer = analysis.Analysis(
-        my_model, my_data, comet_logger,
-        train_dataset=train_dataset, val_dataset=valid_dataset, test_dataset=test_dataset
-        )
+        my_model,
+        my_data,
+        comet_logger,
+        train_dataset=train_dataset,
+        val_dataset=valid_dataset,
+        test_dataset=test_dataset,
+    )
 
     # --- Print metrics ---
     if is_training or is_tuning:
@@ -321,14 +353,12 @@ def main(args):
     if cli.predict:
         test_metrics = my_analyzer.get_test_metrics()
 
-
     # --- Create prediction file ---
     if is_training or is_tuning:
         # my_analyzer.write_training_prediction() # Oversampling = OFF when using this please!
         my_analyzer.write_validation_prediction()
     if cli.predict:
         my_analyzer.write_test_prediction()
-
 
     # --- Create confusion matrix ---
     if is_training or is_tuning:
@@ -337,13 +367,13 @@ def main(args):
     if cli.predict:
         my_analyzer.test_confusion_matrix()
 
-
     end = time_now()
     main_time = end - begin
     print(f"end {end}")
     print(f"Main() duration: {main_time}")
     comet_logger.experiment.log_other("Main duration", main_time)
     comet_logger.experiment.add_tag("Finished")
+
 
 if __name__ == "__main__":
     os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"

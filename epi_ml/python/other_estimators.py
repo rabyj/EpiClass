@@ -2,44 +2,43 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import numpy as np
-from sklearn.svm import SVC, LinearSVC
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import matthews_corrcoef, make_scorer
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
-from skopt import BayesSearchCV
-from skopt.space import Real, Categorical, Integer
-from tabulate import tabulate
 import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import make_scorer, matthews_corrcoef
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC, LinearSVC
+from skopt import BayesSearchCV
+from skopt.space import Categorical, Integer, Real
+from tabulate import tabulate
 
 from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
-
-from epi_ml.python.utils.time import time_now
 from epi_ml.python.core import metadata
 from epi_ml.python.core.data_source import EpiDataSource
 from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment
 from epi_ml.python.core.estimators import EstimatorAnalyzer
+from epi_ml.python.utils.time import time_now
 
 NFOLD_TUNE = 9
 NFOLD_PREDICT = 10
 RNG = np.random.RandomState(42)
 SCORES = {
-    "acc":"accuracy",
-    "precision":"precision_macro",
-    "recall":"recall_macro",
-    "f1":"f1_macro",
-    "mcc":make_scorer(matthews_corrcoef)
+    "acc": "accuracy",
+    "precision": "precision_macro",
+    "recall": "recall_macro",
+    "f1": "f1_macro",
+    "mcc": make_scorer(matthews_corrcoef),
 }
 SVM_RBF_SEARCH = {
-    "model__C": Real(1e-6, 1e+6, prior="log-uniform"),
-    "model__gamma": Real(1e-6, 1e+1, prior="log-uniform"),
+    "model__C": Real(1e-6, 1e6, prior="log-uniform"),
+    "model__gamma": Real(1e-6, 1e1, prior="log-uniform"),
 }
 SVM_LIN_SEARCH = {
-    "model__C": Real(1e-6, 1e+6, prior="log-uniform"),
+    "model__C": Real(1e-6, 1e6, prior="log-uniform"),
     "model__loss": Categorical(["hinge", "squared_hinge"]),
     "model__intercept_scaling": Categorical([1, 5]),
 }
@@ -49,15 +48,11 @@ RF_SEARCH = {
     "model__max_features": Categorical(["sqrt", "log2"]),
     "model__bootstrap": Categorical([True]),
     "model__random_state": Categorical([RNG]),
-    "model__min_samples_leaf": Integer(1,5),
-    "model__min_samples_split": Categorical([0.01, 0.05, 0.1, 0.3])
+    "model__min_samples_leaf": Integer(1, 5),
+    "model__min_samples_split": Categorical([0.01, 0.05, 0.1, 0.3]),
 }
 
-mapping = {
-    "LinearSVC" : LinearSVC(),
-    "SVC" : SVC(),
-    "RF" : RandomForestClassifier()
-    }
+mapping = {"LinearSVC": LinearSVC(), "SVC": SVC(), "RF": RandomForestClassifier()}
 
 if os.getenv("CONCURRENT_CV") is not None:
     CONCURRENT_CV = int(os.environ["CONCURRENT_CV"])
@@ -70,23 +65,42 @@ def parse_arguments(args: list) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     group1 = parser.add_argument_group("General")
     group1.add_argument("category", type=str, help="The metatada category to analyse.")
-    group1.add_argument("hdf5", type=Path, help="A file with hdf5 filenames. Use absolute path!")
+    group1.add_argument(
+        "hdf5", type=Path, help="A file with hdf5 filenames. Use absolute path!"
+    )
     group1.add_argument("chromsize", type=Path, help="A file with chrom sizes.")
     group1.add_argument("metadata", type=Path, help="A metadata JSON file.")
-    group1.add_argument("logdir", type=DirectoryChecker(), help="Directory for the output logs.")
+    group1.add_argument(
+        "logdir", type=DirectoryChecker(), help="Directory for the output logs."
+    )
 
     mode = parser.add_argument_group("Mode")
     mode = mode.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--tune", action="store_true", help="Search best hyperparameters.")
-    mode.add_argument("--predict", action="store_true", help="Fit and predict using hyperparameters.")
+    mode.add_argument(
+        "--tune", action="store_true", help="Search best hyperparameters."
+    )
+    mode.add_argument(
+        "--predict", action="store_true", help="Fit and predict using hyperparameters."
+    )
 
     tune = parser.add_argument_group("Tune")
-    tune.add_argument("-n", type=int, default=30, help="Number of BayesSearchCV hyperparameters iterations.")
+    tune.add_argument(
+        "-n",
+        type=int,
+        default=30,
+        help="Number of BayesSearchCV hyperparameters iterations.",
+    )
     tune.add_argument("--only-svm", action="store_true", help="Only use SVM estimator.")
-    tune.add_argument("--only-rf", action="store_true", help="Only use random forest estimator.")
+    tune.add_argument(
+        "--only-rf", action="store_true", help="Only use random forest estimator."
+    )
 
     predict = parser.add_argument_group("Predict")
-    predict.add_argument("--hparams", type=Path, help="A file with chosen hyperparameters for each estimator. Needs a specific format.")
+    predict.add_argument(
+        "--hparams",
+        type=Path,
+        help="A file with chosen hyperparameters for each estimator. Needs a specific format.",
+    )
 
     return parser.parse_args(args)
 
@@ -95,23 +109,35 @@ def on_step(result):
     """BayesSearchCV callback"""
     print(f"Best params yet: {result.x}")
 
-def tune_estimator(my_model, ea_handler: EpiAtlasTreatment, params: dict, n_iter: int, concurrent_cv: int=1):
-    """Apply Bayesian optimization over hyperparameters search space."""
-    pipe = Pipeline(steps=[
-        ("scaler", StandardScaler()),
-        ("model", my_model)
-    ])
 
-    n_jobs = NFOLD_TUNE*concurrent_cv
+def tune_estimator(
+    my_model,
+    ea_handler: EpiAtlasTreatment,
+    params: dict,
+    n_iter: int,
+    concurrent_cv: int = 1,
+):
+    """Apply Bayesian optimization over hyperparameters search space."""
+    pipe = Pipeline(steps=[("scaler", StandardScaler()), ("model", my_model)])
+
+    n_jobs = NFOLD_TUNE * concurrent_cv
     if n_jobs > 48:
         raise AssertionError("More jobs than cores asked, max 48 jobs.")
 
     opt = BayesSearchCV(
-        pipe, search_spaces=params, cv=ea_handler.split(),
-        random_state=RNG, return_train_score=True, error_score=-1, verbose=3,
-        scoring=SCORES, refit="acc",
-        n_jobs=n_jobs, n_points=concurrent_cv, n_iter=n_iter
-        )
+        pipe,
+        search_spaces=params,
+        cv=ea_handler.split(),
+        random_state=RNG,
+        return_train_score=True,
+        error_score=-1,  # type: ignore
+        verbose=3,
+        scoring=SCORES,
+        refit="acc",  # type: ignore
+        n_jobs=n_jobs,
+        n_points=concurrent_cv,
+        n_iter=n_iter,
+    )
 
     total_data = ea_handler.create_total_data()
     print(f"Number of files used globally {len(total_data)}")
@@ -121,42 +147,56 @@ def tune_estimator(my_model, ea_handler: EpiAtlasTreatment, params: dict, n_iter
     print(f"best params: {opt.best_params_}")
     return opt
 
+
 def optimize_svm(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
     """Optimize an sklearn SVC over a hyperparameter space. n_iter divided in two for linear and rbf kernel."""
     print("Starting SVM optimization")
-    n_iter = n_iter//2
+    n_iter = n_iter // 2
 
     start_train = time_now()
     opt = tune_estimator(
-        LinearSVC(), ea_handler, SVM_LIN_SEARCH,
-        n_iter=n_iter, concurrent_cv=CONCURRENT_CV
+        LinearSVC(),
+        ea_handler,
+        SVM_LIN_SEARCH,
+        n_iter=n_iter,
+        concurrent_cv=CONCURRENT_CV,
     )
     print(f"Total linear SVM optimisation time: {time_now()-start_train}")
 
     df = pd.DataFrame(opt.cv_results_)
-    print(tabulate(df, headers='keys', tablefmt='psql'))  # type: ignore
+    print(tabulate(df, headers="keys", tablefmt="psql"))  # type: ignore
     df.to_csv(logdir / "SVM_lin_optim.csv", sep=",")
 
     start_train = time_now()
     opt = tune_estimator(
-        SVC(cache_size=3000, kernel="rbf"), ea_handler, SVM_RBF_SEARCH,
-        n_iter=n_iter, concurrent_cv=CONCURRENT_CV
-        )
+        SVC(cache_size=3000, kernel="rbf"),
+        ea_handler,
+        SVM_RBF_SEARCH,
+        n_iter=n_iter,
+        concurrent_cv=CONCURRENT_CV,
+    )
     print(f"Total rbf SVM optimisation time: {time_now()-start_train}")
 
     df = pd.DataFrame(opt.cv_results_)
-    print(tabulate(df, headers='keys', tablefmt='psql'))  # type: ignore
+    print(tabulate(df, headers="keys", tablefmt="psql"))  # type: ignore
     df.to_csv(logdir / "SVM_rbf_optim.csv", sep=",")
+
 
 def optimize_rf(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
     """Optimize an sklearn random forest over a hyperparameter space."""
     print("Starting RF optimization")
     start_train = time_now()
-    opt = tune_estimator(RandomForestClassifier(), ea_handler, RF_SEARCH, n_iter, concurrent_cv=CONCURRENT_CV)
+    opt = tune_estimator(
+        RandomForestClassifier(),
+        ea_handler,
+        RF_SEARCH,
+        n_iter,
+        concurrent_cv=CONCURRENT_CV,
+    )
     print(f"Total RF optimisation time: {time_now()-start_train}")
 
     df = pd.DataFrame(opt.cv_results_)
-    print(tabulate(df, headers='keys', tablefmt='psql'))  # type: ignore
+    print(tabulate(df, headers="keys", tablefmt="psql"))  # type: ignore
     df.to_csv(logdir / "RF_optim.csv", sep=",")
 
 
@@ -168,18 +208,18 @@ def main(args):
     # --- PARSE params and LOAD external files ---
     cli = parse_arguments(args)
 
-    my_datasource = EpiDataSource(
-        cli.hdf5,
-        cli.chromsize,
-        cli.metadata
-        )
+    my_datasource = EpiDataSource(cli.hdf5, cli.chromsize, cli.metadata)
 
     my_metadata = metadata.Metadata(my_datasource.metadata_file)
-    my_metadata.remove_category_subsets(label_category="track_type", labels=["Unique.raw"])
+    my_metadata.remove_category_subsets(
+        label_category="track_type", labels=["Unique.raw"]
+    )
 
     if os.getenv("EXCLUDE_LIST") is not None:
         exclude_list = json.loads(os.environ["EXCLUDE_LIST"])
-        my_metadata.remove_category_subsets(label_category=cli.category, labels=exclude_list)
+        my_metadata.remove_category_subsets(
+            label_category=cli.category, labels=exclude_list
+        )
 
     if os.getenv("ASSAY_LIST") is not None:
         assay_list = json.loads(os.environ["ASSAY_LIST"])
@@ -193,12 +233,16 @@ def main(args):
     else:
         min_class_size = 10
 
-
     loading_begin = time_now()
     if cli.tune is True:
         print("Entering tuning mode")
-        ea_handler = EpiAtlasTreatment(my_datasource, cli.category, assay_list,
-        n_fold=NFOLD_TUNE, test_ratio=0.1, min_class_size=min_class_size
+        ea_handler = EpiAtlasTreatment(
+            my_datasource,
+            cli.category,
+            assay_list,
+            n_fold=NFOLD_TUNE,
+            test_ratio=0.1,
+            min_class_size=min_class_size,
         )
         loading_time = time_now() - loading_begin
         print(f"Initial hdf5 loading time: {loading_time}")
@@ -214,16 +258,22 @@ def main(args):
             optimize_rf(ea_handler, cli.logdir, n_iter)
             optimize_svm(ea_handler, cli.logdir, n_iter)
 
-
     if cli.predict is True:
         print("Entering fit/prediction mode")
         if cli.hparams is None:
-            raise AssertionError("--hparams not given. Hyperparameters needed for predict mode.")
+            raise AssertionError(
+                "--hparams not given. Hyperparameters needed for predict mode."
+            )
         elif not cli.hparams.exists():
             raise AssertionError("hparams file does not exist: {cli.hparams}")
 
-        ea_handler = EpiAtlasTreatment(my_datasource, cli.category, assay_list,
-        n_fold=NFOLD_PREDICT, test_ratio=0, min_class_size=min_class_size
+        ea_handler = EpiAtlasTreatment(
+            my_datasource,
+            cli.category,
+            assay_list,
+            n_fold=NFOLD_PREDICT,
+            test_ratio=0,
+            min_class_size=min_class_size,
         )
         loading_time = time_now() - loading_begin
         print(f"Initial hdf5 loading time: {loading_time}")
@@ -234,11 +284,15 @@ def main(args):
         for name, hparams in hparams.items():
             estimator = mapping[name]
             estimator.set_params(**hparams)
-            print(f"Fitting and making predictions with {name} estimator. Fit with hparams {hparams}.")
+            print(
+                f"Fitting and making predictions with {name} estimator. Fit with hparams {hparams}."
+            )
             for i, my_data in enumerate(ea_handler.yield_split()):
 
                 print(f"Split {i} training size: {my_data.train.num_examples}")
-                nb_files = len(set(my_data.train.ids.tolist() + my_data.validation.ids.tolist()))
+                nb_files = len(
+                    set(my_data.train.ids.tolist() + my_data.validation.ids.tolist())
+                )
                 print(f"Total nb of files: {nb_files}")
 
                 estimator.fit(my_data.train.signals, my_data.train.encoded_labels)
@@ -247,7 +301,12 @@ def main(args):
 
                 X, y = my_data.validation.signals, my_data.validation.encoded_labels
                 analyzer.metrics(X, y)
-                analyzer.predict_file(my_data.validation.ids, X, y, cli.logdir / f"{name}_split{i}_validation_prediction.csv")
+                analyzer.predict_file(
+                    my_data.validation.ids,
+                    X,
+                    y,
+                    cli.logdir / f"{name}_split{i}_validation_prediction.csv",
+                )
 
 
 if __name__ == "__main__":
