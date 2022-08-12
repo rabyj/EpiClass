@@ -6,6 +6,46 @@ import pandas as pd
 
 from epi_ml.python.core.metadata import Metadata
 
+merge_fetal_tissues = {
+    "fetal_intestine_large": "fetal_intestine",
+    "fetal_intestine_small": "fetal_intestine",
+    "fetal_lung_left": "fetal_lung",
+    "fetal_lung_right": "fetal_lung",
+    "fetal_muscle_arm": "fetal_muscle",
+    "fetal_muscle_back": "fetal_muscle",
+    "fetal_muscle_leg": "fetal_muscle",
+    "fetal_renal_cortex": "fetal_kidney",
+    "fetal_renal_pelvis": "fetal_kidney",
+}
+merge_molecule = {"rna": "total_rna", "polyadenylated_mrna": "polya_rna"}
+
+epiatlas_assays = [
+    "h3k27ac",
+    "h3k27me3",
+    "h3k36me3",
+    "h3k4me1",
+    "h3k4me3",
+    "h3k9me3",
+    "input",
+    "rna_seq",
+    "mrna_seq",
+    "wgbs",
+]
+
+dp_assays = [
+    "chromatin_acc",
+    "h3k27ac",
+    "h3k27me3",
+    "h3k36me3",
+    "h3k4me1",
+    "h3k4me3",
+    "h3k9me3",
+    "input",
+    "mrna_seq",
+    "rna_seq",
+    "wgb_seq",
+]
+
 
 def keep_major_cell_types_alt(my_metadata: Metadata):
     """Return a filtered metadata with certain assays. Datasets which are
@@ -14,26 +54,13 @@ def keep_major_cell_types_alt(my_metadata: Metadata):
     my_meta = copy.deepcopy(my_metadata)
 
     # remove useless assays and cell_types
-    assays = [
-        "chromatin_acc",
-        "h3k27ac",
-        "h3k27me3",
-        "h3k36me3",
-        "h3k4me1",
-        "h3k4me3",
-        "h3k9me3",
-        "input",
-        "mrna_seq",
-        "rna_seq",
-        "wgb_seq",
-    ]
-    my_meta.select_category_subsets("assay", assays)
+    my_meta.select_category_subsets("assay", dp_assays)
     my_meta.remove_small_classes(10, "cell_type")
     my_meta.merge_classes("tissue_type", merge_fetal_tissues)
 
     new_meta = copy.deepcopy(my_meta)
     new_meta.empty()
-    for assay in assays:
+    for assay in dp_assays:
         temp_meta = copy.deepcopy(my_meta)
         temp_meta.select_category_subsets("assay", [assay])
         temp_meta.remove_small_classes(10, "cell_type")
@@ -52,21 +79,8 @@ def five_cell_types_selection(my_metadata: Metadata):
         "skeletal_muscle_tissue",
         "thyroid",
     ]
-    assays = [
-        "chromatin_acc",
-        "h3k27ac",
-        "h3k27me3",
-        "h3k36me3",
-        "h3k4me1",
-        "h3k4me3",
-        "h3k9me3",
-        "input",
-        "mrna_seq",
-        "rna_seq",
-        "wgb_seq",
-    ]
     my_metadata.select_category_subsets("cell_type", cell_types)
-    my_metadata.select_category_subsets("assay", assays)
+    my_metadata.select_category_subsets("assay", dp_assays)
     return my_metadata
 
 
@@ -203,21 +217,6 @@ def keep_major_cell_types_2019(my_metadata):
     return my_metadata
 
 
-merge_fetal_tissues = {
-    "fetal_intestine_large": "fetal_intestine",
-    "fetal_intestine_small": "fetal_intestine",
-    "fetal_lung_left": "fetal_lung",
-    "fetal_lung_right": "fetal_lung",
-    "fetal_muscle_arm": "fetal_muscle",
-    "fetal_muscle_back": "fetal_muscle",
-    "fetal_muscle_leg": "fetal_muscle",
-    "fetal_renal_cortex": "fetal_kidney",
-    "fetal_renal_pelvis": "fetal_kidney",
-}
-
-merge_molecule = {"rna": "total_rna", "polyadenylated_mrna": "polya_rna"}
-
-
 def two_step_long_analysis(my_metadata: Metadata, category1, category2):
 
     print(
@@ -285,15 +284,6 @@ def two_step_table_analysis(my_metadata: Metadata, category1, category2):
         print(label + line.format(**infos) + str(ratio))
 
 
-def test(my_metadata: Metadata, category1):
-
-    my_metadata.remove_small_classes(10, category1)
-    counter_cat1 = my_metadata.label_counter(category1)
-    for label in sorted(counter_cat1.keys()):
-        temp_metadata = copy.deepcopy(my_metadata)
-        temp_metadata.select_category_subsets(label, [category1])
-
-
 def count_pairs(my_metadata: Metadata, cat1, cat2):
     """Return label pairs counter from the given metadata categories."""
     counter = collections.Counter(
@@ -322,58 +312,32 @@ def make_table(my_metadata: Metadata, cat1, cat2, filepath):
     table.to_csv(filepath, sep="\t")
 
 
-def analyze_chromatin_acc(my_metadata: Metadata):
-    counter = collections.Counter(
-        my_metadata[md5]["cell_type"]
-        for md5 in my_metadata.md5s
-        if my_metadata[md5]["assay"] == "chromatin_acc"
-    )
-    print(counter)
-    counter = collections.Counter(
-        my_metadata[md5]["assay"]
-        for md5 in my_metadata.md5s
-        if my_metadata[md5]["cell_type"] == "fetal_muscle_arm"
-    )
-    print(counter)
-
-
 def main():
 
-    base = Path("/home/local/USHERBROOKE/rabj2301/Projects/ihec/2018-10/")
-    path = base / "hg19_2018-10_final.json"
+    base = Path("/home/local/USHERBROOKE/rabj2301/Projects/epilap/")
+    path = base / "input//metadata/merged_EpiAtlas_allmetadatav9.json"
     my_metadata = Metadata(path)
 
     cat1 = "assay"
     cat2 = "cell_type"
 
-    # my_metadata = metadata.special_case(my_metadata)
-    # my_metadata = metadata.special_case_2(my_metadata)
+    my_metadata.select_category_subsets(cat1, epiatlas_assays)
+    my_metadata.remove_category_subsets(cat2, ["other", "--", "NA", ""])
+    my_metadata.remove_small_classes(10, cat2)
 
-    # my_metadata = metadata.five_cell_types_selection(my_metadata)
-    # assays_to_remove = [os.getenv(var, "") for var in ["REMOVE_ASSAY1", "REMOVE_ASSAY2", "REMOVE_ASSAY3"]]
-    # my_metadata.remove_category_subsets("assay", assays_to_remove)
-    # my_metadata.select_category_subsets("assay", ["h3k4me1"])
-    # my_metadata.remove_small_classes(10, "cell_type")
+    cell_types = my_metadata.md5_per_class("cell_type").keys()
+    to_keep = []
+    for cell_type in cell_types:
+        temp_meta = copy.deepcopy(my_metadata)
+        temp_meta.select_category_subsets(cat2, [cell_type])
 
-    # ---
-    # two_step_long_analysis(my_metadata, cat1, cat2)
-    # two_step_table_analysis(my_metadata, cat1, cat2)
-    # test(my_metadata, cat1)
-    # my_metadata = metadata.keep_major_cell_types(my_metadata)
-    # my_metadata = metadata.keep_major_cell_types_alt(my_metadata)
-    # ---
+        for md5s in temp_meta.md5_per_class("assay").values():
+            if len(md5s) >= 10:
+                to_keep.append(cell_type)
+                break
 
-    # my_metadata.display_labels("assay")
-    # my_metadata.display_labels("cell_type")
-
-    # my_metadata.display_labels("publishing_group")
-    # my_metadata.display_labels("releasing_group")
-
-    # print_pairs(my_metadata, cat1, cat2)
-    # make_table(my_metadata, cat1, cat2, "5_cell_types.tsv")
-
-    # for md5 in sorted(my_metadata.md5s):
-    #     print(md5)
+    my_metadata.select_category_subsets("cell_type", to_keep)
+    make_table(my_metadata, cat1, cat2, "test.tsv")
 
 
 if __name__ == "__main__":

@@ -10,7 +10,11 @@ from typing import List
 
 
 class Metadata(object):
-    """Wrapper around metadata md5:dataset dict."""
+    """
+    Wrapper around metadata md5:dataset dict.
+
+    meta_file (Path): Path to json file containing metadata for some datasets.
+    """
 
     def __init__(self, meta_file: Path):
         self._metadata = self._load_metadata(meta_file)
