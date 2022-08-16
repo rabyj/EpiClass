@@ -1,32 +1,36 @@
 """Model creation module"""
 from pathlib import Path
 
-import torch
-from torch import nn
-import torch.nn.functional as F
 import pytorch_lightning as pl
+import torch
+import torch.nn.functional as F
+from torch import nn
 from torchinfo import summary
-from torchmetrics import Accuracy, Precision, Recall, F1Score, MatthewsCorrCoef, MetricCollection # type: ignore
+from torchmetrics import Accuracy, F1Score, MatthewsCorrCoef, MetricCollection, Precision, Recall  # type: ignore
 
 
-class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-ancestors
+class LightningDenseClassifier(
+    pl.LightningModule
+):  # pylint: disable=too-many-ancestors
     """Simple dense network handler"""
 
-    def __init__(self, input_size, output_size, mapping, hparams, hl_units=3000, nb_layer=1):
+    def __init__(
+        self, input_size, output_size, mapping, hparams, hl_units=3000, nb_layer=1
+    ):
         """Metrics expect probabilities and not logits"""
         super().__init__()
         # this is recommended Lightning way to save model arguments
         # it saves everything passed into __init__
         # and allows you to access it as self.myparam1, self.myparam2
-        self.save_hyperparameters() #saves values given to __init__
+        self.save_hyperparameters()  # saves values given to __init__
 
         # -- general structure --
         self._x_size = input_size
         self._y_size = output_size
-        self._hl_size = hl_units # hl = hidden layer
-        self._nb_layer = nb_layer # number of intermediary/hidden layers
+        self._hl_size = hl_units  # hl = hidden layer
+        self._nb_layer = nb_layer  # number of intermediary/hidden layers
         if self._nb_layer < 1:
-            raise AssertionError("Nomber of layers not cannot be less than 1.")
+            raise AssertionError("Number of layers cannot be less than 1.")
 
         self._mapping = mapping
 
@@ -38,17 +42,18 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
         self._pt_model = self.define_model()
 
         # Used Metrics
-        metrics = MetricCollection([
-            Accuracy(num_classes=self._y_size, average="micro"),
-            Precision(num_classes=self._y_size, average="macro"),
-            Recall(num_classes=self._y_size, average="macro"),
-            F1Score(num_classes=self._y_size, average="macro"),
-            MatthewsCorrCoef(num_classes=self._y_size)
-            ])
+        metrics = MetricCollection(
+            [
+                Accuracy(num_classes=self._y_size, average="micro"),
+                Precision(num_classes=self._y_size, average="macro"),
+                Recall(num_classes=self._y_size, average="macro"),
+                F1Score(num_classes=self._y_size, average="macro"),
+                MatthewsCorrCoef(num_classes=self._y_size),
+            ]
+        )
         self.metrics = metrics
         self.train_acc = Accuracy(num_classes=self._y_size, average="micro")
         self.valid_acc = Accuracy(num_classes=self._y_size, average="micro")
-
 
     @property
     def mapping(self):
@@ -58,8 +63,7 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
     @property
     def invert_mapping(self):
         """Return {label:output index} mapping."""
-        return {val:key for key,val in self._mapping.items()}
-
+        return {val: key for key, val in self._mapping.items()}
 
     # --- Define general model structure ---
     def define_model(self):
@@ -68,10 +72,12 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
         # See the layers as matrix operations, as the weights, not the neurons.
 
         # input layer
-        layer_list.append(nn.Dropout(0.1)) # drop part of input
+        layer_list.append(nn.Dropout(0.1))  # drop part of input
         layer_list.append(nn.Linear(self._x_size, self._hl_size))
-        layer_list.append(nn.Dropout(self.dropout_rate)) # apply dropout to 1rst hidden layer
-        layer_list.append(nn.ReLU()) #relu on 1rst hidden layer
+        layer_list.append(
+            nn.Dropout(self.dropout_rate)
+        )  # apply dropout to 1rst hidden layer
+        layer_list.append(nn.ReLU())  # relu on 1rst hidden layer
 
         # hidden layers
         for _ in range(0, self._nb_layer - 1):
@@ -91,12 +97,9 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
     def configure_optimizers(self):
         """https://pytorch.org/docs/stable/optim.html"""
         optimizer = torch.optim.Adam(
-            self.parameters(),
-            lr=self.learning_rate,
-            weight_decay=self.l2_scale
-            )
+            self.parameters(), lr=self.learning_rate, weight_decay=self.l2_scale
+        )
         return optimizer
-
 
     # --- Define format of output ---
     def forward(self, x: torch.Tensor):
@@ -106,7 +109,6 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
     def forward_train(self, x):
         """Return logits."""
         return self._pt_model(x)
-
 
     # --- Define how training and validation is done, what loss is used ---
     def training_step(self, train_batch, batch_idx):
@@ -125,8 +127,8 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
         metrics = {
             "train_acc": self.train_acc,
             "train_loss": outputs["loss"],
-            "step": self.current_epoch + 1.0
-            }
+            "step": self.current_epoch + 1.0,
+        }
         self.log_dict(metrics, on_step=False, on_epoch=True)
 
     def validation_step(self, val_batch, batch_idx):
@@ -145,10 +147,9 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
         metrics = {
             "valid_acc": self.valid_acc,
             "valid_loss": outputs["loss"],
-            "step": self.current_epoch + 1.0
-            }
+            "step": self.current_epoch + 1.0,
+        }
         self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True)
-
 
     # --- Other information functions ---
     def print_model_summary(self, batch_size=1):
@@ -157,8 +158,8 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
         summary(
             model=self,
             input_size=(batch_size, self._x_size),
-            col_names=["input_size", "output_size", "num_params"]
-            )
+            col_names=["input_size", "output_size", "num_params"],
+        )
 
     def compute_metrics(self, dataset):
         """Return dict of metrics for given dataset."""
@@ -183,7 +184,7 @@ class LightningDenseClassifier(pl.LightningModule): # pylint: disable=too-many-a
 
         with open(path, "r", encoding="utf-8") as ckpt_file:
             lines = ckpt_file.read().splitlines()
-            ckpt_path = lines[-1].split(' ')[0]
+            ckpt_path = lines[-1].split(" ")[0]
 
         print(f"Loading model from {ckpt_path}")
         return LightningDenseClassifier.load_from_checkpoint(ckpt_path)
