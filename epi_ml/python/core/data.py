@@ -18,10 +18,11 @@ from .metadata import Metadata
 class AbstractDataset(object):
     """Parent of data and TestData, generalized object to deal with data."""
 
+    # TODO: actually make a data class without any true labels, which is supported within analysis.
     def __init__(self, ids, x, y, y_str):
         self._ids = ids
         self._num_examples = len(x)
-        self._signals = np.array(x)
+        self._signals = np.array(x, dtype=np.float32)
         self._labels = np.array(y)
         self._labels_str = y_str
         self._shuffle_order = np.arange(
