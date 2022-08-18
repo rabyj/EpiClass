@@ -1,0 +1,52 @@
+"""Merge predictions files produced from epilap program."""
+import argparse
+from pathlib import Path
+import sys
+from collections import OrderedDict
+
+import pandas as pd
+
+
+def parse_arguments(args: list) -> argparse.Namespace:
+    """argument parser for command line"""
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument(
+        "files", type=Path, nargs="+", help="The predictions files to merge. Should have same columns."
+    )
+    arg_parser.add_argument(
+        "-o", "--output", type=Path, nargs="?", help="Give a path for the output file.", default="all-predictions-merged.csv"
+        )
+    return arg_parser.parse_args(args)
+
+def main(args):
+    """Main"""
+    cli = parse_arguments(args)
+
+    dfs = OrderedDict()
+    for file in cli.files:
+        dfs[file.stem] = pd.read_csv(file, sep=",")
+
+    first_df = list(dfs.values())[0]
+    df_shape = first_df.shape
+    column_names = first_df.columns
+    for name, df in dfs.items():
+        if df.shape != df_shape:
+            raise AssertionError(f"Expected shape {df_shape}, got {df.shape}. File named {name} does not contain same csv shape as first file.")
+        if not df.columns.equals(column_names):
+            raise AssertionError(f"Headers are not identical. {name} differs from first file" )
+
+    column_names = pd.Index(column_names)
+    join_pos = column_names.get_loc("True class")
+    cut_pos_1 = column_names.get_loc("Same?")
+    cut_pos_2 = column_names.get_loc("Coherence count")
+    print("Will remove content between 'Same?' and 'Coherence count' columns except for first file.")
+
+    new_df = first_df
+    for name, df in dfs.items():
+        df = df.drop(df.columns[cut_pos_1+1:cut_pos_2], axis=1)
+        new_df = new_df.merge(df, on=list(column_names)[0:join_pos+1], suffixes=(None, f"-{name}"), validate="1:1")
+
+    new_df.to_csv(cli.output, sep=",", index=False)
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
