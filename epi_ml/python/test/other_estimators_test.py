@@ -8,28 +8,30 @@ import pandas as pd
 from sklearn.svm import SVC, LinearSVC
 from tabulate import tabulate
 
-from epi_ml.python.utils.time import time_now
+import epi_ml.python.other_estimators as other_estimators
 from epi_ml.python.core import metadata
 from epi_ml.python.core.data_source import EpiDataSource
-from epi_ml.python.test.core.epiatlas_treatment_test import EpiAtlasTreatment as EpiTest
 from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment as EpiAtlasTreatment
+from epi_ml.python.test.core.epiatlas_treatment_test import EpiAtlasTreatment as EpiTest
+from epi_ml.python.utils.time import time_now
 
 
-import epi_ml.python.other_estimators as other_estimators
-
-
-def optimize_svm(ea_handler: EpiAtlasTreatment, logdir: Path):
+def optimize_svm(ea_handler, logdir: Path):
     """Optimize an sklearn SVC over a hyperparameter space."""
     print("Starting SVM optimization")
     start_train = time_now()
     opt = other_estimators.tune_estimator(
-        LinearSVC(), ea_handler, other_estimators.SVM_LIN_SEARCH,
-        n_iter=2, concurrent_cv=1
+        LinearSVC(),
+        ea_handler,
+        other_estimators.SVM_LIN_SEARCH,
+        n_iter=2,
+        concurrent_cv=1,
+        n_jobs=1,
     )
     print(f"Total linear SVM optimisation time: {time_now()-start_train}")
 
     df = pd.DataFrame(opt.cv_results_)
-    print(tabulate(df, headers='keys', tablefmt='psql'))  # type: ignore
+    print(tabulate(df, headers="keys", tablefmt="psql"))  # type: ignore
     df.to_csv(logdir / "SVM_lin_optim.csv", sep=",")
 
 
@@ -56,7 +58,7 @@ def create_test_list(ea_handler: EpiTest):
         for md5 in md5s:
             md5_list.add(md5)
 
-            #other matching tracks
+            # other matching tracks
             for rest in md5_mapping[md5].values():
                 md5_list.add(rest)
 
@@ -64,14 +66,14 @@ def create_test_list(ea_handler: EpiTest):
             if i % 100 == 0:
                 break
 
-    with open("test.md5s", 'w', encoding="utf-8") as f:
+    with open("test.md5s", "w", encoding="utf-8") as f:
         for md5 in md5_list:
             f.write(f"{md5}\n")
 
     return md5_list
 
 
-def main(args): # pylint: disable=function-redefined
+def main(args):  # pylint: disable=function-redefined
     """main called from command line, edit to change behavior"""
     begin = time_now()
     print(f"begin {begin}")
@@ -79,18 +81,18 @@ def main(args): # pylint: disable=function-redefined
     # --- PARSE params and LOAD external files ---
     cli = other_estimators.parse_arguments(args)
 
-    my_datasource = EpiDataSource(
-        cli.hdf5,
-        cli.chromsize,
-        cli.metadata
-        )
+    my_datasource = EpiDataSource(cli.hdf5, cli.chromsize, cli.metadata)
 
     my_metadata = metadata.Metadata(my_datasource.metadata_file)
-    my_metadata.remove_category_subsets(label_category="track_type", labels=["Unique.raw"])
+    my_metadata.remove_category_subsets(
+        label_category="track_type", labels=["Unique.raw"]
+    )
 
     if os.getenv("EXCLUDE_LIST") is not None:
         exclude_list = json.loads(os.environ["EXCLUDE_LIST"])
-        my_metadata.remove_category_subsets(label_category=cli.category, labels=exclude_list)
+        my_metadata.remove_category_subsets(
+            label_category=cli.category, labels=exclude_list
+        )
 
     if os.getenv("ASSAY_LIST") is not None:
         assay_list = json.loads(os.environ["ASSAY_LIST"])
@@ -104,7 +106,6 @@ def main(args): # pylint: disable=function-redefined
     else:
         min_class_size = 10
 
-
     #  -- test list creation --
     # my_datasource = EpiDataSource(
     #     cli.hdf5.parent / "100kb_all_none_plus.list",
@@ -117,20 +118,16 @@ def main(args): # pylint: disable=function-redefined
     # )
     # create_test_list(ea_handler) # type: ignore
 
-
-
     # -- debugging time --
     loading_begin = time_now()
 
-    # with open("test.md5s", "r", encoding="utf-8") as md5_file:
-    #     chosen_md5s = {line.rstrip() for line in md5_file}
-
-    # for md5 in list(my_metadata.md5s):
-    #     if md5 not in chosen_md5s:
-    #         del my_metadata[md5]
-
-    ea_handler = EpiTest(my_datasource, cli.category, assay_list,
-    n_fold=9, test_ratio=0.1, min_class_size=min_class_size, meta=my_metadata
+    ea_handler = EpiAtlasTreatment(
+        my_datasource,
+        cli.category,
+        assay_list,
+        n_fold=2,
+        test_ratio=0,
+        min_class_size=min_class_size,
     )
 
     loading_time = time_now() - loading_begin
@@ -141,11 +138,11 @@ def main(args): # pylint: disable=function-redefined
         optimize_svm(ea_handler, cli.logdir)  # type: ignore
         sys.exit()
     elif cli.only_rf:
-        other_estimators.optimize_rf(ea_handler, cli.logdir, n_iter) # type: ignore
+        other_estimators.optimize_rf(ea_handler, cli.logdir, n_iter)  # type: ignore
         sys.exit()
     else:
-        other_estimators.optimize_rf(ea_handler, cli.logdir, n_iter) # type: ignore
-        optimize_svm(ea_handler, cli.logdir) # type: ignore
+        other_estimators.optimize_rf(ea_handler, cli.logdir, n_iter)  # type: ignore
+        optimize_svm(ea_handler, cli.logdir)  # type: ignore
 
 
 if __name__ == "__main__":

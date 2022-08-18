@@ -1,4 +1,6 @@
 """Main"""
+from __future__ import annotations
+
 import argparse
 import json
 import os
@@ -116,11 +118,19 @@ def tune_estimator(
     params: dict,
     n_iter: int,
     concurrent_cv: int = 1,
+    n_jobs: int | None = None,
 ):
-    """Apply Bayesian optimization over hyperparameters search space."""
+    """Apply Bayesian optimization over hyperparameters search space.
+
+    n_iter: Total number of parameter settings to sample.
+    concurrent_cv: Number of full cross-validation process (X folds) to run in parallel
+    n_jobs: Number of jobs to run in parallel. Max NFOLD_TUNE * concurrent_cv.
+    """
     pipe = Pipeline(steps=[("scaler", StandardScaler()), ("model", my_model)])
 
-    n_jobs = NFOLD_TUNE * concurrent_cv
+    if n_jobs is None:
+        n_jobs = int(NFOLD_TUNE * concurrent_cv)
+
     if n_jobs > 48:
         raise AssertionError("More jobs than cores asked, max 48 jobs.")
 
