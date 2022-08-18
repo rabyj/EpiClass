@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import collections
 import math
-from typing import List
+from typing import List, Union
 
 import numpy as np
 from imblearn.over_sampling import RandomOverSampler
@@ -15,7 +15,7 @@ from .hdf5_loader import Hdf5Loader
 from .metadata import Metadata
 
 
-class AbstractDataset(object):
+class AbstractData(object):
     """Parent of data and TestData, generalized object to deal with data."""
 
     # TODO: actually make a data class without any true labels, which is supported within analysis.
@@ -99,7 +99,7 @@ class AbstractDataset(object):
         return self._num_examples
 
 
-class Data(AbstractDataset):
+class Data(AbstractData):
     """Generalised object to deal with data.
 
     ids : Signal identifier
@@ -137,7 +137,7 @@ class Data(AbstractDataset):
         return obj
 
 
-class TestData(AbstractDataset):
+class TestData(AbstractData):
     """Generalised object to deal with data, without any labels/metadata.
 
     ids : Signal identifier
@@ -152,9 +152,9 @@ class DataSet(object):  # class Data?
 
     def __init__(
         self,
-        training: AbstractDataset,
-        validation: AbstractDataset,
-        test: AbstractDataset,
+        training: Union[Data, TestData],
+        validation: Union[Data, TestData],
+        test: Union[Data, TestData],
         sorted_classes,
     ):
         self._train = training
@@ -163,17 +163,17 @@ class DataSet(object):  # class Data?
         self._sorted_classes = sorted_classes
 
     @property
-    def train(self) -> AbstractDataset:
+    def train(self) -> Union[Data, TestData]:
         """Training set"""
         return self._train
 
     @property
-    def validation(self) -> AbstractDataset:
+    def validation(self) -> Union[Data, TestData]:
         """Validation set"""
         return self._validation
 
     @property
-    def test(self) -> AbstractDataset:
+    def test(self) -> Union[Data, TestData]:
         """Test set"""
         return self._test
 
@@ -192,17 +192,17 @@ class DataSet(object):  # class Data?
         obj._sorted_classes = []
         return obj
 
-    def set_train(self, dset: AbstractDataset):
+    def set_train(self, dset: Union[Data, TestData]):
         """Set training set."""
         self._train = dset
         self._reset_classes()
 
-    def set_validation(self, dset: AbstractDataset):
+    def set_validation(self, dset: Union[Data, TestData]):
         """Set validation set."""
         self._validation = dset
         self._reset_classes()
 
-    def set_test(self, dset: AbstractDataset):
+    def set_test(self, dset: Union[Data, TestData]):
         """Set testing set."""
         self._test = dset
         self._reset_classes()
