@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 from epi_ml.python.core.metadata import Metadata
+from epi_ml.python.utils.augment_predict_file import add_coherence
 
 merge_fetal_tissues = {
     "fetal_intestine_large": "fetal_intestine",
@@ -45,6 +46,28 @@ dp_assays = [
     "rna_seq",
     "wgb_seq",
 ]
+
+epiatlas_cats = set(
+    [
+        "uuid",
+        "inputs",
+        "inputs_ctl",
+        "original_read_length",
+        "original_read_length_ctl",
+        "trimmed_read_length",
+        "trimmed_read_length_ctl",
+        "software_version",
+        "chastity_passed",
+        "paired_end_mode",
+        "antibody_nan",
+        "gembs_config",
+        "rna_seq_type",
+        "analyzed_as_stranded",
+        "paired",
+        "antibody",
+        "upload_date",
+    ]
+)
 
 
 def keep_major_cell_types_alt(my_metadata: Metadata):
@@ -312,32 +335,60 @@ def make_table(my_metadata: Metadata, cat1, cat2, filepath):
     table.to_csv(filepath, sep="\t")
 
 
+def compute_coherence_on_all(meta: Metadata):
+    """Compute coherence on all metadata categories."""
+    for dset in list(meta.datasets):
+        if dset["track_type"] in set({"pval", "fc"}):
+            del meta[dset["md5sum"]]
+
+    df = pd.DataFrame(list(meta.datasets))  # type: ignore
+    df = df.replace(r"^\s*$", "--", regex=True)
+
+    for category in list(df.columns):
+        if category not in epiatlas_cats | set(
+            [
+                "md5sum",
+                "EpiRR",
+                "epirr_id",
+                "track_type",
+                "assay",
+            ]
+        ):
+            add_coherence(df, category)
+
+    df.drop(df.filter(regex="Coherence count").columns, axis=1, inplace=True)  # type: ignore
+
+    df.to_csv("test.csv", index=False)
+
+
 def main():
 
     base = Path("/home/local/USHERBROOKE/rabj2301/Projects/epilap/")
     path = base / "input//metadata/merged_EpiAtlas_allmetadatav9.json"
     my_metadata = Metadata(path)
 
-    cat1 = "assay"
-    cat2 = "cell_type"
+    compute_coherence_on_all(my_metadata)
 
-    my_metadata.select_category_subsets(cat1, epiatlas_assays)
-    my_metadata.remove_category_subsets(cat2, ["other", "--", "NA", ""])
-    my_metadata.remove_small_classes(10, cat2)
+    # cat1 = "assay"
+    # cat2 = "cell_type"
 
-    cell_types = my_metadata.md5_per_class("cell_type").keys()
-    to_keep = []
-    for cell_type in cell_types:
-        temp_meta = copy.deepcopy(my_metadata)
-        temp_meta.select_category_subsets(cat2, [cell_type])
+    # my_metadata.select_category_subsets(cat1, epiatlas_assays)
+    # my_metadata.remove_category_subsets(cat2, ["other", "--", "NA", ""])
+    # my_metadata.remove_small_classes(10, cat2)
 
-        for md5s in temp_meta.md5_per_class("assay").values():
-            if len(md5s) >= 10:
-                to_keep.append(cell_type)
-                break
+    # cell_types = my_metadata.md5_per_class("cell_type").keys()
+    # to_keep = []
+    # for cell_type in cell_types:
+    #     temp_meta = copy.deepcopy(my_metadata)
+    #     temp_meta.select_category_subsets(cat2, [cell_type])
 
-    my_metadata.select_category_subsets("cell_type", to_keep)
-    make_table(my_metadata, cat1, cat2, "test.tsv")
+    #     for md5s in temp_meta.md5_per_class("assay").values():
+    #         if len(md5s) >= 10:
+    #             to_keep.append(cell_type)
+    #             break
+
+    # my_metadata.select_category_subsets("cell_type", to_keep)
+    # make_table(my_metadata, cat1, cat2, "test.tsv")
 
 
 if __name__ == "__main__":

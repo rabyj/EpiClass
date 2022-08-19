@@ -142,26 +142,42 @@ def add_matrices(logdir: str):
     mat.to_all_formats(logdir=logdir, name="full-10fold-validation")
 
 
-def add_coherence(path):
+def write_coherence(path, category: str):
+    """Read file, add coherence for given category, write it updated to same path."""
+    df = pd.read_csv(path, sep=",")
+    add_coherence(df, category)
+    df.to_csv(path, sep=",", index=False)
+
+
+def add_coherence(df: pd.DataFrame, category: str):
     """Add another metric based on multiple lines. Needs a file with EpiRR column.
 
     https://stackoverflow.com/questions/17995024/how-to-assign-a-name-to-the-size-column
     https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.transform.html
     """
-    df = pd.read_csv(path, sep=",")
-
+    df.set_index("md5sum")
     groups = df.groupby("EpiRR")
-    df["files/epiRR"] = groups["md5sum"].transform("size")
+    if "files/epiRR" not in df.columns:
+        df["files/epiRR"] = groups["md5sum"].transform("size")
 
-    groups = df.groupby(["EpiRR", "Predicted class"])
-    df["Coherence count"] = groups["md5sum"].transform("size")
+    # compute coherence count/ratio, make category column countable beforehand
+    cat_dtype = df[category].dtype
+    df[category] = df[category].astype(str)
 
-    df["Coherence ratio"] = df["Coherence count"] / df["files/epiRR"]
-    df["Coherence ratio"] = pd.Series(
-        [f"{round(val, 3):,.1%}" for val in df["Coherence ratio"]], index=df.index
+    groups = df.groupby(["EpiRR", category])
+    df[f"{category} Coherence count"] = groups["md5sum"].transform("size")
+
+    df[f"{category} Coherence ratio"] = df[f"{category} Coherence count"] / (
+        1.0 * df["files/epiRR"]
     )
+    # format to %
+    # df[f"{category} Coherence ratio"] = pd.Series(
+    #     [f"{round(val, 3):.1f}%" for val in df[f"{category} Coherence ratio"]],
+    #     index=df.index,
+    # )
 
-    df.to_csv(path, sep=",", index=False)
+    # return category to initial dtype
+    df[category] = df[category].astype(cat_dtype)
 
 
 def main(argv):
@@ -181,7 +197,7 @@ def main(argv):
         new_path = augment_predict(
             metadata, args.predict, categories, append_name="all"
         )
-        add_coherence(new_path)
+        write_coherence(new_path, "Predicted class")
     else:
         augment_predict(metadata, args.predict, categories)
 
