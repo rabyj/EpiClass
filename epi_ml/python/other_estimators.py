@@ -134,10 +134,13 @@ def tune_estimator(
     if n_jobs > 48:
         raise AssertionError("More jobs than cores asked, max 48 jobs.")
 
+    total_data = ea_handler.create_total_data()
+    print(f"Number of files used globally {len(total_data)}")
+
     opt = BayesSearchCV(
         pipe,
         search_spaces=params,
-        cv=ea_handler.split(),
+        cv=ea_handler.split(total_data),
         random_state=RNG,
         return_train_score=True,
         error_score=-1,  # type: ignore
@@ -148,9 +151,6 @@ def tune_estimator(
         n_points=concurrent_cv,
         n_iter=n_iter,
     )
-
-    total_data = ea_handler.create_total_data()
-    print(f"Number of files used globally {len(total_data)}")
 
     opt.fit(X=total_data.signals, y=total_data.encoded_labels, callback=on_step)
 
