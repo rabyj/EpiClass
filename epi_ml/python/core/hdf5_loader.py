@@ -1,5 +1,7 @@
 """Module for hdf5 loading handling."""
+# pylint: disable=unexpected-keyword-arg
 from __future__ import annotations
+
 import os
 from pathlib import Path
 from typing import Dict
@@ -7,13 +9,15 @@ from typing import Dict
 import h5py
 import numpy as np
 
+
 class Hdf5Loader(object):
     """Handles loading/creating signals from hdf5 files"""
+
     def __init__(self, chrom_file, normalization: bool):
         self._normalization = normalization
         self._chroms = self._load_chroms(chrom_file)
-        self._files = None
-        self._signals = None
+        self._files = {}
+        self._signals = {}
 
     @property
     def loaded_files(self) -> Dict[str, Path]:
@@ -29,7 +33,7 @@ class Hdf5Loader(object):
 
     def _load_chroms(self, chrom_file):
         """Return sorted chromosome names list."""
-        with open(chrom_file, 'r', encoding="utf-8") as file:
+        with open(chrom_file, "r", encoding="utf-8") as file:
             chroms = []
             for line in file:
                 line = line.rstrip()
@@ -39,9 +43,9 @@ class Hdf5Loader(object):
             return chroms
 
     @staticmethod
-    def read_list(data_file:Path) -> Dict[str, Path]:
+    def read_list(data_file: Path) -> Dict[str, Path]:
         """Return {md5:file} dict from file of paths list."""
-        with open(data_file, 'r', encoding="utf-8") as file_of_paths:
+        with open(data_file, "r", encoding="utf-8") as file_of_paths:
             files = {}
             for path in file_of_paths:
                 path = Path(path.rstrip())
@@ -60,13 +64,14 @@ class Hdf5Loader(object):
         files = Hdf5Loader.adapt_to_environment(files)
         self._files = files
 
-        #Remove undesired files
+        # Remove undesired files
         if md5s is not None:
             chosen_md5s = set(md5s)
+            #fmt: off
             files = {
-                md5:path for md5,path in files.items()
+                md5: path for md5, path in files.items()
                 if md5 in chosen_md5s
-            }
+                } #fmt: on
 
             absent_md5s = chosen_md5s - set(files.keys())
             if absent_md5s and verbose:
@@ -74,20 +79,21 @@ class Hdf5Loader(object):
                 for md5 in absent_md5s:
                     print(md5)
 
-        #Load hdf5s and concatenate chroms into signals
+        # Load hdf5s and concatenate chroms into signals
         signals = {}
         for md5, file in files.items():
             f = h5py.File(file)
             chrom_signals = []
             for chrom in self._chroms:
-                array = f[md5][chrom][...]
+                array = f[md5][chrom][...]  # type: ignore
                 chrom_signals.append(array)
-            signals[md5] = self._normalize(np.concatenate(chrom_signals, dtype=np.float32)) # pylint: disable=unexpected-keyword-arg
+            signals[md5] = self._normalize(
+                np.concatenate(chrom_signals, dtype=np.float32)
+            )
 
         self._signals = signals
 
         return self
-
 
     def _normalize(self, array):
         if self._normalization:
@@ -101,7 +107,9 @@ class Hdf5Loader(object):
         return file_name.name.split("_")[0]
 
     @staticmethod
-    def adapt_to_environment(files: dict, new_parent="hdf5s"):
+    def adapt_to_environment(
+        files: Dict[str, Path], new_parent="hdf5s"
+    ) -> Dict[str, Path]:
         """Change files paths if they exist on cluster scratch.
 
         Files : {md5:path} dict.
