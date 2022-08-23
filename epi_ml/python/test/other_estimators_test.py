@@ -26,7 +26,7 @@ def optimize_svm(ea_handler, logdir: Path):
         params=other_estimators.SVM_LIN_SEARCH,
         standard_scaling=True,
         concurrent_cv=1,
-        n_jobs=1,
+        n_iter=1,
     )
     print(f"Total linear SVM optimisation time: {time_now()-start_train}")
 
