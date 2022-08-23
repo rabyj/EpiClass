@@ -64,14 +64,21 @@ else:
 
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
+    # fmt: off
     parser = argparse.ArgumentParser()
     group1 = parser.add_argument_group("General")
-    group1.add_argument("category", type=str, help="The metatada category to analyse.")
+    group1.add_argument(
+        "category", type=str, help="The metatada category to analyse."
+        )
     group1.add_argument(
         "hdf5", type=Path, help="A file with hdf5 filenames. Use absolute path!"
     )
-    group1.add_argument("chromsize", type=Path, help="A file with chrom sizes.")
-    group1.add_argument("metadata", type=Path, help="A metadata JSON file.")
+    group1.add_argument(
+        "chromsize", type=Path, help="A file with chrom sizes."
+        )
+    group1.add_argument(
+        "metadata", type=Path, help="A metadata JSON file."
+        )
     group1.add_argument(
         "logdir", type=DirectoryChecker(), help="Directory for the output logs."
     )
@@ -92,7 +99,9 @@ def parse_arguments(args: list) -> argparse.Namespace:
         default=30,
         help="Number of BayesSearchCV hyperparameters iterations.",
     )
-    tune.add_argument("--only-svm", action="store_true", help="Only use SVM estimator.")
+    tune.add_argument(
+        "--only-svm", action="store_true", help="Only use SVM estimator. Runs both linear and RBF."
+        )
     tune.add_argument(
         "--only-rf", action="store_true", help="Only use random forest estimator."
     )
@@ -103,7 +112,7 @@ def parse_arguments(args: list) -> argparse.Namespace:
         type=Path,
         help="A file with chosen hyperparameters for each estimator. Needs a specific format.",
     )
-
+    # fmt: on
     return parser.parse_args(args)
 
 
