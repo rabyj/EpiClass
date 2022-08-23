@@ -21,10 +21,10 @@ def optimize_svm(ea_handler, logdir: Path):
     print("Starting SVM optimization")
     start_train = time_now()
     opt = other_estimators.tune_estimator(
-        model=LinearSVC(),
-        ea_handler=ea_handler,
-        params=other_estimators.SVM_LIN_SEARCH,
-        standard_scaling=True,
+        LinearSVC(),
+        ea_handler,
+        other_estimators.SVM_LIN_SEARCH,
+        n_iter=2,
         concurrent_cv=1,
         n_iter=1,
     )

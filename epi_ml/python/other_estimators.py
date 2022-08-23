@@ -136,10 +136,9 @@ deadline_cb = DeadlineStopper(total_time=60 * 60 * 8)
 
 
 def tune_estimator(
-    model,
+    my_model,
     ea_handler: EpiAtlasTreatment,
     params: dict,
-    standard_scaling: bool,
     n_iter: int,
     concurrent_cv: int = 1,
     n_jobs: int | None = None,
@@ -150,10 +149,7 @@ def tune_estimator(
     concurrent_cv: Number of full cross-validation process (X folds) to run in parallel
     n_jobs: Number of jobs to run in parallel. Max NFOLD_TUNE * concurrent_cv.
     """
-    if standard_scaling:
-        pipe = Pipeline(steps=[("scaler", StandardScaler()), ("model", model)])
-    else:
-        pipe = Pipeline(steps=[("model", model)])
+    pipe = Pipeline(steps=[("scaler", StandardScaler()), ("model", my_model)])
 
     if n_jobs is None:
         n_jobs = int(NFOLD_TUNE * concurrent_cv)
@@ -196,10 +192,9 @@ def optimize_svm(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
 
     start_train = time_now()
     opt = tune_estimator(
-        model=LinearSVC(),
-        ea_handler=ea_handler,
-        params=SVM_LIN_SEARCH,
-        standard_scaling=True,
+        LinearSVC(),
+        ea_handler,
+        SVM_LIN_SEARCH,
         n_iter=n_iter,
         concurrent_cv=CONCURRENT_CV,
     )
@@ -215,9 +210,8 @@ def optimize_svm(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
     start_train = time_now()
     opt = tune_estimator(
         SVC(cache_size=3000, kernel="rbf"),
-        ea_handler=ea_handler,
-        params=SVM_RBF_SEARCH,
-        standard_scaling=True,
+        ea_handler,
+        SVM_RBF_SEARCH,
         n_iter=n_iter,
         concurrent_cv=CONCURRENT_CV,
     )
@@ -236,11 +230,10 @@ def optimize_rf(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
     print("Starting RF optimization")
     start_train = time_now()
     opt = tune_estimator(
-        model=RandomForestClassifier(),
-        ea_handler=ea_handler,
-        params=RF_SEARCH,
-        standard_scaling=False,
-        n_iter=n_iter,
+        RandomForestClassifier(),
+        ea_handler,
+        RF_SEARCH,
+        n_iter,
         concurrent_cv=CONCURRENT_CV,
     )
     print(f"Total RF optimisation time: {time_now()-start_train}")
