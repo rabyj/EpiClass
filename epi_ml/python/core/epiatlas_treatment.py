@@ -5,6 +5,7 @@ from __future__ import annotations
 import collections
 import copy
 import itertools
+import warnings
 from typing import Dict, Generator, List
 
 import numpy as np
@@ -201,12 +202,13 @@ class EpiAtlasTreatment(object):
 
                     other_signals = [self._other_tracks[md5] for md5 in other_md5s]
 
+                    # order important, leader track first, order used for find_other_tracks.
                     new_md5s.extend([chosen_md5] + other_md5s)
                     new_signals.extend([signal] + other_signals)
+                    new_str_labels.extend([label for _ in range(len(other_md5s) + 1)])
                     new_encoded_labels.extend(
                         [encoded_label for _ in range(len(other_md5s) + 1)]
                     )
-                    new_str_labels.extend([label for _ in range(len(other_md5s) + 1)])
 
                 elif track_type == "ctl_raw":
                     new_md5s.append(chosen_md5)
@@ -254,15 +256,44 @@ class EpiAtlasTreatment(object):
             resample=False,
         )
 
+    def _correct_signal_group(self, md5s: List, verbose=True):
+        """Return md5s corresponding to signal having the same EpiRR and assay (same group, like a pair or trio).
+        as the first md5 (expected to be leader track), if they are contiguous with first signal.
+        """
+        info = [
+            (
+                self._complete_metadata[md5]["EpiRR"],
+                self._complete_metadata[md5]["assay"],
+            )
+            for md5 in md5s
+        ]
+        if len(set(info)) != 1:
+            if verbose:
+                warnings.warn(
+                    "Signals not from the same group in function _correct_signal_group. md5s: {md5s}. Returning subset."
+                )
+
+            if info[0] == info[1]:
+                return info[0:2]
+            else:
+                if verbose:
+                    warnings.warn("No matching signals. Returning first md5.")
+                return info[0]
+
+        else:
+            return info[:]
+
     def _find_other_tracks(
         self, selected_positions, dset: data.Data, resample: bool, md5_mapping: dict
     ) -> list:
         """Return indexes that sample from complete data, i.e. all signals with their match next to them.
+        Uses logic from create_total_data and add_other_tracks.
 
         md5_mapping : total data signal position dict of format {md5sum:i}
         """
         raw_dset = dset
         idxs = collections.Counter(i for i in np.arange(raw_dset.num_examples))
+        index_mapping = {v: k for k, v in md5_mapping.items()}
 
         if resample:
             _, _, idxs = data.EpiData.oversample_data(
@@ -291,8 +322,16 @@ class EpiAtlasTreatment(object):
             if track_type in TRACKS_MAPPING:
 
                 pos1 = md5_mapping[chosen_md5]
-
                 all_match_indexes = list(range(pos1, pos1 + other_nb + 1))
+
+                # check if all expected md5s have same epiRR and assay. correct if needed.
+                if other_nb != 0:
+                    md5s = [index_mapping[i] for i in all_match_indexes]
+                    md5s = self._correct_signal_group(md5s)
+                    if len(md5s) - 1 != other_nb:
+                        other_nb = len(md5s) - 1
+                        all_match_indexes = list(range(pos1, pos1 + other_nb + 1))
+
                 new_selected_positions.extend(all_match_indexes * rep)
 
             else:
@@ -300,6 +339,7 @@ class EpiAtlasTreatment(object):
 
         return new_selected_positions
 
+    # pylint: disable=unused-argument
     def split(
         self,
         total_data: data.Data,
