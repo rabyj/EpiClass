@@ -16,6 +16,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC, LinearSVC
 from skopt import BayesSearchCV
+from skopt.callbacks import DeadlineStopper
 from skopt.space import Categorical, Integer, Real
 from tabulate import tabulate
 
@@ -126,9 +127,12 @@ def parse_arguments(args: list) -> argparse.Namespace:
     return parser.parse_args(args)
 
 
-def on_step(result):
+def best_params_cb(result):
     """BayesSearchCV callback"""
     print(f"Best params yet: {result.x}")
+
+
+deadline_cb = DeadlineStopper(total_time=60 * 60 * 8)
 
 
 def tune_estimator(
@@ -175,7 +179,11 @@ def tune_estimator(
         n_iter=n_iter,
     )
 
-    opt.fit(X=total_data.signals, y=total_data.encoded_labels, callback=on_step)
+    opt.fit(
+        X=total_data.signals,
+        y=total_data.encoded_labels,
+        callback=[best_params_cb, deadline_cb],
+    )
 
     print(f"best params: {opt.best_params_}")
     return opt
