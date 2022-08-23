@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import glob
 import json
 import os
 import sys
@@ -54,12 +55,18 @@ RF_SEARCH = {
     "model__min_samples_split": Categorical([0.01, 0.05, 0.1, 0.3]),
 }
 
-mapping = {"LinearSVC": LinearSVC(), "SVC": SVC(), "RF": RandomForestClassifier()}
+mapping = {
+    "LinearSVC": Pipeline(steps=[("scaler", StandardScaler()), ("model", LinearSVC())]),
+    "SVC": Pipeline(steps=[("scaler", StandardScaler()), ("model", SVC())]),
+    "RF": Pipeline(steps=[("model", RandomForestClassifier())]),
+}
 
 if os.getenv("CONCURRENT_CV") is not None:
     CONCURRENT_CV = int(os.environ["CONCURRENT_CV"])
 else:
     CONCURRENT_CV = 1
+
+# TODO: make recurring path pattern a global variable that gets formatted with a specific name
 
 
 def parse_arguments(args: list) -> argparse.Namespace:
@@ -91,6 +98,9 @@ def parse_arguments(args: list) -> argparse.Namespace:
     mode.add_argument(
         "--predict", action="store_true", help="Fit and predict using hyperparameters."
     )
+    mode.add_argument(
+        "--full-run", action="store_true", help="Tune then predict"
+        )
 
     tune = parser.add_argument_group("Tune")
     tune.add_argument(
@@ -110,7 +120,7 @@ def parse_arguments(args: list) -> argparse.Namespace:
     predict.add_argument(
         "--hparams",
         type=Path,
-        help="A file with chosen hyperparameters for each estimator. Needs a specific format.",
+        help="A file with chosen hyperparameters for each estimator. Needs a specific format. Will search for a file for each estimator by default.",
     )
     # fmt: on
     return parser.parse_args(args)
@@ -189,7 +199,10 @@ def optimize_svm(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
 
     df = pd.DataFrame(opt.cv_results_)
     print(tabulate(df, headers="keys", tablefmt="psql"))  # type: ignore
-    df.to_csv(logdir / "SVM_lin_optim.csv", sep=",")
+    df.to_csv(logdir / "LinearSVC_optim.csv", sep=",")
+
+    with open(logdir / "LinearSVC_best_params.json", "w", encoding="utf-8") as f:
+        json.dump(obj=opt.best_params_, fp=f)
 
     start_train = time_now()
     opt = tune_estimator(
@@ -204,7 +217,10 @@ def optimize_svm(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
 
     df = pd.DataFrame(opt.cv_results_)
     print(tabulate(df, headers="keys", tablefmt="psql"))  # type: ignore
-    df.to_csv(logdir / "SVM_rbf_optim.csv", sep=",")
+    df.to_csv(logdir / "SVC_optim.csv", sep=",")
+
+    with open(logdir / "SVC_best_params.json", "w", encoding="utf-8") as f:
+        json.dump(obj=opt.best_params_, fp=f)
 
 
 def optimize_rf(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
@@ -225,6 +241,33 @@ def optimize_rf(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
     print(tabulate(df, headers="keys", tablefmt="psql"))  # type: ignore
     df.to_csv(logdir / "RF_optim.csv", sep=",")
 
+    with open(logdir / "RF_best_params.json", "w", encoding="utf-8") as f:
+        json.dump(obj=opt.best_params_, fp=f)
+
+
+def run_predictions(ea_handler: EpiAtlasTreatment, estimator, name: str, logdir: Path):
+    """Run predictions"""
+    for i, my_data in enumerate(ea_handler.yield_split()):
+
+        print(f"Split {i} training size: {my_data.train.num_examples}")
+        nb_files = len(
+            set(my_data.train.ids.tolist() + my_data.validation.ids.tolist())
+        )
+        print(f"Total nb of files: {nb_files}")
+
+        estimator.fit(X=my_data.train.signals, y=my_data.train.encoded_labels)
+
+        analyzer = EstimatorAnalyzer(my_data.classes, estimator)
+
+        X, y = my_data.validation.signals, my_data.validation.encoded_labels
+        analyzer.metrics(X, y)
+        analyzer.predict_file(
+            my_data.validation.ids,
+            X,
+            y,
+            logdir / f"{name}_split{i}_validation_prediction.csv",
+        )
+
 
 def main(args):
     """main called from command line, edit to change behavior"""
@@ -233,6 +276,16 @@ def main(args):
 
     # --- PARSE params and LOAD external files ---
     cli = parse_arguments(args)
+
+    if cli.tune is True:
+        mode_tune = True
+        mode_predict = False
+    elif cli.predict is True:
+        mode_tune = False
+        mode_predict = True
+    elif cli.full_run is True:
+        mode_tune = True
+        mode_predict = True
 
     my_datasource = EpiDataSource(cli.hdf5, cli.chromsize, cli.metadata)
 
@@ -260,7 +313,7 @@ def main(args):
         min_class_size = 10
 
     loading_begin = time_now()
-    if cli.tune is True:
+    if mode_tune is True:  # type: ignore
         print("Entering tuning mode")
         ea_handler = EpiAtlasTreatment(
             my_datasource,
@@ -284,13 +337,9 @@ def main(args):
             optimize_rf(ea_handler, cli.logdir, n_iter)
             optimize_svm(ea_handler, cli.logdir, n_iter)
 
-    if cli.predict is True:
+    if mode_predict is True:  # type: ignore
         print("Entering fit/prediction mode")
-        if cli.hparams is None:
-            raise AssertionError(
-                "--hparams not given. Hyperparameters needed for predict mode."
-            )
-        elif not cli.hparams.exists():
+        if cli.hparams is not None and not cli.hparams.exists():
             raise AssertionError("hparams file does not exist: {cli.hparams}")
 
         ea_handler = EpiAtlasTreatment(
@@ -304,35 +353,32 @@ def main(args):
         loading_time = time_now() - loading_begin
         print(f"Initial hdf5 loading time: {loading_time}")
 
-        with open(cli.hparams, "r", encoding="utf-8") as file:
-            hparams = json.load(file)
+        if cli.hparams is not None:
+            with open(cli.hparams, "r", encoding="utf-8") as file:
+                hparams = json.load(file)
 
-        for name, hparams in hparams.items():
-            estimator = mapping[name]
-            estimator.set_params(**hparams)
-            print(
-                f"Fitting and making predictions with {name} estimator. Fit with hparams {hparams}."
-            )
-            for i, my_data in enumerate(ea_handler.yield_split()):
-
-                print(f"Split {i} training size: {my_data.train.num_examples}")
-                nb_files = len(
-                    set(my_data.train.ids.tolist() + my_data.validation.ids.tolist())
+            for name, hparams in hparams.items():
+                estimator = mapping[name]
+                estimator.set_params(**hparams)
+                print(
+                    f"Fitting and making predictions with {name} estimator. Fit with hparams {hparams}."
                 )
-                print(f"Total nb of files: {nb_files}")
+                run_predictions(ea_handler, estimator, name, cli.logdir)
 
-                estimator.fit(my_data.train.signals, my_data.train.encoded_labels)
+        else:
+            pattern = f"{cli.logdir / '*_best_params.json'}"
+            hparam_files = glob.glob(pattern)
+            for filepath in hparam_files:
 
-                analyzer = EstimatorAnalyzer(my_data.classes, estimator)
+                with open(filepath, "r", encoding="utf-8") as file:
+                    hparams = json.load(file)
 
-                X, y = my_data.validation.signals, my_data.validation.encoded_labels
-                analyzer.metrics(X, y)
-                analyzer.predict_file(
-                    my_data.validation.ids,
-                    X,
-                    y,
-                    cli.logdir / f"{name}_split{i}_validation_prediction.csv",
-                )
+                filepath = Path(filepath)
+                name = filepath.stem.split(sep="_", maxsplit=1)[0]
+                estimator = mapping[name]
+                estimator.set_params(**hparams)
+
+                run_predictions(ea_handler, estimator, name, cli.logdir)
 
 
 if __name__ == "__main__":
