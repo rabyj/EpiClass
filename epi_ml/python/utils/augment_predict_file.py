@@ -15,13 +15,16 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from epi_ml.python.argparseutils.DefaultHelpParser import (
+    DefaultHelpParser as ArgumentParser,
+)
 from epi_ml.python.core.confusion_matrix import ConfusionMatrixWriter as ConfusionMatrix
 from epi_ml.python.core.metadata import Metadata
 
 
-def parse_args(argv):
+def parse_arguments(argv: list) -> argparse.Namespace:
     """Return argument line parser."""
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser()
 
     parser.add_argument(
         "predict", type=Path, help="Predict file to augment with metadata."
@@ -188,7 +191,7 @@ def main(argv):
         logdir = os.environ["LOG"]
         add_matrices(logdir)
 
-    args = parse_args(argv)
+    args = parse_arguments(argv)
     metadata = Metadata(args.metadata)
 
     categories = args.categories

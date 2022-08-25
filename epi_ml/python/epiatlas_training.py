@@ -16,6 +16,9 @@ import torch
 from pytorch_lightning import loggers as pl_loggers
 from torch.utils.data import DataLoader, TensorDataset
 
+from epi_ml.python.argparseutils.DefaultHelpParser import (
+    DefaultHelpParser as ArgumentParser,
+)
 from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
 from epi_ml.python.core import analysis, metadata
 from epi_ml.python.core.data_source import EpiDataSource
@@ -39,7 +42,7 @@ class DatasetError(Exception):
 
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
-    arg_parser = argparse.ArgumentParser()
+    arg_parser = ArgumentParser()
     arg_parser.add_argument(
         "category", type=str, help="The metatada category to analyse."
     )

@@ -20,6 +20,9 @@ from skopt.callbacks import DeadlineStopper
 from skopt.space import Categorical, Integer, Real
 from tabulate import tabulate
 
+from epi_ml.python.argparseutils.DefaultHelpParser import (
+    DefaultHelpParser as ArgumentParser,
+)
 from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
 from epi_ml.python.core import metadata
 from epi_ml.python.core.data_source import EpiDataSource
@@ -74,7 +77,7 @@ best_params_file_format = "{name}_best_params.json"
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
     # fmt: off
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser()
     group1 = parser.add_argument_group("General")
     group1.add_argument(
         "category", type=str, help="The metatada category to analyse."
@@ -112,10 +115,10 @@ def parse_arguments(args: list) -> argparse.Namespace:
         help="Number of BayesSearchCV hyperparameters iterations.",
     )
     tune.add_argument(
-        "--only-svm", action="store_true", help="Only use SVM estimator. Runs both linear and RBF."
+        "--only-svm", action="store_true", help="Only TUNE SVM estimator. Runs both linear and RBF."
         )
     tune.add_argument(
-        "--only-rf", action="store_true", help="Only use random forest estimator."
+        "--only-rf", action="store_true", help="Only TUNE Random Forest estimator."
     )
 
     predict = parser.add_argument_group("Predict")

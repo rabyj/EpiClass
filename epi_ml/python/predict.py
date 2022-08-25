@@ -13,6 +13,9 @@ import torch
 from pytorch_lightning import loggers as pl_loggers
 from torch.utils.data import TensorDataset
 
+from epi_ml.python.argparseutils.DefaultHelpParser import (
+    DefaultHelpParser as ArgumentParser,
+)
 from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
 from epi_ml.python.core import analysis
 from epi_ml.python.core.data import DataSet, TestData
@@ -23,7 +26,7 @@ from epi_ml.python.utils.time import time_now
 
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
-    arg_parser = argparse.ArgumentParser()
+    arg_parser = ArgumentParser()
     arg_parser.add_argument(
         "hdf5", type=Path, help="A file with hdf5 filenames. Use absolute path!"
     )
