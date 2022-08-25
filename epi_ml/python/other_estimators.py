@@ -67,7 +67,8 @@ if os.getenv("CONCURRENT_CV") is not None:
 else:
     CONCURRENT_CV = 1
 
-# TODO: make recurring path pattern a global variable that gets formatted with a specific name
+tune_results_file_format = "{name}_optim.csv"
+best_params_file_format = "{name}_best_params.json"
 
 
 def parse_arguments(args: list) -> argparse.Namespace:
@@ -132,9 +133,6 @@ def best_params_cb(result):
     print(f"Best params yet: {result.x}")
 
 
-deadline_cb = DeadlineStopper(total_time=60 * 60 * 8)
-
-
 def tune_estimator(
     model: Pipeline,
     ea_handler: EpiAtlasTreatment,
@@ -149,6 +147,7 @@ def tune_estimator(
     concurrent_cv: Number of full cross-validation process (X folds) to run in parallel
     n_jobs: Number of jobs to run in parallel. Max NFOLD_TUNE * concurrent_cv.
     """
+    deadline_cb = DeadlineStopper(total_time=60 * 60 * 8)
     if n_jobs is None:
         n_jobs = int(NFOLD_TUNE * concurrent_cv)
 
@@ -178,69 +177,71 @@ def tune_estimator(
         y=total_data.encoded_labels,
         callback=[best_params_cb, deadline_cb],
     )
-
+    print(f"Current model params: {model.get_params()}")
     print(f"best params: {opt.best_params_}")
     return opt
 
 
 def optimize_svm(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
     """Optimize an sklearn SVC over a hyperparameter space. n_iter divided in two for linear and rbf kernel."""
-    print("Starting SVM optimization")
+    name = "LinearSVC"
     n_iter = n_iter // 2
 
+    print(f"Starting {name} optimization")
     start_train = time_now()
     opt = tune_estimator(
-        model_mapping["LinearSVC"],
+        model_mapping[name],
         ea_handler,
         SVM_LIN_SEARCH,
         n_iter=n_iter,
         concurrent_cv=CONCURRENT_CV,
     )
-    print(f"Total linear SVM optimisation time: {time_now()-start_train}")
+    print(f"Total {name} optimisation time: {time_now()-start_train}")
 
-    df = pd.DataFrame(opt.cv_results_)
-    print(tabulate(df, headers="keys", tablefmt="psql"))  # type: ignore
-    df.to_csv(logdir / "LinearSVC_optim.csv", sep=",")
+    log_tune_results(logdir, name, opt)
 
-    with open(logdir / "LinearSVC_best_params.json", "w", encoding="utf-8") as f:
-        json.dump(obj=opt.best_params_, fp=f)
-
+    name = "SVC"
     start_train = time_now()
     opt = tune_estimator(
-        model_mapping["SVC"],
+        model_mapping[name],
         ea_handler,
         SVM_RBF_SEARCH,
         n_iter=n_iter,
         concurrent_cv=CONCURRENT_CV,
     )
-    print(f"Total rbf SVM optimisation time: {time_now()-start_train}")
+    print(f"Total {name} optimisation time: {time_now()-start_train}")
 
-    df = pd.DataFrame(opt.cv_results_)
-    print(tabulate(df, headers="keys", tablefmt="psql"))  # type: ignore
-    df.to_csv(logdir / "SVC_optim.csv", sep=",")
-
-    with open(logdir / "SVC_best_params.json", "w", encoding="utf-8") as f:
-        json.dump(obj=opt.best_params_, fp=f)
+    log_tune_results(logdir, name, opt)
 
 
 def optimize_rf(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
     """Optimize an sklearn random forest over a hyperparameter space."""
-    print("Starting RF optimization")
+    name = "RF"
+
+    print(f"Starting {name} optimization")
     start_train = time_now()
     opt = tune_estimator(
-        model_mapping["RF"],
+        model_mapping[name],
         ea_handler,
         RF_SEARCH,
         n_iter,
         concurrent_cv=CONCURRENT_CV,
     )
-    print(f"Total RF optimisation time: {time_now()-start_train}")
+    print(f"Total {name} optimisation time: {time_now()-start_train}")
 
+    log_tune_results(logdir, name, opt)
+
+
+def log_tune_results(logdir: Path, name: str, opt: BayesSearchCV):
+    """Log parameter optimization results."""
     df = pd.DataFrame(opt.cv_results_)
     print(tabulate(df, headers="keys", tablefmt="psql"))  # type: ignore
-    df.to_csv(logdir / "RF_optim.csv", sep=",")
 
-    with open(logdir / "RF_best_params.json", "w", encoding="utf-8") as f:
+    file = tune_results_file_format.format(name=name)
+    df.to_csv(logdir / file, sep=",")
+
+    file = best_params_file_format.format(name=name)
+    with open(logdir / file, "w", encoding="utf-8") as f:
         json.dump(obj=opt.best_params_, fp=f)
 
 
@@ -328,10 +329,8 @@ def main(args):
         n_iter = cli.n
         if cli.only_svm:
             optimize_svm(ea_handler, cli.logdir, n_iter)
-            sys.exit()
         elif cli.only_rf:
             optimize_rf(ea_handler, cli.logdir, n_iter)
-            sys.exit()
         else:
             optimize_rf(ea_handler, cli.logdir, n_iter)
             optimize_svm(ea_handler, cli.logdir, n_iter)
@@ -365,7 +364,7 @@ def main(args):
                 run_predictions(ea_handler, estimator, name, cli.logdir)
 
         else:
-            pattern = f"{cli.logdir / '*_best_params.json'}"
+            pattern = f"{cli.logdir / best_params_file_format.format(name='*')}"
             hparam_files = glob.glob(pattern)
             for filepath in hparam_files:
 
