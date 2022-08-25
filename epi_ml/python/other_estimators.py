@@ -50,17 +50,17 @@ RF_SEARCH = {
     "model__n_estimators": Categorical([500, 1000]),
     "model__criterion": Categorical(["gini", "entropy", "log_loss"]),
     "model__max_features": Categorical(["sqrt", "log2"]),
-    "model__bootstrap": Categorical([True]),
-    "model__random_state": Categorical([RNG]),
     "model__min_samples_leaf": Integer(1, 5),
     "model__min_samples_split": Categorical([0.01, 0.05, 0.1, 0.3]),
 }
 
-mapping = {
+# fmt: off
+model_mapping = {
     "LinearSVC": Pipeline(steps=[("scaler", StandardScaler()), ("model", LinearSVC())]),
-    "SVC": Pipeline(steps=[("scaler", StandardScaler()), ("model", SVC())]),
-    "RF": Pipeline(steps=[("model", RandomForestClassifier())]),
+    "SVC": Pipeline(steps=[("scaler", StandardScaler()), ("model", SVC(cache_size=3000, kernel="rbf"))]),
+    "RF": Pipeline(steps=[("model", RandomForestClassifier(random_state=RNG, bootstrap=True))]),
 }
+# fmt: on
 
 if os.getenv("CONCURRENT_CV") is not None:
     CONCURRENT_CV = int(os.environ["CONCURRENT_CV"])
@@ -136,7 +136,7 @@ deadline_cb = DeadlineStopper(total_time=60 * 60 * 8)
 
 
 def tune_estimator(
-    my_model,
+    model: Pipeline,
     ea_handler: EpiAtlasTreatment,
     params: dict,
     n_iter: int,
@@ -149,8 +149,6 @@ def tune_estimator(
     concurrent_cv: Number of full cross-validation process (X folds) to run in parallel
     n_jobs: Number of jobs to run in parallel. Max NFOLD_TUNE * concurrent_cv.
     """
-    pipe = Pipeline(steps=[("scaler", StandardScaler()), ("model", my_model)])
-
     if n_jobs is None:
         n_jobs = int(NFOLD_TUNE * concurrent_cv)
 
@@ -161,7 +159,7 @@ def tune_estimator(
     print(f"Number of files used globally {len(total_data)}")
 
     opt = BayesSearchCV(
-        pipe,
+        model,
         search_spaces=params,
         cv=ea_handler.split(total_data),
         random_state=RNG,
@@ -192,7 +190,7 @@ def optimize_svm(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
 
     start_train = time_now()
     opt = tune_estimator(
-        LinearSVC(),
+        model_mapping["LinearSVC"],
         ea_handler,
         SVM_LIN_SEARCH,
         n_iter=n_iter,
@@ -209,7 +207,7 @@ def optimize_svm(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
 
     start_train = time_now()
     opt = tune_estimator(
-        SVC(cache_size=3000, kernel="rbf"),
+        model_mapping["SVC"],
         ea_handler,
         SVM_RBF_SEARCH,
         n_iter=n_iter,
@@ -230,7 +228,7 @@ def optimize_rf(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
     print("Starting RF optimization")
     start_train = time_now()
     opt = tune_estimator(
-        RandomForestClassifier(),
+        model_mapping["RF"],
         ea_handler,
         RF_SEARCH,
         n_iter,
@@ -359,7 +357,7 @@ def main(args):
                 hparams = json.load(file)
 
             for name, hparams in hparams.items():
-                estimator = mapping[name]
+                estimator = model_mapping[name]
                 estimator.set_params(**hparams)
                 print(
                     f"Fitting and making predictions with {name} estimator. Fit with hparams {hparams}."
@@ -376,7 +374,7 @@ def main(args):
 
                 filepath = Path(filepath)
                 name = filepath.stem.split(sep="_", maxsplit=1)[0]
-                estimator = mapping[name]
+                estimator = model_mapping[name]
                 estimator.set_params(**hparams)
 
                 run_predictions(ea_handler, estimator, name, cli.logdir)
