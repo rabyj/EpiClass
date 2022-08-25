@@ -5,6 +5,7 @@ from __future__ import annotations
 import collections
 import copy
 import json
+import os
 from pathlib import Path
 from typing import List
 
@@ -176,6 +177,34 @@ class Metadata(object):
             label = dataset.get(category, None)
             if label in converter:
                 dataset[category] = converter[label]
+
+
+def env_filtering(metadata: Metadata, category: str) -> List[str]:
+    """Filter metadata using environment variables.
+
+    Currently supports:
+    EXCLUDE_LIST
+    ASSAY_LIST
+    LABEL_LIST
+    """
+    if os.getenv("EXCLUDE_LIST") is not None:
+        exclude_list = json.loads(os.environ["EXCLUDE_LIST"])
+        metadata.remove_category_subsets(label_category=category, labels=exclude_list)
+
+    if os.getenv("ASSAY_LIST") is not None:
+        assay_list = json.loads(os.environ["ASSAY_LIST"])
+        print(f"Going to only keep examples with targets: {assay_list}")
+        metadata.select_category_subsets("assay", assay_list)
+
+    if os.getenv("LABEL_LIST") is not None:
+        label_list = json.loads(os.environ["LABEL_LIST"])
+        print(f"Going to only keep examples with labels: {label_list}")
+        metadata.select_category_subsets(category, label_list)
+    else:
+        label_list = metadata.unique_classes(category)
+        print("No label list")
+
+    return label_list
 
 
 class HealthyCategory(object):

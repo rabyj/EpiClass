@@ -294,18 +294,7 @@ def main(args):
         label_category="track_type", labels=["Unique.raw"]
     )
 
-    if os.getenv("EXCLUDE_LIST") is not None:
-        exclude_list = json.loads(os.environ["EXCLUDE_LIST"])
-        my_metadata.remove_category_subsets(
-            label_category=cli.category, labels=exclude_list
-        )
-
-    if os.getenv("ASSAY_LIST") is not None:
-        assay_list = json.loads(os.environ["ASSAY_LIST"])
-        print(f"Going to only keep targets with {assay_list}")
-    else:
-        assay_list = my_metadata.unique_classes(cli.category)
-        print("No assay list")
+    label_list = metadata.env_filtering(my_metadata, cli.category)
 
     if os.getenv("MIN_CLASS_SIZE") is not None:
         min_class_size = int(os.environ["MIN_CLASS_SIZE"])
@@ -318,7 +307,7 @@ def main(args):
         ea_handler = EpiAtlasTreatment(
             my_datasource,
             cli.category,
-            assay_list,
+            label_list,
             n_fold=NFOLD_TUNE,
             test_ratio=0.1,
             min_class_size=min_class_size,
@@ -343,7 +332,7 @@ def main(args):
         ea_handler = EpiAtlasTreatment(
             my_datasource,
             cli.category,
-            assay_list,
+            label_list,
             n_fold=NFOLD_PREDICT,
             test_ratio=0,
             min_class_size=min_class_size,
