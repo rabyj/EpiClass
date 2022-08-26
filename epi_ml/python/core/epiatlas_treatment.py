@@ -229,13 +229,12 @@ class EpiAtlasTreatment(object):
 
         Depends on given init parameters.
         """
-        new_datasets = data.DataSet.empty_collection()
-
         skf = StratifiedKFold(n_splits=self.k, shuffle=False)
         for train_idxs, valid_idxs in skf.split(
             np.zeros((self._raw_dset.train.num_examples, len(self.classes))),
             list(self._raw_dset.train.encoded_labels),
         ):
+            new_datasets = data.DataSet.empty_collection()
 
             new_train = copy.deepcopy(self._raw_dset.train)
             new_train = self._add_other_tracks(train_idxs, new_train, resample=True)  # type: ignore

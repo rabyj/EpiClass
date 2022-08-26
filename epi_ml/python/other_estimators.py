@@ -4,8 +4,10 @@ from __future__ import annotations
 import argparse
 import glob
 import json
+import multiprocessing as mp
 import os
 import sys
+from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -25,6 +27,7 @@ from epi_ml.python.argparseutils.DefaultHelpParser import (
 )
 from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
 from epi_ml.python.core import metadata
+from epi_ml.python.core.data import DataSet
 from epi_ml.python.core.data_source import EpiDataSource
 from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment
 from epi_ml.python.core.estimators import EstimatorAnalyzer
@@ -248,28 +251,42 @@ def log_tune_results(logdir: Path, name: str, opt: BayesSearchCV):
         json.dump(obj=opt.best_params_, fp=f)
 
 
-def run_predictions(ea_handler: EpiAtlasTreatment, estimator, name: str, logdir: Path):
-    """Run predictions"""
-    for i, my_data in enumerate(ea_handler.yield_split()):
+def run_predictions(
+    ea_handler: EpiAtlasTreatment, estimator: Pipeline, name: str, logdir: Path
+):
+    """Fit and predict with cross-validation, will use all available cpus."""
+    nb_workers = ea_handler.k
+    available_cpus = len(os.sched_getaffinity(0))
+    if available_cpus < nb_workers:
+        nb_workers = available_cpus
 
-        print(f"Split {i} training size: {my_data.train.num_examples}")
-        nb_files = len(
-            set(my_data.train.ids.tolist() + my_data.validation.ids.tolist())
-        )
-        print(f"Total nb of files: {nb_files}")
+    func = partial(run_prediction, estimator=estimator, name=name, logdir=logdir)
+    items = enumerate(ea_handler.yield_split())
 
-        estimator.fit(X=my_data.train.signals, y=my_data.train.encoded_labels)
+    with mp.Pool(nb_workers) as pool:
+        pool.starmap(func, items)
 
-        analyzer = EstimatorAnalyzer(my_data.classes, estimator)
 
-        X, y = my_data.validation.signals, my_data.validation.encoded_labels
-        analyzer.metrics(X, y)
-        analyzer.predict_file(
-            my_data.validation.ids,
-            X,
-            y,
-            logdir / f"{name}_split{i}_validation_prediction.csv",
-        )
+def run_prediction(
+    i: int, my_data: DataSet, estimator: Pipeline, name: str, logdir: Path
+):
+    """Fit model on training, and then validate."""
+    print(f"Split {i} training size: {my_data.train.num_examples}")
+    nb_files = len(set(my_data.train.ids.tolist() + my_data.validation.ids.tolist()))
+    print(f"Total nb of files: {nb_files}")
+
+    estimator.fit(X=my_data.train.signals, y=my_data.train.encoded_labels)
+
+    analyzer = EstimatorAnalyzer(my_data.classes, estimator)
+
+    X, y = my_data.validation.signals, my_data.validation.encoded_labels
+    analyzer.metrics(X, y)
+    analyzer.predict_file(
+        my_data.validation.ids,
+        X,
+        y,
+        logdir / f"{name}_split{i}_validation_prediction.csv",
+    )
 
 
 def main(args):
