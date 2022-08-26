@@ -268,19 +268,33 @@ def run_predictions(
 
 
 def run_prediction(
-    i: int, my_data: DataSet, estimator: Pipeline, name: str, logdir: Path
+    i: int,
+    my_data: DataSet,
+    estimator: Pipeline,
+    name: str,
+    logdir: Path,
+    verbose=True,
 ):
     """Fit model on training, and then validate."""
-    print(f"Split {i} training size: {my_data.train.num_examples}")
-    nb_files = len(set(my_data.train.ids.tolist() + my_data.validation.ids.tolist()))
-    print(f"Total nb of files: {nb_files}")
+    if verbose:
+        print(f"Split {i} training size: {my_data.train.num_examples}")
+
+    if i == 0:
+        nb_files = len(
+            set(my_data.train.ids.tolist() + my_data.validation.ids.tolist())
+        )
+        print(f"Total nb of files: {nb_files}")
 
     estimator.fit(X=my_data.train.signals, y=my_data.train.encoded_labels)
 
     analyzer = EstimatorAnalyzer(my_data.classes, estimator)
 
     X, y = my_data.validation.signals, my_data.validation.encoded_labels
-    analyzer.metrics(X, y)
+
+    if verbose:
+        metrics = analyzer.metrics(X, y, verbose=False)
+        print(f"Split {i} metrics {metrics}")
+
     analyzer.predict_file(
         my_data.validation.ids,
         X,
