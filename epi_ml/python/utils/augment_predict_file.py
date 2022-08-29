@@ -149,6 +149,7 @@ def write_coherence(path, category: str):
     """Read file, add coherence for given category, write it updated to same path."""
     df = pd.read_csv(path, sep=",")
     add_coherence(df, category)
+    add_track_type_coherence(df)
     df.to_csv(path, sep=",", index=False)
 
 
@@ -173,14 +174,29 @@ def add_coherence(df: pd.DataFrame, category: str):
     df[f"{category} Coherence ratio"] = df[f"{category} Coherence count"] / (
         1.0 * df["files/epiRR"]
     )
-    # format to %
-    # df[f"{category} Coherence ratio"] = pd.Series(
-    #     [f"{round(val, 3):.1f}%" for val in df[f"{category} Coherence ratio"]],
-    #     index=df.index,
-    # )
 
     # return category to initial dtype
     df[category] = df[category].astype(cat_dtype)
+
+
+def add_track_type_coherence(df):
+    """Add a more complex coherence metric.
+    Tells us how much tracks types agree on predicted class for a unique experiment
+    """
+    df.set_index("md5sum")
+
+    cat1 = "files/experiment"
+    cat2 = "Track type coherence count"
+    cat3 = "Track type coherence ratio"
+
+    groups = df.groupby(["EpiRR", "assay"])
+    if cat1 not in df.columns:
+        df[cat1] = groups["md5sum"].transform("size")
+
+    groups = df.groupby(["EpiRR", "assay", "Predicted class"])
+    df[cat2] = groups["md5sum"].transform("size")
+
+    df[cat3] = df[cat2] / (1.0 * df[cat1])
 
 
 def main(argv):
