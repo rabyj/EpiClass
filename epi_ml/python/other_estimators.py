@@ -113,7 +113,7 @@ def main(args):
             my_datasource,
             cli.category,
             label_list,
-            n_fold=NFOLD_TUNE,
+            n_fold=estimators.NFOLD_TUNE,
             test_ratio=0.1,
             min_class_size=min_class_size,
         )
@@ -127,7 +127,11 @@ def main(args):
             models = cli.models
 
         for name in models:
-            estimators.optimize_estimator(ea_handler, cli.logdir, n_iter, name)
+            if name == "LGBM":
+                optuna.logging.set_verbosity(optuna.logging.DEBUG)  # type: ignore
+                estimators.tune_lbgm(ea_handler, cli.logdir)
+            else:
+                estimators.optimize_estimator(ea_handler, cli.logdir, n_iter, name)
 
     # Predict mode
     if mode_predict is True:  # type: ignore

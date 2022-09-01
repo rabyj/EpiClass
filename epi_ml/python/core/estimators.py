@@ -9,6 +9,7 @@ from functools import partial
 from pathlib import Path
 
 import numpy as np
+import optuna.integration.lightgbm as lgb
 import pandas as pd
 import sklearn.metrics
 from sklearn.ensemble import RandomForestClassifier
@@ -58,6 +59,7 @@ model_mapping = {
     "LinearSVC": Pipeline(steps=[("scaler", StandardScaler()), ("model", LinearSVC())]),
     "RF": Pipeline(steps=[("model", RandomForestClassifier(random_state=RNG, bootstrap=True))]),
     "LR": Pipeline(steps=[("model", LogisticRegression(penalty="l2", multi_class="multinomial", dual=False, fit_intercept=True, solver="lbfgs", warm_start=True))]),
+    "LGBM": Pipeline(steps=[("model", lgb.LGBMClassifier())]),  # type: ignore
 }
 # fmt: on
 
@@ -130,6 +132,67 @@ class EstimatorAnalyzer(object):
             md5s=ids,
             path=log,
         )
+
+
+def tune_lbgm(ea_handler: EpiAtlasTreatment, logdir: Path):
+    """
+    It takes an EpiAtlasTreatment object and a log directory, and it tunes the
+    hyperparameters of a LightGBM classifier using Optuna.
+
+    Args:
+      ea_handler (EpiAtlasTreatment): Dataset
+      logdir (Path): The directory where the results will be saved.
+
+    Returns:
+      The evaluation history.
+    """
+    params = {
+        "objective": "multiclass",
+        "num_class": len(ea_handler.classes),
+        "metric": "multi_logloss",
+        "boosting_type": "dart",
+        "seed": 42,
+        "verbosity": 4,
+    }
+
+    total_data = ea_handler.create_total_data()
+    folds = list(ea_handler.split(total_data))
+    dtrain = lgb.Dataset(  # type: ignore
+        total_data.signals, label=total_data.encoded_labels, free_raw_data=True
+    )
+
+    eval_results = {}
+    # study = optuna.create_study(study_name="LGBM Classifier", direction="minimize")
+
+    tuner = lgb.LightGBMTunerCV(  # type: ignore
+        params,
+        dtrain,
+        folds=folds,  # type: ignore
+        callbacks=[
+            lgb.record_evaluation(eval_results),  # type: ignore
+            lgb.log_evaluation,  # type: ignore
+        ],
+        # study=study,
+        show_progress_bar=False,
+    )
+
+    tuner.run()
+
+    print("Best score:", tuner.best_score)
+    best_params = tuner.best_params
+    print("Best params:", best_params)
+    print("  Params: ")
+    for key, value in best_params.items():
+        print(f"    {key}: {value}")
+
+    name = "LGBM"
+    with open(logdir / f"{name}_optim.json", "w", encoding="utf-8") as f:
+        json.dump(obj=eval_results, fp=f)
+
+    with open(logdir / f"{name}_best_params.json", "w", encoding="utf-8") as f:
+        json.dump(obj=best_params, fp=f)
+
+    return eval_results
 
 
 def best_params_cb(result):
