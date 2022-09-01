@@ -1,8 +1,74 @@
 """Module for wrappers around simple sklearn machine learning estimators."""
+# pylint: disable=no-member
+from __future__ import annotations
+
+import json
+import multiprocessing as mp
+import os
+from functools import partial
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
 import sklearn.metrics
-from sklearn.preprocessing import LabelBinarizer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import make_scorer, matthews_corrcoef
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import LabelBinarizer, StandardScaler
+from sklearn.svm import LinearSVC
+from skopt import BayesSearchCV
+from skopt.callbacks import DeadlineStopper
+from skopt.space import Categorical, Integer, Real
+from tabulate import tabulate
 
 from .analysis import write_pred_table
+from epi_ml.python.core.data import DataSet
+from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment
+from epi_ml.python.utils.time import time_now
+
+NFOLD_TUNE = 9
+NFOLD_PREDICT = 10
+RNG = np.random.RandomState(42)
+SCORES = {
+    "acc": "accuracy",
+    "precision": "precision_macro",
+    "recall": "recall_macro",
+    "f1": "f1_macro",
+    "mcc": make_scorer(matthews_corrcoef),
+}
+SVM_LIN_SEARCH = {
+    "model__C": Real(1e-6, 1e6, prior="log-uniform"),
+    "model__loss": Categorical(["hinge", "squared_hinge"]),
+    "model__intercept_scaling": Categorical([1, 5]),
+}
+RF_SEARCH = {
+    "model__n_estimators": Categorical([500, 1000]),
+    "model__criterion": Categorical(["gini", "entropy", "log_loss"]),
+    "model__max_features": Categorical(["sqrt", "log2"]),
+    "model__min_samples_leaf": Integer(1, 5),
+    "model__min_samples_split": Categorical([0.002, 0.01, 0.05, 0.1, 0.3]),
+}
+LR_SEARCH = {
+    "model__C": Real(1e-6, 1e6, prior="log-uniform"),
+}
+
+# fmt: off
+model_mapping = {
+    "LinearSVC": Pipeline(steps=[("scaler", StandardScaler()), ("model", LinearSVC())]),
+    "RF": Pipeline(steps=[("model", RandomForestClassifier(random_state=RNG, bootstrap=True))]),
+    "LR": Pipeline(steps=[("model", LogisticRegression(penalty="l2", multi_class="multinomial", dual=False, fit_intercept=True, solver="lbfgs", warm_start=True))]),
+}
+# fmt: on
+
+search_mapping = {
+    "LinearSVC": SVM_LIN_SEARCH,
+    "RF": RF_SEARCH,
+    "LR": LR_SEARCH,
+}
+
+tune_results_file_format = "{name}_optim.csv"
+best_params_file_format = "{name}_best_params.json"
 
 
 class EstimatorAnalyzer(object):
@@ -64,3 +130,194 @@ class EstimatorAnalyzer(object):
             md5s=ids,
             path=log,
         )
+
+
+def best_params_cb(result):
+    """BayesSearchCV callback"""
+    print(f"Best params yet: {result.x}")
+
+
+def tune_estimator(
+    model: Pipeline,
+    ea_handler: EpiAtlasTreatment,
+    params: dict,
+    n_iter: int,
+    concurrent_cv: int,
+    n_jobs: int | None = None,
+) -> BayesSearchCV:
+    """
+    Apply Bayesian optimization on model, over hyperparameters search space.
+
+    Args:
+      model (Pipeline): The model to tune.
+      ea_handler (EpiAtlasTreatment): Dataset
+      params (dict): Hyperparameters search space.
+      n_iter (int): Total number of parameter settings to sample.
+      concurrent_cv (int): Number of full cross-validation process (X folds) to run
+    in parallel.
+      n_jobs (int | None): Number of jobs to run in parallel. Max NFOLD_TUNE *
+    concurrent_cv.
+
+    Returns:
+      A BayesSearchCV object
+    """
+    deadline_cb = DeadlineStopper(total_time=60 * 60 * 8)
+    if n_jobs is None:
+        n_jobs = int(NFOLD_TUNE * concurrent_cv)
+
+    if n_jobs > 48:
+        raise AssertionError("More jobs than cores asked, max 48 jobs.")
+
+    total_data = ea_handler.create_total_data()
+    print(f"Number of files used globally {len(total_data)}")
+
+    opt = BayesSearchCV(
+        model,
+        search_spaces=params,
+        cv=ea_handler.split(total_data),
+        random_state=RNG,
+        return_train_score=True,
+        error_score=-1,  # type: ignore
+        verbose=3,
+        scoring=SCORES,
+        refit="acc",  # type: ignore
+        n_jobs=n_jobs,
+        n_points=concurrent_cv,
+        n_iter=n_iter,
+    )
+
+    opt.fit(
+        X=total_data.signals,
+        y=total_data.encoded_labels,
+        callback=[best_params_cb, deadline_cb],
+    )
+    print(f"Current model params: {model.get_params()}")
+    print(f"best params: {opt.best_params_}")
+    return opt
+
+
+def optimize_estimator(
+    ea_handler: EpiAtlasTreatment,
+    logdir: Path,
+    n_iter: int,
+    name: str,
+    concurrent_cv: int = 1,
+):
+    """
+    It takes a dataset and model name, and then it optimizes the model with the given name
+    using the search space with the same name.
+
+    Args:
+      ea_handler (EpiAtlasTreatment): Dataset
+      logdir (Path): The directory where the results will be saved.
+      n_iter (int): Number of different search space sampling.
+      name (str): The name of the model we're tuning.
+      concurrent_cv (int): Number of full cross-validation process (X folds) to run
+    in parallel. Defaults to 1.
+    """
+
+    print(f"Starting {name} optimization")
+    start_train = time_now()
+    opt = tune_estimator(
+        model_mapping[name],
+        ea_handler,
+        search_mapping[name],
+        n_iter=n_iter,
+        concurrent_cv=concurrent_cv,
+    )
+    print(f"Total {name} optimisation time: {time_now()-start_train}")
+
+    log_tune_results(logdir, name, opt)
+
+
+def log_tune_results(logdir: Path, name: str, opt: BayesSearchCV):
+    """
+    It takes the results of a parameter optimization run and saves them to a CSV
+    file.
+
+    Args:
+      logdir (Path): The directory where the results will be saved.
+      name (str): The name of the model.
+      opt (BayesSearchCV): Optimizer after tuning.
+    """
+    df = pd.DataFrame(opt.cv_results_)
+    print(tabulate(df, headers="keys", tablefmt="psql"))  # type: ignore
+
+    file = tune_results_file_format.format(name=name)
+    df.to_csv(logdir / file, sep=",")
+
+    file = best_params_file_format.format(name=name)
+    with open(logdir / file, "w", encoding="utf-8") as f:
+        json.dump(obj=opt.best_params_, fp=f)
+
+
+def run_predictions(
+    ea_handler: EpiAtlasTreatment, estimator: Pipeline, name: str, logdir: Path
+):
+    """
+    It will fit and run a prediction for each of the k-folds in the EpiAtlasTreatment
+    object, using the estimator provided. Will use all available cpus.
+
+    Args:
+      ea_handler (EpiAtlasTreatment): Dataset
+      estimator (Pipeline): The model to use.
+      name (str): The name of the model.
+      logdir (Path): The directory where the results will be saved.
+    """
+    nb_workers = ea_handler.k
+    available_cpus = len(os.sched_getaffinity(0))
+    if available_cpus < nb_workers:
+        nb_workers = available_cpus
+
+    func = partial(run_prediction, estimator=estimator, name=name, logdir=logdir)
+    items = enumerate(ea_handler.yield_split())
+
+    with mp.Pool(nb_workers) as pool:
+        pool.starmap(func, items)
+
+
+def run_prediction(
+    i: int,
+    my_data: DataSet,
+    estimator: Pipeline,
+    name: str,
+    logdir: Path,
+    verbose=True,
+):
+    """
+    It takes a dataset, fits the model on the training data, and then predicts on
+    the validation data
+
+    Args:
+      i (int): the index of the split
+      my_data (DataSet): DataSet
+      estimator (Pipeline): The model to use.
+      name (str): The name of the model.
+      logdir (Path): The directory where the results will be saved.
+      verbose: Whether to print out the metrics. Defaults to True
+    """
+    if verbose:
+        print(f"Split {i} training size: {my_data.train.num_examples}")
+
+    if i == 0:
+        nb_files = len(
+            set(my_data.train.ids.tolist() + my_data.validation.ids.tolist())
+        )
+        print(f"Total nb of files: {nb_files}")
+
+    estimator.fit(X=my_data.train.signals, y=my_data.train.encoded_labels)
+
+    analyzer = EstimatorAnalyzer(my_data.classes, estimator)
+
+    X, y = my_data.validation.signals, my_data.validation.encoded_labels
+
+    if verbose:
+        metrics = analyzer.metrics(X, y, verbose=False)
+        print(f"Split {i} metrics {metrics}")
+
+    analyzer.predict_file(
+        my_data.validation.ids,
+        X,
+        y,
+        logdir / f"{name}_split{i}_validation_prediction.csv",
+    )

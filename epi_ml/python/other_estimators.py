@@ -4,81 +4,30 @@ from __future__ import annotations
 import argparse
 import glob
 import json
-import multiprocessing as mp
 import os
 import sys
-from functools import partial
 from pathlib import Path
 
-import numpy as np
-import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import make_scorer, matthews_corrcoef
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVC, LinearSVC
-from skopt import BayesSearchCV
-from skopt.callbacks import DeadlineStopper
-from skopt.space import Categorical, Integer, Real
-from tabulate import tabulate
+import optuna
 
+import epi_ml.python.core.estimators as estimators
 from epi_ml.python.argparseutils.DefaultHelpParser import (
     DefaultHelpParser as ArgumentParser,
 )
 from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
 from epi_ml.python.core import metadata
-from epi_ml.python.core.data import DataSet
 from epi_ml.python.core.data_source import EpiDataSource
 from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment
-from epi_ml.python.core.estimators import EstimatorAnalyzer
 from epi_ml.python.utils.time import time_now
-
-NFOLD_TUNE = 9
-NFOLD_PREDICT = 10
-RNG = np.random.RandomState(42)
-SCORES = {
-    "acc": "accuracy",
-    "precision": "precision_macro",
-    "recall": "recall_macro",
-    "f1": "f1_macro",
-    "mcc": make_scorer(matthews_corrcoef),
-}
-SVM_RBF_SEARCH = {
-    "model__C": Real(1e-6, 1e6, prior="log-uniform"),
-    "model__gamma": Real(1e-6, 1e1, prior="log-uniform"),
-}
-SVM_LIN_SEARCH = {
-    "model__C": Real(1e-6, 1e6, prior="log-uniform"),
-    "model__loss": Categorical(["hinge", "squared_hinge"]),
-    "model__intercept_scaling": Categorical([1, 5]),
-}
-RF_SEARCH = {
-    "model__n_estimators": Categorical([500, 1000]),
-    "model__criterion": Categorical(["gini", "entropy", "log_loss"]),
-    "model__max_features": Categorical(["sqrt", "log2"]),
-    "model__min_samples_leaf": Integer(1, 5),
-    "model__min_samples_split": Categorical([0.01, 0.05, 0.1, 0.3]),
-}
-
-# fmt: off
-model_mapping = {
-    "LinearSVC": Pipeline(steps=[("scaler", StandardScaler()), ("model", LinearSVC())]),
-    "SVC": Pipeline(steps=[("scaler", StandardScaler()), ("model", SVC(cache_size=3000, kernel="rbf"))]),
-    "RF": Pipeline(steps=[("model", RandomForestClassifier(random_state=RNG, bootstrap=True))]),
-}
-# fmt: on
 
 if os.getenv("CONCURRENT_CV") is not None:
     CONCURRENT_CV = int(os.environ["CONCURRENT_CV"])
 else:
     CONCURRENT_CV = 1
 
-tune_results_file_format = "{name}_optim.csv"
-best_params_file_format = "{name}_best_params.json"
-
 
 def parse_arguments(args: list) -> argparse.Namespace:
-    """argument parser for command line"""
+    """Argument parser for command line."""
     # fmt: off
     parser = ArgumentParser()
     group1 = parser.add_argument_group("General")
@@ -118,219 +67,10 @@ def parse_arguments(args: list) -> argparse.Namespace:
         help="Number of BayesSearchCV hyperparameters iterations.",
     )
     tune.add_argument(
-        "--only-svm", action="store_true", help="Only TUNE SVM estimator. Runs both linear and RBF."
+        "--models", nargs="+", type=str, help="Specify models to tune.", choices=["all", "LinearSVC", "RF", "LR", "LGBM"], default=["all"]
         )
-    tune.add_argument(
-        "--only-rf", action="store_true", help="Only TUNE Random Forest estimator."
-    )
-
-    predict = parser.add_argument_group("Predict")
-    predict.add_argument(
-        "--hparams",
-        type=Path,
-        help="A file with chosen hyperparameters for each estimator. Needs a specific format. Will search for a file for each estimator by default.",
-    )
     # fmt: on
     return parser.parse_args(args)
-
-
-def best_params_cb(result):
-    """BayesSearchCV callback"""
-    print(f"Best params yet: {result.x}")
-
-
-def tune_estimator(
-    model: Pipeline,
-    ea_handler: EpiAtlasTreatment,
-    params: dict,
-    n_iter: int,
-    concurrent_cv: int = 1,
-    n_jobs: int | None = None,
-) -> BayesSearchCV:
-    """
-    Apply Bayesian optimization on model, over hyperparameters search space.
-
-    Args:
-      model (Pipeline): The model to tune.
-      ea_handler (EpiAtlasTreatment): Dataset
-      params (dict): Hyperparameters search space.
-      n_iter (int): Total number of parameter settings to sample.
-      concurrent_cv (int): Number of full cross-validation process (X folds) to run
-    in parallel. Defaults to 1.
-      n_jobs (int | None): Number of jobs to run in parallel. Max NFOLD_TUNE *
-    concurrent_cv.
-
-    Returns:
-      A BayesSearchCV object
-    """
-    deadline_cb = DeadlineStopper(total_time=60 * 60 * 8)
-    if n_jobs is None:
-        n_jobs = int(NFOLD_TUNE * concurrent_cv)
-
-    if n_jobs > 48:
-        raise AssertionError("More jobs than cores asked, max 48 jobs.")
-
-    total_data = ea_handler.create_total_data()
-    print(f"Number of files used globally {len(total_data)}")
-
-    opt = BayesSearchCV(
-        model,
-        search_spaces=params,
-        cv=ea_handler.split(total_data),
-        random_state=RNG,
-        return_train_score=True,
-        error_score=-1,  # type: ignore
-        verbose=3,
-        scoring=SCORES,
-        refit="acc",  # type: ignore
-        n_jobs=n_jobs,
-        n_points=concurrent_cv,
-        n_iter=n_iter,
-    )
-
-    opt.fit(
-        X=total_data.signals,
-        y=total_data.encoded_labels,
-        callback=[best_params_cb, deadline_cb],
-    )
-    print(f"Current model params: {model.get_params()}")
-    print(f"best params: {opt.best_params_}")
-    return opt
-
-
-def optimize_svm(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
-    """Optimize an sklearn SVC over a hyperparameter space. n_iter divided in two for linear and rbf kernel."""
-    name = "LinearSVC"
-    n_iter = n_iter // 2
-
-    print(f"Starting {name} optimization")
-    start_train = time_now()
-    opt = tune_estimator(
-        model_mapping[name],
-        ea_handler,
-        SVM_LIN_SEARCH,
-        n_iter=n_iter,
-        concurrent_cv=CONCURRENT_CV,
-    )
-    print(f"Total {name} optimisation time: {time_now()-start_train}")
-
-    log_tune_results(logdir, name, opt)
-
-    name = "SVC"
-    start_train = time_now()
-    opt = tune_estimator(
-        model_mapping[name],
-        ea_handler,
-        SVM_RBF_SEARCH,
-        n_iter=n_iter,
-        concurrent_cv=CONCURRENT_CV,
-    )
-    print(f"Total {name} optimisation time: {time_now()-start_train}")
-
-    log_tune_results(logdir, name, opt)
-
-
-def optimize_rf(ea_handler: EpiAtlasTreatment, logdir: Path, n_iter: int):
-    """Optimize an sklearn random forest over a hyperparameter space."""
-    name = "RF"
-
-    print(f"Starting {name} optimization")
-    start_train = time_now()
-    opt = tune_estimator(
-        model_mapping[name],
-        ea_handler,
-        RF_SEARCH,
-        n_iter,
-        concurrent_cv=CONCURRENT_CV,
-    )
-    print(f"Total {name} optimisation time: {time_now()-start_train}")
-
-    log_tune_results(logdir, name, opt)
-
-
-def log_tune_results(logdir: Path, name: str, opt: BayesSearchCV):
-    """Log parameter optimization results."""
-    df = pd.DataFrame(opt.cv_results_)
-    print(tabulate(df, headers="keys", tablefmt="psql"))  # type: ignore
-
-    file = tune_results_file_format.format(name=name)
-    df.to_csv(logdir / file, sep=",")
-
-    file = best_params_file_format.format(name=name)
-    with open(logdir / file, "w", encoding="utf-8") as f:
-        json.dump(obj=opt.best_params_, fp=f)
-
-
-def run_predictions(
-    ea_handler: EpiAtlasTreatment, estimator: Pipeline, name: str, logdir: Path
-):
-    """
-    It will fit and run a prediction for each of the k-folds in the EpiAtlasTreatment
-    object, using the estimator provided. Will use all available cpus.
-
-    Args:
-      ea_handler (EpiAtlasTreatment): Dataset
-      estimator (Pipeline): The model to use.
-      name (str): The name of the model.
-      logdir (Path): The directory where the results will be saved.
-    """
-    nb_workers = ea_handler.k
-    available_cpus = len(os.sched_getaffinity(0))
-    if available_cpus < nb_workers:
-        nb_workers = available_cpus
-
-    func = partial(run_prediction, estimator=estimator, name=name, logdir=logdir)
-    items = enumerate(ea_handler.yield_split())
-
-    with mp.Pool(nb_workers) as pool:
-        pool.starmap(func, items)
-
-
-def run_prediction(
-    i: int,
-    my_data: DataSet,
-    estimator: Pipeline,
-    name: str,
-    logdir: Path,
-    verbose=True,
-):
-    """
-    It takes a dataset, fits the model on the training data, and then predicts on
-    the validation data
-
-    Args:
-      i (int): the index of the split
-      my_data (DataSet): DataSet
-      estimator (Pipeline): The model to use.
-      name (str): The name of the model.
-      logdir (Path): The directory where the results will be saved.
-      verbose: Whether to print out the metrics. Defaults to True
-    """
-    if verbose:
-        print(f"Split {i} training size: {my_data.train.num_examples}")
-
-    if i == 0:
-        nb_files = len(
-            set(my_data.train.ids.tolist() + my_data.validation.ids.tolist())
-        )
-        print(f"Total nb of files: {nb_files}")
-
-    estimator.fit(X=my_data.train.signals, y=my_data.train.encoded_labels)
-
-    analyzer = EstimatorAnalyzer(my_data.classes, estimator)
-
-    X, y = my_data.validation.signals, my_data.validation.encoded_labels
-
-    if verbose:
-        metrics = analyzer.metrics(X, y, verbose=False)
-        print(f"Split {i} metrics {metrics}")
-
-    analyzer.predict_file(
-        my_data.validation.ids,
-        X,
-        y,
-        logdir / f"{name}_split{i}_validation_prediction.csv",
-    )
 
 
 def main(args):
@@ -365,6 +105,7 @@ def main(args):
     else:
         min_class_size = 10
 
+    # Tuning mode
     loading_begin = time_now()
     if mode_tune is True:  # type: ignore
         print("Entering tuning mode")
@@ -380,14 +121,15 @@ def main(args):
         print(f"Initial hdf5 loading time: {loading_time}")
 
         n_iter = cli.n
-        if cli.only_svm:
-            optimize_svm(ea_handler, cli.logdir, n_iter)
-        elif cli.only_rf:
-            optimize_rf(ea_handler, cli.logdir, n_iter)
+        if "all" in cli.models:
+            models = estimators.model_mapping.keys()
         else:
-            optimize_rf(ea_handler, cli.logdir, n_iter)
-            optimize_svm(ea_handler, cli.logdir, n_iter)
+            models = cli.models
 
+        for name in models:
+            estimators.optimize_estimator(ea_handler, cli.logdir, n_iter, name)
+
+    # Predict mode
     if mode_predict is True:  # type: ignore
         print("Entering fit/prediction mode")
         if cli.hparams is not None and not cli.hparams.exists():
@@ -397,39 +139,26 @@ def main(args):
             my_datasource,
             cli.category,
             label_list,
-            n_fold=NFOLD_PREDICT,
+            n_fold=estimators.NFOLD_PREDICT,
             test_ratio=0,
             min_class_size=min_class_size,
         )
         loading_time = time_now() - loading_begin
         print(f"Initial hdf5 loading time: {loading_time}")
 
-        if cli.hparams is not None:
-            with open(cli.hparams, "r", encoding="utf-8") as file:
+        pattern = f"{cli.logdir / estimators.best_params_file_format.format(name='*')}"
+        hparam_files = glob.glob(pattern)
+        for filepath in hparam_files:
+
+            with open(filepath, "r", encoding="utf-8") as file:
                 hparams = json.load(file)
 
-            for name, hparams in hparams.items():
-                estimator = model_mapping[name]
-                estimator.set_params(**hparams)
-                print(
-                    f"Fitting and making predictions with {name} estimator. Fit with hparams {hparams}."
-                )
-                run_predictions(ea_handler, estimator, name, cli.logdir)
+            filepath = Path(filepath)
+            name = filepath.stem.split(sep="_", maxsplit=1)[0]
+            estimator = estimators.model_mapping[name]
+            estimator.set_params(**hparams)
 
-        else:
-            pattern = f"{cli.logdir / best_params_file_format.format(name='*')}"
-            hparam_files = glob.glob(pattern)
-            for filepath in hparam_files:
-
-                with open(filepath, "r", encoding="utf-8") as file:
-                    hparams = json.load(file)
-
-                filepath = Path(filepath)
-                name = filepath.stem.split(sep="_", maxsplit=1)[0]
-                estimator = model_mapping[name]
-                estimator.set_params(**hparams)
-
-                run_predictions(ea_handler, estimator, name, cli.logdir)
+            estimators.run_predictions(ea_handler, estimator, name, cli.logdir)
 
 
 if __name__ == "__main__":

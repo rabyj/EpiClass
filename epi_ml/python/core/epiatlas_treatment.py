@@ -284,7 +284,7 @@ class EpiAtlasTreatment(object):
 
     def _find_other_tracks(
         self, selected_positions, dset: data.Data, resample: bool, md5_mapping: dict
-    ) -> list:
+    ) -> list[int]:
         """Return indexes that sample from complete data, i.e. all signals with their match next to them.
         Uses logic from create_total_data and add_other_tracks.
 
