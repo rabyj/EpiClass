@@ -146,12 +146,22 @@ def tune_estimator(
     n_iter: int,
     concurrent_cv: int = 1,
     n_jobs: int | None = None,
-):
-    """Apply Bayesian optimization over hyperparameters search space.
+) -> BayesSearchCV:
+    """
+    Apply Bayesian optimization on model, over hyperparameters search space.
 
-    n_iter: Total number of parameter settings to sample.
-    concurrent_cv: Number of full cross-validation process (X folds) to run in parallel
-    n_jobs: Number of jobs to run in parallel. Max NFOLD_TUNE * concurrent_cv.
+    Args:
+      model (Pipeline): The model to tune.
+      ea_handler (EpiAtlasTreatment): Dataset
+      params (dict): Hyperparameters search space.
+      n_iter (int): Total number of parameter settings to sample.
+      concurrent_cv (int): Number of full cross-validation process (X folds) to run
+    in parallel. Defaults to 1.
+      n_jobs (int | None): Number of jobs to run in parallel. Max NFOLD_TUNE *
+    concurrent_cv.
+
+    Returns:
+      A BayesSearchCV object
     """
     deadline_cb = DeadlineStopper(total_time=60 * 60 * 8)
     if n_jobs is None:
@@ -254,7 +264,16 @@ def log_tune_results(logdir: Path, name: str, opt: BayesSearchCV):
 def run_predictions(
     ea_handler: EpiAtlasTreatment, estimator: Pipeline, name: str, logdir: Path
 ):
-    """Fit and predict with cross-validation, will use all available cpus."""
+    """
+    It will fit and run a prediction for each of the k-folds in the EpiAtlasTreatment
+    object, using the estimator provided. Will use all available cpus.
+
+    Args:
+      ea_handler (EpiAtlasTreatment): Dataset
+      estimator (Pipeline): The model to use.
+      name (str): The name of the model.
+      logdir (Path): The directory where the results will be saved.
+    """
     nb_workers = ea_handler.k
     available_cpus = len(os.sched_getaffinity(0))
     if available_cpus < nb_workers:
@@ -275,7 +294,18 @@ def run_prediction(
     logdir: Path,
     verbose=True,
 ):
-    """Fit model on training, and then validate."""
+    """
+    It takes a dataset, fits the model on the training data, and then predicts on
+    the validation data
+
+    Args:
+      i (int): the index of the split
+      my_data (DataSet): DataSet
+      estimator (Pipeline): The model to use.
+      name (str): The name of the model.
+      logdir (Path): The directory where the results will be saved.
+      verbose: Whether to print out the metrics. Defaults to True
+    """
     if verbose:
         print(f"Split {i} training size: {my_data.train.num_examples}")
 
@@ -304,7 +334,7 @@ def run_prediction(
 
 
 def main(args):
-    """main called from command line, edit to change behavior"""
+    """Takes command line arguments."""
     begin = time_now()
     print(f"begin {begin}")
 
