@@ -4,11 +4,12 @@ import os
 import sys
 from pathlib import Path
 
+import optuna
 import pandas as pd
-from sklearn.svm import SVC, LinearSVC
 from tabulate import tabulate
 
-import epi_ml.python.other_estimators as other_estimators
+import epi_ml.python.core.estimators as estimators
+import epi_ml.python.other_estimators as estimators_main
 from epi_ml.python.core import metadata
 from epi_ml.python.core.data_source import EpiDataSource
 from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment as EpiAtlasTreatment
@@ -20,13 +21,13 @@ def optimize_svm(ea_handler, logdir: Path):
     """Optimize an sklearn SVC over a hyperparameter space."""
     print("Starting SVM optimization")
     start_train = time_now()
-    opt = other_estimators.tune_estimator(
-        LinearSVC(),
+    opt = estimators.tune_estimator(
+        estimators.model_mapping["LinearSVC"],
         ea_handler,
-        other_estimators.SVM_LIN_SEARCH,
-        n_iter=2,
-        concurrent_cv=1,
+        estimators.SVM_LIN_SEARCH,
         n_iter=1,
+        concurrent_cv=1,
+        n_jobs=1,
     )
     print(f"Total linear SVM optimisation time: {time_now()-start_train}")
 
@@ -79,7 +80,7 @@ def main(args):  # pylint: disable=function-redefined
     print(f"begin {begin}")
 
     # --- PARSE params and LOAD external files ---
-    cli = other_estimators.parse_arguments(args)
+    cli = estimators_main.parse_arguments(args)
 
     my_datasource = EpiDataSource(cli.hdf5, cli.chromsize, cli.metadata)
 
@@ -134,15 +135,17 @@ def main(args):  # pylint: disable=function-redefined
     print(f"Initial hdf5 loading time: {loading_time}")
 
     n_iter = cli.n
-    if cli.only_svm:
-        optimize_svm(ea_handler, cli.logdir)  # type: ignore
-        sys.exit()
-    elif cli.only_rf:
-        other_estimators.optimize_rf(ea_handler, cli.logdir, n_iter)  # type: ignore
-        sys.exit()
+    if "all" in cli.models:
+        models = estimators.model_mapping.keys()
     else:
-        other_estimators.optimize_rf(ea_handler, cli.logdir, n_iter)  # type: ignore
-        optimize_svm(ea_handler, cli.logdir)  # type: ignore
+        models = cli.models
+
+    for name in models:
+        if name == "LGBM":
+            optuna.logging.set_verbosity(optuna.logging.DEBUG)  # type: ignore
+            estimators.tune_lbgm(ea_handler, cli.logdir)
+        else:
+            estimators.optimize_estimator(ea_handler, cli.logdir, n_iter, name)
 
 
 if __name__ == "__main__":
