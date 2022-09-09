@@ -8,8 +8,6 @@ import os
 import sys
 from pathlib import Path
 
-import optuna
-
 import epi_ml.python.core.estimators as estimators
 from epi_ml.python.argparseutils.DefaultHelpParser import (
     DefaultHelpParser as ArgumentParser,
@@ -18,6 +16,7 @@ from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
 from epi_ml.python.core import metadata
 from epi_ml.python.core.data_source import EpiDataSource
 from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment
+from epi_ml.python.core.lgbm import tune_lgbm
 from epi_ml.python.utils.time import time_now
 
 if os.getenv("CONCURRENT_CV") is not None:
@@ -128,8 +127,8 @@ def main(args):
 
         for name in models:
             if name == "LGBM":
-                optuna.logging.set_verbosity(optuna.logging.DEBUG)  # type: ignore
-                estimators.tune_lbgm(ea_handler, cli.logdir)
+                # optuna.logging.set_verbosity(optuna.logging.DEBUG)  # type: ignore
+                tune_lgbm(ea_handler, cli.logdir)
             else:
                 estimators.optimize_estimator(ea_handler, cli.logdir, n_iter, name)
 
