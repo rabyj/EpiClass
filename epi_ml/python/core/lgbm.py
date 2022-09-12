@@ -1,10 +1,12 @@
 """Module to define how LightGBM is handled."""
 import json
+import pickle
 from pathlib import Path
 
 import optuna
 import optuna.integration.lightgbm as lgb
-from lightgbm import log_evaluation, record_evaluation
+import pandas as pd
+from lightgbm import log_evaluation
 
 from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment
 
@@ -19,14 +21,17 @@ def tune_lgbm(ea_handler: EpiAtlasTreatment, logdir: Path):
       logdir (Path): The directory where the results will be saved.
 
     Returns:
-      The evaluation history.
+      The Optuna study object.
     """
     params = {
         "objective": "multiclass",
         "num_class": len(ea_handler.classes),
-        "metric": ["multi_error", "multi_logloss", "auc_mu"],
+        "metric": ["multi_logloss", "multi_error"],
         "boosting_type": "dart",
         "seed": 42,
+        "force_col_wise": True,
+        "device_type": "cpu",
+        "num_threads": 9,
     }
 
     # Using first fold to tune hyperparams
@@ -40,13 +45,13 @@ def tune_lgbm(ea_handler: EpiAtlasTreatment, logdir: Path):
         label=dsets.validation.encoded_labels,
         free_raw_data=True,
     )
+    dsets = None
+    del dsets
 
     # Create tuner
     max_iter = 100  # boosting rounds per trial
-    eval_results = {}
     study = optuna.create_study(
         study_name="LGBM Classifier",
-        direction="minimize",
     )
 
     tuner = lgb.LightGBMTuner(  # type: ignore
@@ -54,17 +59,18 @@ def tune_lgbm(ea_handler: EpiAtlasTreatment, logdir: Path):
         dtrain,
         num_boost_round=max_iter,
         study=study,
-        valid_sets=[dvalid],
-        valid_names=["valid"],
+        valid_sets=[dtrain, dvalid],
+        valid_names=["train", "valid"],
         callbacks=[
-            record_evaluation(eval_results),  # type: ignore
-            log_evaluation(period=1),  # type: ignore
+            log_evaluation(period=5),  # type: ignore
         ],
-        show_progress_bar=True,
+        show_progress_bar=False,
     )
 
     # Optimize and log results.
-    tuner.run()
+    tuner.tune_feature_fraction(3)
+    tuner.tune_num_leaves(5)
+    tuner.tune_bagging(4)
 
     print("Best score:", tuner.best_score)
     best_params = tuner.best_params
@@ -74,10 +80,13 @@ def tune_lgbm(ea_handler: EpiAtlasTreatment, logdir: Path):
         print(f"    {key}: {value}")
 
     name = "LGBM"
-    with open(logdir / f"{name}_optim.json", "w", encoding="utf-8") as f:
-        json.dump(obj=eval_results, fp=f)
-
     with open(logdir / f"{name}_best_params.json", "w", encoding="utf-8") as f:
-        json.dump(obj=best_params, fp=f)
+        json.dump(best_params, f)
 
-    return eval_results
+    with open(logdir / f"{name}_study.pickle", "wb") as f:
+        pickle.dump(study, f)
+
+    df = pd.DataFrame(study.trials_dataframe())
+    df.to_csv(logdir / f"{name}_trials.csv")
+
+    return study
