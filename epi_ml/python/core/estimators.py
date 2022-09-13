@@ -58,7 +58,9 @@ LR_SEARCH = {
 model_mapping = {
     "LinearSVC": Pipeline(steps=[("scaler", StandardScaler()), ("model", LinearSVC())]),
     "RF": Pipeline(steps=[("model", RandomForestClassifier(random_state=RNG, bootstrap=True))]),
-    "LR": Pipeline(steps=[("model", LogisticRegression(penalty="l2", multi_class="multinomial", dual=False, fit_intercept=True, solver="lbfgs", warm_start=True))]),
+    "LR": Pipeline(steps=[
+        ("model", LogisticRegression(penalty="l2", multi_class="multinomial", solver="lbfgs", dual=False, fit_intercept=True, warm_start=True, max_iter=1000))
+        ]),
     "LGBM": Pipeline(steps=[("model", LGBMClassifier())]),  # type: ignore
 }
 # fmt: on
