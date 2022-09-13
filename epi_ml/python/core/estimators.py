@@ -314,8 +314,8 @@ def run_prediction(
     X, y = my_data.validation.signals, my_data.validation.encoded_labels
 
     if verbose:
-        metrics = analyzer.metrics(X, y, verbose=False)
-        print(f"Split {i} metrics {metrics}")
+        print(f"Split {i} metrics:")
+        analyzer.metrics(X, y, verbose=True)
 
     analyzer.predict_file(
         my_data.validation.ids,
