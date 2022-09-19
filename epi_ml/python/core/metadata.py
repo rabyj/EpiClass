@@ -6,6 +6,7 @@ import collections
 import copy
 import json
 import os
+from collections.abc import Iterable
 from pathlib import Path
 from typing import List
 
@@ -83,7 +84,7 @@ class Metadata(object):
 
     def apply_filter(self, meta_filter=lambda item: True):
         """Apply a filter on items (md5:dataset)."""
-        self._metadata = dict(filter(meta_filter, self._metadata.items()))
+        self._metadata = dict(filter(meta_filter, self.items))
 
     def remove_missing_labels(self, label_category: str):
         """Remove datasets where the metadata category is missing."""
@@ -95,10 +96,11 @@ class Metadata(object):
 
         Can fail if remove_missing_labels has not been ran before.
         """
-        sorted_md5 = sorted(self._metadata.keys())
+        sorted_md5 = sorted(self.md5s)
         data = collections.defaultdict(list)
         for md5 in sorted_md5:
-            data[self._metadata[md5][label_category]].append(md5)
+            label = self[md5][label_category]
+            data[label].append(md5)
         return data
 
     def remove_small_classes(self, min_class_size, label_category: str, verbose=True):
@@ -115,7 +117,7 @@ class Metadata(object):
             if size < min_class_size:
                 nb_removed_class += 1
                 for md5 in data[label]:
-                    del self._metadata[md5]
+                    del self[md5]
 
         if verbose:
             remaining = nb_class - nb_removed_class
@@ -125,25 +127,25 @@ class Metadata(object):
                 f"after removing classes with less than {min_class_size} signals."
             )
 
-    def select_category_subsets(self, label_category: str, labels: list):
+    def select_category_subsets(self, label_category: str, labels: Iterable[str]):
         """Select only datasets which possess the given labels
         for the given label category.
         """
         filt = lambda item: item[1].get(label_category) in set(labels)
         self.apply_filter(filt)  # type: ignore
 
-    def remove_category_subsets(self, label_category: str, labels: list):
+    def remove_category_subsets(self, label_category: str, labels: Iterable[str]):
         """Remove datasets which possess the given labels
         for the given label category.
         """
         filt = lambda item: item[1].get(label_category) not in set(labels)
         self.apply_filter(filt)  # type: ignore
 
-    def label_counter(self, label_category: str):
+    def label_counter(self, label_category: str) -> collections.Counter[str]:
         """Return a Counter() with label count from the given category."""
         counter = collections.Counter()
-        for labels in self._metadata.values():
-            label = labels[label_category]
+        for dset in self.datasets:
+            label = dset[label_category]
             counter.update([label])
         return counter
 
@@ -167,7 +169,7 @@ class Metadata(object):
     def get_categories(self):
         """Return a sorted list of all metadata categories."""
         categories = set()
-        for dset in self._metadata.values():
+        for dset in self.datasets:
             categories.update(dset.keys())
         return sorted(categories)
 
