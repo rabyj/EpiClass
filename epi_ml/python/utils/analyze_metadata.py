@@ -70,6 +70,61 @@ epiatlas_cats = set(
 )
 
 
+def keep_major_cell_types(my_metadata: Metadata):
+    """Remove datasets which are not part of a cell_type which has
+    at least 10 signals in two assays. Those assays must also have
+    at least two cell_type.
+    """
+    # First pass to remove useless classes
+    for category in ["assay", "cell_type"]:
+        my_metadata.remove_small_classes(10, category)
+
+    # Find big enough cell types in each assay
+    md5s_per_assay = my_metadata.md5_per_class("assay")
+    cell_types_in_assay = {}
+    for assay, md5s in md5s_per_assay.items():
+
+        # count cell_type occurence in assay
+        cell_types_count = collections.Counter(
+            my_metadata[md5]["cell_type"] for md5 in md5s
+        )
+
+        # remove small classes from counter
+        cell_types_count = {
+            cell_type: size
+            for cell_type, size in cell_types_count.items()
+            if size >= 10
+        }
+
+        # bad assay if only one class left with more than 10 examples
+        if len(cell_types_count) == 1:
+            cell_types_count = {}
+
+        # delete small classes from metadata
+        for md5 in md5s:
+            if my_metadata[md5]["cell_type"] not in cell_types_count:
+                del my_metadata[md5]
+
+        # keep track of big enough classes
+        if cell_types_count:
+            cell_types_in_assay[assay] = set(cell_types_count.keys())
+
+    # Count in how many assay each passing cell_type is
+    cell_type_counter = collections.Counter()
+    for cell_type_set in cell_types_in_assay.values():
+        for cell_type in cell_type_set:
+            cell_type_counter[cell_type] += 1
+
+    # Remove signals which are not part of common+big cell_types
+    for md5 in list(my_metadata.md5s):
+        dset = my_metadata[md5]
+        good_cell_type = cell_type_counter.get(dset["cell_type"], 0) > 1
+        if not good_cell_type:
+            del my_metadata[md5]
+
+    return my_metadata
+
+
 def keep_major_cell_types_alt(my_metadata: Metadata):
     """Return a filtered metadata with certain assays. Datasets which are
     not part of a cell_type which has at least 10 signals are removed.
