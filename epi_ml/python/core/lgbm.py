@@ -68,8 +68,11 @@ def tune_lgbm(ea_handler: EpiAtlasTreatment, logdir: Path):
     )
 
     # Optimize and log results.
+    print("Tuning feature fraction")
     tuner.tune_feature_fraction(3)
+    print("Tuning number of leaves")
     tuner.tune_num_leaves(5)
+    print("Tuning bagging")
     tuner.tune_bagging(4)
 
     print("Best score:", tuner.best_score)
