@@ -120,10 +120,16 @@ class EstimatorAnalyzer(object):
     def predict_file(self, ids, X, y, log):
         """Write predictions table for validation set."""
 
-        int_results = self._clf.predict(X)
-        pred_results = self.encoder.transform(int_results)
+        try:
+            pred_results = self._clf.predict_proba(X)
+        except AttributeError:
+            int_results = self._clf.predict(X)
+            pred_results = self.encoder.transform(int_results)
 
-        str_preds = [self.mapping[encoded_label] for encoded_label in int_results]
+        str_preds = [
+            self.mapping[encoded_label] for encoded_label in np.argmax(pred_results, axis=1)  # type: ignore
+        ]
+
         str_y = [self.mapping[encoded_label] for encoded_label in y]
 
         write_pred_table(
