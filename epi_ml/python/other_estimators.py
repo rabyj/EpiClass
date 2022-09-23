@@ -135,33 +135,37 @@ def main(args):
     # Predict mode
     if mode_predict is True:  # type: ignore
         print("Entering fit/prediction mode")
-        if cli.hparams is not None and not cli.hparams.exists():
-            raise AssertionError("hparams file does not exist: {cli.hparams}")
-
-        ea_handler = EpiAtlasTreatment(
-            my_datasource,
-            cli.category,
-            label_list,
-            n_fold=estimators.NFOLD_PREDICT,
-            test_ratio=0,
-            min_class_size=min_class_size,
-        )
-        loading_time = time_now() - loading_begin
-        print(f"Initial hdf5 loading time: {loading_time}")
 
         pattern = f"{cli.logdir / estimators.best_params_file_format.format(name='*')}"
         hparam_files = glob.glob(pattern)
-        for filepath in hparam_files:
+        if hparam_files:
 
-            with open(filepath, "r", encoding="utf-8") as file:
-                hparams = json.load(file)
+            ea_handler = EpiAtlasTreatment(
+                my_datasource,
+                cli.category,
+                label_list,
+                n_fold=estimators.NFOLD_PREDICT,
+                test_ratio=0,
+                min_class_size=min_class_size,
+            )
+            loading_time = time_now() - loading_begin
+            print(f"Initial hdf5 loading time: {loading_time}")
 
-            filepath = Path(filepath)
-            name = filepath.stem.split(sep="_", maxsplit=1)[0]
-            estimator = estimators.model_mapping[name]
-            estimator.set_params(**hparams)
+            for filepath in hparam_files:
 
-            estimators.run_predictions(ea_handler, estimator, name, cli.logdir)
+                print(f"Using {filepath}.")
+
+                with open(filepath, "r", encoding="utf-8") as file:
+                    hparams = json.load(file)
+
+                filepath = Path(filepath)
+                name = filepath.stem.split(sep="_", maxsplit=1)[0]
+                estimator = estimators.model_mapping[name]
+                estimator.set_params(**hparams)
+
+                estimators.run_predictions(ea_handler, estimator, name, cli.logdir)
+        else:
+            print("No parameters file found, finishing now.")
 
 
 if __name__ == "__main__":
