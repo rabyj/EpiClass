@@ -76,11 +76,16 @@ def tune_lgbm(ea_handler: EpiAtlasTreatment, logdir: Path):
     tuner.tune_bagging(4)
 
     print("Best score:", tuner.best_score)
+
     best_params = tuner.best_params
     print("Best params:", best_params)
     print("  Params: ")
-    for key, value in best_params.items():
+    for key, value in list(best_params.items()):
         print(f"    {key}: {value}")
+
+        # Put it in the pipeline format
+        del best_params[key]
+        best_params[f"model__{key}"] = value
 
     name = "LGBM"
     with open(logdir / f"{name}_best_params.json", "w", encoding="utf-8") as f:
