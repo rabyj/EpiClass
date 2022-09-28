@@ -2,9 +2,12 @@
 # pylint: disable=no-member
 from __future__ import annotations
 
+import glob
 import json
 import multiprocessing as mp
 import os
+import pickle
+import sys
 from functools import partial
 from pathlib import Path
 
@@ -71,6 +74,12 @@ search_mapping = {
     "LR": LR_SEARCH,
 }
 
+save_mapping = {
+    "LinearSVC": "LinearSVC",
+    "RF": "RandomForestClassifier",
+    "LR": "LogisticRegression",
+}
+
 tune_results_file_format = "{name}_optim.csv"
 best_params_file_format = "{name}_best_params.json"
 
@@ -81,8 +90,18 @@ class EstimatorAnalyzer(object):
     def __init__(self, classes, estimator):
         self.classes = sorted(classes)
         self.mapping = dict(enumerate(self.classes))
-        self._clf = estimator
         self.encoder = LabelBinarizer().fit(list(self.mapping.keys()))
+
+        self._clf = estimator
+        self._name = self._get_name(estimator)
+
+    @staticmethod
+    def _get_name(estimator):
+        """Return estimator model name."""
+        name = type(estimator).__name__
+        if name == "Pipeline":
+            name = type(estimator.named_steps["model"]).__name__
+        return name
 
     def metrics(self, X, y, verbose=True):
         """Return a dict of metrics over given set"""
@@ -140,6 +159,47 @@ class EstimatorAnalyzer(object):
             md5s=ids,
             path=log,
         )
+
+    def save_model(self, logdir: Path, name=None):
+        """Save model to pickle file. If a filename is given, it will be appended to model name."""
+        save_name = f"{self._name}"
+        if name is not None:
+            save_name += f"_{name}"
+
+        time = str(time_now()).replace(" ", "_")
+        save_name = logdir / f"{save_name}_{time}.pickle"
+
+        print(f"Saving model to {save_name}")
+        with open(save_name, "wb") as f:
+            pickle.dump(self, f)
+
+    @classmethod
+    def restore_model(
+        cls, logdir: str, auto_name: str, full_path=None
+    ) -> EstimatorAnalyzer:
+        """Restore most recent EstimatorAnalyzer instance from a previous save.
+        Automatic mode restores most recent model with cli name. Full path takes it literally
+        """
+        if full_path is not None:
+            filepath = full_path
+        else:
+            name = save_mapping[auto_name]
+            path = Path(logdir) / f"{name}*.pickle"
+            list_of_files = glob.glob(str(path))
+            try:
+                filepath = max(list_of_files, key=os.path.getctime)
+            except ValueError as err:
+                print(
+                    f"Did not find any model file following pattern {path}",
+                    file=sys.stderr,
+                )
+                raise err
+
+        print(f"Loading model {filepath}")
+        with open(filepath, "rb") as f:
+            model = pickle.load(f)
+
+        return model
 
 
 def best_params_cb(result):
@@ -293,6 +353,7 @@ def run_prediction(
     name: str,
     logdir: Path,
     verbose=True,
+    save_model=True,
 ):
     """
     It takes a dataset, fits the model on the training data, and then predicts on
@@ -331,3 +392,6 @@ def run_prediction(
         y,
         logdir / f"{name}_split{i}_validation_prediction.csv",
     )
+
+    if save_model:
+        analyzer.save_model(logdir, name=f"split{i}")

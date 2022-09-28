@@ -154,16 +154,16 @@ def main(args):
             for filepath in hparam_files:
 
                 print(f"Using {filepath}.")
-
                 with open(filepath, "r", encoding="utf-8") as file:
                     hparams = json.load(file)
 
-                filepath = Path(filepath)
-                name = filepath.stem.split(sep="_", maxsplit=1)[0]
+                name = Path(filepath).stem.split(sep="_", maxsplit=1)[0]
+
                 estimator = estimators.model_mapping[name]
                 estimator.set_params(**hparams)
 
                 estimators.run_predictions(ea_handler, estimator, name, cli.logdir)
+
         else:
             print("No parameters file found, finishing now.")
 
