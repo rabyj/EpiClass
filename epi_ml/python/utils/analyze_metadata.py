@@ -416,34 +416,35 @@ def compute_coherence_on_all(meta: Metadata):
     df.to_csv("test.csv", index=False)
 
 
+def check_epitatlas_uuid_premise(metadata):
+    """Check that there is only one file per track type, for a given uuid."""
+    uuid_to_md5s = collections.defaultdict(collections.Counter)
+    for dset in metadata.datasets:
+        uuid = dset["uuid"]
+        uuid_to_md5s[uuid].update([dset["track_type"]])
+
+    for uuid, counter in uuid_to_md5s.items():
+        for nb in counter.values():
+            if nb != 1:
+                print(uuid, counter)
+
+
 def main():
 
     base = Path("/home/local/USHERBROOKE/rabj2301/Projects/epilap/")
-    path = base / "input//metadata/merged_EpiAtlas_allmetadatav9.json"
+    path = base / "input/metadata/merge_EpiAtlas_allmetadata-v10.json"
     my_metadata = Metadata(path)
 
-    compute_coherence_on_all(my_metadata)
+    # compute_coherence_on_all(my_metadata)
 
-    # cat1 = "assay"
-    # cat2 = "cell_type"
+    cat1 = "assay"
+    cat2 = "cell_type"
 
-    # my_metadata.select_category_subsets(cat1, epiatlas_assays)
-    # my_metadata.remove_category_subsets(cat2, ["other", "--", "NA", ""])
-    # my_metadata.remove_small_classes(10, cat2)
+    my_metadata.display_labels("track_type")
 
-    # cell_types = my_metadata.md5_per_class("cell_type").keys()
-    # to_keep = []
-    # for cell_type in cell_types:
-    #     temp_meta = copy.deepcopy(my_metadata)
-    #     temp_meta.select_category_subsets(cat2, [cell_type])
+    # cell_types_by_pairs(my_metadata, 20)
 
-    #     for md5s in temp_meta.md5_per_class("assay").values():
-    #         if len(md5s) >= 10:
-    #             to_keep.append(cell_type)
-    #             break
-
-    # my_metadata.select_category_subsets("cell_type", to_keep)
-    # make_table(my_metadata, cat1, cat2, "test.tsv")
+    # make_table(my_metadata, cat1, cat2, "test")
 
 
 if __name__ == "__main__":

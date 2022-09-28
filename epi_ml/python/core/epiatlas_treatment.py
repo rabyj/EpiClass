@@ -128,6 +128,8 @@ class EpiAtlasTreatment(object):
     def _epiatlas_prepare_split(self) -> dict:
         """Return track_type mapping dict assuming the datasource is complete.
 
+        Assumption/Condition: Only one file per track type, for a given uuid.
+
         e.g. { raw_md5sum : {"pval":md5sum, "fc":md5sum} }
         """
         meta = copy.deepcopy(self._complete_metadata)
