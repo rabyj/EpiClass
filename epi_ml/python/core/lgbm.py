@@ -10,6 +10,18 @@ from lightgbm import log_evaluation
 
 from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment
 
+# TODO: Permit native saving/loading. # https://stackoverflow.com/questions/55208734/save-lgbmregressor-model-from-python-lightgbm-package-to-disc
+
+
+def print_last_trial(study, trial):
+    """Optuna callback to always print more information on last finished trial."""
+    print("\nLast trial used the following hyper-parameters:")
+    for key, value in trial.params.items():
+        print("{}: {}".format(key, value))
+    print(f"to achieve objective function score of {trial.value}")
+    print("Full parameters are:")
+    print(trial.system_attrs["lightgbm_tuner:lgbm_params"])
+
 
 def tune_lgbm(ea_handler: EpiAtlasTreatment, logdir: Path):
     """
@@ -65,6 +77,7 @@ def tune_lgbm(ea_handler: EpiAtlasTreatment, logdir: Path):
             log_evaluation(period=5),  # type: ignore
         ],
         show_progress_bar=False,
+        optuna_callbacks=[print_last_trial],
     )
 
     # Optimize and log results.
