@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 from typing import Dict
 
@@ -82,7 +83,13 @@ class Hdf5Loader(object):
         # Load hdf5s and concatenate chroms into signals
         signals = {}
         for md5, file in files.items():
-            f = h5py.File(file)
+
+            try:
+                f = h5py.File(file)
+            except OSError as err:
+                print(f"Error occured with {md5}: {file}. {err}", file=sys.stderr)
+                continue
+
             chrom_signals = []
             for chrom in self._chroms:
                 array = f[md5][chrom][...]  # type: ignore
@@ -118,6 +125,7 @@ class Hdf5Loader(object):
         local_tmp = Path(os.getenv("$SLURM_TMPDIR", "./bleh")) / new_parent
 
         if local_tmp.exists():
+            print(f"Using files in {local_tmp}")
             for md5, path in list(files.items()):
                 files[md5] = local_tmp / Path(path).name
 
