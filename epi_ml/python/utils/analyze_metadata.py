@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from epi_ml.python.core.epiatlas_treatment import TRACKS_MAPPING
 from epi_ml.python.core.metadata import Metadata
 from epi_ml.python.utils.augment_predict_file import add_coherence
 
@@ -160,6 +161,38 @@ def five_cell_types_selection(my_metadata: Metadata):
     my_metadata.select_category_subsets("cell_type", cell_types)
     my_metadata.select_category_subsets("assay", dp_assays)
     return my_metadata
+
+
+def cell_types_by_pairs(my_metadata: Metadata, n: int):
+    """Filter metadata to only keep n cell_types,
+    and remove (assay, cell_type) pairs that have less than 3 signals.
+    """
+    cat1 = "assay"
+    cat2 = "cell_type"
+
+    to_ignore = ["other", "--", "", "na"]
+    my_metadata.remove_category_subsets(cat2, to_ignore)
+
+    # Consider only "leader" tracks.
+    my_metadata.select_category_subsets("track_type", TRACKS_MAPPING.keys())
+
+    # Select EpiAtlas/IHEC assays.
+    my_metadata.select_category_subsets(cat1, epiatlas_assays)
+
+    # Select 20 most common cell types
+    common_classes = [
+        label for label, _ in my_metadata.label_counter(cat2).most_common(20)
+    ]
+    my_metadata.select_category_subsets(cat2, common_classes)
+
+    # Remove (cell_type, assay) pairs with less than 3 examples.
+    counter = count_pairs(my_metadata, cat1, cat2)
+    ok_pairs = set(pair for pair, i in counter.most_common() if i >= 3)
+
+    for dset in list(my_metadata.datasets):
+        pair = (dset[cat1], dset[cat2])
+        if pair not in ok_pairs:
+            del my_metadata[dset["md5sum"]]
 
 
 def special_case(my_metadata):
