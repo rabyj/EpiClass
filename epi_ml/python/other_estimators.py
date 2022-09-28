@@ -25,6 +25,11 @@ else:
     CONCURRENT_CV = 1
 
 
+def get_model_name(filepath: str) -> str:
+    """Extract model name from filepath. (string before first '_')"""
+    return Path(filepath).stem.split(sep="_", maxsplit=1)[0]
+
+
 def parse_arguments(args: list) -> argparse.Namespace:
     """Argument parser for command line."""
     # fmt: off
@@ -66,7 +71,7 @@ def parse_arguments(args: list) -> argparse.Namespace:
         help="Number of BayesSearchCV hyperparameters iterations.",
     )
     tune.add_argument(
-        "--models", nargs="+", type=str, help="Specify models to tune.", choices=["all", "LinearSVC", "RF", "LR", "LGBM"], default=["all"]
+        "--models", nargs="+", type=str, help="Specify models to tune and/or predict.", choices=["all", "LinearSVC", "RF", "LR", "LGBM"], default=["all"]
         )
     # fmt: on
     return parser.parse_args(args)
@@ -151,13 +156,22 @@ def main(args):
             loading_time = time_now() - loading_begin
             print(f"Initial hdf5 loading time: {loading_time}")
 
+            if cli.models[0] != "all":
+                available = set([get_model_name(path) for path in hparam_files])
+                chosen = available & set(cli.models)
+                hparam_files = [pattern.replace("*", name) for name in chosen]
+
+            if not hparam_files:
+                print("No parameters file found, finishing now.")
+                sys.exit()
+
             for filepath in hparam_files:
 
                 print(f"Using {filepath}.")
                 with open(filepath, "r", encoding="utf-8") as file:
                     hparams = json.load(file)
 
-                name = Path(filepath).stem.split(sep="_", maxsplit=1)[0]
+                name = get_model_name(filepath)
 
                 estimator = estimators.model_mapping[name]
                 estimator.set_params(**hparams)
@@ -166,6 +180,7 @@ def main(args):
 
         else:
             print("No parameters file found, finishing now.")
+            sys.exit()
 
 
 if __name__ == "__main__":
