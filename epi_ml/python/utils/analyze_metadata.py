@@ -378,7 +378,7 @@ def print_pairs(my_metadata: Metadata, cat1, cat2):
         print(pair, count)
 
 
-def make_table(my_metadata: Metadata, cat1, cat2, filepath):
+def make_table(my_metadata: Metadata, cat1: str, cat2: str, filepath: str):
     """Write metadata content tsv table for given metadata categories"""
     counter = count_pairs(my_metadata, cat1, cat2)
     triplets = [(pair[0], pair[1], count) for pair, count in sorted(counter.items())]
@@ -387,7 +387,7 @@ def make_table(my_metadata: Metadata, cat1, cat2, filepath):
     table = df.pivot_table(
         values="count", index="assay", columns="cell_type", fill_value=0
     )
-    table.to_csv(filepath, sep="\t")
+    table.to_csv(Path(filepath).with_suffix(".tsv"), sep="\t")
 
 
 def compute_coherence_on_all(meta: Metadata):
