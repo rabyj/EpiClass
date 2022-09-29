@@ -29,6 +29,7 @@ from tabulate import tabulate
 from .analysis import write_pred_table
 from epi_ml.python.core.data import DataSet
 from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment
+from epi_ml.python.utils.check_dir import create_dirs
 from epi_ml.python.utils.time import time_now
 
 NFOLD_TUNE = 9
@@ -385,6 +386,16 @@ def run_prediction(
     if verbose:
         print(f"Split {i} metrics:")
         analyzer.metrics(X, y, verbose=True)
+
+    try:
+        logdir = logdir / f"{name}"
+        create_dirs(logdir)
+    except KeyboardInterrupt:
+        print("Shutdown requested (KeyboardInterrupt)...exiting")
+        sys.exit(1)
+    except Exception as err:
+        (print(err))
+        print("Continuing with default logdir.")
 
     analyzer.predict_file(
         my_data.validation.ids,
