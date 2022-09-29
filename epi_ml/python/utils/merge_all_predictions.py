@@ -55,8 +55,10 @@ def main(args):
     column_names = pd.Index(column_names)
     join_pos = column_names.get_loc("True class")
     cut_pos_1 = column_names.get_loc("Same?")
-    cut_pos_2 = column_names.get_loc("Coherence count")
-    print("Will remove content between 'Same?' and 'Coherence count' columns except for first file.")
+    cut_pos_2 = column_names.get_loc("files/epiRR")
+    print(
+        "Will remove content between 'Same?' and 'files/epiRR' columns except for first file."
+    )
 
     new_df = first_df
     for name, df in dfs.items():
