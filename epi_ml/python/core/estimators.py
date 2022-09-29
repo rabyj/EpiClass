@@ -145,6 +145,8 @@ class EstimatorAnalyzer(object):
         except AttributeError:
             int_results = self._clf.predict(X)
             pred_results = self.encoder.transform(int_results)
+            if pred_results.shape[1] == 1:  # 2 classes
+                pred_results = [[1, 0] if i == 0 else [0, 1] for i in int_results]
 
         str_preds = [
             self.mapping[encoded_label] for encoded_label in np.argmax(pred_results, axis=1)  # type: ignore
