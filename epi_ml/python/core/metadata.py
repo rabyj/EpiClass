@@ -166,7 +166,7 @@ class Metadata(object):
             i += count
         print(f"For a total of {i} examples\n")
 
-    def get_categories(self):
+    def get_categories(self) -> list[str]:
         """Return a sorted list of all metadata categories."""
         categories = set()
         for dset in self.datasets:

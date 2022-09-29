@@ -140,7 +140,8 @@ def main(args):
         print(f"The current experiment key is {exp_key}")
         comet_logger.experiment.log_other("Experience key", f"{exp_key}")
 
-        comet_logger.experiment.add_tag(f"{cli.category}")
+        comet_logger.experiment.add_tag(cli.category)
+        comet_logger.experiment.log_other("category", cli.category)
         comet_logger.experiment.add_tag("EpiAtlas")
 
         if os.getenv("SLURM_JOB_ID") is not None:
