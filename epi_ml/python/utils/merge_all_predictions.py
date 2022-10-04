@@ -54,10 +54,12 @@ def main(args):
 
     column_names = pd.Index(column_names)
     join_pos = column_names.get_loc("True class")
-    cut_pos_1 = column_names.get_loc("Same?")
-    cut_pos_2 = column_names.get_loc("files/epiRR")
+    col1 = "1rst/2nd prob ratio"
+    col2 = "files/epiRR"
+    cut_pos_1 = column_names.get_loc(col1)
+    cut_pos_2 = column_names.get_loc(col2)
     print(
-        "Will remove content between 'Same?' and 'files/epiRR' columns except for first file."
+        f"Will remove content between '{col1}' and '{col2}' columns except for first file."
     )
 
     new_df = first_df
