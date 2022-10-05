@@ -79,6 +79,7 @@ save_mapping = {
     "LinearSVC": "LinearSVC",
     "RF": "RandomForestClassifier",
     "LR": "LogisticRegression",
+    "LGBM":"LGBMClassifier"
 }
 
 tune_results_file_format = "{name}_optim.csv"
@@ -97,12 +98,17 @@ class EstimatorAnalyzer(object):
         self._name = self._get_name(estimator)
 
     @staticmethod
-    def _get_name(estimator):
+    def _get_name(estimator) -> str:
         """Return estimator model name."""
         name = type(estimator).__name__
         if name == "Pipeline":
             name = type(estimator.named_steps["model"]).__name__
         return name
+
+    @property
+    def name(self) -> str:
+        """Return classifier name."""
+        return self._get_name(self._clf)
 
     def metrics(self, X, y, verbose=True):
         """Return a dict of metrics over given set"""
@@ -141,7 +147,10 @@ class EstimatorAnalyzer(object):
         """Write predictions table for validation set."""
 
         try:
-            pred_results = self._clf.predict_proba(X)
+            if self.name == "LGBMClassifier":
+                pred_results, _, _  = self._clf.predict_proba(X)
+            else:
+                pred_results = self._clf.predict_proba(X)
         except AttributeError:
             int_results = self._clf.predict(X)
             pred_results = self.encoder.transform(int_results)
