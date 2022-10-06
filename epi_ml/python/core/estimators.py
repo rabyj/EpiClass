@@ -392,6 +392,9 @@ def run_prediction(
 
     analyzer = EstimatorAnalyzer(my_data.classes, estimator)
 
+    if save_model:
+        analyzer.save_model(logdir, name=f"split{i}")
+
     X, y = my_data.validation.signals, my_data.validation.encoded_labels
 
     if verbose:
@@ -414,6 +417,3 @@ def run_prediction(
         y,
         logdir / f"{name}_split{i}_validation_prediction.csv",
     )
-
-    if save_model:
-        analyzer.save_model(logdir, name=f"split{i}")
