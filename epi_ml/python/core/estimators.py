@@ -79,7 +79,7 @@ save_mapping = {
     "LinearSVC": "LinearSVC",
     "RF": "RandomForestClassifier",
     "LR": "LogisticRegression",
-    "LGBM":"LGBMClassifier"
+    "LGBM": "LGBMClassifier",
 }
 
 tune_results_file_format = "{name}_optim.csv"
@@ -110,9 +110,36 @@ class EstimatorAnalyzer(object):
         """Return classifier name."""
         return self._get_name(self._clf)
 
+    def predict(self, X):
+        """Return class predictions."""
+        if self.name == "LGBMClassifier":
+            pred_results = self._clf.predict(
+                X, raw_score=False, pred_leaf=False, pred_contrib=False
+            )
+        else:
+            pred_results = self._clf.predict(X)
+        return pred_results
+
+    def predict_proba(self, X):
+        """Return class prediction probabilities."""
+        try:
+            if self.name == "LGBMClassifier":
+                pred_results = self._clf.predict_proba(
+                    X, raw_score=False, pred_leaf=False, pred_contrib=False
+                )
+            else:
+                pred_results = self._clf.predict_proba(X)
+        except AttributeError:  # SVM
+            int_results = self._clf.predict(X)
+            pred_results = self.encoder.transform(int_results)
+            if pred_results.shape[1] == 1:  # 2 classes, e.g. sex
+                pred_results = [[1, 0] if i == 0 else [0, 1] for i in int_results]
+
+        return pred_results
+
     def metrics(self, X, y, verbose=True):
         """Return a dict of metrics over given set"""
-        y_pred = self._clf.predict(X)
+        y_pred = self.predict(X)
         y_true = y
 
         val_acc = sklearn.metrics.accuracy_score(y_true, y_pred)
@@ -146,16 +173,7 @@ class EstimatorAnalyzer(object):
     def predict_file(self, ids, X, y, log):
         """Write predictions table for validation set."""
 
-        try:
-            if self.name == "LGBMClassifier":
-                pred_results, _, _  = self._clf.predict_proba(X)
-            else:
-                pred_results = self._clf.predict_proba(X)
-        except AttributeError:
-            int_results = self._clf.predict(X)
-            pred_results = self.encoder.transform(int_results)
-            if pred_results.shape[1] == 1:  # 2 classes
-                pred_results = [[1, 0] if i == 0 else [0, 1] for i in int_results]
+        pred_results = self.predict_proba(X)
 
         str_preds = [
             self.mapping[encoded_label] for encoded_label in np.argmax(pred_results, axis=1)  # type: ignore
