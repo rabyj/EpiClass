@@ -172,6 +172,12 @@ def main(args):
                     hparams = json.load(file)
 
                 name = get_model_name(filepath)
+                if name == "LGBM":
+                    hparams = {
+                        k: v
+                        for k, v in hparams.items()
+                        if k in estimators.lgbm_allowed_params
+                    }
 
                 estimator = estimators.model_mapping[name]
                 estimator.set_params(**hparams)

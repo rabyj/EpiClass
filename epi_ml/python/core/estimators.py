@@ -9,6 +9,7 @@ import os
 import pickle
 import sys
 from functools import partial
+from inspect import signature
 from pathlib import Path
 
 import numpy as np
@@ -68,6 +69,7 @@ model_mapping = {
     "LGBM": Pipeline(steps=[("model", LGBMClassifier())]),  # type: ignore
 }
 # fmt: on
+lgbm_allowed_params = set(signature(LGBMClassifier.__init__).parameters.keys())
 
 search_mapping = {
     "LinearSVC": SVM_LIN_SEARCH,
