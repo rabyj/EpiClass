@@ -50,15 +50,18 @@ def parse_arguments(args: list) -> argparse.Namespace:
     group1.add_argument(
         "logdir", type=DirectoryChecker(), help="Directory for the output logs."
     )
+    group1.add_argument(
+        "--models", nargs="+", type=str, help="Specify models to tune and/or predict.", choices=["all", "LinearSVC", "RF", "LR", "LGBM"], default=["all"]
+        )
 
     mode = parser.add_argument_group("Mode")
     mode = mode.add_mutually_exclusive_group(required=True)
     mode.add_argument(
         "--tune", action="store_true", help="Search best hyperparameters."
-    )
+        )
     mode.add_argument(
         "--predict", action="store_true", help="Fit and predict using hyperparameters."
-    )
+        )
     mode.add_argument(
         "--full-run", action="store_true", help="Tune then predict"
         )
@@ -70,9 +73,6 @@ def parse_arguments(args: list) -> argparse.Namespace:
         default=30,
         help="Number of BayesSearchCV hyperparameters iterations.",
     )
-    tune.add_argument(
-        "--models", nargs="+", type=str, help="Specify models to tune and/or predict.", choices=["all", "LinearSVC", "RF", "LR", "LGBM"], default=["all"]
-        )
     # fmt: on
     return parser.parse_args(args)
 
@@ -85,15 +85,20 @@ def main(args):
     # --- PARSE params and LOAD external files ---
     cli = parse_arguments(args)
 
-    if cli.tune is True:
+    if cli.tune:
         mode_tune = True
         mode_predict = False
-    elif cli.predict is True:
+    elif cli.predict:
         mode_tune = False
         mode_predict = True
-    elif cli.full_run is True:
+    elif cli.full_run:
         mode_tune = True
         mode_predict = True
+
+    if "all" in cli.models:
+        models = estimators.model_mapping.keys()
+    else:
+        models = cli.models
 
     my_datasource = EpiDataSource(cli.hdf5, cli.chromsize, cli.metadata)
 
@@ -125,10 +130,6 @@ def main(args):
         print(f"Initial hdf5 loading time: {loading_time}")
 
         n_iter = cli.n
-        if "all" in cli.models:
-            models = estimators.model_mapping.keys()
-        else:
-            models = cli.models
 
         for name in models:
             if name == "LGBM":
@@ -156,10 +157,10 @@ def main(args):
             loading_time = time_now() - loading_begin
             print(f"Initial hdf5 loading time: {loading_time}")
 
-            if cli.models[0] != "all":
-                available = set([get_model_name(path) for path in hparam_files])
-                chosen = available & set(cli.models)
-                hparam_files = [pattern.replace("*", name) for name in chosen]
+            # Intersect available hparam files with chose models.
+            available = set([get_model_name(path) for path in hparam_files])
+            chosen = available & set(models)
+            hparam_files = [pattern.replace("*", name) for name in chosen]
 
             if not hparam_files:
                 print("No parameters file found, finishing now.")

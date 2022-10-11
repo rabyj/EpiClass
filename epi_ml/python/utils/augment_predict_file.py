@@ -82,6 +82,7 @@ def augment_line(line, metadata: Metadata, categories, classes):
 
     class_2 = classes[i_2]
 
+    # get all labels for given categories
     new_labels = [metadata[md5].get(category, "--empty--") for category in categories]
 
     new_line = (
