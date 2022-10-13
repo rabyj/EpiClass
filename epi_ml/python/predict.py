@@ -118,7 +118,10 @@ def main(args):
     )
 
     # --- Create prediction file ---
-    my_analyzer.write_test_prediction()
+    predict_path = (
+        cli.logdir / f"{Path(model_dir).stem}_test_prediction_{cli.hdf5.stem}.csv"
+    )
+    my_analyzer.write_test_prediction(path=predict_path)
 
     end = time_now()
     main_time = end - begin
