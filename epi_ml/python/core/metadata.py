@@ -15,11 +15,12 @@ class Metadata(object):
     """
     Wrapper around metadata md5:dataset dict.
 
-    meta_file (Path): Path to json file containing metadata for some datasets.
+    path (Path): Path to json file containing metadata for some datasets.
     """
 
-    def __init__(self, meta_file: Path):
-        self._metadata = self._load_metadata(meta_file)
+    def __init__(self, path: Path):
+        self._metadata = self._load_metadata(path)
+        self._rest = {}
 
     @classmethod
     def from_dict(cls, metadata: dict) -> Metadata:
@@ -61,6 +62,10 @@ class Metadata(object):
         """Dict .update equivalent. Info needs to respect {md5sum:dset} format."""
         self._metadata.update(info.items)
 
+    def save(self, path):
+        """Save the metadata to path, in original epigeec_json format."""
+        self._save_metadata(path)
+
     @property
     def md5s(self):
         """Return md5s (iterator). dict.keys() equivalent."""
@@ -76,11 +81,23 @@ class Metadata(object):
         """Return pairs (iterator). dict.items() equivalent"""
         return self._metadata.items()
 
-    def _load_metadata(self, meta_file):
+    def _load_metadata(self, path):
         """Return md5:dataset dict."""
-        with open(meta_file, "r", encoding="utf-8") as file:
+        with open(path, "r", encoding="utf-8") as file:
             meta_raw = json.load(file)
+
+        self._rest = {k: v for k, v in meta_raw.items() if k != "datasets"}
         return {dset["md5sum"]: dset for dset in meta_raw["datasets"]}
+
+    def _save_metadata(self, path):
+        """Save the metadata to path, in original epigeec_json format.
+
+        Only saves dataset information.
+        """
+        to_save = {"datasets": list(self.datasets)}
+        to_save.update(self._rest)
+        with open(path, "w", encoding="utf-8") as file:
+            json.dump(to_save, file)
 
     def apply_filter(self, meta_filter=lambda item: True):
         """Apply a filter on items (md5:dataset)."""
