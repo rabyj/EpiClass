@@ -47,28 +47,32 @@ class DatasetError(Exception):
 def parse_arguments(args: list) -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = ArgumentParser()
+
+    # fmt: off
     arg_parser.add_argument(
-        "category", type=str, help="The metatada category to analyse."
+        "category", type=str, help="The metatada category to analyse.",
     )
     arg_parser.add_argument(
-        "hyperparameters",
-        type=Path,
-        help="A json file containing model hyperparameters.",
+        "hyperparameters", type=Path, help="A json file containing model hyperparameters.",
     )
     arg_parser.add_argument(
-        "hdf5", type=Path, help="A file with hdf5 filenames. Use absolute path!"
+        "hdf5", type=Path, help="A file with hdf5 filenames. Use absolute path!",
     )
-    arg_parser.add_argument("chromsize", type=Path, help="A file with chrom sizes.")
-    arg_parser.add_argument("metadata", type=Path, help="A metadata JSON file.")
     arg_parser.add_argument(
-        "logdir", type=DirectoryChecker(), help="Directory for the output logs."
+        "chromsize", type=Path, help="A file with chrom sizes.",
+    )
+    arg_parser.add_argument(
+        "metadata", type=Path, help="A metadata JSON file.",
+    )
+    arg_parser.add_argument(
+        "logdir", type=DirectoryChecker(), help="Directory for the output logs.",
     )
     arg_parser.add_argument(
         "--offline",
         action="store_true",
         help="Will log data offline instead of online. Currently cannot merge comet-ml offline outputs.",
     )
-
+    # fmt: on
     return arg_parser.parse_args(args)
 
 
