@@ -25,22 +25,30 @@ from epi_ml.python.core.metadata import Metadata
 def parse_arguments(argv: list) -> argparse.Namespace:
     """Return argument line parser."""
     parser = ArgumentParser()
-
+    # fmt: off
     parser.add_argument(
-        "predict", type=Path, help="Predict file to augment with metadata."
+        "predict_file", metavar="predict-file", type=Path, help="Predict file to augment with metadata.",
     )
-    parser.add_argument("metadata", type=Path, help="Metadata file to use.")
+    parser.add_argument(
+        "metadata", type=Path, help="Metadata file to use.",
+    )
+    parser.add_argument(
+        "--correct-true",
+        type=str,
+        help="Replace 'True class' field labels with metadata values of given LABEL CATEGORY.",
+        default=None
+    )
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
-        "--categories", nargs="+", type=str, help="Specific metadata categories to add."
+        "--categories", nargs="+", type=str, help="Specific metadata categories to add.",
     )
     group.add_argument(
         "--all-categories",
         action="store_true",
         help="Add all available metadata categories.",
     )
-
+    # fmt: on
     return parser.parse_args(argv)
 
 
@@ -200,6 +208,15 @@ def add_track_type_coherence(df):
     df[cat3] = df[cat2] / (1.0 * df[cat1])
 
 
+def correct_true(path: Path, category: str, metadata: Metadata):
+    """Read file and replace 'True class' labels with metadata values for given category."""
+    df = pd.read_csv(path, sep=",", header=0, index_col=0)
+    for row in df.itertuples():
+        md5 = row.Index
+        df.at[md5, "True class"] = metadata[md5][category]
+    df.to_csv(path, sep=",")
+
+
 def main(argv):
     """Augment a label prediction file with new metadata categories.
 
@@ -209,17 +226,20 @@ def main(argv):
         add_matrices(logdir)
 
     args = parse_arguments(argv)
+
     metadata = Metadata(args.metadata)
+    pred_file = args.predict_file
+
+    if args.correct_true:
+        correct_true(path=pred_file, category=args.correct_true, metadata=metadata)
 
     categories = args.categories
     if args.all_categories:
         categories = metadata.get_categories()
-        new_path = augment_predict(
-            metadata, args.predict, categories, append_name="all"
-        )
+        new_path = augment_predict(metadata, pred_file, categories, append_name="all")
         write_coherence(new_path, "Predicted class")
     else:
-        augment_predict(metadata, args.predict, categories)
+        augment_predict(metadata, pred_file, categories)
 
 
 def cli():
