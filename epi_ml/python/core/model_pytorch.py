@@ -1,17 +1,26 @@
 """Model creation module"""
+# pyright: reportPrivateImportUsage=false
+from __future__ import annotations
+
 from pathlib import Path
+from typing import Dict
 
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
 from torch import nn
 from torchinfo import summary
-from torchmetrics import Accuracy, F1Score, MatthewsCorrCoef, MetricCollection, Precision, Recall  # type: ignore
+from torchmetrics import (
+    Accuracy,
+    F1Score,
+    MatthewsCorrCoef,
+    MetricCollection,
+    Precision,
+    Recall,
+)
 
 
-class LightningDenseClassifier(
-    pl.LightningModule
-):  # pylint: disable=too-many-ancestors
+class LightningDenseClassifier(pl.LightningModule):  # pylint: disable=too-many-ancestors
     """Simple dense network handler"""
 
     def __init__(
@@ -56,12 +65,12 @@ class LightningDenseClassifier(
         self.valid_acc = Accuracy(num_classes=self._y_size, average="micro")
 
     @property
-    def mapping(self):
+    def mapping(self) -> Dict[int, str]:
         """Return {output index:label} mapping."""
         return self._mapping
 
     @property
-    def invert_mapping(self):
+    def invert_mapping(self) -> Dict[str, int]:
         """Return {label:output index} mapping."""
         return {val: key for key, val in self._mapping.items()}
 
