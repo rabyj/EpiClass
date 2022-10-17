@@ -13,10 +13,11 @@ from epi_ml.python.argparseutils.DefaultHelpParser import (
     DefaultHelpParser as ArgumentParser,
 )
 from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
-from epi_ml.python.core import metadata
+from epi_ml.python.core import data, metadata
 from epi_ml.python.core.data_source import EpiDataSource
 from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment
 from epi_ml.python.core.lgbm import tune_lgbm
+from epi_ml.python.utils.analyze_metadata import filter_cell_types_by_pairs
 from epi_ml.python.utils.time import time_now
 
 if os.getenv("CONCURRENT_CV") is not None:
@@ -102,6 +103,7 @@ def main(args):
 
     my_datasource = EpiDataSource(cli.hdf5, cli.chromsize, cli.metadata)
 
+    # --- Prefilter metadata, must put in EpiAtlasTreatment to actually use it ---
     my_metadata = metadata.Metadata(my_datasource.metadata_file)
     my_metadata.remove_category_subsets(
         label_category="track_type", labels=["Unique.raw"]
@@ -114,6 +116,9 @@ def main(args):
     else:
         min_class_size = 10
 
+    if cli.category == "harm_sample_ontology_intermediate":
+        my_metadata = filter_cell_types_by_pairs(my_metadata)
+
     # Tuning mode
     loading_begin = time_now()
     if mode_tune is True:  # type: ignore
@@ -125,6 +130,7 @@ def main(args):
             n_fold=estimators.NFOLD_TUNE,
             test_ratio=0.1,
             min_class_size=min_class_size,
+            metadata=my_metadata,
         )
         loading_time = time_now() - loading_begin
         print(f"Initial hdf5 loading time: {loading_time}")
@@ -153,6 +159,7 @@ def main(args):
                 n_fold=estimators.NFOLD_PREDICT,
                 test_ratio=0,
                 min_class_size=min_class_size,
+                metadata=my_metadata,
             )
             loading_time = time_now() - loading_begin
             print(f"Initial hdf5 loading time: {loading_time}")

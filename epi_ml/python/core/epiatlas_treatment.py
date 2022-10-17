@@ -11,9 +11,10 @@ from typing import Dict, Generator, List
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
 
-from epi_ml.python.core import data, metadata
+from epi_ml.python.core import data
 from epi_ml.python.core.data_source import EpiDataSource
 from epi_ml.python.core.hdf5_loader import Hdf5Loader
+from epi_ml.python.core.metadata import Metadata
 
 TRACKS_MAPPING = {
     "raw": ["pval", "fc"],
@@ -27,10 +28,24 @@ LEADER_TRACKS = frozenset(["raw", "Unique_plusRaw", "gembs_pos"])
 
 class EpiAtlasTreatment(object):
     """Class that handles how epiatlas data is processed into datasets.
+    Can be used to split the data into training and testing sets.
 
-    datasource : where everything is read from
-    label_category : The target category
-    label_list : List of labels/classes to include from given category
+    Parameters
+    ----------
+    datasource : EpiDataSource
+        Where everything is read from.
+    label_category : str
+        The target category of labels to use.
+    label_list : List[str]
+        List of labels/classes to include from given category
+    n_fold : int, optional
+        Number of folds for cross-validation.
+    test_ratio : float, optional
+        Ratio of data kept for test (not used for training or validation)
+    min_class_size : int, optional
+        Minimum number of samples per class.
+    my_metadata : Metadata | None
+        Metadata to use, if the complete source should not be used. (e.g. more complex pre-filtering)
     """
 
     def __init__(
@@ -41,6 +56,7 @@ class EpiAtlasTreatment(object):
         n_fold: int = 10,
         test_ratio: float = 0,
         min_class_size: int = 10,
+        metadata: Metadata | None = None,
     ) -> None:
         self._datasource = datasource
         self._label_category = label_category
@@ -48,9 +64,17 @@ class EpiAtlasTreatment(object):
         self.k = n_fold
 
         if n_fold < 2:
-            Exception(f"Need at least two folds for cross-validation. Got {n_fold}.")
+            raise ValueError(
+                f"Need at least two folds for cross-validation. Got {n_fold}."
+            )
 
-        self._complete_metadata = self.get_complete_metadata(verbose=True)
+        if metadata is not None:
+            self.metadata = metadata
+        else:
+            self.metadata = Metadata(self.datasource.metadata_file)
+
+        self._filter_metadata(verbose=True)
+
         self._raw_to_others = self._epiatlas_prepare_split()
 
         # Load files
@@ -80,26 +104,24 @@ class EpiAtlasTreatment(object):
         return self._raw_dset
 
     @property
-    def group_mapper(self) -> dict:
+    def group_mapper(self) -> Dict[str, Dict[str, str]]:
         """Return md5sum track_type mapping dict.
 
         e.g. 1 entry { raw_md5sum : {"pval":md5sum, "fc":md5sum} }
         """
         return self._raw_to_others
 
-    def get_complete_metadata(self, verbose: bool) -> metadata.Metadata:
-        """Return metadata filtered for assay list and label_category."""
-        meta = metadata.Metadata(self.datasource.metadata_file)
-        meta.select_category_subsets(self.target_category, self.label_list)
-        meta.remove_small_classes(10, self.target_category, verbose)
-        return meta
+    def _filter_metadata(self, verbose: bool) -> None:
+        """Filter entry metadata for assay list and label_category."""
+        self.metadata.select_category_subsets(self.target_category, self.label_list)
+        self.metadata.remove_small_classes(10, self.target_category, verbose)
 
     def _create_raw_dataset(
         self, test_ratio: float, min_class_size: int
     ) -> data.DataSet:
         """Create a dataset with raw+ctl_raw signals, all in the training set."""
         print("Creating epiatlas 'raw' signal training dataset")
-        meta = copy.deepcopy(self._complete_metadata)
+        meta = copy.deepcopy(self.metadata)
 
         print("Theoretical maximum with complete dataset:")
         meta.display_labels(self.target_category)
@@ -125,14 +147,14 @@ class EpiAtlasTreatment(object):
 
         return my_data
 
-    def _epiatlas_prepare_split(self) -> dict:
+    def _epiatlas_prepare_split(self) -> Dict[str, Dict[str, str]]:
         """Return track_type mapping dict assuming the datasource is complete.
 
         Assumption/Condition: Only one file per track type, for a given uuid.
 
         e.g. { raw_md5sum : {"pval":md5sum, "fc":md5sum} }
         """
-        meta = copy.deepcopy(self._complete_metadata)
+        meta = copy.deepcopy(self.metadata)
 
         uuid_to_md5s = {}  # { uuid : {track_type1:md5sum, track_type2:md5sum, ...} }
         for dset in meta.datasets:
@@ -263,8 +285,8 @@ class EpiAtlasTreatment(object):
         """
         info = [
             (
-                self._complete_metadata[md5]["EpiRR"],
-                self._complete_metadata[md5]["assay"],
+                self.metadata[md5]["EpiRR"],
+                self.metadata[md5]["assay"],
             )
             for md5 in md5s
         ]

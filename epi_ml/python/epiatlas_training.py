@@ -29,6 +29,7 @@ from epi_ml.python.core.data_source import EpiDataSource
 from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment
 from epi_ml.python.core.model_pytorch import LightningDenseClassifier
 from epi_ml.python.core.trainer import MyTrainer, define_callbacks
+from epi_ml.python.utils.analyze_metadata import filter_cell_types_by_pairs
 from epi_ml.python.utils.check_dir import create_dirs
 from epi_ml.python.utils.time import time_now
 
@@ -106,6 +107,9 @@ def main(args):
     else:
         min_class_size = 10
 
+    if category == "harm_sample_ontology_intermediate":
+        my_metadata = filter_cell_types_by_pairs(my_metadata)
+
     # --- Load signals and train ---
     loading_begin = time_now()
     ea_handler = EpiAtlasTreatment(
@@ -115,6 +119,7 @@ def main(args):
         n_fold=10,
         test_ratio=0,
         min_class_size=min_class_size,
+        metadata=my_metadata,
     )
     loading_time = time_now() - loading_begin
 
