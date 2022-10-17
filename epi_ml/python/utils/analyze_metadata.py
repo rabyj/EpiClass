@@ -163,15 +163,23 @@ def five_cell_types_selection(my_metadata: Metadata):
     return my_metadata
 
 
-def cell_types_by_pairs(my_metadata: Metadata, n: int):
-    """Filter metadata to only keep n cell_types,
-    and remove (assay, cell_type) pairs that have less than 3 signals.
+def filter_cell_types_by_pairs(
+    my_metadata: Metadata, nb_pairs: int = 5, min_per_pair: int = 10
+):
+    """Filter metadata to only keep only certain cell_types based on cellType-Assay pairs conditions.
+
+    MODIFIES GIVEN METADATA.
+
+    1) Remove (assay, cell_type) pairs that have less than 'min_per_pair' signals.
+    2) Only keep cell types that have at least 'nb_pairs' different pairings still non-zero.
     """
     cat1 = "assay"
-    cat2 = "cell_type"
+    cat2 = "harm_sample_ontology_intermediate"
 
     to_ignore = ["other", "--", "", "na"]
     my_metadata.remove_category_subsets(cat2, to_ignore)
+
+    full_metadata = copy.deepcopy(my_metadata)
 
     # Consider only "leader" tracks.
     my_metadata.select_category_subsets("track_type", TRACKS_MAPPING.keys())
@@ -179,20 +187,33 @@ def cell_types_by_pairs(my_metadata: Metadata, n: int):
     # Select EpiAtlas/IHEC assays.
     my_metadata.select_category_subsets(cat1, epiatlas_assays)
 
-    # Select 20 most common cell types
-    common_classes = [
-        label for label, _ in my_metadata.label_counter(cat2).most_common(20)
-    ]
-    my_metadata.select_category_subsets(cat2, common_classes)
-
-    # Remove (cell_type, assay) pairs with less than 3 examples.
+    # Remove (cell_type, assay) pairs with less than X examples.
     counter = count_pairs(my_metadata, cat1, cat2)
-    ok_pairs = set(pair for pair, i in counter.most_common() if i >= 3)
+    ok_pairs = set(pair for pair, i in counter.most_common() if i >= min_per_pair)
 
-    for dset in list(my_metadata.datasets):
+    for dset in list(full_metadata.datasets):
         pair = (dset[cat1], dset[cat2])
         if pair not in ok_pairs:
-            del my_metadata[dset["md5sum"]]
+            del full_metadata[dset["md5sum"]]
+
+    # Remove cell types that don't have enough different assays.
+    # First get assays per cell type.
+    cell_type_assays = collections.defaultdict(set)
+    for pair in count_pairs(full_metadata, cat1, cat2).keys():
+        cell_type_assays[pair[1]].add(pair[0])
+    print(f"Still {len(cell_type_assays)} cell types labels.")
+
+    # Then count assay, and filter cell types.
+    ok_ct = []
+    for cell_type, assays in cell_type_assays.items():
+        if len(assays) >= nb_pairs:
+            ok_ct.append(cell_type)
+
+    print(f"Keeping {len(ok_ct)} cell types labels.")
+    full_metadata.select_category_subsets(cat2, ok_ct)
+    full_metadata.display_labels(cat2)
+
+    return full_metadata
 
 
 def special_case(my_metadata):
@@ -396,7 +417,7 @@ def two_step_table_analysis(my_metadata: Metadata, category1, category2):
 
 
 def count_pairs(my_metadata: Metadata, cat1, cat2):
-    """Return label pairs counter from the given metadata categories."""
+    """Return label pairs (label_cat1, label_cat2) counter from the given metadata categories."""
     counter = collections.Counter(
         (dset.get(cat1, "--empty--"), dset.get(cat2, "--empty--"))
         for dset in my_metadata.datasets
@@ -464,18 +485,18 @@ def check_epitatlas_uuid_premise(metadata):
 
 def main():
 
-    base = Path("/home/local/USHERBROOKE/rabj2301/Projects/epilap/")
-    path = base / "input/metadata/merge_EpiAtlas_allmetadata-v10.json"
+    base = Path("/home/rabyj/project-rabyj/epilap/input/metadata")
+    path = base / "merge_EpiAtlas_allmetadata-v11-mod.json"
     my_metadata = Metadata(path)
 
     # compute_coherence_on_all(my_metadata)
 
-    cat1 = "assay"
-    cat2 = "cell_type"
+    # cat1 = "assay"
+    # cat2 = "cell_type"
 
-    my_metadata.display_labels("track_type")
+    # my_metadata.display_labels("track_type")
 
-    # cell_types_by_pairs(my_metadata, 20)
+    filter_cell_types_by_pairs(my_metadata)
 
     # make_table(my_metadata, cat1, cat2, "test")
 
