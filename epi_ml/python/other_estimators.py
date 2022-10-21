@@ -184,7 +184,7 @@ def main(args):
 
             for filepath in hparam_files:
 
-                print(f"Using {filepath}.")
+                print(f"Using {Path(filepath).resolve()}.")
                 with open(filepath, "r", encoding="utf-8") as file:
                     hparams = json.load(file)
 

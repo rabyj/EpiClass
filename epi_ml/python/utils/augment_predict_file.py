@@ -22,7 +22,7 @@ from epi_ml.python.core.confusion_matrix import ConfusionMatrixWriter as Confusi
 from epi_ml.python.core.metadata import Metadata
 
 
-def parse_arguments(argv: list) -> argparse.Namespace:
+def parse_arguments() -> argparse.Namespace:
     """Return argument line parser."""
     parser = ArgumentParser()
     # fmt: off
@@ -34,8 +34,9 @@ def parse_arguments(argv: list) -> argparse.Namespace:
     )
     parser.add_argument(
         "--correct-true",
+        metavar="LABEL_CATEGORY",
         type=str,
-        help="Replace 'True class' field labels with metadata values of given LABEL CATEGORY.",
+        help="Replace 'True class' field labels with metadata values of given LABEL_CATEGORY.",
         default=None
     )
 
@@ -49,7 +50,7 @@ def parse_arguments(argv: list) -> argparse.Namespace:
         help="Add all available metadata categories.",
     )
     # fmt: on
-    return parser.parse_args(argv)
+    return parser.parse_args()
 
 
 def augment_header(header, categories):
@@ -94,11 +95,7 @@ def augment_line(line, metadata: Metadata, categories, classes):
     new_labels = [metadata[md5].get(category, "--empty--") for category in categories]
 
     new_line = (
-        [md5]
-        + new_labels
-        + targets
-        + [is_same, preds[i_1], class_2, diff, ratio]
-        + preds
+        [md5] + new_labels + targets + [is_same, preds[i_1], class_2, diff, ratio] + preds
     )
     return new_line
 
@@ -217,7 +214,7 @@ def correct_true(path: Path, category: str, metadata: Metadata):
     df.to_csv(path, sep=",")
 
 
-def main(argv):
+def main():
     """Augment a label prediction file with new metadata categories.
 
     File header format important. Expects [md5sum, true class, predicted class, labels] lines."""
@@ -225,7 +222,7 @@ def main(argv):
         logdir = os.environ["LOG"]
         add_matrices(logdir)
 
-    args = parse_arguments(argv)
+    args = parse_arguments()
 
     metadata = Metadata(args.metadata)
     pred_file = args.predict_file
@@ -244,7 +241,7 @@ def main(argv):
 
 def cli():
     """Ignore program path."""
-    main(sys.argv[1:])
+    main()
 
 
 if __name__ == "__main__":
