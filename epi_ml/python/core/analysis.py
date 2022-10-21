@@ -115,9 +115,7 @@ class Analysis(object):
             classes=self._classes,
             path=path,
         )
-        self._logger.experiment.log_asset(
-            file_data=path, file_name=f"{name}_prediction"
-        )
+        self._logger.experiment.log_asset(file_data=path, file_name=f"{name}_prediction")
 
         if verbose:
             print(f"'{path.name}' written to '{path.parent}'")
@@ -185,6 +183,7 @@ class Analysis(object):
         self._save_matrix(mat, set_name, path)
 
 
+# TODO: Insert "ID" in header, and make sure subsequent script use that (e.g. the bash one liner, for sorting)
 def write_pred_table(predictions, str_preds, str_targets, md5s, classes, path):
     """Write to "path" a csv containing class probability predictions.
 

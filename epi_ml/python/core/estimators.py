@@ -173,7 +173,13 @@ class EstimatorAnalyzer(object):
         print(f"Validation MCC: {metrics_dict['val_mcc']}")
 
     def predict_file(self, ids, X, y, log):
-        """Write predictions table for validation set."""
+        """Write predictions table for validation set.
+
+        ids: Sample identifier.
+        X: Sample features
+        y: Sample labels
+        log: path where to save predictions
+        """
 
         pred_results = self.predict_proba(X)
 

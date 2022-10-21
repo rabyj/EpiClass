@@ -145,6 +145,7 @@ def main(args):
                 estimators.optimize_estimator(ea_handler, cli.logdir, n_iter, name)
 
     # Predict mode
+    # TODO: Pre-check, with a separate init script for best_params.json existence
     if mode_predict is True:  # type: ignore
         print("Entering fit/prediction mode")
 
