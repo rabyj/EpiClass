@@ -212,32 +212,35 @@ class EstimatorAnalyzer(object):
             pickle.dump(self, f)
 
     @classmethod
-    def restore_model(
-        cls, logdir: str, auto_name: str, full_path=None
-    ) -> EstimatorAnalyzer:
+    def restore_model_from_name(cls, logdir: str, auto_name: str) -> EstimatorAnalyzer:
         """Restore most recent EstimatorAnalyzer instance from a previous save.
-        Automatic mode restores most recent model with cli name. Full path takes it literally
+
+        auto_name is the cli name of the model.
         """
-        if full_path is not None:
-            filepath = full_path
-        else:
-            name = save_mapping[auto_name]
-            path = Path(logdir) / f"{name}*.pickle"
-            list_of_files = glob.glob(str(path))
-            try:
-                filepath = max(list_of_files, key=os.path.getctime)
-            except ValueError as err:
-                print(
-                    f"Did not find any model file following pattern {path}",
-                    file=sys.stderr,
-                )
-                raise err
+        if auto_name not in set(save_mapping.keys()):
+            raise ValueError(
+                f"Expected a cli model name (restricted). Gave: {auto_name}"
+            )
 
-        print(f"Loading model {filepath}")
-        with open(filepath, "rb") as f:
-            model = pickle.load(f)
+        name = save_mapping[auto_name]
+        path = Path(logdir) / f"{name}*.pickle"
+        list_of_files = glob.glob(str(path))
+        try:
+            filepath = max(list_of_files, key=os.path.getctime)
+        except ValueError as err:
+            print(
+                f"Did not find any model file following pattern {path}",
+                file=sys.stderr,
+            )
+            raise err
 
-        return model
+        return EstimatorAnalyzer.restore_model_from_path(filepath)
+
+    @classmethod
+    def restore_model_from_path(cls, full_path: str) -> EstimatorAnalyzer:
+        print(f"Loading model {full_path}")
+        with open(full_path, "rb") as f:
+            return pickle.load(f)
 
 
 def best_params_cb(result):

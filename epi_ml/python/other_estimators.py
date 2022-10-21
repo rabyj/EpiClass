@@ -64,6 +64,9 @@ def parse_arguments(args: list) -> argparse.Namespace:
         "--predict", action="store_true", help="Fit and predict using hyperparameters."
         )
     mode.add_argument(
+        "--predict-new", action="store_true", help="Use saved models to predict labels of new samples."
+        )
+    mode.add_argument(
         "--full-run", action="store_true", help="Tune then predict"
         )
 
@@ -95,6 +98,11 @@ def main(args):
     elif cli.full_run:
         mode_tune = True
         mode_predict = True
+    elif cli.predict_new:
+        mode_tune = False
+        mode_predict = False
+    else:
+        raise ValueError("Houston we have a problem.")
 
     if "all" in cli.models:
         models = estimators.model_mapping.keys()
@@ -195,6 +203,52 @@ def main(args):
 
         else:
             print("No parameters file found, finishing now.")
+            sys.exit()
+
+    # Giving predictions with chosen models, for all files in hdf5 list.
+    if cli.predict_new:
+
+        pattern = "{log}/**{name}*.pickle"
+        to_load = []
+        for model in models:
+            save_name = estimators.save_mapping[model]
+            to_load += glob.glob(pattern.format(log=cli.logdir, name=save_name))
+
+        if to_load:
+
+            my_data = data.DataSetFactory.from_epidata(
+                my_datasource,
+                my_metadata,
+                cli.category,
+                min_class_size=min_class_size,
+                validation_ratio=0,
+                test_ratio=1,
+                onehot=False,
+                oversample=False,
+            )
+
+            for model_path in to_load:
+                my_model = estimators.EstimatorAnalyzer.restore_model_from_path(
+                    full_path=model_path
+                )
+                my_analyzer = estimators.EstimatorAnalyzer(
+                    classes=my_metadata.unique_classes(cli.category), estimator=my_model
+                )
+
+                predict_path = (
+                    cli.logdir / f"{Path(model_path).stem}_prediction_{cli.hdf5.stem}.csv"
+                )
+
+                print(f"Saving predictions to: {predict_path}")
+                my_analyzer.predict_file(
+                    ids=my_data.test.ids,
+                    X=my_data.test.signals,
+                    y=my_data.test.encoded_labels,
+                    log=predict_path,
+                )
+
+        else:
+            print("No saved model file found, finishing now.")
             sys.exit()
 
 
