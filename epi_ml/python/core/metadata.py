@@ -200,28 +200,39 @@ class Metadata(object):
 
 def env_filtering(metadata: Metadata, category: str) -> List[str]:
     """Filter metadata using environment variables.
+    Return the list of classes/labels to consider.
 
     Currently supports:
     EXCLUDE_LIST
     ASSAY_LIST
     LABEL_LIST
     """
-    if os.getenv("EXCLUDE_LIST") is not None:
-        exclude_list = json.loads(os.environ["EXCLUDE_LIST"])
-        metadata.remove_category_subsets(label_category=category, labels=exclude_list)
-
-    if os.getenv("ASSAY_LIST") is not None:
-        assay_list = json.loads(os.environ["ASSAY_LIST"])
-        print(f"Going to only keep examples with targets: {assay_list}")
+    print("Checking environment variables.")
+    # fmt: off
+    name = "ASSAY_LIST"
+    if os.getenv(name) is not None:
+        assay_list = json.loads(os.environ[name])
+        print(f"{name}: {assay_list}")
+        print(f"Filtering metadata: Only keeping examples with targets/assay {assay_list}")
         metadata.select_category_subsets("assay", assay_list)
 
-    if os.getenv("LABEL_LIST") is not None:
-        label_list = json.loads(os.environ["LABEL_LIST"])
-        print(f"Going to only keep examples with labels: {label_list}")
+    name = "EXCLUDE_LIST"
+    if os.getenv(name) is not None:
+        exclude_list = json.loads(os.environ[name])
+        print(f"{name}: {exclude_list}")
+        print(f"Filtering metadata: Removing labels {exclude_list} from category '{category}'.")
+        metadata.remove_category_subsets(label_category=category, labels=exclude_list)
+
+    name = "LABEL_LIST"
+    if os.getenv(name) is not None:
+        label_list = json.loads(os.environ[name])
+        print(f"{name}: {label_list}")
+        print(f"Filtering metadata: Only keeping examples with labels {label_list} from '{category}'")
         metadata.select_category_subsets(category, label_list)
     else:
         label_list = metadata.unique_classes(category)
-        print("No label list")
+        print(f"No label list, considering all left classes : {label_list}")
+    # fmt: on
 
     return label_list
 
