@@ -218,9 +218,7 @@ class EstimatorAnalyzer(object):
         auto_name is the cli name of the model.
         """
         if auto_name not in set(save_mapping.keys()):
-            raise ValueError(
-                f"Expected a cli model name (restricted). Gave: {auto_name}"
-            )
+            raise ValueError(f"Expected a cli model name (restricted). Gave: {auto_name}")
 
         name = save_mapping[auto_name]
         path = Path(logdir) / f"{name}*.pickle"
@@ -412,9 +410,7 @@ def run_prediction(
         print(f"Split {i} training size: {my_data.train.num_examples}")
 
     if i == 0:
-        nb_files = len(
-            set(my_data.train.ids.tolist() + my_data.validation.ids.tolist())
-        )
+        nb_files = len(set(my_data.train.ids.tolist() + my_data.validation.ids.tolist()))
         print(f"Total nb of files: {nb_files}")
 
     estimator.fit(X=my_data.train.signals, y=my_data.train.encoded_labels)

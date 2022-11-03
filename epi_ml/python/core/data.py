@@ -416,10 +416,7 @@ class EpiData(object):
             }
         )
         size_test_dict = collections.Counter(
-            {
-                label: math.ceil(size * test_ratio)
-                for label, size in size_all_dict.items()
-            }
+            {label: math.ceil(size * test_ratio) for label, size in size_all_dict.items()}
         )
 
         # sum(size_validation_dict, size_test_dict) ignores zeros, giving counter without labels, which breaks following lambda

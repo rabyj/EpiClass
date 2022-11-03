@@ -1,9 +1,10 @@
 """Trainer class extensions module"""
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 import pytorch_lightning as pl
 import pytorch_lightning.callbacks as torch_callbacks
+
 
 class MyTrainer(pl.Trainer):
     """Personalized trainer"""
@@ -23,12 +24,13 @@ class MyTrainer(pl.Trainer):
             print(f"Training batch size : {self.batch_size}")
         super().fit(*args, **kwargs)
 
-
     def save_model_path(self):
         """Save best checkpoint path to a file."""
         print(f"Saving model to {self.checkpoint_callback.best_model_path}")
         with open(self.best_checkpoint_file, "a", encoding="utf-8") as ckpt_file:
-            ckpt_file.write(f"{self.checkpoint_callback.best_model_path} {datetime.now()}\n")
+            ckpt_file.write(
+                f"{self.checkpoint_callback.best_model_path} {datetime.now()}\n"
+            )
 
     def print_hyperparameters(self):
         """Print training hyperparameters."""
@@ -50,14 +52,14 @@ def define_callbacks(early_stop_limit: int, show_summary=True):
     else:
         summary = None
 
-    monitored_value = "valid_acc" #have same name as TorchMetrics
+    monitored_value = "valid_acc"  # have same name as TorchMetrics
     mode = "max"
 
     early_stop = torch_callbacks.EarlyStopping(
         monitor=monitored_value,
         mode=mode,
         patience=early_stop_limit,
-        check_on_train_epoch_end=False
+        check_on_train_epoch_end=False,
     )
 
     checkpoint = torch_callbacks.ModelCheckpoint(
@@ -67,7 +69,7 @@ def define_callbacks(early_stop_limit: int, show_summary=True):
         auto_insert_metric_name=True,
         every_n_epochs=1,
         save_top_k=2,
-        save_on_train_epoch_end=False
+        save_on_train_epoch_end=False,
     )
 
     return [summary, early_stop, checkpoint]

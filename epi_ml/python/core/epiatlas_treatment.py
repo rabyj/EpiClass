@@ -116,9 +116,7 @@ class EpiAtlasTreatment(object):
         self.metadata.select_category_subsets(self.target_category, self.label_list)
         self.metadata.remove_small_classes(10, self.target_category, verbose)
 
-    def _create_raw_dataset(
-        self, test_ratio: float, min_class_size: int
-    ) -> data.DataSet:
+    def _create_raw_dataset(self, test_ratio: float, min_class_size: int) -> data.DataSet:
         """Create a dataset with raw+ctl_raw signals, all in the training set."""
         print("Creating epiatlas 'raw' signal training dataset")
         meta = copy.deepcopy(self.metadata)

@@ -92,9 +92,7 @@ def keep_major_cell_types(my_metadata: Metadata):
 
         # remove small classes from counter
         cell_types_count = {
-            cell_type: size
-            for cell_type, size in cell_types_count.items()
-            if size >= 10
+            cell_type: size for cell_type, size in cell_types_count.items() if size >= 10
         }
 
         # bad assay if only one class left with more than 10 examples

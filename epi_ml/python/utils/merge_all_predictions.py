@@ -3,7 +3,6 @@ Tightly linked with the output of augment_predict_file.py.
 """
 import argparse
 import sys
-from collections import OrderedDict
 from pathlib import Path
 
 import pandas as pd
@@ -35,9 +34,7 @@ def main(args):
     """Main"""
     cli = parse_arguments(args)
 
-    dfs = OrderedDict()
-    for file in cli.files:
-        dfs[file.stem] = pd.read_csv(file, sep=",")
+    dfs = {file.stem: pd.read_csv(file, sep=",") for file in cli.files}
 
     first_df = list(dfs.values())[0]
     df_shape = first_df.shape

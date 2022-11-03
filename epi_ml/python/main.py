@@ -193,9 +193,7 @@ def main(args):
     if is_training or is_tuning:
 
         if my_data.train.num_examples == 0 or my_data.validation.num_examples == 0:
-            raise DatasetError(
-                "Trying to train without any training or validation data."
-            )
+            raise DatasetError("Trying to train without any training or validation data.")
 
         # transform target labels into int encoding
         if onehot:
@@ -282,9 +280,7 @@ def main(args):
     # --- TRAIN the model ---
     if is_training:
 
-        callbacks = define_callbacks(
-            early_stop_limit=hparams.get("early_stop_limit", 20)
-        )
+        callbacks = define_callbacks(early_stop_limit=hparams.get("early_stop_limit", 20))
 
         before_train = time_now()
 

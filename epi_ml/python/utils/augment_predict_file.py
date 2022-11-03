@@ -9,7 +9,6 @@ import csv
 import decimal
 import os
 import os.path
-import sys
 from pathlib import Path
 
 import numpy as np

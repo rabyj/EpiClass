@@ -68,11 +68,11 @@ class Hdf5Loader(object):
         # Remove undesired files
         if md5s is not None:
             chosen_md5s = set(md5s)
-            #fmt: off
+            # fmt: off
             files = {
                 md5: path for md5, path in files.items()
                 if md5 in chosen_md5s
-                } #fmt: on
+                }  # fmt: on
 
             absent_md5s = chosen_md5s - set(files.keys())
             if absent_md5s and verbose:
