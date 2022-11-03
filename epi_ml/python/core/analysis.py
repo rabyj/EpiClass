@@ -11,6 +11,7 @@ matplotlib.use("Agg")
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
+import shap
 import torch
 import torchmetrics
 from torch.utils.data import TensorDataset
@@ -181,6 +182,29 @@ class Analysis(object):
         mat = self._generic_confusion_matrix(self._test, name=set_name)
         mat = ConfusionMatrixWriter(labels=self._classes, confusion_matrix=mat)
         self._save_matrix(mat, set_name, path)
+
+    def SHAP(self, dataset, save=True):
+        """Return the shap values for the given dataset. Shape of dataset.
+
+        Will take up to 500 samples from the training data,
+        for the background dataset to use for integrating out features.
+        """
+        if self._train is None:
+            print(
+                "Cannot compute SHAP values, no training data available for background."
+            )
+            return
+
+        features, _ = self._train[:]
+        background = features[np.random.choice(features.shape[0], 500, replace=False)]
+
+        explainer = shap.DeepExplainer(self._model, background)
+        shap_values = explainer.shap_values(dataset)
+
+        if save:
+            np.savetxt("SHAP_values.csv", shap_values.numpy(), delimiter=",")  # type: ignore
+
+        return shap_values
 
 
 # TODO: Insert "ID" in header, and make sure subsequent script use that (e.g. the bash one liner, for sorting)
