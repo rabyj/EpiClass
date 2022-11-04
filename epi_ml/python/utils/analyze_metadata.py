@@ -481,6 +481,25 @@ def check_epitatlas_uuid_premise(metadata: Metadata):
                 print(uuid, counter)
 
 
+def merge_pair_end_info(metadata: Metadata):
+    """Merge info from 'paired' and 'pair_end_mode' categories.
+
+    Convert FALSE/TRUE to 'single_end' and 'paired_end'
+    """
+    rna_dset = []
+    for md5, dset in metadata.items:
+        try:
+            rna_dset.append((md5, dset["paired"]))
+        except KeyError:
+            continue
+
+    for md5, label in rna_dset:
+        metadata[md5]["paired_end_mode"] = label
+
+    converter = {"TRUE": "paired_end", "FALSE": "single_end"}
+    metadata.convert_classes("paired_end_mode", converter)
+
+
 def main():
 
     base = Path("/home/rabyj/project-rabyj/epilap/input/metadata")

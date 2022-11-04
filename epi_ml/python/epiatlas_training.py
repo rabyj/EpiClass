@@ -29,7 +29,10 @@ from epi_ml.python.core.data_source import EpiDataSource
 from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment
 from epi_ml.python.core.model_pytorch import LightningDenseClassifier
 from epi_ml.python.core.trainer import MyTrainer, define_callbacks
-from epi_ml.python.utils.analyze_metadata import filter_cell_types_by_pairs
+from epi_ml.python.utils.analyze_metadata import (
+    filter_cell_types_by_pairs,
+    merge_pair_end_info,
+)
 from epi_ml.python.utils.check_dir import create_dirs
 from epi_ml.python.utils.time import time_now
 
@@ -99,6 +102,10 @@ def main(args):
     my_metadata.remove_category_subsets(
         label_category="track_type", labels=["Unique.raw"]
     )
+
+    if category in {"paired", "paired_end_mode"}:
+        category = "paired_end_mode"
+        merge_pair_end_info(my_metadata)
 
     label_list = metadata.env_filtering(my_metadata, category)
 
