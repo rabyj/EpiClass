@@ -133,7 +133,7 @@ def keep_major_cell_types_alt(my_metadata: Metadata):
     # remove useless assays and cell_types
     my_meta.select_category_subsets("assay", dp_assays)
     my_meta.remove_small_classes(10, "cell_type")
-    my_meta.merge_classes("tissue_type", merge_fetal_tissues)
+    my_meta.convert_classes("tissue_type", merge_fetal_tissues)
 
     new_meta = copy.deepcopy(my_meta)
     new_meta.empty()
@@ -468,7 +468,7 @@ def compute_coherence_on_all(meta: Metadata):
     df.to_csv("test.csv", index=False)
 
 
-def check_epitatlas_uuid_premise(metadata):
+def check_epitatlas_uuid_premise(metadata: Metadata):
     """Check that there is only one file per track type, for a given uuid."""
     uuid_to_md5s = collections.defaultdict(collections.Counter)
     for dset in metadata.datasets:

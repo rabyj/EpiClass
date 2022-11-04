@@ -2,13 +2,13 @@
 # pylint: disable=unnecessary-lambda-assignment
 from __future__ import annotations
 
-import collections
 import copy
 import json
 import os
+from collections import Counter, defaultdict
 from collections.abc import Iterable
 from pathlib import Path
-from typing import List
+from typing import Dict, List
 
 
 class Metadata(object):
@@ -108,13 +108,13 @@ class Metadata(object):
         filt = lambda item: label_category in item[1]
         self.apply_filter(filt)  # type: ignore
 
-    def md5_per_class(self, label_category: str):
+    def md5_per_class(self, label_category: str) -> Dict[str, List[str]]:
         """Return {label/class:md5 list} dict for a given metadata category.
 
         Can fail if remove_missing_labels has not been ran before.
         """
         sorted_md5 = sorted(self.md5s)
-        data = collections.defaultdict(list)
+        data = defaultdict(list)
         for md5 in sorted_md5:
             label = self[md5][label_category]
             data[label].append(md5)
@@ -158,12 +158,16 @@ class Metadata(object):
         filt = lambda item: item[1].get(label_category) not in set(labels)
         self.apply_filter(filt)  # type: ignore
 
-    def label_counter(self, label_category: str) -> collections.Counter[str]:
-        """Return a Counter() with label count from the given category."""
-        counter = collections.Counter()
-        for dset in self.datasets:
-            label = dset[label_category]
-            counter.update([label])
+    def label_counter(self, label_category: str, verbose=True) -> Counter[str]:
+        """Return a Counter() with label count from the given category.
+        Ignores missing labels.
+        """
+        counter = Counter([dset.get(label_category) for dset in self.datasets])
+
+        if verbose:
+            print(f"{counter[None]} labels missing and ignored from count")
+        del counter[None]
+
         return counter
 
     def unique_classes(self, label_category: str) -> List[str]:
@@ -176,7 +180,7 @@ class Metadata(object):
 
     def display_labels(self, label_category: str):
         """Print number of examples for each label in given category."""
-        print("\nExamples")
+        print(f"\nLabel breakdown for {label_category}")
         i = 0
         for label, count in self.label_counter(label_category).most_common():
             print(f"{label}: {count}")
@@ -184,14 +188,14 @@ class Metadata(object):
         print(f"For a total of {i} examples\n")
 
     def get_categories(self) -> list[str]:
-        """Return a sorted list of all metadata categories."""
+        """Return a list of all metadata categories sorted by lowercase."""
         categories = set()
         for dset in self.datasets:
             categories.update(dset.keys())
-        return sorted(categories)
+        return sorted(categories, key=str.lower)
 
-    def merge_classes(self, category: str, converter: dict):
-        """Combine classes labels in the given category using the converter mapping."""
+    def convert_classes(self, category: str, converter: Dict[str, str]):
+        """Convert classes labels in the given category using the converter mapping."""
         for dataset in self.datasets:
             label = dataset.get(category, None)
             if label in converter:

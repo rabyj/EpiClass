@@ -135,8 +135,6 @@ def main(args):
 
     # --- Categories creation/change ---
     # my_metadata.create_healthy_category()
-    # my_metadata.merge_molecule_classes()
-    # my_metadata.merge_fetal_tissues()
 
     # --- Dataset selection ---
     if os.getenv("ASSAY_LIST") is not None:
