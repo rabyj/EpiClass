@@ -7,31 +7,38 @@ in the following scripts.
 """
 import argparse
 from pathlib import Path
-import sys
 
-from epi_ml.python.argparseutils.directorychecker import DirectoryChecker, DirectoryCheckerError
+from epi_ml.python.argparseutils.directorychecker import (
+    DirectoryChecker,
+    DirectoryCheckerError,
+)
 
 
-def parse_arguments(args: list) -> argparse.Namespace:
+def parse_arguments() -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('dir', type=str, help='A directory.')
-    arg_parser.add_argument('--exists', action="store_true", help='Specifies that the directory should already exist.')
-    return arg_parser.parse_args(args)
+    arg_parser.add_argument("dir", type=str, help="A directory.")
+    arg_parser.add_argument(
+        "--exists",
+        action="store_true",
+        help="Specifies that the directory should already exist.",
+    )
+    return arg_parser.parse_args()
 
-def create_dirs(dir):
+
+def create_dirs(dir_path):
     """Create recursively needed directories to directory."""
-    path = Path(dir)
+    path = Path(dir_path)
     for parent in reversed(path.parents):
         parent.mkdir(mode=0o2750, exist_ok=True)
     path.mkdir(mode=0o2750, exist_ok=True)
 
 
-def main(args):
+def main():
     """main called from command line, edit to change behavior"""
 
     try:
-        cli = parse_arguments(args)
+        cli = parse_arguments()
         dir_checker = DirectoryChecker()
         dir_checker(cli.dir)
     except DirectoryCheckerError as dir_err:
@@ -40,7 +47,7 @@ def main(args):
         if cli.exists:
             raise dir_err from None
         else:
-            #Create missing dir
+            # Create missing dir
             create_dirs(faulty_path)
 
             print(f"Created missing logdir and needed parents : {faulty_path}")
@@ -50,4 +57,4 @@ def main(args):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()

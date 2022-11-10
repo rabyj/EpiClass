@@ -31,7 +31,7 @@ def get_model_name(filepath: str) -> str:
     return Path(filepath).stem.split(sep="_", maxsplit=1)[0]
 
 
-def parse_arguments(args: list) -> argparse.Namespace:
+def parse_arguments() -> argparse.Namespace:
     """Argument parser for command line."""
     # fmt: off
     parser = ArgumentParser()
@@ -78,16 +78,16 @@ def parse_arguments(args: list) -> argparse.Namespace:
         help="Number of BayesSearchCV hyperparameters iterations.",
     )
     # fmt: on
-    return parser.parse_args(args)
+    return parser.parse_args()
 
 
-def main(args):
+def main():
     """Takes command line arguments."""
     begin = time_now()
     print(f"begin {begin}")
 
     # --- PARSE params and LOAD external files ---
-    cli = parse_arguments(args)
+    cli = parse_arguments()
 
     if cli.tune:
         mode_tune = True
@@ -254,4 +254,4 @@ def main(args):
 
 if __name__ == "__main__":
     os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-    main(sys.argv[1:])
+    main()

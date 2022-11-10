@@ -1,7 +1,6 @@
 """Main"""
 import json
 import os
-import sys
 from pathlib import Path
 
 import optuna
@@ -10,7 +9,7 @@ from tabulate import tabulate
 
 import epi_ml.python.core.estimators as estimators
 import epi_ml.python.other_estimators as estimators_main
-from epi_ml.python.core import metadata
+from epi_ml.python.core import lgbm, metadata
 from epi_ml.python.core.data_source import EpiDataSource
 from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment as EpiAtlasTreatment
 from epi_ml.python.test.core.epiatlas_treatment_test import EpiAtlasTreatment as EpiTest
@@ -74,13 +73,13 @@ def create_test_list(ea_handler: EpiTest):
     return md5_list
 
 
-def main(args):  # pylint: disable=function-redefined
+def main():  # pylint: disable=function-redefined
     """main called from command line, edit to change behavior"""
     begin = time_now()
     print(f"begin {begin}")
 
     # --- PARSE params and LOAD external files ---
-    cli = estimators_main.parse_arguments(args)
+    cli = estimators_main.parse_arguments()
 
     my_datasource = EpiDataSource(cli.hdf5, cli.chromsize, cli.metadata)
 
@@ -143,11 +142,11 @@ def main(args):  # pylint: disable=function-redefined
     for name in models:
         if name == "LGBM":
             optuna.logging.set_verbosity(optuna.logging.DEBUG)  # type: ignore
-            estimators.tune_lbgm(ea_handler, cli.logdir)
+            lgbm.tune_lgbm(ea_handler, cli.logdir)
         else:
             estimators.optimize_estimator(ea_handler, cli.logdir, n_iter, name)
 
 
 if __name__ == "__main__":
     os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-    main(sys.argv[1:])
+    main()

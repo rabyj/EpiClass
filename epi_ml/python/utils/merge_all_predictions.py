@@ -2,13 +2,12 @@
 Tightly linked with the output of augment_predict_file.py.
 """
 import argparse
-import sys
 from pathlib import Path
 
 import pandas as pd
 
 
-def parse_arguments(args: list) -> argparse.Namespace:
+def parse_arguments() -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = argparse.ArgumentParser(
         description="Merge predictions files produced from epilap program. Probabilities only kept for first given file."
@@ -27,12 +26,12 @@ def parse_arguments(args: list) -> argparse.Namespace:
         help="Give a path for the output file.",
         default="all-predictions-merged.csv",
     )
-    return arg_parser.parse_args(args)
+    return arg_parser.parse_args()
 
 
-def main(args):
+def main():
     """Main"""
-    cli = parse_arguments(args)
+    cli = parse_arguments()
 
     dfs = {file.stem: pd.read_csv(file, sep=",") for file in cli.files}
 
@@ -73,4 +72,4 @@ def main(args):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()

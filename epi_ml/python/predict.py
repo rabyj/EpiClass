@@ -1,7 +1,6 @@
 """Like "main --predict mode", but for when no true label is available (cannot do certain analyses)."""
 import argparse
 import os
-import sys
 import warnings
 from pathlib import Path
 
@@ -24,7 +23,7 @@ from epi_ml.python.core.model_pytorch import LightningDenseClassifier
 from epi_ml.python.utils.time import time_now
 
 
-def parse_arguments(args: list) -> argparse.Namespace:
+def parse_arguments() -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = ArgumentParser()
     arg_parser.add_argument(
@@ -45,16 +44,16 @@ def parse_arguments(args: list) -> argparse.Namespace:
         help="Directory from which to load the desired model. Default is logdir.",
     )
 
-    return arg_parser.parse_args(args)
+    return arg_parser.parse_args()
 
 
-def main(args):
+def main():
     """main called from command line, edit to change behavior"""
     begin = time_now()
     print(f"begin {begin}")
 
     # --- PARSE params ---
-    cli = parse_arguments(args)
+    cli = parse_arguments()
 
     # --- Startup LOGGER ---
     # api key in config file
@@ -133,4 +132,4 @@ def main(args):
 
 if __name__ == "__main__":
     os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-    main(sys.argv[1:])
+    main()

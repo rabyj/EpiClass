@@ -238,10 +238,5 @@ def main():
         augment_predict(metadata, pred_file, categories)
 
 
-def cli():
-    """Ignore program path."""
-    main()
-
-
 if __name__ == "__main__":
-    cli()
+    main()

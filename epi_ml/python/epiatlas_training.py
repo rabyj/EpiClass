@@ -48,7 +48,7 @@ class DatasetError(Exception):
         super().__init__(*args)
 
 
-def parse_arguments(args: list) -> argparse.Namespace:
+def parse_arguments() -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = ArgumentParser()
 
@@ -77,16 +77,16 @@ def parse_arguments(args: list) -> argparse.Namespace:
         help="Will log data offline instead of online. Currently cannot merge comet-ml offline outputs.",
     )
     # fmt: on
-    return arg_parser.parse_args(args)
+    return arg_parser.parse_args()
 
 
-def main(args):
+def main():
     """main called from command line, edit to change behavior"""
     begin = time_now()
     print(f"begin {begin}")
 
     # --- PARSE params and LOAD external files ---
-    cli = parse_arguments(args)
+    cli = parse_arguments()
 
     category = cli.category
 
@@ -397,4 +397,4 @@ def log_pre_training(logger: pl_loggers.CometLogger, step: int, to_log: Dict[str
 
 if __name__ == "__main__":
     os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-    main(sys.argv[1:])
+    main()
