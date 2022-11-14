@@ -217,7 +217,7 @@ class EstimatorAnalyzer(object):
 
         auto_name is the cli name of the model.
         """
-        if auto_name not in set(save_mapping.keys()):
+        if auto_name not in save_mapping:
             raise ValueError(f"Expected a cli model name (restricted). Gave: {auto_name}")
 
         name = save_mapping[auto_name]
