@@ -12,15 +12,13 @@ import torch
 from pytorch_lightning import loggers as pl_loggers
 from torch.utils.data import TensorDataset
 
-from epi_ml.python.argparseutils.DefaultHelpParser import (
-    DefaultHelpParser as ArgumentParser,
-)
-from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
-from epi_ml.python.core import analysis
-from epi_ml.python.core.data import DataSet, TestData
-from epi_ml.python.core.hdf5_loader import Hdf5Loader
-from epi_ml.python.core.model_pytorch import LightningDenseClassifier
-from epi_ml.python.utils.time import time_now
+from src.python.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
+from src.python.argparseutils.directorychecker import DirectoryChecker
+from src.python.core import analysis
+from src.python.core.data import DataSet, TestData
+from src.python.core.hdf5_loader import Hdf5Loader
+from src.python.core.model_pytorch import LightningDenseClassifier
+from src.python.utils.time import time_now
 
 
 def parse_arguments() -> argparse.Namespace:

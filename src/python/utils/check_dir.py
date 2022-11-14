@@ -8,7 +8,7 @@ in the following scripts.
 import argparse
 from pathlib import Path
 
-from epi_ml.python.argparseutils.directorychecker import (
+from src.python.argparseutils.directorychecker import (
     DirectoryChecker,
     DirectoryCheckerError,
 )

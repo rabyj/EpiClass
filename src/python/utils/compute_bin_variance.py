@@ -3,8 +3,8 @@ from pathlib import Path
 
 import numpy as np
 
-from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
-from epi_ml.python.core import analysis, data
+from src.python.argparseutils.directorychecker import DirectoryChecker
+from src.python.core import analysis, data
 
 
 def parse_arguments() -> argparse.Namespace:

@@ -8,7 +8,7 @@ import optuna.integration.lightgbm as lgb
 import pandas as pd
 from lightgbm import log_evaluation
 
-from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment
+from src.python.core.epiatlas_treatment import EpiAtlasTreatment
 
 # TODO: Permit native saving/loading. # https://stackoverflow.com/questions/55208734/save-lgbmregressor-model-from-python-lightgbm-package-to-disc
 

@@ -19,23 +19,21 @@ import torch
 from pytorch_lightning import loggers as pl_loggers
 from torch.utils.data import DataLoader, TensorDataset
 
-from epi_ml.python.argparseutils.DefaultHelpParser import (
-    DefaultHelpParser as ArgumentParser,
-)
-from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
-from epi_ml.python.core import analysis, metadata
-from epi_ml.python.core.data import DataSet
-from epi_ml.python.core.data_source import EpiDataSource
-from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment
-from epi_ml.python.core.model_pytorch import LightningDenseClassifier
-from epi_ml.python.core.trainer import MyTrainer, define_callbacks
-from epi_ml.python.utils.analyze_metadata import (
+from src.python.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
+from src.python.argparseutils.directorychecker import DirectoryChecker
+from src.python.core import analysis, metadata
+from src.python.core.data import DataSet
+from src.python.core.data_source import EpiDataSource
+from src.python.core.epiatlas_treatment import EpiAtlasTreatment
+from src.python.core.model_pytorch import LightningDenseClassifier
+from src.python.core.trainer import MyTrainer, define_callbacks
+from src.python.utils.analyze_metadata import (
     filter_cell_types_by_pairs,
     fix_roadmap,
     merge_pair_end_info,
 )
-from epi_ml.python.utils.check_dir import create_dirs
-from epi_ml.python.utils.time import time_now
+from src.python.utils.check_dir import create_dirs
+from src.python.utils.time import time_now
 
 
 class DatasetError(Exception):

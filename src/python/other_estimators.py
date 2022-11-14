@@ -8,17 +8,15 @@ import os
 import sys
 from pathlib import Path
 
-import epi_ml.python.core.estimators as estimators
-from epi_ml.python.argparseutils.DefaultHelpParser import (
-    DefaultHelpParser as ArgumentParser,
-)
-from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
-from epi_ml.python.core import data, metadata
-from epi_ml.python.core.data_source import EpiDataSource
-from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment
-from epi_ml.python.core.lgbm import tune_lgbm
-from epi_ml.python.utils.analyze_metadata import filter_cell_types_by_pairs
-from epi_ml.python.utils.time import time_now
+import src.python.core.estimators as estimators
+from src.python.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
+from src.python.argparseutils.directorychecker import DirectoryChecker
+from src.python.core import data, metadata
+from src.python.core.data_source import EpiDataSource
+from src.python.core.epiatlas_treatment import EpiAtlasTreatment
+from src.python.core.lgbm import tune_lgbm
+from src.python.utils.analyze_metadata import filter_cell_types_by_pairs
+from src.python.utils.time import time_now
 
 if os.getenv("CONCURRENT_CV") is not None:
     CONCURRENT_CV = int(os.environ["CONCURRENT_CV"])

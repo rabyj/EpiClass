@@ -14,11 +14,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from epi_ml.python.argparseutils.DefaultHelpParser import (
-    DefaultHelpParser as ArgumentParser,
-)
-from epi_ml.python.core.confusion_matrix import ConfusionMatrixWriter as ConfusionMatrix
-from epi_ml.python.core.metadata import Metadata
+from src.python.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
+from src.python.core.confusion_matrix import ConfusionMatrixWriter as ConfusionMatrix
+from src.python.core.metadata import Metadata
 
 
 def parse_arguments() -> argparse.Namespace:

@@ -27,11 +27,12 @@ from skopt.callbacks import DeadlineStopper
 from skopt.space import Categorical, Integer, Real
 from tabulate import tabulate
 
+from src.python.core.data import DataSet
+from src.python.core.epiatlas_treatment import EpiAtlasTreatment
+from src.python.utils.check_dir import create_dirs
+from src.python.utils.time import time_now
+
 from .analysis import write_pred_table
-from epi_ml.python.core.data import DataSet
-from epi_ml.python.core.epiatlas_treatment import EpiAtlasTreatment
-from epi_ml.python.utils.check_dir import create_dirs
-from epi_ml.python.utils.time import time_now
 
 NFOLD_TUNE = 9
 NFOLD_PREDICT = 10

@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from epi_ml.python.core.epiatlas_treatment import TRACKS_MAPPING
-from epi_ml.python.core.metadata import Metadata
-from epi_ml.python.utils.augment_predict_file import add_coherence
+from src.python.core.epiatlas_treatment import TRACKS_MAPPING
+from src.python.core.metadata import Metadata
+from src.python.utils.augment_predict_file import add_coherence
 
 merge_fetal_tissues = {
     "fetal_intestine_large": "fetal_intestine",

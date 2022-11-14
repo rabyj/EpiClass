@@ -17,15 +17,13 @@ from pytorch_lightning import callbacks as pl_callbacks
 from pytorch_lightning import loggers as pl_loggers
 from torch.utils.data import DataLoader, TensorDataset
 
-from epi_ml.python.argparseutils.DefaultHelpParser import (
-    DefaultHelpParser as ArgumentParser,
-)
-from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
-from epi_ml.python.core import analysis, data, metadata
-from epi_ml.python.core.data_source import EpiDataSource
-from epi_ml.python.core.model_pytorch import LightningDenseClassifier
-from epi_ml.python.core.trainer import MyTrainer, define_callbacks
-from epi_ml.python.utils.time import time_now
+from src.python.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
+from src.python.argparseutils.directorychecker import DirectoryChecker
+from src.python.core import analysis, data, metadata
+from src.python.core.data_source import EpiDataSource
+from src.python.core.model_pytorch import LightningDenseClassifier
+from src.python.core.trainer import MyTrainer, define_callbacks
+from src.python.utils.time import time_now
 
 # pyright: reportUnboundVariable=false
 
