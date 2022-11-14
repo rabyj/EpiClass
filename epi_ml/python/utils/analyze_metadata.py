@@ -500,6 +500,15 @@ def merge_pair_end_info(metadata: Metadata):
     metadata.convert_classes("paired_end_mode", converter)
 
 
+def fix_roadmap(metadata: Metadata):
+    """Merge info from 'data_generating_centre' category.
+
+    Convert 'NIH Roadmap Epigenomics' to 'Roadmap'.
+    """
+    converter = {"NIH Roadmap Epigenomics": "Roadmap"}
+    metadata.convert_classes("data_generating_centre", converter)
+
+
 def main():
 
     base = Path("/home/rabyj/project-rabyj/epilap/input/metadata")

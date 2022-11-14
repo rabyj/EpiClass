@@ -31,6 +31,7 @@ from epi_ml.python.core.model_pytorch import LightningDenseClassifier
 from epi_ml.python.core.trainer import MyTrainer, define_callbacks
 from epi_ml.python.utils.analyze_metadata import (
     filter_cell_types_by_pairs,
+    fix_roadmap,
     merge_pair_end_info,
 )
 from epi_ml.python.utils.check_dir import create_dirs
@@ -106,6 +107,8 @@ def main():
     if category in {"paired", "paired_end_mode"}:
         category = "paired_end_mode"
         merge_pair_end_info(my_metadata)
+
+    fix_roadmap(my_metadata)
 
     label_list = metadata.env_filtering(my_metadata, category)
 
