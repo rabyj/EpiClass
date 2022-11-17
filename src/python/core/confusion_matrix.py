@@ -220,6 +220,7 @@ class ConfusionMatrixWriter(object):
 
         plt.tight_layout()
         plt.savefig(path, format="png", dpi=500)
+        plt.clf()
 
     def to_csv(self, path, relative):
         """Write to path a csv file of the confusion matrix.

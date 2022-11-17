@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import itertools
+import pickle
 from pathlib import Path
 from typing import Optional
 
@@ -183,28 +184,41 @@ class Analysis(object):
         mat = ConfusionMatrixWriter(labels=self._classes, confusion_matrix=mat)
         self._save_matrix(mat, set_name, path)
 
-    def SHAP(self, dataset, save=True):
-        """Return the shap values for the given dataset. Shape of dataset.
+    def SHAP(self, dataset, save=True, name=None):
+        """Return the shap explainer and the shap values for the given dataset (Shape of dataset)
 
         Will take up to 500 samples from the training data,
         for the background dataset to use for integrating out features.
+
+        Saves the shap values to pickle if save is True. Append the given name to
+        the filename (shap_values{_name}.pickle)
         """
         if self._train is None:
             print(
                 "Cannot compute SHAP values, no training data available for background."
             )
             return
+        print("Computing SHAP values.")
 
         features, _ = self._train[:]
-        background = features[np.random.choice(features.shape[0], 500, replace=False)]
-
+        N = min(features.shape[0], 500)
+        background = features[np.random.choice(features.shape[0], N, replace=False)]
         explainer = shap.DeepExplainer(self._model, background)
-        shap_values = explainer.shap_values(dataset)
+
+        dset_features, _ = dataset[:]
+        shap_values = explainer.shap_values(dset_features)
 
         if save:
-            np.savetxt("SHAP_values.csv", shap_values.numpy(), delimiter=",")  # type: ignore
+            filename = "shap_values.pickle"
+            if name is not None:
+                filename = f"shap_values_{name}.pickle"
+            filename = self._logger.save_dir / filename
 
-        return shap_values
+            print(f"Saving SHAP values to: {filename}")
+            with open(filename, "wb") as f:
+                pickle.dump(shap_values, f)
+
+        return explainer, shap_values
 
 
 # TODO: Insert "ID" in header, and make sure subsequent script use that (e.g. the bash one liner, for sorting)
