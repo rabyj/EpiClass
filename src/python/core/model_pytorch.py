@@ -191,6 +191,7 @@ class LightningDenseClassifier(pl.LightningModule):  # pylint: disable=too-many-
         """Load the checkpoint of the best model from the last run."""
         path = Path(model_dir) / "best_checkpoint.list"
 
+        print("Reading checkpoint list and taking last line.")
         with open(path, "r", encoding="utf-8") as ckpt_file:
             lines = ckpt_file.read().splitlines()
             ckpt_path = lines[-1].split(" ")[0]

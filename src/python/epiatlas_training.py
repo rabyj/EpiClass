@@ -75,6 +75,11 @@ def parse_arguments() -> argparse.Namespace:
         action="store_true",
         help="Will log data offline instead of online. Currently cannot merge comet-ml offline outputs.",
     )
+    arg_parser.add_argument(
+        "--restore",
+        action="store_true",
+        help="Skips training, tries to restore existing models in logdir for further analysis. ",
+    )
     # fmt: on
     return arg_parser.parse_args()
 
@@ -120,11 +125,19 @@ def main():
 
     # --- Load signals and train ---
     loading_begin = time_now()
+
+    restore_model = cli.restore
+    n_fold = 10
+    # -- test mode --
+    # n_fold = 3
+    # min_class_size = 3
+    # restore_model = True
+
     ea_handler = EpiAtlasTreatment(
         my_datasource,
         category,
         label_list,
-        n_fold=10,
+        n_fold=n_fold,
         test_ratio=0,
         min_class_size=min_class_size,
         metadata=my_metadata,
@@ -167,9 +180,31 @@ def main():
             my_data=my_data,
             hparams=hparams,
             logger=comet_logger,
+            restore=restore_model,
         )
 
         time_before_split = time_now()
+
+
+def create_datasets(data: DataSet, bs: int):
+    """Return (train, valid) datasets and (train, valid) DataLoaders."""
+
+    train_dset = TensorDataset(
+        torch.from_numpy(data.train.signals).float(),
+        torch.from_numpy(data.train.encoded_labels),
+    )
+
+    valid_dset = TensorDataset(
+        torch.from_numpy(data.validation.signals).float(),
+        torch.from_numpy(data.validation.encoded_labels),
+    )
+
+    train_dataloader = DataLoader(
+        train_dset, batch_size=bs, shuffle=True, pin_memory=True, drop_last=True
+    )
+    valid_dataloader = DataLoader(valid_dset, batch_size=len(valid_dset), pin_memory=True)
+
+    return train_dset, valid_dset, train_dataloader, valid_dataloader
 
 
 def do_one_experiment(
@@ -177,8 +212,9 @@ def do_one_experiment(
     my_data: DataSet,
     hparams: Dict,
     logger: pl_loggers.CometLogger,
+    restore: bool,
 ):
-    """Wrapper for convenience"""
+    """Wrapper for convenience. Skip training if restore is True"""
     begin_loop = time_now()
 
     logger.experiment.log_other("Training size", my_data.train.num_examples)
@@ -187,141 +223,121 @@ def do_one_experiment(
     nb_files = len(set(my_data.train.ids.tolist() + my_data.validation.ids.tolist()))
     logger.experiment.log_other("Total nb of files", nb_files)
 
-    train_dataset = None  # the variables all need to exist for the analyzer later
-    valid_dataset = None
-    test_dataset = None
+    train_dataset, valid_dataset, train_dataloader, valid_dataloader = create_datasets(
+        data=my_data,
+        bs=hparams.get("batch_size", 64),
+    )
 
     if my_data.train.num_examples == 0 or my_data.validation.num_examples == 0:
         raise DatasetError("Trying to train without any training or validation data.")
 
-    train_dataset = TensorDataset(
-        torch.from_numpy(my_data.train.signals).float(),
-        torch.from_numpy(my_data.train.encoded_labels),
-    )
-
-    valid_dataset = TensorDataset(
-        torch.from_numpy(my_data.validation.signals).float(),
-        torch.from_numpy(my_data.validation.encoded_labels),
-    )
-
-    train_dataloader = DataLoader(
-        train_dataset,
-        batch_size=hparams.get("batch_size", 64),
-        shuffle=True,
-        pin_memory=True,
-        drop_last=True,
-    )
-    valid_dataloader = DataLoader(
-        valid_dataset, batch_size=len(valid_dataset), pin_memory=True
-    )
-
     # Warning : output mapping of model created from training dataset
     mapping_file = Path(logger.save_dir) / "training_mapping.tsv"  # type: ignore
 
-    # --- CREATE a brand new MODEL ---
+    if not restore:
+        # --- CREATE a brand new MODEL ---
+        # Create mapping (i --> class string) file
+        my_data.save_mapping(mapping_file)
+        mapping = my_data.load_mapping(mapping_file)
+        logger.experiment.log_asset(mapping_file)
 
-    # Create mapping (i --> class string) file
-    my_data.save_mapping(mapping_file)
-    mapping = my_data.load_mapping(mapping_file)
-    logger.experiment.log_asset(mapping_file)
+        #  DEFINE sizes for input and output LAYERS of the network
+        input_size = my_data.train.signals[0].size
+        output_size = len(my_data.classes)
+        hl_units = int(os.getenv("LAYER_SIZE", default="3000"))
+        nb_layers = int(os.getenv("NB_LAYER", default="1"))
 
-    #  DEFINE sizes for input and output LAYERS of the network
-    input_size = my_data.train.signals[0].size
-    output_size = len(my_data.classes)
-    hl_units = int(os.getenv("LAYER_SIZE", default="3000"))
-    nb_layers = int(os.getenv("NB_LAYER", default="1"))
-
-    my_model = LightningDenseClassifier(
-        input_size=input_size,
-        output_size=output_size,
-        mapping=mapping,
-        hparams=hparams,
-        hl_units=hl_units,
-        nb_layer=nb_layers,
-    )
-
-    if split_nb == 0:
-        print("--MODEL STRUCTURE--\n", my_model)
-        my_model.print_model_summary()
-
-    # --- TRAIN the model ---
-    if split_nb == 0:
-        callbacks = define_callbacks(
-            early_stop_limit=hparams.get("early_stop_limit", 20), show_summary=True
-        )
-    else:
-        callbacks = define_callbacks(
-            early_stop_limit=hparams.get("early_stop_limit", 20), show_summary=False
+        my_model = LightningDenseClassifier(
+            input_size=input_size,
+            output_size=output_size,
+            mapping=mapping,
+            hparams=hparams,
+            hl_units=hl_units,
+            nb_layer=nb_layers,
         )
 
-    # --- TRAIN the model ---
-    callbacks = define_callbacks(early_stop_limit=hparams.get("early_stop_limit", 20))
+        if split_nb == 0:
+            print("--MODEL STRUCTURE--\n", my_model)
+            my_model.print_model_summary()
 
-    before_train = time_now()
+        # --- TRAIN the model ---
+        if split_nb == 0:
+            callbacks = define_callbacks(
+                early_stop_limit=hparams.get("early_stop_limit", 20), show_summary=True
+            )
+        else:
+            callbacks = define_callbacks(
+                early_stop_limit=hparams.get("early_stop_limit", 20), show_summary=False
+            )
 
-    if torch.cuda.device_count():
-        trainer = MyTrainer(
-            general_log_dir=logger.save_dir,  # type: ignore
-            last_trained_model=my_model,
-            max_epochs=hparams.get("training_epochs", 50),
-            check_val_every_n_epoch=hparams.get("measure_frequency", 1),
-            logger=logger,
-            callbacks=callbacks,
-            enable_model_summary=False,
-            accelerator="gpu",
-            devices=1,
-            precision=16,
-            enable_progress_bar=False,
+        before_train = time_now()
+
+        if torch.cuda.device_count():
+            trainer = MyTrainer(
+                general_log_dir=logger.save_dir,  # type: ignore
+                last_trained_model=my_model,
+                max_epochs=hparams.get("training_epochs", 50),
+                check_val_every_n_epoch=hparams.get("measure_frequency", 1),
+                logger=logger,
+                callbacks=callbacks,
+                enable_model_summary=False,
+                accelerator="gpu",
+                devices=1,
+                precision=16,
+                enable_progress_bar=False,
+            )
+        else:
+            callbacks.append(pl_callbacks.RichProgressBar(leave=True))
+            trainer = MyTrainer(
+                general_log_dir=logger.save_dir,  # type: ignore
+                last_trained_model=my_model,
+                max_epochs=hparams.get("training_epochs", 50),
+                check_val_every_n_epoch=hparams.get("measure_frequency", 1),
+                logger=logger,
+                callbacks=callbacks,
+                enable_model_summary=False,
+                accelerator="cpu",
+                devices=1,
+            )
+
+        if split_nb == 0:
+            trainer.print_hyperparameters()
+            trainer.fit(
+                my_model,
+                train_dataloaders=train_dataloader,
+                val_dataloaders=valid_dataloader,
+                verbose=True,
+            )
+        else:
+            trainer.fit(
+                my_model,
+                train_dataloaders=train_dataloader,
+                val_dataloaders=valid_dataloader,
+                verbose=False,
+            )
+        trainer.save_model_path()
+        training_time = time_now() - before_train
+        print(f"training time: {training_time}")
+
+        del trainer
+
+        # reload comet logger for further logging, will create new experience in offline mode
+        if type(logger.experiment).__name__ == "OfflineExperiment":
+            IsOffline = True
+        else:
+            IsOffline = False
+
+        logger = pl_loggers.CometLogger(
+            project_name="EpiLaP",
+            save_dir=logger.save_dir,  # type: ignore
+            offline=IsOffline,
+            auto_metric_logging=False,
+            experiment_key=logger.experiment.get_key(),
         )
-    else:
-        callbacks.append(pl_callbacks.RichProgressBar(leave=True))
-        trainer = MyTrainer(
-            general_log_dir=logger.save_dir,  # type: ignore
-            last_trained_model=my_model,
-            max_epochs=hparams.get("training_epochs", 50),
-            check_val_every_n_epoch=hparams.get("measure_frequency", 1),
-            logger=logger,
-            callbacks=callbacks,
-            enable_model_summary=False,
-            accelerator="cpu",
-            devices=1,
-        )
+        logger.experiment.log_metric("Training time", training_time, step=split_nb)
+        logger.experiment.log_metric("Last epoch", my_model.current_epoch, step=split_nb)
 
-    if split_nb == 0:
-        trainer.print_hyperparameters()
-        trainer.fit(
-            my_model,
-            train_dataloaders=train_dataloader,
-            val_dataloaders=valid_dataloader,
-            verbose=True,
-        )
-    else:
-        trainer.fit(
-            my_model,
-            train_dataloaders=train_dataloader,
-            val_dataloaders=valid_dataloader,
-            verbose=False,
-        )
-    trainer.save_model_path()
-
-    training_time = time_now() - before_train
-    print(f"training time: {training_time}")
-
-    # reload comet logger for further logging, will create new experience in offline mode
-    if type(logger.experiment).__name__ == "OfflineExperiment":
-        IsOffline = True
-    else:
-        IsOffline = False
-
-    logger = pl_loggers.CometLogger(
-        project_name="EpiLaP",
-        save_dir=logger.save_dir,  # type: ignore
-        offline=IsOffline,
-        auto_metric_logging=False,
-        experiment_key=logger.experiment.get_key(),
-    )
-    logger.experiment.log_metric("Training time", training_time, step=split_nb)
-    logger.experiment.log_metric("Last epoch", my_model.current_epoch, step=split_nb)
+    my_model = LightningDenseClassifier.restore_model(logger.save_dir)
 
     # --- OUTPUTS ---
     my_analyzer = analysis.Analysis(
@@ -330,7 +346,7 @@ def do_one_experiment(
         logger,
         train_dataset=train_dataset,
         val_dataset=valid_dataset,
-        test_dataset=test_dataset,
+        test_dataset=None,
     )
 
     my_analyzer.get_training_metrics(verbose=True)
@@ -338,6 +354,8 @@ def do_one_experiment(
 
     my_analyzer.write_validation_prediction()
     my_analyzer.validation_confusion_matrix()
+
+    my_analyzer.SHAP(valid_dataset, save=True, name=f"split{split_nb}")  # type: ignore
 
     end_loop = time_now()
     loop_time = end_loop - begin_loop
@@ -350,7 +368,6 @@ def do_one_experiment(
     del logger
     del my_analyzer
     del my_model
-    del trainer
     del train_dataset
     del valid_dataset
     del train_dataloader

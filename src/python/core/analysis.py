@@ -4,7 +4,7 @@ from __future__ import annotations
 import itertools
 import pickle
 from pathlib import Path
-from typing import Optional
+from typing import Iterable, Optional, Tuple
 
 import matplotlib
 
@@ -29,7 +29,7 @@ class Analysis(object):
         self,
         model: LightningDenseClassifier,
         datasets_info: DataSet,
-        logger: pl.loggers.CometLogger,
+        logger: pl.loggers.CometLogger,  # type: ignore
         train_dataset: Optional[TensorDataset] = None,
         val_dataset: Optional[TensorDataset] = None,
         test_dataset: Optional[TensorDataset] = None,
@@ -184,7 +184,9 @@ class Analysis(object):
         mat = ConfusionMatrixWriter(labels=self._classes, confusion_matrix=mat)
         self._save_matrix(mat, set_name, path)
 
-    def SHAP(self, dataset, save=True, name=None):
+    def SHAP(
+        self, dataset: TensorDataset, save=True, name=None
+    ) -> Tuple[shap.DeepExplainer, Iterable]:
         """Return the shap explainer and the shap values for the given dataset (Shape of dataset)
 
         Will take up to 500 samples from the training data,
