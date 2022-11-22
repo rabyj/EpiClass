@@ -189,7 +189,7 @@ class Analysis(object):
     ) -> Tuple[shap.DeepExplainer, Iterable]:
         """Return the shap explainer and the shap values for the given dataset (Shape of dataset)
 
-        Will take up to 500 samples from the training data,
+        Will take up to 100 samples from the training data,
         for the background dataset to use for integrating out features.
 
         Saves the shap values to pickle if save is True. Append the given name to
@@ -203,8 +203,10 @@ class Analysis(object):
         print("Computing SHAP values.")
 
         features, _ = self._train[:]
-        N = min(features.shape[0], 500)
-        background = features[np.random.choice(features.shape[0], N, replace=False)]
+        background_N = min(features.shape[0], 100)
+
+        rng = np.random.default_rng(42)
+        background = features[rng.choice(features.shape[0], background_N, replace=False)]
         explainer = shap.DeepExplainer(self._model, background)
 
         dset_features, _ = dataset[:]

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import os
 import sys
@@ -242,7 +243,7 @@ def do_one_experiment(
         logger.experiment.log_asset(mapping_file)
 
         #  DEFINE sizes for input and output LAYERS of the network
-        input_size = my_data.train.signals[0].size
+        input_size = my_data.train.signals[0].size  # type: ignore
         output_size = len(my_data.classes)
         hl_units = int(os.getenv("LAYER_SIZE", default="3000"))
         nb_layers = int(os.getenv("NB_LAYER", default="1"))
@@ -355,8 +356,6 @@ def do_one_experiment(
     my_analyzer.write_validation_prediction()
     my_analyzer.validation_confusion_matrix()
 
-    my_analyzer.SHAP(valid_dataset, save=True, name=f"split{split_nb}")  # type: ignore
-
     end_loop = time_now()
     loop_time = end_loop - begin_loop
     logger.experiment.log_metric("Loop time", loop_time, step=split_nb)
@@ -372,6 +371,7 @@ def do_one_experiment(
     del valid_dataset
     del train_dataloader
     del valid_dataloader
+    gc.collect()
 
 
 def log_pre_training(logger: pl_loggers.CometLogger, step: int, to_log: Dict[str, str]):
