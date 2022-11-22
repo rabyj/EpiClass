@@ -171,6 +171,7 @@ def filter_cell_types_by_pairs(
     1) Remove (assay, cell_type) pairs that have less than 'min_per_pair' signals.
     2) Only keep cell types that have at least 'nb_pairs' different pairings still non-zero.
     """
+    print("Applying metadata filter function 'filter_cell_types_by_pairs'.")
     cat1 = "assay"
     cat2 = "harm_sample_ontology_intermediate"
 

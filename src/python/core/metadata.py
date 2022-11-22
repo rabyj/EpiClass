@@ -23,7 +23,7 @@ class Metadata(object):
         self._rest = {}
 
     @classmethod
-    def from_dict(cls, metadata: dict) -> Metadata:
+    def from_dict(cls, metadata: Dict[str, dict]) -> Metadata:
         """Creates an object from a dict conforming to {md5sum:dset} format."""
         first_key = list(metadata.keys())[0]
         if len(first_key) != 32:
