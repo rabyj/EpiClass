@@ -7,7 +7,6 @@ import itertools
 from typing import Generator, List
 
 import numpy as np
-import pytest_check as check
 from sklearn.model_selection import StratifiedKFold
 
 from src.python.core import data, metadata
@@ -234,10 +233,10 @@ class EpiAtlasTreatment(object):
         ):
 
             new_train = copy.deepcopy(self._raw_dset.train)
-            new_train = self._add_other_tracks(train_idxs, new_train, resample=True)
+            new_train = self._add_other_tracks(train_idxs, new_train, resample=True)  # type: ignore
 
             new_valid = copy.deepcopy(self._raw_dset.train)
-            new_valid = self._add_other_tracks(valid_idxs, new_valid, resample=False)
+            new_valid = self._add_other_tracks(valid_idxs, new_valid, resample=False)  # type: ignore
 
             new_datasets.set_train(new_train)
             new_datasets.set_validation(new_valid)
@@ -248,7 +247,7 @@ class EpiAtlasTreatment(object):
         """Return a data set with all signals (no oversampling)"""
         return self._add_other_tracks(
             range(self._raw_dset.train.num_examples),
-            self._raw_dset.train,
+            self._raw_dset.train,  # type: ignore
             resample=False,
         )
 
@@ -310,11 +309,11 @@ class EpiAtlasTreatment(object):
 
             # The "complete" refers to the fact that the indexes are sampling over total data.
             complete_train_idxs = self._find_other_tracks(
-                train_idxs, self._raw_dset.train, resample=True
+                train_idxs, self._raw_dset.train, resample=True  # type: ignore
             )
 
             complete_valid_idxs = self._find_other_tracks(
-                valid_idxs, self._raw_dset.train, resample=False
+                valid_idxs, self._raw_dset.train, resample=False  # type: ignore
             )
 
             yield complete_train_idxs, complete_valid_idxs
@@ -347,5 +346,5 @@ def test_StratifiedKFold_sanity():
     for elem1, elem2 in zip(run_1, run_2):
         train1, valid1 = elem1
         train2, valid2 = elem2
-        check.is_true(np.array_equal(train1, train2))
-        check.is_true(np.array_equal(valid1, valid2))
+        assert np.array_equal(train1, train2)
+        assert np.array_equal(valid1, valid2)
