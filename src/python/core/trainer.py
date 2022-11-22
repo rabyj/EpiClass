@@ -47,29 +47,32 @@ def define_callbacks(early_stop_limit: int, show_summary=True):
     """Returns list of PyTorch trainer callbacks.
     RichModelSummary, EarlyStopping, ModelCheckpoint
     """
+    callbacks = []
     if show_summary:
-        summary = torch_callbacks.RichModelSummary(max_depth=3)
-    else:
-        summary = None
+        callbacks.append(torch_callbacks.RichModelSummary(max_depth=3))
 
     monitored_value = "valid_acc"  # have same name as TorchMetrics
     mode = "max"
 
-    early_stop = torch_callbacks.EarlyStopping(
-        monitor=monitored_value,
-        mode=mode,
-        patience=early_stop_limit,
-        check_on_train_epoch_end=False,
+    callbacks.append(
+        torch_callbacks.EarlyStopping(
+            monitor=monitored_value,
+            mode=mode,
+            patience=early_stop_limit,
+            check_on_train_epoch_end=False,
+        )
     )
 
-    checkpoint = torch_callbacks.ModelCheckpoint(
-        monitor=monitored_value,
-        mode=mode,
-        save_last=True,
-        auto_insert_metric_name=True,
-        every_n_epochs=1,
-        save_top_k=2,
-        save_on_train_epoch_end=False,
+    callbacks.append(
+        torch_callbacks.ModelCheckpoint(
+            monitor=monitored_value,
+            mode=mode,
+            save_last=True,
+            auto_insert_metric_name=True,
+            every_n_epochs=1,
+            save_top_k=2,
+            save_on_train_epoch_end=False,
+        )
     )
 
-    return [summary, early_stop, checkpoint]
+    return callbacks
