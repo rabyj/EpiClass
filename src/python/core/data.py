@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import collections
+import copy
 import math
 from typing import List, Union
 
@@ -18,7 +19,7 @@ from .metadata import Metadata
 class AbstractData(object):
     """Parent of data and TestData, generalized object to deal with data."""
 
-    # TODO: actually make a data class without any true labels, which is supported within analysis.
+    # TODO: actually make a data class without any true labels which is supported within analysis.
     def __init__(self, ids, x, y, y_str):
         self._ids = ids
         self._num_examples = len(x)
@@ -32,6 +33,58 @@ class AbstractData(object):
 
     def __len__(self):
         return self._num_examples
+
+    @property
+    def ids(self) -> np.ndarray:
+        """Return md5s in current signals order."""
+        return np.take(self._ids, list(self._shuffle_order), axis=0)
+
+    def get_id(self, index: int):
+        """Return unique identifier associated with signal position."""
+        return self._ids[self._shuffle_order[index]]  # type: ignore
+
+    @property
+    def signals(self) -> np.ndarray:
+        """Return signals in current order."""
+        return self._signals
+
+    def get_signal(self, index: int):
+        """Return current signal at given position. (signals can be shuffled)"""
+        return self._signals[index]  # type: ignore
+
+    @property
+    def encoded_labels(self) -> np.ndarray:
+        """Return encoded labels of examples in current signal order."""
+        return self._labels
+
+    def get_encoded_label(self, index: int):
+        """Return encoded label at given signal position."""
+        return self._labels[index]
+
+    @property
+    def original_labels(self) -> np.ndarray:
+        """Return string labels of examples in current signal order."""
+        return np.take(self._labels_str, list(self._shuffle_order), axis=0)
+
+    def get_original_label(self, index: int):
+        """Return original label at given signal position."""
+        return self._labels_str[self._shuffle_order[index]]
+
+    @property
+    def num_examples(self) -> int:
+        """Return the number of examples contained in the set."""
+        return self._num_examples
+
+    def __eq__(self, other):
+        if type(other) is type(self):
+            bools = []
+            bools.append(np.array_equal(self.ids, other.ids))
+            bools.append(np.array_equal(self.signals, other.signals))
+            bools.append(np.array_equal(self.encoded_labels, other.encoded_labels))
+            bools.append(np.array_equal(self.original_labels, other.original_labels))
+            bools.append(self.num_examples == other.num_examples)
+            return all(bools)
+        return False
 
     def preprocess(self, f):
         """Apply a preprocessing function on signals."""
@@ -50,53 +103,19 @@ class AbstractData(object):
         end = self._index
         return self._signals[start:end], self._labels[start:end]
 
-    def _shuffle(self):
+    def _shuffle(self, seed=False):
         """Shuffle signals and labels together"""
+        if seed:
+            np.random.seed(42)
+
         rng_state = np.random.get_state()
         for array in [self._shuffle_order, self._signals, self._labels]:
             np.random.shuffle(array)
             np.random.set_state(rng_state)
 
-    @property
-    def ids(self) -> np.ndarray:
-        """Return md5s in current signals order."""
-        return np.take(self._ids, list(self._shuffle_order))
-
-    def get_id(self, index: int):
-        """Return unique identifier associated with signal position."""
-        return self._ids[self._shuffle_order[index]]
-
-    @property
-    def signals(self) -> np.ndarray:
-        """Return signals in current order."""
-        return self._signals
-
-    def get_signal(self, index: int):
-        """Return current signal at given position. (signals can be shuffled)"""
-        return self._signals[index]
-
-    @property
-    def encoded_labels(self) -> np.ndarray:
-        """Return encoded labels of examples in current signal order."""
-        return self._labels
-
-    def get_encoded_label(self, index: int):
-        """Return encoded label at given signal position."""
-        return self._labels[index]
-
-    @property
-    def original_labels(self) -> np.ndarray:
-        """Return string labels of examples in current signal order."""
-        return np.take(self._labels_str, list(self._shuffle_order))
-
-    def get_original_label(self, index: int):
-        """Return original label at given signal position."""
-        return self._labels_str[self._shuffle_order[index]]
-
-    @property
-    def num_examples(self) -> int:
-        """Return the number of examples contained in the set."""
-        return self._num_examples
+    def shuffle(self, seed=False):
+        """Shuffle signals and labels together"""
+        self._shuffle(seed)
 
 
 class Data(AbstractData):
@@ -135,6 +154,31 @@ class Data(AbstractData):
         obj._index = 0
         obj._metadata = {}
         return obj
+
+    def subsample(self, idxs: List[int]) -> Data:
+        """Return Data object with subsample of current Data.
+
+        Indexed along current order, not original order.
+        """
+        try:
+            new_ids = np.take(self.ids, idxs, axis=0)
+            new_signals = np.take(self.signals, idxs, axis=0)
+            new_targets = np.take(self.encoded_labels, idxs, axis=0)
+            new_str_targets = np.take(self.original_labels, idxs, axis=0)
+
+            new_meta = copy.deepcopy(self.metadata)
+            ok_md5 = set(new_ids)
+            for md5 in list(new_meta.md5s):
+                if md5 not in ok_md5:
+                    del new_meta[md5]
+        except IndexError as e:
+            if len(self) == 0:
+                print("Empty Data object, cannot subsample.")
+                return self
+            else:
+                raise e
+
+        return Data(new_ids, new_signals, new_targets, new_str_targets, new_meta)
 
 
 class TestData(AbstractData):
@@ -468,7 +512,7 @@ class EpiData(object):
             train_signals, train_labels, idxs = EpiData.oversample_data(
                 train_signals, train_labels
             )
-            train_md5s = np.take(train_md5s, idxs)
+            train_md5s = np.take(train_md5s, idxs, axis=0)
 
         encoded_labels = [
             encoder(labels) for labels in [train_labels, validation_labels, test_labels]
