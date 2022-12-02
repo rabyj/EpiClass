@@ -23,3 +23,12 @@ line_length = 90
 known_first_party = ["epi_ml", "src"]
 src_paths = ["epi_ml/**", "src"]
 known_local_folder = ["epi_ml/**", "src"]
+
+[tool.pyright]
+include = ["src"]
+exclude = [
+    "**/__pycache__",
+    "**/epilap",
+    "**/notes",
+    ".git"
+    ]
