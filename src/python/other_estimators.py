@@ -24,11 +24,6 @@ else:
     CONCURRENT_CV = 1
 
 
-def get_model_name(filepath: str) -> str:
-    """Extract model name from filepath. (string before first '_')"""
-    return Path(filepath).stem.split(sep="_", maxsplit=1)[0]
-
-
 def parse_arguments() -> argparse.Namespace:
     """Argument parser for command line."""
     # fmt: off
@@ -50,7 +45,8 @@ def parse_arguments() -> argparse.Namespace:
         "logdir", type=DirectoryChecker(), help="Directory for the output logs."
     )
     group1.add_argument(
-        "--models", nargs="+", type=str, help="Specify models to tune and/or predict.", choices=["all", "LinearSVC", "RF", "LR", "LGBM"], default=["all"]
+        "--models", nargs="+", type=str, help="Specify models to tune and/or predict.",
+        choices=["all", "LinearSVC", "RF", "LR", "LGBM"], default=["all"]
         )
 
     mode = parser.add_argument_group("Mode")
@@ -172,7 +168,7 @@ def main():
             print(f"Initial hdf5 loading time: {loading_time}")
 
             # Intersect available hparam files with chose models.
-            available = set([get_model_name(path) for path in hparam_files])
+            available = set([estimators.get_model_name(path) for path in hparam_files])
             chosen = available & set(models)
             hparam_files = [pattern.replace("*", name) for name in chosen]
 
@@ -186,7 +182,7 @@ def main():
                 with open(filepath, "r", encoding="utf-8") as file:
                     hparams = json.load(file)
 
-                name = get_model_name(filepath)
+                name = estimators.get_model_name(filepath)
                 if name == "LGBM":
                     hparams = {
                         k: v

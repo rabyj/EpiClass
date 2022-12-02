@@ -27,12 +27,11 @@ from skopt.callbacks import DeadlineStopper
 from skopt.space import Categorical, Integer, Real
 from tabulate import tabulate
 
+from .analysis import write_pred_table
 from src.python.core.data import DataSet
 from src.python.core.epiatlas_treatment import EpiAtlasTreatment
 from src.python.utils.check_dir import create_dirs
 from src.python.utils.time import time_now
-
-from .analysis import write_pred_table
 
 NFOLD_TUNE = 9
 NFOLD_PREDICT = 10
@@ -87,6 +86,11 @@ save_mapping = {
 
 tune_results_file_format = "{name}_optim.csv"
 best_params_file_format = "{name}_best_params.json"
+
+
+def get_model_name(filepath: str) -> str:
+    """Extract model name from filepath. (string before first '_')"""
+    return Path(filepath).stem.split(sep="_", maxsplit=1)[0]
 
 
 class EstimatorAnalyzer(object):

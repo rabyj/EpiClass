@@ -11,8 +11,7 @@ import src.python.core.estimators as estimators
 import src.python.other_estimators as estimators_main
 from src.python.core import lgbm, metadata
 from src.python.core.data_source import EpiDataSource
-from src.python.core.epiatlas_treatment import EpiAtlasTreatment as EpiAtlasTreatment
-from src.python.test.core.epiatlas_treatment_test import EpiAtlasTreatment as EpiTest
+from src.python.core.epiatlas_treatment import EpiAtlasTreatment
 from src.python.utils.time import time_now
 
 
@@ -35,11 +34,11 @@ def optimize_svm(ea_handler, logdir: Path):
     df.to_csv(logdir / "SVM_lin_optim.csv", sep=",")
 
 
-def create_test_list(ea_handler: EpiTest):
+def create_test_list(ea_handler: EpiAtlasTreatment):
     """Create a small list of files with 50 'leading' signals and their match for each
     biomaterial type.
     """
-    meta = ea_handler.get_complete_metadata(verbose=True)
+    meta = ea_handler.metadata
     md5_mapping = ea_handler.group_mapper
     md5_per_class = meta.md5_per_class("biomaterial_type")
 
@@ -113,7 +112,7 @@ def main():  # pylint: disable=function-redefined
     #     cli.metadata
     #     )
 
-    # ea_handler = EpiTest(my_datasource, cli.category, assay_list,
+    # ea_handler = EpiAtlasTreatment(my_datasource, cli.category, assay_list,
     # n_fold=NFOLD, test_ratio=0, min_class_size=min_class_size
     # )
     # create_test_list(ea_handler) # type: ignore

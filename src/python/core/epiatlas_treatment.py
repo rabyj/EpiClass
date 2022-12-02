@@ -36,7 +36,7 @@ class EpiAtlasTreatment(object):
         Where everything is read from.
     label_category : str
         The target category of labels to use.
-    label_list : List[str]
+    label_list : List[str], optional
         List of labels/classes to include from given category
     n_fold : int, optional
         Number of folds for cross-validation.
@@ -44,7 +44,7 @@ class EpiAtlasTreatment(object):
         Ratio of data kept for test (not used for training or validation)
     min_class_size : int, optional
         Minimum number of samples per class.
-    my_metadata : Metadata | None
+    my_metadata : Metadata, optional
         Metadata to use, if the complete source should not be used. (e.g. more complex pre-filtering)
     """
 
@@ -52,7 +52,7 @@ class EpiAtlasTreatment(object):
         self,
         datasource: EpiDataSource,
         label_category: str,
-        label_list: List[str],
+        label_list: List[str] | None = None,
         n_fold: int = 10,
         test_ratio: float = 0,
         min_class_size: int = 10,
@@ -60,8 +60,8 @@ class EpiAtlasTreatment(object):
     ) -> None:
         self._datasource = datasource
         self._label_category = label_category
-        self._label_list = label_list
         self.k = n_fold
+        self._label_list = label_list
 
         if n_fold < 2:
             raise ValueError(
@@ -69,9 +69,9 @@ class EpiAtlasTreatment(object):
             )
 
         if metadata is not None:
-            self.metadata = metadata
+            self._metadata = metadata
         else:
-            self.metadata = Metadata(self.datasource.metadata_file)
+            self._metadata = Metadata(self.datasource.metadata_file)
 
         self._filter_metadata(verbose=True)
 
@@ -94,7 +94,7 @@ class EpiAtlasTreatment(object):
         return self._label_category
 
     @property
-    def label_list(self) -> list:
+    def label_list(self) -> list | None:
         """Return given target labels inclusion list."""
         return self._label_list
 
@@ -111,15 +111,21 @@ class EpiAtlasTreatment(object):
         """
         return self._raw_to_others
 
+    @property
+    def metadata(self) -> Metadata:
+        """Return a copy of current metadata held"""
+        return copy.deepcopy(self._metadata)
+
     def _filter_metadata(self, verbose: bool) -> None:
         """Filter entry metadata for assay list and label_category."""
-        self.metadata.select_category_subsets(self.target_category, self.label_list)
-        self.metadata.remove_small_classes(10, self.target_category, verbose)
+        if self.label_list is not None:
+            self._metadata.select_category_subsets(self.target_category, self.label_list)
+        self._metadata.remove_small_classes(10, self.target_category, verbose)
 
     def _create_raw_dataset(self, test_ratio: float, min_class_size: int) -> data.DataSet:
         """Create a dataset with raw+ctl_raw signals, all in the training set."""
         print("Creating epiatlas 'raw' signal training dataset")
-        meta = copy.deepcopy(self.metadata)
+        meta = self.metadata
 
         print("Theoretical maximum with complete dataset:")
         meta.display_labels(self.target_category)
@@ -152,7 +158,7 @@ class EpiAtlasTreatment(object):
 
         e.g. { raw_md5sum : {"pval":md5sum, "fc":md5sum} }
         """
-        meta = copy.deepcopy(self.metadata)
+        meta = self.metadata
 
         uuid_to_md5s = {}  # { uuid : {track_type1:md5sum, track_type2:md5sum, ...} }
         for dset in meta.datasets:
@@ -285,8 +291,8 @@ class EpiAtlasTreatment(object):
         """
         info = [
             (
-                self.metadata[md5]["EpiRR"],
-                self.metadata[md5]["assay"],
+                self._metadata[md5]["EpiRR"],
+                self._metadata[md5]["assay"],
             )
             for md5 in md5s
         ]
