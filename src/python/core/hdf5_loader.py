@@ -16,7 +16,7 @@ class Hdf5Loader(object):
 
     def __init__(self, chrom_file, normalization: bool):
         self._normalization = normalization
-        self._chroms = self._load_chroms(chrom_file)
+        self._chroms = Hdf5Loader.load_chroms(chrom_file)
         self._files = {}
         self._signals = {}
 
@@ -32,7 +32,8 @@ class Hdf5Loader(object):
         """
         return self._signals
 
-    def _load_chroms(self, chrom_file):
+    @staticmethod
+    def load_chroms(chrom_file):
         """Return sorted chromosome names list."""
         with open(chrom_file, "r", encoding="utf-8") as file:
             chroms = []
@@ -40,8 +41,8 @@ class Hdf5Loader(object):
                 line = line.rstrip()
                 if line:
                     chroms.append(line.split()[0])
-            chroms.sort()
-            return chroms
+        chroms.sort()
+        return chroms
 
     @staticmethod
     def read_list(data_file: Path) -> Dict[str, Path]:
@@ -53,10 +54,14 @@ class Hdf5Loader(object):
                 files[Hdf5Loader.extract_md5(path)] = path
         return files
 
-    def load_hdf5s(self, data_file: Path, md5s=None, verbose=True) -> Hdf5Loader:
+    def load_hdf5s(
+        self, data_file: Path, md5s=None, verbose=True, strict=False
+    ) -> Hdf5Loader:
         """Load hdf5s from path list file, into self.signals
         If a list of md5s is given, load only the corresponding files.
         Normalize if internal flag set so.
+
+        If strict, will raise OSError if an hdf5 cannot be opened.
 
         Loads them as float32.
         """
@@ -84,25 +89,32 @@ class Hdf5Loader(object):
         signals = {}
         for md5, file in files.items():
 
+            # Trying to open hdf5 file.
             try:
                 f = h5py.File(file)
             except OSError as err:
                 print(f"Error occured with {md5}: {file}. {err}", file=sys.stderr)
-                continue
+                if strict:
+                    print(
+                        "Strict hdf5 loading policy true, raising original error.",
+                        file=sys.stderr,
+                    )
+                    raise err from None
+                else:
+                    continue
 
-            chrom_signals = []
-            for chrom in self._chroms:
-                array = f[md5][chrom][...]  # type: ignore
-                chrom_signals.append(array)
-            signals[md5] = self._normalize(
-                np.concatenate(chrom_signals, dtype=np.float32)
-            )
+            signals[md5] = self._normalize(self._read_hdf5(f, md5))
 
         self._signals = signals
 
         return self
 
-    def _normalize(self, array):
+    def _read_hdf5(self, file: h5py.File, md5: str) -> np.ndarray:
+        """Read and return concatenated genome signal for open hdf5 file."""
+        chrom_signals = [file[md5][chrom][...] for chrom in self._chroms]  # type: ignore
+        return np.concatenate(chrom_signals, dtype=np.float32)  # type: ignore
+
+    def _normalize(self, array: np.ndarray) -> np.ndarray:
         if self._normalization:
             return (array - array.mean()) / array.std()
         else:

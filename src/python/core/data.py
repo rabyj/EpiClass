@@ -358,7 +358,7 @@ class EpiData(object):
 
         self._hdf5s = (
             Hdf5Loader(datasource.chromsize_file, normalization)
-            .load_hdf5s(datasource.hdf5_file, md5s=self._files.keys())
+            .load_hdf5s(datasource.hdf5_file, md5s=self._files.keys(), strict=True)
             .signals
         )
 

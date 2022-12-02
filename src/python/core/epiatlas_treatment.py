@@ -179,7 +179,9 @@ class EpiAtlasTreatment(object):
             [other_dict.values() for _, other_dict in self._raw_to_others.items()]
         )
 
-        hdf5_loader.load_hdf5s(self.datasource.hdf5_file, md5s=md5s, verbose=False)
+        hdf5_loader.load_hdf5s(
+            self.datasource.hdf5_file, md5s=md5s, verbose=False, strict=True
+        )
         return hdf5_loader.signals
 
     def _add_other_tracks(
