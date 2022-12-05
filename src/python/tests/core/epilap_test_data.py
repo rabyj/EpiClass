@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import List
 
 import h5py
+import pytest
 
 from src.python.core.data_source import EpiDataSource
 from src.python.core.epiatlas_treatment import EpiAtlasTreatment
@@ -80,6 +81,18 @@ class EpiAtlasTreatmentTestData:
             hdf5=EpiAtlasTreatmentTestData.create_temp_file_list(tmp_hdf5s),
             chromsize=chroms_file,
             metadata=metadata,
+        )
+
+    @classmethod
+    def default_test_data(
+        cls, test_set="test-epilap-empty-biotype-n40", label_category="biomaterial_type"
+    ) -> EpiAtlasTreatment:
+        """Create mock EpiatlasTreatment"""
+        current_dir = Path(__file__).parent.resolve()
+        md5_list = current_dir / f"{test_set}.md5"
+        metadata_path = current_dir / f"{test_set}-metadata.json"
+        return EpiAtlasTreatmentTestData(metadata_path, md5_list).get_ea_handler(
+            label_category
         )
 
 

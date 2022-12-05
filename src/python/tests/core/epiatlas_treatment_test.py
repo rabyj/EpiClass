@@ -18,16 +18,9 @@ class TestEpiAtlasTreatment:
     """
 
     @pytest.fixture
-    def test_data(
-        self, test_set="test-epilap-empty-biotype-n40", label_category="biomaterial_type"
-    ) -> EpiAtlasTreatment:
-        """Create mock EpiatlasTreatment"""
-        current_dir = Path(__file__).parent.resolve()
-        md5_list = current_dir / f"{test_set}.md5"
-        metadata_path = current_dir / f"{test_set}-metadata.json"
-        return EpiAtlasTreatmentTestData(metadata_path, md5_list).get_ea_handler(
-            label_category
-        )
+    @staticmethod
+    def test_data() -> EpiAtlasTreatment:
+        return EpiAtlasTreatmentTestData.default_test_data()
 
     def test_yield_subsample_validation_1(self, test_data: EpiAtlasTreatment):
         """Test correct subsampling. Subsplit should partition initial validation split."""

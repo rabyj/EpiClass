@@ -69,7 +69,10 @@ model_mapping = {
     "LGBM": Pipeline(steps=[("model", LGBMClassifier())]),  # type: ignore
 }
 # fmt: on
-lgbm_allowed_params = set(signature(LGBMClassifier.__init__).parameters.keys())
+lgbm_allowed_params = [
+    f"model__{param}"
+    for param in set(signature(LGBMClassifier.__init__).parameters.keys())
+]
 
 search_mapping = {
     "LinearSVC": SVM_LIN_SEARCH,
