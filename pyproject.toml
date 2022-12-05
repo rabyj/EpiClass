@@ -14,6 +14,7 @@ force-exclude = '''
 )/
 '''
 
+
 [tool.isort]
 # make it compatible with black
 profile = "black"
@@ -24,11 +25,45 @@ known_first_party = ["epi_ml", "src"]
 src_paths = ["epi_ml/**", "src"]
 known_local_folder = ["epi_ml/**", "src"]
 
+
 [tool.pyright]
 include = ["src"]
-exclude = [
+ignore = [
     "**/__pycache__",
     "**/epilap",
     "**/notes",
-    ".git"
+    ".git",
+    "**/bin/"
     ]
+
+[tool.pylint.main]
+extension-pkg-allow-list = [
+    "numpy",
+    "torch",
+    "pytorch_lightning",
+    "optuna.integration.lightgbm"
+]
+ignore-pattern = ["/bin"]
+
+[tool.pylint.messages_control]
+disable = [
+    "raw-checker-failed",
+    "bad-inline-option",
+    "locally-disabled",
+    "file-ignored",
+    "suppressed-message",
+    "useless-suppression",
+    "deprecated-pragma",
+    "use-symbolic-message-instead",
+    "abstract-method",
+    "arguments-differ",
+    "invalid-name",
+    "wrong-import-order",
+    "wrong-import-position",
+]
+
+[tool.pylint.typecheck]
+generated-members = ["numpy.*","torch.*","pytorch_lightning.*", "optuna.integration.lightgbm.*"]
+
+[tool.pylint.format]
+max-line-length = 120
