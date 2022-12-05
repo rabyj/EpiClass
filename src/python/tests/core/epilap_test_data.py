@@ -12,10 +12,10 @@ from src.python.core.hdf5_loader import Hdf5Loader
 from src.python.core.metadata import Metadata
 
 
-class EpiatlasTreatmentTestData(object):
+class EpiAtlasTreatmentTestData:
     """Create and handle mock/test EpiAtlasTreatment."""
 
-    def __init__(self, metadata_path: Path, md5_list_path: Path, label_category: str):
+    def __init__(self, metadata_path: Path, md5_list_path: Path):
         self.dir = Path(__file__).parent.resolve()
         self.chroms_file = (
             self.dir.parents[2] / "input-format/hg38.noy.chrom.sizes"
@@ -28,11 +28,13 @@ class EpiatlasTreatmentTestData(object):
             metadata_path, tmp_hdf5, self.chroms_file
         )
 
-        self.ea_handler = EpiAtlasTreatment(
+    def get_ea_handler(self, label_category: str, min_class_size=3, n_fold=2):
+        """Return a EpiAtlasTreatment object from mock datasource."""
+        return EpiAtlasTreatment(
             datasource=self.datasource,
             label_category=label_category,
-            min_class_size=3,
-            n_fold=2,
+            min_class_size=min_class_size,
+            n_fold=n_fold,
         )
 
     def create_temp_hdf5s(
@@ -75,7 +77,7 @@ class EpiatlasTreatmentTestData(object):
     ) -> EpiDataSource:
         """Return a datasource object for testing purposes."""
         return EpiDataSource(
-            hdf5=EpiatlasTreatmentTestData.create_temp_file_list(tmp_hdf5s),
+            hdf5=EpiAtlasTreatmentTestData.create_temp_file_list(tmp_hdf5s),
             chromsize=chroms_file,
             metadata=metadata,
         )
@@ -105,7 +107,8 @@ def main():
 
     label_category = "biomaterial_type"
 
-    test_data = EpiatlasTreatmentTestData(metadata_path, md5_list, label_category)
+    tester = EpiAtlasTreatmentTestData(metadata_path, md5_list)
+    print(tester.get_ea_handler(label_category).classes)
 
 
 if __name__ == "__main__":
