@@ -6,7 +6,7 @@ import collections
 import copy
 import itertools
 import warnings
-from typing import Dict, Generator, List
+from typing import Dict, Generator, Iterable, List
 
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
@@ -26,7 +26,7 @@ TRACKS_MAPPING = {
 LEADER_TRACKS = frozenset(["raw", "Unique_plusRaw", "gembs_pos"])
 
 
-class EpiAtlasTreatment(object):
+class EpiAtlasTreatment:
     """Class that handles how epiatlas data is processed into datasets.
     Can be used to split the data into training and testing sets.
 
@@ -191,7 +191,7 @@ class EpiAtlasTreatment(object):
         return hdf5_loader.signals
 
     def _add_other_tracks(
-        self, selected_positions, dset: data.Data, resample: bool
+        self, selected_positions: Iterable[int], dset: data.Data, resample: bool
     ) -> data.Data:
         """Return a modified dset object with added tracks (pval + fc) for selected signals."""
         new_signals, new_str_labels, new_encoded_labels, new_md5s = [], [], [], []
@@ -304,13 +304,12 @@ class EpiAtlasTreatment(object):
 
             if info[0] == info[1]:
                 return info[0:2]
-            else:
-                if verbose:
-                    warnings.warn("No matching signals. Returning first md5.")
-                return info[0]
 
-        else:
-            return info[:]
+            if verbose:
+                warnings.warn("No matching signals. Returning first md5.")
+            return info[0]
+
+        return info[:]
 
     def _find_other_tracks(
         self, selected_positions, dset: data.Data, resample: bool, md5_mapping: dict

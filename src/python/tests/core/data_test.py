@@ -52,7 +52,7 @@ class TestData:
     def test_subsample_over(self, some_data: data.Data):
         """Test execution of subsampling with out of bound idxs."""
         match = r"index \d+ is out of bounds for axis \d with size \d+"
-        with pytest.raises(IndexError, match=match) as e_info:
+        with pytest.raises(IndexError, match=match):
             some_data.subsample([666])
 
     def test_subsample(self, some_data: data.Data):
