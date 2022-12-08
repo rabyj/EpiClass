@@ -15,7 +15,7 @@ from src.python.core import data, metadata
 from src.python.core.data_source import EpiDataSource
 from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
 from src.python.core.lgbm import tune_lgbm
-from src.python.utils.analyze_metadata import filter_cell_types_by_pairs
+from src.python.utils.modify_metadata import filter_cell_types_by_pairs
 from src.python.utils.time import time_now
 
 if os.getenv("CONCURRENT_CV") is not None:

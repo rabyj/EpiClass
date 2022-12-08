@@ -28,12 +28,12 @@ from src.python.core.data_source import EpiDataSource
 from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
 from src.python.core.model_pytorch import LightningDenseClassifier
 from src.python.core.trainer import MyTrainer, define_callbacks
-from src.python.utils.analyze_metadata import (
+from src.python.utils.check_dir import create_dirs
+from src.python.utils.modify_metadata import (
     filter_cell_types_by_pairs,
     fix_roadmap,
     merge_pair_end_info,
 )
-from src.python.utils.check_dir import create_dirs
 from src.python.utils.time import time_now
 
 
