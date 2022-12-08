@@ -4,7 +4,7 @@ from __future__ import annotations
 import itertools
 import pickle
 from pathlib import Path
-from typing import Iterable, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import matplotlib
 
@@ -15,10 +15,11 @@ import pytorch_lightning as pl
 import shap
 import torch
 import torchmetrics
+from torch import Tensor
 from torch.utils.data import TensorDataset
 
 from .confusion_matrix import ConfusionMatrixWriter
-from .data import DataSet
+from .data import Data, DataSet
 from .model_pytorch import LightningDenseClassifier
 
 
@@ -150,10 +151,10 @@ class Analysis(object):
         )
         return mat.detach().cpu().numpy()
 
-    def _save_matrix(self, mat: ConfusionMatrixWriter, set_name, path: Path):
+    def _save_matrix(self, mat: ConfusionMatrixWriter, set_name, path: Path | None):
         """Save matrix to files"""
         if path is None:
-            parent = self._logger.save_dir
+            parent = Path(self._logger.save_dir)
             name = f"{set_name}_confusion_matrix"
         else:
             parent = path.parent
@@ -184,45 +185,90 @@ class Analysis(object):
         mat = ConfusionMatrixWriter(labels=self._classes, confusion_matrix=mat)
         self._save_matrix(mat, set_name, path)
 
-    def SHAP(
-        self, dataset: TensorDataset, save=True, name=None
-    ) -> Tuple[shap.DeepExplainer, Iterable]:
-        """Return the shap explainer and the shap values for the given dataset (Shape of dataset)
 
-        Will take up to 100 samples from the training data,
-        for the background dataset to use for integrating out features.
+class SHAP_Handler:
+    """Handle shap computations and data saving/loading."""
 
-        Saves the shap values to pickle if save is True. Append the given name to
-        the filename (shap_values{_name}.pickle)
+    def __init__(self, model, logdir):
+        self.model = model
+        self.logdir = logdir
+        self.filename_template = "shap_values{name}.{ext}"
+
+    def _create_filename(self, ext: str, name="") -> Path:
+        if name:
+            name = "_" + name
+        filename = self.filename_template.format(name=name, ext=ext)
+
+        return Path(self.logdir) / filename
+
+    def compute_NN(
+        self, background_dset: Data, evaluation_dset: Data, save=True, name=""
+    ) -> Tuple[shap.DeepExplainer, List[np.ndarray]]:
+        """Compute shap values of deep learning model on evaluation dataset
+        by creating an explainer with background dataset.
+
+        Returns explainer and shap values (as a list of matrix per class)
         """
-        if self._train is None:
-            print(
-                "Cannot compute SHAP values, no training data available for background."
-            )
-            return
-        print("Computing SHAP values.")
+        explainer = shap.DeepExplainer(
+            model=self.model, data=Tensor(background_dset.signals)
+        )
 
-        features, _ = self._train[:]
-        background_N = min(features.shape[0], 100)
-
-        rng = np.random.default_rng(42)
-        background = features[rng.choice(features.shape[0], background_N, replace=False)]
-        explainer = shap.DeepExplainer(self._model, background)
-
-        dset_features, _ = dataset[:]
-        shap_values = explainer.shap_values(dset_features)
+        shap_values = explainer.shap_values(Tensor(evaluation_dset.signals))
 
         if save:
-            filename = "shap_values.pickle"
-            if name is not None:
-                filename = f"shap_values_{name}.pickle"
-            filename = self._logger.save_dir / filename
+            self.save_to_pickle(shap_values, evaluation_dset.ids, name)
 
-            print(f"Saving SHAP values to: {filename}")
-            with open(filename, "wb") as f:
-                pickle.dump(shap_values, f)
+        return explainer, shap_values  # type: ignore
 
-        return explainer, shap_values
+    def save_to_pickle(self, shap_values, ids, name="") -> Path:
+        """Save shap values with assigned signals ids to a pickle file.
+
+        Returns path of saved file."""
+
+        filename = self._create_filename(name=name, ext="pickle")
+
+        print(f"Saving SHAP values to: {filename}")
+        with open(filename, "wb") as f:
+            pickle.dump({"shap": shap_values, "ids": ids}, f)
+
+        return filename
+
+    def load_from_pickle(self, name="") -> Dict[str, Any]:
+        """Load pickle file with shap values and ids.
+
+        Returns {"shap": shap_values, "ids": ids} dict.
+        """
+        filename = self._create_filename(name=name, ext="pickle")
+        with open(filename, "rb") as f:
+            data = pickle.load(f)
+
+        return data
+
+    def save_to_csv(self, shap_values_matrix: np.ndarray, ids, name) -> Path:
+        """Save a single shap value matrix (shape (n_samples, #features)) to csv.
+        Giving a name is mandatory contrary to pickle.
+
+        Returns path of saved file.
+        """
+        if isinstance(shap_values_matrix, list):
+            raise ValueError(
+                "{shap_values_matrix} is a list, not an array. Need one matrix of shape (n_samples, #features)"
+            )
+
+        filename = self._create_filename(name=name, ext="csv")
+
+        n_dims = shap_values_matrix.shape[1]
+        df = pd.DataFrame(data=shap_values_matrix, index=ids, columns=range(n_dims))
+
+        print(f"Saving SHAP values to: {filename}")
+        df.to_csv(filename)
+
+        return filename
+
+    def load_from_csv(self, name) -> pd.DataFrame:
+        """Return pandas dataframe of shap values for loaded file."""
+        filename = self._create_filename(name=name, ext="csv")
+        return pd.read_csv(filename, index_col=0)
 
 
 # TODO: Insert "ID" in header, and make sure subsequent script use that (e.g. the bash one liner, for sorting)
