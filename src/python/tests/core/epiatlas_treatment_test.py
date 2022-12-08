@@ -1,14 +1,12 @@
 """EpiAtlas data treatment testing module."""
 from __future__ import annotations
 
-from pathlib import Path
-
 import numpy as np
 import pytest
-from epilap_test_data import EpiAtlasTreatmentTestData
 from sklearn.model_selection import StratifiedKFold
 
 from src.python.core.epiatlas_treatment import EpiAtlasTreatment
+from src.python.tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
 
 
 class TestEpiAtlasTreatment:
@@ -17,9 +15,9 @@ class TestEpiAtlasTreatment:
     Preconditions: Exact same input labels list. (raw_dset.train.encoded_labels)
     """
 
-    @pytest.fixture
-    @staticmethod
-    def test_data() -> EpiAtlasTreatment:
+    @pytest.fixture(scope="class", autouse=True)
+    def test_data(self) -> EpiAtlasTreatment:
+        """Mock test EpiAtlasTreatment."""
         return EpiAtlasTreatmentTestData.default_test_data()
 
     def test_yield_subsample_validation_1(self, test_data: EpiAtlasTreatment):

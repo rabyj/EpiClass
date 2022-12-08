@@ -1,6 +1,10 @@
 """Script for debugging LightGBM."""
 # pylint: disable=import-outside-toplevel
 # pyright: reportPrivateImportUsage=false
+import warnings
+
+warnings.filterwarnings("ignore", message=".*IPython display.*")
+
 import glob
 import json
 from pathlib import Path
@@ -8,16 +12,18 @@ from pathlib import Path
 import pytest
 from lightgbm import LGBMClassifier
 
+from src.python.tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
+
 
 @pytest.fixture
-def logdir():
-    """Test save/load logdir"""
-    return Path("/tmp")
+def logdir(make_specific_logdir) -> Path:
+    """Test logdir"""
+    return make_specific_logdir("lgbm")
 
 
+@pytest.mark.filterwarnings("ignore:IPython")
 def test_lgbm_save_load(logdir):
     """Test LGBM tuning + subsequent fit pipeline."""
-    from epilap_test_data import EpiAtlasTreatmentTestData
 
     from src.python.core import estimators, lgbm as lgbm_funcs
 
