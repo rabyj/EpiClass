@@ -29,14 +29,10 @@ def import_test():
     from src.python.core import analysis, data, metadata
     from src.python.core.data import DataSet, TestData
     from src.python.core.data_source import EpiDataSource
-    from src.python.core.epiatlas_treatment import EpiAtlasTreatment
+    from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
     from src.python.core.hdf5_loader import Hdf5Loader
     from src.python.core.lgbm import tune_lgbm
     from src.python.core.model_pytorch import LightningDenseClassifier
     from src.python.core.trainer import MyTrainer, define_callbacks
-    from src.python.utils.analyze_metadata import (
-        filter_cell_types_by_pairs,
-        merge_pair_end_info,
-    )
     from src.python.utils.check_dir import create_dirs
     from src.python.utils.time import time_now

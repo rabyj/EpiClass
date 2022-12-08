@@ -13,7 +13,7 @@ from src.python.argparseutils.DefaultHelpParser import DefaultHelpParser as Argu
 from src.python.argparseutils.directorychecker import DirectoryChecker
 from src.python.core import data, metadata
 from src.python.core.data_source import EpiDataSource
-from src.python.core.epiatlas_treatment import EpiAtlasTreatment
+from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
 from src.python.core.lgbm import tune_lgbm
 from src.python.utils.analyze_metadata import filter_cell_types_by_pairs
 from src.python.utils.time import time_now
@@ -105,7 +105,7 @@ def main():
 
     my_datasource = EpiDataSource(cli.hdf5, cli.chromsize, cli.metadata)
 
-    # --- Prefilter metadata, must put in EpiAtlasTreatment to actually use it ---
+    # --- Prefilter metadata, must put in EpiAtlasDataset to actually use it ---
     my_metadata = metadata.Metadata(my_datasource.metadata_file)
     my_metadata.remove_category_subsets(
         label_category="track_type", labels=["Unique.raw"]
@@ -125,7 +125,7 @@ def main():
     loading_begin = time_now()
     if mode_tune is True:  # type: ignore
         print("Entering tuning mode")
-        ea_handler = EpiAtlasTreatment(
+        ea_handler = EpiAtlasFoldFactory.from_datasource(
             my_datasource,
             cli.category,
             label_list,
@@ -155,7 +155,7 @@ def main():
         hparam_files = glob.glob(pattern)
         if hparam_files:
 
-            ea_handler = EpiAtlasTreatment(
+            ea_handler = EpiAtlasFoldFactory.from_datasource(
                 my_datasource,
                 cli.category,
                 label_list,

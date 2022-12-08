@@ -7,7 +7,7 @@ from typing import List
 import h5py
 
 from src.python.core.data_source import EpiDataSource
-from src.python.core.epiatlas_treatment import EpiAtlasTreatment
+from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
 from src.python.core.hdf5_loader import Hdf5Loader
 from src.python.core.metadata import Metadata
 
@@ -16,7 +16,7 @@ DEFAULT_TEST_LOGDIR.mkdir(exist_ok=True, parents=True)
 
 
 class EpiAtlasTreatmentTestData:
-    """Create and handle mock/test EpiAtlasTreatment."""
+    """Create and handle mock/test EpiAtlasFoldFactory"""
 
     def __init__(self, metadata_path: Path, md5_list_path: Path, logdir: Path):
         self.hdf5_logdir = Path(logdir) / "hdf5"
@@ -35,8 +35,8 @@ class EpiAtlasTreatmentTestData:
         )
 
     def get_ea_handler(self, label_category: str, min_class_size=3, n_fold=2):
-        """Return a EpiAtlasTreatment object from mock datasource."""
-        return EpiAtlasTreatment(
+        """Return a EpiAtlasFoldFactory object from mock datasource."""
+        return EpiAtlasFoldFactory.from_datasource(
             datasource=self.datasource,
             label_category=label_category,
             min_class_size=min_class_size,
@@ -93,8 +93,8 @@ class EpiAtlasTreatmentTestData:
         logdir=DEFAULT_TEST_LOGDIR,  # type: ignore
         test_set="test-epilap-empty-biotype-n40",
         label_category="biomaterial_type",
-    ) -> EpiAtlasTreatment:
-        """Create mock EpiatlasTreatment"""
+    ) -> EpiAtlasFoldFactory:
+        """Create mock EpiAtlasFoldFactory"""
         current_dir = Path(__file__).parent.resolve()
         md5_list = current_dir / f"{test_set}.md5"
         metadata_path = current_dir / f"{test_set}-metadata.json"

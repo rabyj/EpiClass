@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from src.python.core.data import DataSet
-from src.python.core.epiatlas_treatment import EpiAtlasTreatment
+from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
 from src.python.core.model_pytorch import LightningDenseClassifier
 from src.python.tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
 
@@ -42,13 +42,13 @@ def make_specific_logdir(tmp_logdir):
 
 
 @pytest.fixture(scope="session", name="test_epiatlas_data_handler")
-def fixture_epiatlas_data_handler() -> EpiAtlasTreatment:
+def fixture_epiatlas_data_handler() -> EpiAtlasFoldFactory:
     """Return logdir for tests. (in /tmp)."""
     return EpiAtlasTreatmentTestData.default_test_data()
 
 
 @pytest.fixture(scope="session", name="test_epiatlas_dataset")
-def fixture_epiatlas_dataset(test_epiatlas_data_handler: EpiAtlasTreatment) -> DataSet:
+def fixture_epiatlas_dataset(test_epiatlas_data_handler: EpiAtlasFoldFactory) -> DataSet:
     """Return mock dataset."""
     return next(test_epiatlas_data_handler.yield_split())
 

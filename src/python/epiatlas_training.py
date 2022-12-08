@@ -25,7 +25,7 @@ from src.python.argparseutils.directorychecker import DirectoryChecker
 from src.python.core import analysis, metadata
 from src.python.core.data import DataSet
 from src.python.core.data_source import EpiDataSource
-from src.python.core.epiatlas_treatment import EpiAtlasTreatment
+from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
 from src.python.core.model_pytorch import LightningDenseClassifier
 from src.python.core.trainer import MyTrainer, define_callbacks
 from src.python.utils.analyze_metadata import (
@@ -134,7 +134,7 @@ def main():
     # min_class_size = 3
     # restore_model = True
 
-    ea_handler = EpiAtlasTreatment(
+    ea_handler = EpiAtlasFoldFactory.from_datasource(
         my_datasource,
         category,
         label_list,

@@ -8,7 +8,7 @@ import optuna.integration.lightgbm as lgb
 import pandas as pd
 from lightgbm import log_evaluation
 
-from src.python.core.epiatlas_treatment import EpiAtlasTreatment
+from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
 
 # TODO: Permit native saving/loading. # https://stackoverflow.com/questions/55208734/save-lgbmregressor-model-from-python-lightgbm-package-to-disc
 
@@ -23,13 +23,13 @@ def print_last_trial(study, trial):  # pylint: disable=unused-argument
     print(trial.system_attrs["lightgbm_tuner:lgbm_params"])
 
 
-def tune_lgbm(ea_handler: EpiAtlasTreatment, logdir: Path):
+def tune_lgbm(ea_handler: EpiAtlasFoldFactory, logdir: Path):
     """
-    It takes an EpiAtlasTreatment object and a log directory, and it tunes the
+    It takes an EpiAtlasFoldFactory object and a log directory, and it tunes the
     hyperparameters of a LightGBM classifier using Optuna.
 
     Args:
-      ea_handler (EpiAtlasTreatment): Dataset
+      ea_handler (EpiAtlasFoldFactory): Dataset splits creator.
       logdir (Path): The directory where the results will be saved.
 
     Returns:

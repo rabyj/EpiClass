@@ -5,22 +5,22 @@ import numpy as np
 import pytest
 from sklearn.model_selection import StratifiedKFold
 
-from src.python.core.epiatlas_treatment import EpiAtlasTreatment
+from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
 from src.python.tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
 
 
 class TestEpiAtlasTreatment:
-    """Test class EpiAtlasTreatment
+    """Test class EpiAtlasFoldFactory and
 
     Preconditions: Exact same input labels list. (raw_dset.train.encoded_labels)
     """
 
     @pytest.fixture(scope="class", autouse=True)
-    def test_data(self) -> EpiAtlasTreatment:
-        """Mock test EpiAtlasTreatment."""
+    def test_data(self) -> EpiAtlasFoldFactory:
+        """Mock test EpiAtlasFoldFactory."""
         return EpiAtlasTreatmentTestData.default_test_data()
 
-    def test_yield_subsample_validation_1(self, test_data: EpiAtlasTreatment):
+    def test_yield_subsample_validation_1(self, test_data: EpiAtlasFoldFactory):
         """Test correct subsampling. Subsplit should partition initial validation split."""
         ea_handler = test_data
 
@@ -41,13 +41,13 @@ class TestEpiAtlasTreatment:
                     ids = set(list(train) + list(valid))
                     assert ids == total_ids
 
-    def test_yield_subsample_validation_2(self, test_data: EpiAtlasTreatment):
+    def test_yield_subsample_validation_2(self, test_data: EpiAtlasFoldFactory):
         """Test correct subsampling. Repeated calls should lead to same outcome"""
         dset1 = next(test_data.yield_subsample_validation(chosen_split=0, nb_split=2))
         dset2 = next(test_data.yield_subsample_validation(chosen_split=0, nb_split=2))
         assert list(dset1.validation.ids) == list(dset2.validation.ids)
 
-    def test_yield_subsample_validation_outofrange(self, test_data: EpiAtlasTreatment):
+    def test_yield_subsample_validation_outofrange(self, test_data: EpiAtlasFoldFactory):
         """Test correct subsampling range."""
         chosen_split = test_data.k  # one off error
 
@@ -59,7 +59,9 @@ class TestEpiAtlasTreatment:
                 )
             )
 
-    def test_yield_subsample_validation_toomanysplits(self, test_data: EpiAtlasTreatment):
+    def test_yield_subsample_validation_toomanysplits(
+        self, test_data: EpiAtlasFoldFactory
+    ):
         """Test that you cannot ask for too many splits."""
         nb_split = 10
         with pytest.raises(ValueError):

@@ -29,7 +29,7 @@ from tabulate import tabulate
 
 from .analysis import write_pred_table
 from src.python.core.data import DataSet
-from src.python.core.epiatlas_treatment import EpiAtlasTreatment
+from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
 from src.python.utils.check_dir import create_dirs
 from src.python.utils.time import time_now
 
@@ -256,7 +256,7 @@ def best_params_cb(result):
 
 def tune_estimator(
     model: Pipeline,
-    ea_handler: EpiAtlasTreatment,
+    ea_handler: EpiAtlasFoldFactory,
     params: dict,
     n_iter: int,
     concurrent_cv: int,
@@ -267,7 +267,7 @@ def tune_estimator(
 
     Args:
       model (Pipeline): The model to tune.
-      ea_handler (EpiAtlasTreatment): Dataset
+      ea_handler (EpiAtlasFoldFactory): Dataset splits creator.
       params (dict): Hyperparameters search space.
       n_iter (int): Total number of parameter settings to sample.
       concurrent_cv (int): Number of full cross-validation process (X folds) to run
@@ -285,7 +285,7 @@ def tune_estimator(
     if n_jobs > 48:
         raise AssertionError("More jobs than cores asked, max 48 jobs.")
 
-    total_data = ea_handler.create_total_data()
+    total_data = ea_handler.epiatlas_dataset.create_total_data()
     print(f"Number of files used globally {len(total_data)}")
 
     opt = BayesSearchCV(
@@ -314,7 +314,7 @@ def tune_estimator(
 
 
 def optimize_estimator(
-    ea_handler: EpiAtlasTreatment,
+    ea_handler: EpiAtlasFoldFactory,
     logdir: Path,
     n_iter: int,
     name: str,
@@ -325,7 +325,7 @@ def optimize_estimator(
     using the search space with the same name.
 
     Args:
-      ea_handler (EpiAtlasTreatment): Dataset
+      ea_handler (EpiAtlasFoldFactory): Dataset splits creator.
       logdir (Path): The directory where the results will be saved.
       n_iter (int): Number of different search space sampling.
       name (str): The name of the model we're tuning.
@@ -369,14 +369,14 @@ def log_tune_results(logdir: Path, name: str, opt: BayesSearchCV):
 
 
 def run_predictions(
-    ea_handler: EpiAtlasTreatment, estimator: Pipeline, name: str, logdir: Path
+    ea_handler: EpiAtlasFoldFactory, estimator: Pipeline, name: str, logdir: Path
 ):
     """
-    It will fit and run a prediction for each of the k-folds in the EpiAtlasTreatment
+    It will fit and run a prediction for each of the k-folds in the EpiAtlasFoldFactory
     object, using the estimator provided. Will use all available cpus.
 
     Args:
-      ea_handler (EpiAtlasTreatment): Dataset
+      ea_handler (EpiAtlasFoldFactory): Dataset splits creator.
       estimator (Pipeline): The model to use.
       name (str): The name of the model.
       logdir (Path): The directory where the results will be saved.

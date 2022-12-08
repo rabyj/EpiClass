@@ -26,9 +26,8 @@ TRACKS_MAPPING = {
 LEADER_TRACKS = frozenset(["raw", "Unique_plusRaw", "gembs_pos"])
 
 
-class EpiAtlasTreatment:
-    """Class that handles how epiatlas data is processed into datasets.
-    Can be used to split the data into training and testing sets.
+class EpiAtlasDataset:
+    """Class that handles how epiatlas data signals are linked together.
 
     Parameters
     ----------
@@ -38,8 +37,6 @@ class EpiAtlasTreatment:
         The target category of labels to use.
     label_list : List[str], optional
         List of labels/classes to include from given category
-    n_fold : int, optional
-        Number of folds for cross-validation.
     test_ratio : float, optional
         Ratio of data kept for test (not used for training or validation)
     min_class_size : int, optional
@@ -53,27 +50,20 @@ class EpiAtlasTreatment:
         datasource: EpiDataSource,
         label_category: str,
         label_list: List[str] | None = None,
-        n_fold: int = 10,
-        test_ratio: float = 0,
         min_class_size: int = 10,
+        test_ratio: float = 0,
         metadata: Metadata | None = None,
-    ) -> None:
+    ):
         self._datasource = datasource
         self._label_category = label_category
-        self.k = n_fold
         self._label_list = label_list
-
-        if n_fold < 2:
-            raise ValueError(
-                f"Need at least two folds for cross-validation. Got {n_fold}."
-            )
 
         if metadata is not None:
             self._metadata = metadata
         else:
             self._metadata = Metadata(self.datasource.metadata_file)
 
-        self._filter_metadata(verbose=True)
+        self._filter_metadata(min_class_size, verbose=True)
 
         self._raw_to_others = self._epiatlas_prepare_split()
 
@@ -81,7 +71,7 @@ class EpiAtlasTreatment:
         self._raw_dset = self._create_raw_dataset(test_ratio, min_class_size)
         self._other_tracks = self._load_other_tracks()
 
-        self.classes = self._raw_dset.classes
+        self._classes = self._raw_dset.classes
 
     @property
     def datasource(self) -> EpiDataSource:
@@ -94,9 +84,14 @@ class EpiAtlasTreatment:
         return self._label_category
 
     @property
-    def label_list(self) -> list | None:
+    def label_list(self) -> List[str] | None:
         """Return given target labels inclusion list."""
         return self._label_list
+
+    @property
+    def classes(self) -> List[str]:
+        """Return target classes"""
+        return self._classes
 
     @property
     def raw_dataset(self) -> data.DataSet:
@@ -116,11 +111,11 @@ class EpiAtlasTreatment:
         """Return a copy of current metadata held"""
         return copy.deepcopy(self._metadata)
 
-    def _filter_metadata(self, verbose: bool) -> None:
+    def _filter_metadata(self, min_class_size, verbose: bool) -> None:
         """Filter entry metadata for assay list and label_category."""
         if self.label_list is not None:
             self._metadata.select_category_subsets(self.target_category, self.label_list)
-        self._metadata.remove_small_classes(10, self.target_category, verbose)
+        self._metadata.remove_small_classes(min_class_size, self.target_category, verbose)
 
     def _create_raw_dataset(self, test_ratio: float, min_class_size: int) -> data.DataSet:
         """Create a dataset with raw+ctl_raw signals, all in the training set."""
@@ -190,10 +185,14 @@ class EpiAtlasTreatment:
         )
         return hdf5_loader.signals
 
-    def _add_other_tracks(
+    def add_other_tracks(
         self, selected_positions: Iterable[int], dset: data.Data, resample: bool
     ) -> data.Data:
-        """Return a modified dset object with added tracks (pval + fc) for selected signals."""
+        """Return a modified dset object with added tracks (e.g. pval + fc) for selected signals.
+        The matching tracks will be put right after the selected tracks.
+
+        dset needs to be composed only of "leader" tracks, otherwise it will fail.
+        """
         new_signals, new_str_labels, new_encoded_labels, new_md5s = [], [], [], []
 
         raw_dset = dset
@@ -254,22 +253,91 @@ class EpiAtlasTreatment:
 
         return new_dset
 
+    def create_total_data(self) -> data.Data:
+        """Return a data set with all signals (no oversampling)"""
+        return self.add_other_tracks(
+            range(self._raw_dset.train.num_examples),
+            self._raw_dset.train,  # type: ignore
+            resample=False,
+        )
+
+
+class EpiAtlasFoldFactory:
+    """Class that handles how epiatlas data is split into training and testing sets.
+
+    Parameters
+    ----------
+    epiatlas_dataset : EpiAtlasDataset
+        Source container for epiatlas data.
+    n_fold : int, optional
+        Number of folds for cross-validation.
+    """
+
+    def __init__(
+        self,
+        epiatlas_dataset: EpiAtlasDataset,
+        n_fold: int = 10,
+    ):
+        self.k = n_fold
+        if n_fold < 2:
+            raise ValueError(
+                f"Need at least two folds for cross-validation. Got {n_fold}."
+            )
+
+        self._epiatlas_dataset = epiatlas_dataset
+        self.classes = self._epiatlas_dataset.classes
+
+        self._add_other_tracks = epiatlas_dataset.add_other_tracks
+
+    @classmethod
+    def from_datasource(
+        cls,
+        datasource: EpiDataSource,
+        label_category: str,
+        label_list: List[str] | None = None,
+        min_class_size: int = 10,
+        test_ratio: float = 0,
+        metadata: Metadata | None = None,
+        n_fold: int = 10,
+    ):
+        epiatlas_dataset = EpiAtlasDataset(
+            datasource,
+            label_category,
+            label_list,
+            min_class_size,
+            test_ratio,
+            metadata,
+        )
+        return cls(epiatlas_dataset, n_fold)
+
+    @property
+    def n_fold(self) -> int:
+        """Returns expected number of folds."""
+        return self.k
+
+    @property
+    def epiatlas_dataset(self) -> EpiAtlasDataset:
+        """Returns source EpiAtlasDataset."""
+        return self._epiatlas_dataset
+
     def yield_split(self) -> Generator[data.DataSet, None, None]:
         """Yield train and valid tensor datasets for one split.
 
         Depends on given init parameters.
         """
         skf = StratifiedKFold(n_splits=self.k, shuffle=False)
+
+        raw_dset = self.epiatlas_dataset.raw_dataset
         for train_idxs, valid_idxs in skf.split(
-            np.zeros((self._raw_dset.train.num_examples, len(self.classes))),
-            list(self._raw_dset.train.encoded_labels),
+            np.zeros((raw_dset.train.num_examples, len(self.classes))),
+            list(raw_dset.train.encoded_labels),
         ):
             new_datasets = data.DataSet.empty_collection()
 
-            new_train = copy.deepcopy(self._raw_dset.train)
+            new_train = copy.deepcopy(raw_dset.train)
             new_train = self._add_other_tracks(train_idxs, new_train, resample=True)  # type: ignore
 
-            new_valid = copy.deepcopy(self._raw_dset.train)
+            new_valid = copy.deepcopy(raw_dset.train)
             new_valid = self._add_other_tracks(valid_idxs, new_valid, resample=False)  # type: ignore
 
             new_datasets.set_train(new_train)
@@ -277,22 +345,14 @@ class EpiAtlasTreatment:
 
             yield new_datasets
 
-    def create_total_data(self) -> data.Data:
-        """Return a data set with all signals (no oversampling)"""
-        return self._add_other_tracks(
-            range(self._raw_dset.train.num_examples),
-            self._raw_dset.train,  # type: ignore
-            resample=False,
-        )
-
     def _correct_signal_group(self, md5s: List, verbose=True):
         """Return md5s corresponding to signal having the same EpiRR and assay (same group, like a pair or trio).
         as the first md5 (expected to be leader track), if they are contiguous with first signal.
         """
         info = [
             (
-                self._metadata[md5]["EpiRR"],
-                self._metadata[md5]["assay"],
+                self.epiatlas_dataset.metadata[md5]["EpiRR"],
+                self.epiatlas_dataset.metadata[md5]["assay"],
             )
             for md5 in md5s
         ]
@@ -303,13 +363,13 @@ class EpiAtlasTreatment:
                 )
 
             if info[0] == info[1]:
-                return info[0:2]
+                return md5s[0:2]
 
             if verbose:
                 warnings.warn("No matching signals. Returning first md5.")
-            return info[0]
+            return md5s[0]
 
-        return info[:]
+        return md5s[:]
 
     def _find_other_tracks(
         self, selected_positions, dset: data.Data, resample: bool, md5_mapping: dict
@@ -383,10 +443,11 @@ class EpiAtlasTreatment:
         """
         md5_mapping = {md5: i for i, md5 in enumerate(total_data.ids)}
 
+        raw_dset = self.epiatlas_dataset.raw_dataset
         skf = StratifiedKFold(n_splits=self.k, shuffle=False)
         for train_idxs, valid_idxs in skf.split(
-            np.zeros((self._raw_dset.train.num_examples, len(self.classes))),
-            list(self._raw_dset.train.encoded_labels),
+            np.zeros((raw_dset.train.num_examples, len(self.classes))),
+            list(raw_dset.train.encoded_labels),
         ):
 
             # The "complete" refers to the fact that the indexes are sampling over total data.
@@ -409,13 +470,14 @@ class EpiAtlasTreatment:
 
         Created for SHAP values calculation sampling.
         """
-        assert isinstance(self._raw_dset.train, data.Data)
+        raw_dset = self.epiatlas_dataset.raw_dataset
+        assert isinstance(raw_dset.train, data.Data)
 
         skf1 = StratifiedKFold(n_splits=self.k, shuffle=False)
         skf2 = StratifiedKFold(n_splits=nb_split, shuffle=False)
         idxs_gen = skf1.split(
-            np.zeros((self._raw_dset.train.num_examples, len(self.classes))),
-            list(self._raw_dset.train.encoded_labels),
+            np.zeros((raw_dset.train.num_examples, len(self.classes))),
+            list(raw_dset.train.encoded_labels),
         )
 
         try:
@@ -425,7 +487,7 @@ class EpiAtlasTreatment:
                 f"Chosen split {chosen_split} out of range of initial {self.k} folds."
             ) from e
 
-        chosen_total_dataset = self._raw_dset.train.subsample(valid_idxs)
+        chosen_total_dataset = raw_dset.train.subsample(list(valid_idxs))
 
         for train_subsplit_idxs, valid_subsplit_idxs in skf2.split(
             np.zeros((chosen_total_dataset.num_examples, len(self.classes))),
