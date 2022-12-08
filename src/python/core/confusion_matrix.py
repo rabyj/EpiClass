@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import math
 import re
-import warnings
 from pathlib import Path
 from typing import Tuple
 
@@ -39,8 +38,7 @@ class ConfusionMatrixWriter(object):
 
     def __add__(self, other: ConfusionMatrixWriter) -> ConfusionMatrixWriter:
         if set(self._labels) != set(other._labels):
-            warnings.warn("Cannot add matrices with different labels")
-            return None
+            raise ValueError("Cannot add matrices with different labels.")
 
         new_mat = self._og_confusion_mat + other._og_confusion_mat
         new_mat = ConfusionMatrixWriter(self._labels, new_mat)
@@ -155,9 +153,9 @@ class ConfusionMatrixWriter(object):
         nb_colors = 20
         gnuplot = cm.get_cmap("gnuplot", nb_colors)  # 20 colors
         newcolors = gnuplot(np.linspace(0.0, 1.0, nb_colors))
-        new_cmap = ListedColormap(newcolors)
+        new_cmap = ListedColormap(newcolors)  # type: ignore
         new_cmap.set_over(
-            matplotlib.colors.to_rgba("GreenYellow")
+            matplotlib.colors.to_rgba("GreenYellow")  # type: ignore
         )  # color for max values, do it LAST
 
         # create color mesh and arrange ticks
@@ -201,11 +199,12 @@ class ConfusionMatrixWriter(object):
                         color="w",
                         size=5,
                     )
+
                     text_obj.set_path_effects(
                         [
                             path_effects.Stroke(linewidth=1, foreground="black"),
                             path_effects.Normal(),
-                        ]
+                        ]  # type: ignore
                     )
 
         # Color bar
@@ -232,7 +231,7 @@ class ConfusionMatrixWriter(object):
         else:
             self._pd_matrix.to_csv(path, encoding="utf8")
 
-    def to_all_formats(self, logdir: str, name: str) -> Tuple[Path, Path, Path]:
+    def to_all_formats(self, logdir: str | Path, name: str) -> Tuple[Path, Path, Path]:
         """Write to logdir files of the confusion matrix.
         out 1 : Path of csv of non-normalized matrix
         out 2 : Path of csv of normalized matrix
