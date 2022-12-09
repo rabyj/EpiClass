@@ -308,8 +308,7 @@ class DataSetFactory(object):
         validation_ratio=0.1,
         test_ratio=0.1,
     ) -> DataSet:
-        """TODO : Write docstring"""
-
+        """Return DataSet created from EpiData."""
         return EpiData(
             datasource,
             metadata,

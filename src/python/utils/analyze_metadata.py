@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from .modify_metadata import count_pairs, epiatlas_cats
+import src.python.utils.modify_metadata as modify_metadata
 from src.python.core.epiatlas_treatment import TRACKS_MAPPING
 from src.python.core.metadata import Metadata
 from src.python.utils.augment_predict_file import add_coherence
@@ -79,14 +79,14 @@ def two_step_table_analysis(my_metadata: Metadata, category1, category2):
 
 def print_pairs(my_metadata: Metadata, cat1, cat2):
     """Print label pairs from the given metadata categories."""
-    counter = count_pairs(my_metadata, cat1, cat2)
+    counter = modify_metadata.count_pairs(my_metadata, cat1, cat2)
     for pair, count in sorted(counter.items()):
         print(pair, count)
 
 
 def make_table(my_metadata: Metadata, cat1: str, cat2: str, filepath: str):
     """Write metadata content tsv table for given metadata categories"""
-    counter = count_pairs(my_metadata, cat1, cat2)
+    counter = modify_metadata.count_pairs(my_metadata, cat1, cat2)
     triplets = [(pair[0], pair[1], count) for pair, count in sorted(counter.items())]
 
     df = pd.DataFrame(triplets, columns=["assay", "cell_type", "count"])
@@ -106,7 +106,7 @@ def compute_coherence_on_all(meta: Metadata):
     df = df.replace(r"^\s*$", "--", regex=True)
 
     for category in list(df.columns):
-        if category not in epiatlas_cats | set(
+        if category not in modify_metadata.epiatlas_cats | set(
             [
                 "md5sum",
                 "EpiRR",
@@ -135,102 +135,96 @@ def check_epitatlas_uuid_premise(metadata: Metadata):
                 print(uuid, counter)
 
 
+def create_json_from_md5_list(md5_list: Path, metadata: Metadata):
+    """Save json with metadata from selected signals."""
+    metadata = copy.deepcopy(metadata)
+    with open(md5_list, "r", encoding="utf8") as f:
+        md5_set = set([md5.strip() for md5 in f.readlines()])
+
+    for md5 in list(metadata.md5s):
+        if md5 not in md5_set:
+            del metadata[md5]
+
+    new_path = md5_list.parent / f"{md5_list.stem}-metadata.json"
+    metadata.save(new_path)
+
+
+def test_generic_classifiers(my_metadata):
+    """Multiple tests to understand how much correct answers you could get
+    from statistical derivations, without making any assumptions about the actual data."""
+    import numpy as np
+    import scipy
+    import sklearn
+    from statsmodels.multivariate.manova import MANOVA
+
+    modify_metadata.merge_pair_end_info(my_metadata)
+    my_metadata.select_category_subsets("paired_end_mode", ["single_end", "paired_end"])
+
+    # -- test 1 with simple classifiers --
+    df = pd.DataFrame(my_metadata.datasets)
+    y = df["paired_end_mode"]
+    y = sklearn.preprocessing.LabelEncoder().fit_transform(y)
+    classifier = sklearn.linear_model.LogisticRegression(penalty="none")
+    classifier = sklearn.ensemble.RandomForestClassifier(
+        class_weight="balanced_subsample"
+    )
+    correlations = []
+    for category in my_metadata.get_categories():
+        X = df[category]
+        X = sklearn.preprocessing.LabelEncoder().fit_transform(X).reshape(-1, 1)
+        acc = []
+        classifier = classifier.fit(X, y)
+        for i in range(10):
+            X, y = sklearn.utils.shuffle(X, y)
+            y_pred = classifier.predict(X)
+            acc_1 = sklearn.metrics.accuracy_score(y, y_pred)
+            adj_acc = sklearn.metrics.balanced_accuracy_score(y, y_pred, adjusted=True)
+            acc.append((acc_1, adj_acc))
+        acc = np.array(acc)
+        mean_acc = acc.mean(axis=0)
+        std = acc.std(axis=0)[0]
+        correlations.append((category, str(mean_acc[0]), str(mean_acc[1]), str(std)))
+
+    for metrics in correlations:
+        print(" ".join(metrics))
+
+    # -- test 2: Evaluate chi2 --
+    import statsmodels.api as sm
+
+    pivot = pd.crosstab(
+        df["sample_ontology_term_high_order_unique"], df["paired_end_mode"]
+    )
+    print(pivot)
+    chi2_stat, p, dof, expected = scipy.stats.chi2_contingency(pivot)
+    print(chi2_stat, expected)
+
+    table = sm.stats.Table.from_data(
+        df[["sample_ontology_term_high_order_unique", "paired_end_mode"]]
+    )
+    print(table.table_orig, "\n")
+    print(table.fittedvalues, "\n")
+    print(table.resid_pearson, "\n")
+    print(table.chi2_contribs, "\n")
+
+    # -- test 3: MANOVA --
+    # encode labels
+    df = df.apply(lambda x: pd.factorize(x)[0])
+    maov = MANOVA.from_formula(
+        "sample_ontology_term_high_order_unique ~ paired_end_mode", data=df
+    )
+    print(maov.mv_test())
+
+
 def main():
 
     base = Path("/home/local/USHERBROOKE/rabj2301/Projects/epilap/input/metadata")
     path = base / "merge_EpiAtlas_allmetadata-v10.json"
     my_metadata = Metadata(path)
 
-    md5_list = "/home/local/USHERBROOKE/rabj2301/Projects/sources/epi_ml/src/python/tests/core/test-epilap-empty-biotype-n40.md5"
-    with open(md5_list, "r", encoding="utf8") as f:
-        md5_set = set([md5.strip() for md5 in f.readlines()])
+    # md5_list = "/home/local/USHERBROOKE/rabj2301/Projects/sources/epi_ml/src/python/tests/fixtures/test-epilap-empty-biotype-n40.md5"
+    # create_json_from_md5_list(Path(md5_list), my_metadata)
 
-    print(md5_set)
-
-    for md5 in list(my_metadata.md5s):
-        if md5 not in md5_set:
-            del my_metadata[md5]
-
-    my_metadata.save(
-        "/home/local/USHERBROOKE/rabj2301/Projects/sources/epi_ml/src/python/tests/core/test-epilap-empty-biotype-n40-metadata.json"
-    )
-
-    # cats = my_metadata.get_categories()
-    # for cat in cats:
-    #     if " " in cat:
-    #         print(cat)
-    # fix_roadmap(my_metadata)
-    # my_metadata.display_labels("data_generating_centre")
-
-    # merge_pair_end_info(my_metadata)
-    # my_metadata.select_category_subsets("paired_end_mode", ["single_end", "paired_end"])
-    # import numpy as np
-    # import sklearn
-    # from statsmodels.multivariate.manova import MANOVA
-
-    # df = pd.DataFrame(my_metadata.datasets)
-    # y = df["paired_end_mode"]
-    # y = sklearn.preprocessing.LabelEncoder().fit_transform(y)
-    # classifier = sklearn.linear_model.LogisticRegression(penalty="none")
-    # classifier = sklearn.ensemble.RandomForestClassifier(
-    #     class_weight="balanced_subsample"
-    # )
-    # correlations = []
-    # for category in my_metadata.get_categories():
-    #     X = df[category]
-    #     X = sklearn.preprocessing.LabelEncoder().fit_transform(X).reshape(-1, 1)
-    #     acc = []
-    #     classifier = classifier.fit(X, y)
-    #     for i in range(10):
-    #         X, y = sklearn.utils.shuffle(X, y)
-    #         y_pred = classifier.predict(X)
-    #         acc_1 = sklearn.metrics.accuracy_score(y, y_pred)
-    #         adj_acc = sklearn.metrics.balanced_accuracy_score(y, y_pred, adjusted=True)
-    #         acc.append((acc_1, adj_acc))
-    #     acc = np.array(acc)
-    #     mean_acc = acc.mean(axis=0)
-    #     std = acc.std(axis=0)[0]
-    #     correlations.append((category, str(mean_acc[0]), str(mean_acc[1]), str(std)))
-    # for metrics in correlations:
-    #     print(" ".join(metrics))
-    # pivot = pd.crosstab(
-    #     df["sample_ontology_term_high_order_unique"], df["paired_end_mode"]
-    # )
-    # print(pivot)
-    # chi2_stat, p, dof, expected = scipy.stats.chi2_contingency(pivot)
-    # print(chi2_stat, expected)
-    # import statsmodels.api as sm
-    # table = sm.stats.Table.from_data(
-    #     df[["sample_ontology_term_high_order_unique", "paired_end_mode"]]
-    # )
-    # print(table.table_orig, "\n")
-    # print(table.fittedvalues, "\n")
-    # print(table.resid_pearson, "\n")
-    # print(table.chi2_contribs, "\n")
-    # encode labels
-    # df = df.apply(lambda x: pd.factorize(x)[0])
-    # maov = MANOVA.from_formula(
-    #     "sample_ontology_term_high_order_unique ~ paired_end_mode", data=df
-    # )
-    # print(maov.mv_test())
-    # compute_coherence_on_all(my_metadata)
-    # cat1 = "assay"
-    # cat2 = "cell_type"
-    # my_metadata.display_labels("harm_donor_sex")
-    # for cat in my_metadata.get_categories():
-    #     print(cat)
-    # filter_cell_types_by_pairs(my_metadata)
-    # make_table(my_metadata, cat1, cat2, "test")
-    # for cat in my_metadata.get_categories():
-    #     print(cat)
-    # my_metadata.display_labels("paired_end_mode")
-    # for dset in list(my_metadata.datasets):
-    #     if "paired_end_mode" in dset:
-    #         del my_metadata[dset["md5sum"]]
-    # my_metadata.display_labels("assay")
-    # my_metadata.display_labels("paired")
-    # merge_pair_end_info(my_metadata)
-    # my_metadata.display_labels("paired_end_mode")
+    my_metadata.display_labels("track_type")
 
 
 if __name__ == "__main__":
