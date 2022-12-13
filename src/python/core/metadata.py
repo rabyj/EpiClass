@@ -120,7 +120,9 @@ class Metadata(object):
             data[label].append(md5)
         return data
 
-    def remove_small_classes(self, min_class_size, label_category: str, verbose=True):
+    def remove_small_classes(
+        self, min_class_size: int, label_category: str, verbose=True
+    ):
         """Remove classes with less than min_class_size examples
         for a given metatada category.
 

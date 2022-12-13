@@ -22,6 +22,7 @@ from .confusion_matrix import ConfusionMatrixWriter
 from .data import Data, DataSet
 from .model_pytorch import LightningDenseClassifier
 from .types import SomeData, TensorData
+from src.python.utils.time import time_now_str
 
 
 class Analysis(object):
@@ -206,12 +207,12 @@ class SHAP_Handler:
     def __init__(self, model, logdir):
         self.model = model
         self.logdir = logdir
-        self.filename_template = "shap_values{name}.{ext}"
+        self.filename_template = "shap_values{name}_{time}.{ext}"
 
     def _create_filename(self, ext: str, name="") -> Path:
         if name:
             name = "_" + name
-        filename = self.filename_template.format(name=name, ext=ext)
+        filename = self.filename_template.format(name=name, ext=ext, time=time_now_str())
 
         return Path(self.logdir) / filename
 
@@ -247,13 +248,13 @@ class SHAP_Handler:
 
         return filename
 
-    def load_from_pickle(self, name="") -> Dict[str, Any]:
+    @staticmethod
+    def load_from_pickle(path) -> Dict[str, Any]:
         """Load pickle file with shap values and ids.
 
         Returns {"shap": shap_values, "ids": ids} dict.
         """
-        filename = self._create_filename(name=name, ext="pickle")
-        with open(filename, "rb") as f:
+        with open(path, "rb") as f:
             data = pickle.load(f)
 
         return data
@@ -279,10 +280,10 @@ class SHAP_Handler:
 
         return filename
 
-    def load_from_csv(self, name) -> pd.DataFrame:
+    @staticmethod
+    def load_from_csv(path) -> pd.DataFrame:
         """Return pandas dataframe of shap values for loaded file."""
-        filename = self._create_filename(name=name, ext="csv")
-        return pd.read_csv(filename, index_col=0)
+        return pd.read_csv(path, index_col=0)
 
 
 # TODO: Insert "ID" in header, and make sure subsequent script use that (e.g. the bash one liner, for sorting)

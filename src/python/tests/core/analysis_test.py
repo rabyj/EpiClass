@@ -56,22 +56,22 @@ class Test_SHAP_Handler:
 
     def test_save_load_pickle(self, handler: SHAP_Handler, mock_shap_values, fake_ids):
         """Test pickle save/load methods."""
-        handler.save_to_pickle(mock_shap_values, fake_ids)
-        data = handler.load_from_pickle()
+        path = handler.save_to_pickle(mock_shap_values, fake_ids)
+        data = handler.load_from_pickle(path)
         assert data["ids"] == fake_ids
         assert np.array_equal(data["shap"], mock_shap_values)
 
         fake_ids = ["miaw" for _ in fake_ids]
-        handler.save_to_pickle(mock_shap_values, ids=fake_ids, name="miaw")
-        data = handler.load_from_pickle(name="miaw")
+        path = handler.save_to_pickle(mock_shap_values, ids=fake_ids, name="miaw")
+        data = handler.load_from_pickle(path)
         assert data["ids"] == fake_ids
         assert np.array_equal(data["shap"], mock_shap_values)
 
     def test_save_load_csv(self, handler: SHAP_Handler, mock_shap_values, fake_ids):
         """Test pickle save/load methods."""
         shaps = mock_shap_values[0]
-        handler.save_to_csv(shaps, fake_ids, name="test")
+        path = handler.save_to_csv(shaps, fake_ids, name="test")
 
-        data = handler.load_from_csv(name="test")
+        data = handler.load_from_csv(path)
         assert list(data.index) == fake_ids
         assert np.array_equal(shaps, data.values)
