@@ -18,9 +18,9 @@ class TestData:
         return [42 + i, 42 + 2 * i]
 
     @pytest.fixture
-    def empty_data(self) -> data.Data:
+    def empty_data(self) -> data.KnownData:
         """Empty Data object."""
-        return data.Data.empty_collection()
+        return data.KnownData.empty_collection()
 
     @pytest.fixture
     def some_metadata(self) -> metadata.Metadata:
@@ -33,9 +33,9 @@ class TestData:
         return np.random.get_state()
 
     @pytest.fixture
-    def some_data(self, some_metadata) -> data.Data:
+    def some_data(self, some_metadata) -> data.KnownData:
         """Mock Data object."""
-        some_data = data.Data(
+        some_data = data.KnownData(
             ids=[f"id{i}" for i in range(50)],
             x=[TestData.mock_signal(i) for i in range(50)],
             y=[0 + i % 2 for i in range(50)],
@@ -44,18 +44,18 @@ class TestData:
         )
         return some_data
 
-    def test_subsample_empty(self, empty_data: data.Data):
+    def test_subsample_empty(self, empty_data: data.KnownData):
         """Test execution of subsampling under empty dataset."""
         empty_data.subsample([1])
 
     # pylint: disable=unused-variable
-    def test_subsample_over(self, some_data: data.Data):
+    def test_subsample_over(self, some_data: data.KnownData):
         """Test execution of subsampling with out of bound idxs."""
         match = r"index \d+ is out of bounds for axis \d with size \d+"
         with pytest.raises(IndexError, match=match):
             some_data.subsample([666])
 
-    def test_subsample(self, some_data: data.Data):
+    def test_subsample(self, some_data: data.KnownData):
         """Test correctness."""
         nb1, nb2 = 4, 9
         new_data = some_data.subsample([nb1, nb2])
@@ -67,7 +67,7 @@ class TestData:
         assert np.array_equal(new_data.signals[0], TestData.mock_signal(nb1))  # type: ignore
         assert np.array_equal(new_data.signals[1], TestData.mock_signal(nb2))  # type: ignore
 
-    def test_shuffle(self, some_data: data.Data):
+    def test_shuffle(self, some_data: data.KnownData):
         """Test shuffle reproducability."""
         other_data = copy.deepcopy(some_data)
 
@@ -79,7 +79,7 @@ class TestData:
         other_data.shuffle(seed=False)
         assert some_data == other_data
 
-    def test_shuffle_internal(self, some_data: data.Data):
+    def test_shuffle_internal(self, some_data: data.KnownData):
         """Test if internal arrays shuffle together."""
         some_data.shuffle(seed=True)
         ids = some_data.ids

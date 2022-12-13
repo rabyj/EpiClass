@@ -2,10 +2,11 @@
 # pylint: disable=unnecessary-lambda-assignment
 from __future__ import annotations
 
+import abc
 import collections
 import copy
 import math
-from typing import List, Union
+from typing import List, Set
 
 import numpy as np
 from imblearn.over_sampling import RandomOverSampler
@@ -16,8 +17,11 @@ from .hdf5_loader import Hdf5Loader
 from .metadata import Metadata
 
 
-class AbstractData(object):
-    """Parent of data and TestData, generalized object to deal with data."""
+class Data(abc.ABC):
+    """Generalized object to deal with numerical data.
+
+    Does not have metadata.
+    """
 
     # TODO: actually make a data class without any true labels which is supported within analysis.
     def __init__(self, ids, x, y, y_str):
@@ -72,7 +76,10 @@ class AbstractData(object):
 
     @property
     def num_examples(self) -> int:
-        """Return the number of examples contained in the set."""
+        """Return the number of examples contained in the set.
+
+        Repeated/oversampled signals are part of that count.
+        """
         return self._num_examples
 
     def __eq__(self, other):
@@ -117,9 +124,17 @@ class AbstractData(object):
         """Shuffle signals and labels together"""
         self._shuffle(seed)
 
+    @abc.abstractmethod
+    def subsample(self, idxs: List[int]):
+        raise NotImplementedError("This is an abstract method. Use child class.")
 
-class Data(AbstractData):
-    """Generalised object to deal with data.
+    @abc.abstractclassmethod
+    def empty_collection(self):
+        raise NotImplementedError("This is an abstract class method. Use child class.")
+
+
+class KnownData(Data):
+    """Generalised object to deal with numerical data.
 
     ids : Signal identifier
     x : features
@@ -142,8 +157,8 @@ class Data(AbstractData):
         return self._metadata[self.get_id(index)]
 
     @classmethod
-    def empty_collection(cls) -> Data:
-        """Returns an empty Data object."""
+    def empty_collection(cls) -> KnownData:
+        """Returns an empty object."""
         obj = cls.__new__(cls)
         obj._ids = []
         obj._num_examples = 0
@@ -155,7 +170,7 @@ class Data(AbstractData):
         obj._metadata = {}
         return obj
 
-    def subsample(self, idxs: List[int]) -> Data:
+    def subsample(self, idxs: List[int]) -> KnownData:
         """Return Data object with subsample of current Data.
 
         Indexed along current order, not original order.
@@ -178,11 +193,11 @@ class Data(AbstractData):
             else:
                 raise e
 
-        return Data(new_ids, new_signals, new_targets, new_str_targets, new_meta)
+        return KnownData(new_ids, new_signals, new_targets, new_str_targets, new_meta)
 
 
-class TestData(AbstractData):
-    """Generalised object to deal with data, without any labels/metadata.
+class UnknownData(Data):
+    """Generalised object to deal with numerical data without any labels/metadata.
 
     ids : Signal identifier
     x : features
@@ -190,15 +205,47 @@ class TestData(AbstractData):
     y_str : targets (str)
     """
 
+    @classmethod
+    def empty_collection(cls) -> UnknownData:
+        """Returns an empty object."""
+        obj = cls.__new__(cls)
+        obj._ids = []
+        obj._num_examples = 0
+        obj._signals = []
+        obj._labels = []
+        obj._labels_str = []
+        obj._shuffle_order = []  # To be able to find back ids correctly
+        obj._index = 0
+        return obj
 
-class DataSet(object):  # class Data?
+    def subsample(self, idxs: List[int]) -> UnknownData:
+        """Return Data object with subsample of current Data.
+
+        Indexed along current order, not original order.
+        """
+        try:
+            new_ids = np.take(self.ids, idxs, axis=0)
+            new_signals = np.take(self.signals, idxs, axis=0)
+            new_targets = np.take(self.encoded_labels, idxs, axis=0)
+            new_str_targets = np.take(self.original_labels, idxs, axis=0)
+        except IndexError as e:
+            if len(self) == 0:
+                print("Empty Data object, cannot subsample.")
+                return self
+            else:
+                raise e
+
+        return UnknownData(new_ids, new_signals, new_targets, new_str_targets)
+
+
+class DataSet(abc.ABC):
     """Contains training/valid/test Data objects."""
 
     def __init__(
         self,
-        training: Union[Data, TestData],
-        validation: Union[Data, TestData],
-        test: Union[Data, TestData],
+        training: KnownData | UnknownData,
+        validation: KnownData | UnknownData,
+        test: KnownData | UnknownData,
         sorted_classes,
     ):
         self._train = training
@@ -207,17 +254,17 @@ class DataSet(object):  # class Data?
         self._sorted_classes = sorted_classes
 
     @property
-    def train(self) -> Union[Data, TestData]:
+    def train(self) -> KnownData | UnknownData:
         """Training set"""
         return self._train
 
     @property
-    def validation(self) -> Union[Data, TestData]:
+    def validation(self) -> KnownData | UnknownData:
         """Validation set"""
         return self._validation
 
     @property
-    def test(self) -> Union[Data, TestData]:
+    def test(self) -> KnownData | UnknownData:
         """Test set"""
         return self._test
 
@@ -227,26 +274,26 @@ class DataSet(object):  # class Data?
         return self._sorted_classes
 
     @classmethod
-    def empty_collection(cls) -> DataSet:
-        """Returns an empty DataSet object"""
+    def empty_collection(cls):
+        """Returns an empty object"""
         obj = cls.__new__(cls)
-        obj._train = Data.empty_collection()
-        obj._validation = Data.empty_collection()
-        obj._test = Data.empty_collection()
+        obj._train = KnownData.empty_collection()
+        obj._validation = KnownData.empty_collection()
+        obj._test = KnownData.empty_collection()
         obj._sorted_classes = []
         return obj
 
-    def set_train(self, dset: Union[Data, TestData]):
+    def set_train(self, dset: KnownData | UnknownData):
         """Set training set."""
         self._train = dset
         self._reset_classes()
 
-    def set_validation(self, dset: Union[Data, TestData]):
+    def set_validation(self, dset: KnownData | UnknownData):
         """Set validation set."""
         self._validation = dset
         self._reset_classes()
 
-    def set_test(self, dset: Union[Data, TestData]):
+    def set_test(self, dset: KnownData | UnknownData):
         """Set testing set."""
         self._test = dset
         self._reset_classes()
@@ -517,17 +564,17 @@ class EpiData(object):
             encoder(labels) for labels in [train_labels, validation_labels, test_labels]
         ]
 
-        self._train = Data(
+        self._train = KnownData(
             train_md5s, train_signals, encoded_labels[0], train_labels, self._metadata
         )
-        self._validation = Data(
+        self._validation = KnownData(
             validation_md5s,
             validation_signals,
             encoded_labels[1],
             validation_labels,
             self._metadata,
         )
-        self._test = Data(
+        self._test = KnownData(
             test_md5s, test_signals, encoded_labels[2], test_labels, self._metadata
         )
 

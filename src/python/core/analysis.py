@@ -4,7 +4,7 @@ from __future__ import annotations
 import itertools
 import pickle
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 import matplotlib
 
@@ -21,6 +21,7 @@ from torch.utils.data import TensorDataset
 from .confusion_matrix import ConfusionMatrixWriter
 from .data import Data, DataSet
 from .model_pytorch import LightningDenseClassifier
+from .types import SomeData, TensorData
 
 
 class Analysis(object):
@@ -31,9 +32,9 @@ class Analysis(object):
         model: LightningDenseClassifier,
         datasets_info: DataSet,
         logger: pl.loggers.CometLogger,  # type: ignore
-        train_dataset: Optional[TensorDataset] = None,
-        val_dataset: Optional[TensorDataset] = None,
-        test_dataset: Optional[TensorDataset] = None,
+        train_dataset: Optional[TensorData] = None,
+        val_dataset: Optional[TensorData] = None,
+        test_dataset: Optional[TensorData] = None,
     ):
         self._model = model
         self._classes = sorted(list(self._model.mapping.values()))
@@ -94,18 +95,27 @@ class Analysis(object):
         """Compute and print test set metrics."""
         return self._generic_metrics(self._test, "test", verbose)
 
-    def _generic_write_prediction(self, dataset, name, path, verbose=True):
+    def _generic_write_prediction(
+        self, to_predict: TensorData | None, name, path, verbose=True
+    ):
         """General treatment to write predictions
         Name can be {training, validation, test}.
+
+        to_predict: Object that contains samples to predict.
         """
         if path is None:
             path = self._logger.save_dir / f"{name}_prediction.csv"
 
-        if dataset is None:
+        if to_predict is None:
             print(f"Cannot compute {name} predictions : No {name} dataset given")
             return
 
-        preds, targets = self._model.compute_predictions(dataset)
+        if isinstance(to_predict, TensorDataset):
+            preds, targets = self._model.compute_predictions_from_dataset(to_predict)
+            str_targets = [self._model.mapping[int(val.item())] for val in targets]
+        elif isinstance(to_predict, Tensor):
+            preds = self._model.compute_predictions_from_features(to_predict)
+            str_targets = ["Unknown" for _ in range(to_predict.size(dim=1))]
 
         write_pred_table(
             predictions=preds,
@@ -113,7 +123,7 @@ class Analysis(object):
                 self._model.mapping[int(val.item())]
                 for val in torch.argmax(preds, dim=-1)
             ],
-            str_targets=[self._model.mapping[int(val.item())] for val in targets],
+            str_targets=str_targets,
             md5s=self._set_dict[name].ids,
             classes=self._classes,
             path=path,
@@ -135,14 +145,18 @@ class Analysis(object):
         """Compute and write test predictions to file."""
         self._generic_write_prediction(self._test, name="test", path=path)
 
-    def _generic_confusion_matrix(self, dataset, name) -> np.ndarray:
+    def _generic_confusion_matrix(self, dataset: TensorData | None, name) -> np.ndarray:
         """General treatment to write confusion matrices."""
         if dataset is None:
             raise ValueError(
                 f"Cannot compute {name} confusion matrix : No {name} dataset given"
             )
+        elif isinstance(dataset, Tensor):
+            raise ValueError(
+                f"Cannot compute {name} confusion matrix : No targets in given dataset."
+            )
 
-        preds, targets = self._model.compute_predictions(dataset)
+        preds, targets = self._model.compute_predictions_from_dataset(dataset)
 
         final_pred = torch.argmax(preds, dim=-1)
 
@@ -202,7 +216,7 @@ class SHAP_Handler:
         return Path(self.logdir) / filename
 
     def compute_NN(
-        self, background_dset: Data, evaluation_dset: Data, save=True, name=""
+        self, background_dset: SomeData, evaluation_dset: SomeData, save=True, name=""
     ) -> Tuple[shap.DeepExplainer, List[np.ndarray]]:
         """Compute shap values of deep learning model on evaluation dataset
         by creating an explainer with background dataset.

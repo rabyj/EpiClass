@@ -27,7 +27,7 @@ def import_test():
     )
     from src.python.argparseutils.directorychecker import DirectoryChecker
     from src.python.core import analysis, data, metadata
-    from src.python.core.data import DataSet, TestData
+    from src.python.core.data import DataSet, UnknownData
     from src.python.core.data_source import EpiDataSource
     from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
     from src.python.core.hdf5_loader import Hdf5Loader

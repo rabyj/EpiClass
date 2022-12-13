@@ -8,7 +8,8 @@ from typing import Dict
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
-from torch import nn
+from torch import Tensor, nn
+from torch.utils.data import TensorDataset
 from torchinfo import summary
 from torchmetrics import (
     Accuracy,
@@ -170,7 +171,7 @@ class LightningDenseClassifier(pl.LightningModule):  # pylint: disable=too-many-
             col_names=["input_size", "output_size", "num_params"],
         )
 
-    def compute_metrics(self, dataset):
+    def compute_metrics(self, dataset: TensorDataset):
         """Return dict of metrics for given dataset."""
         self.eval()
         with torch.no_grad():
@@ -178,13 +179,20 @@ class LightningDenseClassifier(pl.LightningModule):  # pylint: disable=too-many-
             preds = self(features)
         return self.metrics(preds, targets)
 
-    def compute_predictions(self, dataset):
+    def compute_predictions_from_dataset(self, dataset: TensorDataset):
         """Return predictions and targets from dataset."""
         self.eval()
         with torch.no_grad():
             features, targets = dataset[:]
             preds = self(features)
         return preds, targets
+
+    def compute_predictions_from_features(self, features: Tensor):
+        """Return predictions from features."""
+        self.eval()
+        with torch.no_grad():
+            preds = self(features)
+        return preds
 
     @classmethod
     def restore_model(cls, model_dir):

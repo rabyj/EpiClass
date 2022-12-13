@@ -15,7 +15,7 @@ from torch.utils.data import TensorDataset
 from src.python.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from src.python.argparseutils.directorychecker import DirectoryChecker
 from src.python.core import analysis
-from src.python.core.data import DataSet, TestData
+from src.python.core.data import DataSet, UnknownData
 from src.python.core.hdf5_loader import Hdf5Loader
 from src.python.core.model_pytorch import LightningDenseClassifier
 from src.python.utils.time import time_now
@@ -86,7 +86,7 @@ def main():
     y = [0 for _ in md5s]
     y_str = ["No label available" for _ in y]
 
-    test_set = TestData(ids=md5s, x=signals, y=y, y_str=y_str)
+    test_set = UnknownData(ids=md5s, x=signals, y=y, y_str=y_str)
 
     if test_set.num_examples == 0:
         raise Exception("Trying to test without any test data.")

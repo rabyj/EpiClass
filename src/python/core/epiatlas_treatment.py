@@ -186,8 +186,8 @@ class EpiAtlasDataset:
         return hdf5_loader.signals
 
     def add_other_tracks(
-        self, selected_positions: Iterable[int], dset: data.Data, resample: bool
-    ) -> data.Data:
+        self, selected_positions: Iterable[int], dset: data.KnownData, resample: bool
+    ) -> data.KnownData:
         """Return a modified dset object with added tracks (e.g. pval + fc) for selected signals.
         The matching tracks will be put right after the selected tracks.
 
@@ -201,7 +201,7 @@ class EpiAtlasDataset:
             resampled_X, resampled_y, idxs = data.EpiData.oversample_data(
                 dset.signals, dset.encoded_labels
             )
-            raw_dset = data.Data(
+            raw_dset = data.KnownData(
                 ids=np.take(dset.ids, idxs),
                 x=resampled_X,
                 y=resampled_y,
@@ -247,13 +247,13 @@ class EpiAtlasDataset:
                 else:
                     raise Exception("You dun fucked up")
 
-        new_dset = data.Data(
+        new_dset = data.KnownData(
             new_md5s, new_signals, new_encoded_labels, new_str_labels, dset.metadata
         )
 
         return new_dset
 
-    def create_total_data(self) -> data.Data:
+    def create_total_data(self) -> data.KnownData:
         """Return a data set with all signals (no oversampling)"""
         return self.add_other_tracks(
             range(self._raw_dset.train.num_examples),
@@ -372,7 +372,7 @@ class EpiAtlasFoldFactory:
         return md5s[:]
 
     def _find_other_tracks(
-        self, selected_positions, dset: data.Data, resample: bool, md5_mapping: dict
+        self, selected_positions, dset: data.KnownData, resample: bool, md5_mapping: dict
     ) -> list[int]:
         """Return indexes that sample from complete data, i.e. all signals with their match next to them.
         Uses logic from create_total_data and add_other_tracks.
@@ -430,7 +430,7 @@ class EpiAtlasFoldFactory:
     # pylint: disable=unused-argument
     def split(
         self,
-        total_data: data.Data,
+        total_data: data.KnownData,
         X=None,
         y=None,
         groups=None,
@@ -471,7 +471,7 @@ class EpiAtlasFoldFactory:
         Created for SHAP values calculation sampling.
         """
         raw_dset = self.epiatlas_dataset.raw_dataset
-        assert isinstance(raw_dset.train, data.Data)
+        assert isinstance(raw_dset.train, data.KnownData)
 
         skf1 = StratifiedKFold(n_splits=self.k, shuffle=False)
         skf2 = StratifiedKFold(n_splits=nb_split, shuffle=False)
