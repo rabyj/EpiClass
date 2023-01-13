@@ -1,4 +1,6 @@
 """Trainer class extensions module"""
+from __future__ import annotations
+
 from datetime import datetime
 from pathlib import Path
 
@@ -43,9 +45,11 @@ class MyTrainer(pl.Trainer):
         print(f"Monitored value : {stop_callback.monitor}")
 
 
-def define_callbacks(early_stop_limit: int, show_summary=True):
+def define_callbacks(early_stop_limit: int | None, show_summary=True):
     """Returns list of PyTorch trainer callbacks.
     RichModelSummary, EarlyStopping, ModelCheckpoint
+
+    Will only save last epoch model if there is no early stopping.
     """
     callbacks = []
     if show_summary:
@@ -54,25 +58,32 @@ def define_callbacks(early_stop_limit: int, show_summary=True):
     monitored_value = "valid_acc"  # have same name as TorchMetrics
     mode = "max"
 
-    callbacks.append(
-        torch_callbacks.EarlyStopping(
-            monitor=monitored_value,
-            mode=mode,
-            patience=early_stop_limit,
-            check_on_train_epoch_end=False,
+    if early_stop_limit is not None:
+        callbacks.append(
+            torch_callbacks.EarlyStopping(
+                monitor=monitored_value,
+                mode=mode,
+                patience=early_stop_limit,
+                check_on_train_epoch_end=False,
+            )
         )
-    )
 
-    callbacks.append(
-        torch_callbacks.ModelCheckpoint(
-            monitor=monitored_value,
-            mode=mode,
-            save_last=True,
-            auto_insert_metric_name=True,
-            every_n_epochs=1,
-            save_top_k=2,
-            save_on_train_epoch_end=False,
+        callbacks.append(
+            torch_callbacks.ModelCheckpoint(
+                monitor=monitored_value,
+                mode=mode,
+                save_last=True,
+                auto_insert_metric_name=True,
+                every_n_epochs=1,
+                save_top_k=2,
+                save_on_train_epoch_end=False,
+            )
         )
-    )
+    else:
+        callbacks.append(
+            torch_callbacks.ModelCheckpoint(
+                monitor=None,
+            )
+        )
 
     return callbacks

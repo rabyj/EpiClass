@@ -19,17 +19,17 @@ import pytorch_lightning as pl  # in case GCC or CUDA needs it # pylint: disable
 import pytorch_lightning.callbacks as pl_callbacks
 import torch
 from pytorch_lightning import loggers as pl_loggers
-from torch.utils.data import DataLoader, TensorDataset
 
 from src.python.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from src.python.argparseutils.directorychecker import DirectoryChecker
 from src.python.core import analysis, metadata
-from src.python.core.data import DataSet
+from src.python.core.data import DataSet, create_torch_datasets
 from src.python.core.data_source import EpiDataSource
 from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
 from src.python.core.model_pytorch import LightningDenseClassifier
 from src.python.core.trainer import MyTrainer, define_callbacks
 from src.python.utils.check_dir import create_dirs
+from src.python.utils.logging import log_pre_training
 from src.python.utils.modify_metadata import (
     filter_cell_types_by_pairs,
     fix_roadmap,
@@ -174,7 +174,8 @@ def main():
             auto_metric_logging=False,
         )
 
-        log_pre_training(logger=comet_logger, step=i, to_log=to_log)
+        comet_logger.experiment.add_tag("EpiAtlas")
+        log_pre_training(logger=comet_logger, to_log=to_log, step=i)
 
         # Everything happens in there
         do_one_experiment(
@@ -188,34 +189,13 @@ def main():
         time_before_split = time_now()
 
 
-def create_datasets(data: DataSet, bs: int):
-    """Return (train, valid) datasets and (train, valid) DataLoaders."""
-
-    train_dset = TensorDataset(
-        torch.from_numpy(data.train.signals).float(),
-        torch.from_numpy(data.train.encoded_labels),
-    )
-
-    valid_dset = TensorDataset(
-        torch.from_numpy(data.validation.signals).float(),
-        torch.from_numpy(data.validation.encoded_labels),
-    )
-
-    train_dataloader = DataLoader(
-        train_dset, batch_size=bs, shuffle=True, pin_memory=True, drop_last=True
-    )
-    valid_dataloader = DataLoader(valid_dset, batch_size=len(valid_dset), pin_memory=True)
-
-    return train_dset, valid_dset, train_dataloader, valid_dataloader
-
-
 def do_one_experiment(
     split_nb: int,
     my_data: DataSet,
     hparams: Dict,
     logger: pl_loggers.CometLogger,
     restore: bool,
-):
+) -> None:
     """Wrapper for convenience. Skip training if restore is True"""
     begin_loop = time_now()
 
@@ -225,10 +205,12 @@ def do_one_experiment(
     nb_files = len(set(my_data.train.ids.tolist() + my_data.validation.ids.tolist()))
     logger.experiment.log_other("Total nb of files", nb_files)
 
-    train_dataset, valid_dataset, train_dataloader, valid_dataloader = create_datasets(
+    dsets_dict = create_torch_datasets(
         data=my_data,
         bs=hparams.get("batch_size", 64),
     )
+    train_dataset, train_dataloader = dsets_dict["training"]
+    valid_dataset, valid_dataloader = dsets_dict["validation"]
 
     if my_data.train.num_examples == 0 or my_data.validation.num_examples == 0:
         raise DatasetError("Trying to train without any training or validation data.")
@@ -373,49 +355,6 @@ def do_one_experiment(
     del train_dataloader
     del valid_dataloader
     gc.collect()
-
-
-def log_pre_training(logger: pl_loggers.CometLogger, step: int, to_log: Dict[str, str]):
-    """Log a bunch of stuff in comet logger. Return experience key (str).
-
-    to_log needs:
-    - category
-    - hdf5_resolution
-    - loading_time (initial, for hdf5)
-    - split_time (generator yield time)
-    """
-    # General stuff
-    logger.experiment.add_tag("EpiAtlas")
-
-    category = to_log["category"]
-    logger.experiment.add_tag(category)
-    logger.experiment.log_other("category", category)
-
-    if os.getenv("SLURM_JOB_ID") is not None:
-        logger.experiment.log_other("SLURM_JOB_ID", os.environ["SLURM_JOB_ID"])
-        logger.experiment.add_tag("Cluster")
-
-    logger.experiment.log_other(
-        "HDF5 Resolution", f"{int(to_log['hdf5_resolution'])/1000}kb"
-    )
-
-    # Code time stuff
-    loading_time = to_log["loading_time"]
-    print(f"Initial hdf5 loading time: {loading_time}")
-    logger.experiment.log_other("Initial hdf5 loading time", loading_time)
-
-    split_time = to_log["split_time"]
-    print(f"Set loading/splitting time: {split_time}")
-    logger.experiment.log_metric("Split_time", split_time, step=step)
-
-    # exp id
-    exp_key = logger.experiment.get_key()
-    print(f"The current experiment key is {exp_key}")
-    logger.experiment.log_other("Experience key", str(exp_key))
-
-    commit_label = subprocess.check_output(["git", "describe"]).strip()
-    print(f"The current commit is {commit_label}")
-    logger.experiment.log_other("Code version / commit", str(commit_label))
 
 
 if __name__ == "__main__":

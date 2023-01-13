@@ -13,8 +13,7 @@ import comet_ml  # needed because special snowflake # pylint: disable=unused-imp
 import numpy as np
 import pytorch_lightning as pl  # in case GCC or CUDA needs it # pylint: disable=unused-import
 import torch
-from pytorch_lightning import callbacks as pl_callbacks
-from pytorch_lightning import loggers as pl_loggers
+from pytorch_lightning import callbacks as pl_callbacks, loggers as pl_loggers
 from torch.utils.data import DataLoader, TensorDataset
 
 from src.python.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
