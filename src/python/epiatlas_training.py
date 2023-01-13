@@ -120,7 +120,7 @@ def main():
     if os.getenv("MIN_CLASS_SIZE") is not None:
         min_class_size = int(os.environ["MIN_CLASS_SIZE"])
     else:
-        min_class_size = 10
+        min_class_size = hparams.get("min_class_size", 10)
 
     if category == "harm_sample_ontology_intermediate":
         my_metadata = filter_cell_types_by_pairs(my_metadata)
@@ -129,11 +129,7 @@ def main():
     loading_begin = time_now()
 
     restore_model = cli.restore
-    n_fold = 10
-    # -- test mode --
-    # n_fold = 3
-    # min_class_size = 3
-    # restore_model = True
+    n_fold = hparams.get("n_fold", 10)
 
     ea_handler = EpiAtlasFoldFactory.from_datasource(
         my_datasource,
