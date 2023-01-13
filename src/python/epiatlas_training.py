@@ -5,6 +5,7 @@ import argparse
 import gc
 import json
 import os
+import subprocess
 import sys
 import warnings
 from pathlib import Path
@@ -410,7 +411,11 @@ def log_pre_training(logger: pl_loggers.CometLogger, step: int, to_log: Dict[str
     # exp id
     exp_key = logger.experiment.get_key()
     print(f"The current experiment key is {exp_key}")
-    logger.experiment.log_other("Experience key", f"{exp_key}")
+    logger.experiment.log_other("Experience key", str(exp_key))
+
+    commit_label = subprocess.check_output(["git", "describe"]).strip()
+    print(f"The current commit is {commit_label}")
+    logger.experiment.log_other("Code version / commit", str(commit_label))
 
 
 if __name__ == "__main__":
