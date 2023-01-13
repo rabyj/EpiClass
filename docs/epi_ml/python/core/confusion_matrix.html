@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
-<title>epi_ml.python.core.confusion_matrix API documentation</title>
+<title>python.core.confusion_matrix API documentation</title>
 <meta name="description" content="ConfusionMatrixWriter class" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
@@ -19,7 +19,7 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>epi_ml.python.core.confusion_matrix</code></h1>
+<h1 class="title">Module <code>python.core.confusion_matrix</code></h1>
 </header>
 <section id="section-intro">
 <p>ConfusionMatrixWriter class</p>
@@ -29,21 +29,22 @@
 </summary>
 <pre><code class="python">&#34;&#34;&#34;ConfusionMatrixWriter class&#34;&#34;&#34;
 from __future__ import annotations
-import math
-from pathlib import Path
-import re
-from typing import Tuple
-import warnings
 
+import math
+import re
+from pathlib import Path
+from typing import Tuple
 
 import matplotlib
-matplotlib.use(&#39;Agg&#39;)
-import matplotlib.pyplot as plt
+
+matplotlib.use(&#34;Agg&#34;)
 import matplotlib.patheffects as path_effects
-from matplotlib import cm
-from matplotlib.colors import ListedColormap
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib import cm
+from matplotlib.colors import ListedColormap
+
 
 class InputMatrixError(Exception):
     pass
@@ -56,15 +57,17 @@ class ConfusionMatrixWriter(object):
     confusion_matrix : A confusion matrix that counts each final prediction (int matrix)
     Expects a confusion matrix input with prediction rows (row value: pred1 pred2 pred3 ...) and target columns.
     &#34;&#34;&#34;
+
     def __init__(self, labels, confusion_matrix: np.ndarray):
         self._labels = sorted(labels)
         self._og_confusion_mat = np.array(confusion_matrix)
-        self._pd_matrix, self._pd_rel_matrix = self.init_confusion_matrices(confusion_matrix) #pd dataframe
+        self._pd_matrix, self._pd_rel_matrix = self.init_confusion_matrices(
+            confusion_matrix
+        )  # pd dataframe
 
     def __add__(self, other: ConfusionMatrixWriter) -&gt; ConfusionMatrixWriter:
         if set(self._labels) != set(other._labels):
-            warnings.warn(&#34;Cannot add matrices with different labels&#34;)
-            return None
+            raise ValueError(&#34;Cannot add matrices with different labels.&#34;)
 
         new_mat = self._og_confusion_mat + other._og_confusion_mat
         new_mat = ConfusionMatrixWriter(self._labels, new_mat)
@@ -81,15 +84,19 @@ class ConfusionMatrixWriter(object):
         The state of the matrix (relative or not) needs to be specified.
         &#34;&#34;&#34;
         obj = cls.__new__(cls)  # Does not call __init__
-        content = pd.DataFrame(pd.read_csv(csv_path, sep=&#39;,&#39;, index_col=0))
+        content = pd.DataFrame(pd.read_csv(csv_path, sep=&#34;,&#34;, index_col=0))
         labels_w_count = content.index.tolist()
         values = content.values
         if relative:
-            if np.any(a=values&gt;=2, axis=None):
-                raise InputMatrixError(&#34;Inputed file seems to contain count values, but relative=True was given.&#34;)
+            if np.any(a=values &gt;= 2, axis=None):
+                raise InputMatrixError(
+                    &#34;Inputed file seems to contain count values, but relative=True was given.&#34;
+                )
 
             obj._pd_rel_matrix = content
-            obj._labels = sorted([ConfusionMatrixWriter._extract_class(val) for val in labels_w_count])
+            obj._labels = sorted(
+                [ConfusionMatrixWriter._extract_class(val) for val in labels_w_count]
+            )
 
             labels_count = re.findall(r&#34;\(([0-9]+)\)&#34;, &#34;&#34;.join(labels_w_count))
             labels_count = np.array(labels_count, dtype=int)
@@ -97,21 +104,29 @@ class ConfusionMatrixWriter(object):
             mat = np.array((content.values.T * labels_count).T, dtype=float)
             obj._og_confusion_mat = np.around(mat).astype(int)
 
-            obj._pd_matrix = pd.DataFrame(data=obj._og_confusion_mat, index=content.index, columns=content.columns) # pylint: disable=no-member
+            obj._pd_matrix = pd.DataFrame(
+                data=obj._og_confusion_mat, index=content.index, columns=content.columns
+            )  # pylint: disable=no-member
         else:
-            if np.any(a=(values&lt;=0.99)&amp;(values&gt;=0.01), axis=None):
-                raise InputMatrixError(&#34;Inputed file seems to contain relative values, but relative=False was given.&#34;)
+            if np.any(a=(values &lt;= 0.99) &amp; (values &gt;= 0.01), axis=None):
+                raise InputMatrixError(
+                    &#34;Inputed file seems to contain relative values, but relative=False was given.&#34;
+                )
 
             obj._pd_matrix = content
-            obj._labels = sorted([ConfusionMatrixWriter._extract_class(val) for val in labels_w_count]) # pylint: disable=no-member
+            obj._labels = sorted(
+                [ConfusionMatrixWriter._extract_class(val) for val in labels_w_count]
+            )  # pylint: disable=no-member
 
-            obj._og_confusion_mat = content.to_numpy() # pylint: disable=no-member
+            obj._og_confusion_mat = content.to_numpy()  # pylint: disable=no-member
 
             rel_mat = ConfusionMatrixWriter.to_relative_confusion_matrix(
                 labels_count=obj._og_confusion_mat.sum(axis=1),
-                confusion_matrix=obj._og_confusion_mat
+                confusion_matrix=obj._og_confusion_mat,
             )
-            obj._pd_rel_matrix = pd.DataFrame(data=rel_mat, index=content.index, columns=content.columns) # pylint: disable=no-member
+            obj._pd_rel_matrix = pd.DataFrame(
+                data=rel_mat, index=content.index, columns=content.columns
+            )  # pylint: disable=no-member
         return obj
 
     def init_confusion_matrices(self, confusion_matrix: np.ndarray):
@@ -119,18 +134,29 @@ class ConfusionMatrixWriter(object):
         Expects prediction rows (target pred1 pred2 pred3 ....) and target columns.
         Returns original and normalized on rows matrices.
         &#34;&#34;&#34;
-        labels_count = confusion_matrix.sum(axis=1) # total nb examples of each label
-        labels_w_count = [f&#34;{label}({label_count})&#34; for label, label_count in zip(self._labels, labels_count)]
+        labels_count = confusion_matrix.sum(axis=1)  # total nb examples of each label
+        labels_w_count = [
+            f&#34;{label}({label_count})&#34;
+            for label, label_count in zip(self._labels, labels_count)
+        ]
 
-        count_matrix = pd.DataFrame(data=confusion_matrix, index=labels_w_count, columns=self._labels, dtype=int)
+        count_matrix = pd.DataFrame(
+            data=confusion_matrix, index=labels_w_count, columns=self._labels, dtype=int
+        )
 
-        rel_confusion_mat = ConfusionMatrixWriter.to_relative_confusion_matrix(labels_count, confusion_matrix)
-        rel_matrix = pd.DataFrame(data=rel_confusion_mat, index=labels_w_count, columns=self._labels)
+        rel_confusion_mat = ConfusionMatrixWriter.to_relative_confusion_matrix(
+            labels_count, confusion_matrix
+        )
+        rel_matrix = pd.DataFrame(
+            data=rel_confusion_mat, index=labels_w_count, columns=self._labels
+        )
 
         return count_matrix, rel_matrix
 
     @staticmethod
-    def to_relative_confusion_matrix(labels_count: np.ndarray, confusion_matrix: np.ndarray):
+    def to_relative_confusion_matrix(
+        labels_count: np.ndarray, confusion_matrix: np.ndarray
+    ):
         &#34;&#34;&#34;Normalize confusion matrix per row.
         Expects prediction rows (target pred1 pred2 pred3 ....) and target columns.
         &#34;&#34;&#34;
@@ -146,7 +172,7 @@ class ConfusionMatrixWriter(object):
         &#34;&#34;&#34;
         plt.figure()
 
-        vmax = 0.9999 #this is so exactly 1.0 is a different color from the rest
+        vmax = 0.9999  # this is so exactly 1.0 is a different color from the rest
         vmin = 0.0
 
         # mask empty values, so they are white in the image
@@ -154,15 +180,18 @@ class ConfusionMatrixWriter(object):
 
         # prep colormap
         nb_colors = 20
-        gnuplot = cm.get_cmap(&#34;gnuplot&#34;, nb_colors) #20 colors
-        newcolors = gnuplot(np.linspace(0., 1., nb_colors))
-        new_cmap = ListedColormap(newcolors)
-        new_cmap.set_over(matplotlib.colors.to_rgba(&#34;GreenYellow&#34;)) # color for max values, do it LAST
-
+        gnuplot = cm.get_cmap(&#34;gnuplot&#34;, nb_colors)  # 20 colors
+        newcolors = gnuplot(np.linspace(0.0, 1.0, nb_colors))
+        new_cmap = ListedColormap(newcolors)  # type: ignore
+        new_cmap.set_over(
+            matplotlib.colors.to_rgba(&#34;GreenYellow&#34;)  # type: ignore
+        )  # color for max values, do it LAST
 
         # create color mesh and arrange ticks
         fig, ax = plt.subplots()
-        mesh = ax.pcolormesh(data_mask, cmap=new_cmap, vmin=vmin, vmax=vmax, edgecolors=&#39;k&#39;)
+        mesh = ax.pcolormesh(
+            data_mask, cmap=new_cmap, vmin=vmin, vmax=vmax, edgecolors=&#34;k&#34;
+        )
 
         nb_labels = self._pd_rel_matrix.columns.shape[0]
         ax.set_frame_on(False)
@@ -191,25 +220,35 @@ class ConfusionMatrixWriter(object):
                 if count != 0:
                     text = f&#34;{count}\n{self._pd_rel_matrix.iat[i, j]*100:.1f}%&#34;
                     text_obj = plt.text(
-                        x=j+0.5, y=i+0.5, s=text,
-                        horizontalalignment=&#39;center&#39;,
-                        verticalalignment=&#39;center&#39;,
+                        x=j + 0.5,
+                        y=i + 0.5,
+                        s=text,
+                        horizontalalignment=&#34;center&#34;,
+                        verticalalignment=&#34;center&#34;,
                         color=&#34;w&#34;,
-                        size=5
-                        )
+                        size=5,
+                    )
+
                     text_obj.set_path_effects(
-                        [path_effects.Stroke(linewidth=1, foreground=&#39;black&#39;), path_effects.Normal()]
-                        )
+                        [
+                            path_effects.Stroke(linewidth=1, foreground=&#34;black&#34;),
+                            path_effects.Normal(),
+                        ]  # type: ignore
+                    )
 
         # Color bar
-        bounds = np.linspace(vmin, math.ceil(vmax), nb_colors+1) #just to have the max tick appear properly
+        bounds = np.linspace(
+            vmin, math.ceil(vmax), nb_colors + 1
+        )  # just to have the max tick appear properly
         ticks = np.linspace(vmin, math.ceil(vmax), 11)
-        cbar = fig.colorbar(mesh, ax=ax, shrink=0.75, boundaries=bounds, ticks=ticks, extend=&#34;max&#34;)
+        cbar = fig.colorbar(
+            mesh, ax=ax, shrink=0.75, boundaries=bounds, ticks=ticks, extend=&#34;max&#34;
+        )
         cbar.ax.tick_params(labelsize=7)
 
-
         plt.tight_layout()
-        plt.savefig(path, format=&#39;png&#39;, dpi=500)
+        plt.savefig(path, format=&#34;png&#34;, dpi=500)
+        plt.clf()
 
     def to_csv(self, path, relative):
         &#34;&#34;&#34;Write to path a csv file of the confusion matrix.
@@ -217,11 +256,11 @@ class ConfusionMatrixWriter(object):
         The type of matrix (relative by row, or not) needs to be specified.
         &#34;&#34;&#34;
         if relative:
-            self._pd_rel_matrix.to_csv(path, encoding=&#34;utf8&#34;, float_format=&#39;%.4f&#39;)
+            self._pd_rel_matrix.to_csv(path, encoding=&#34;utf8&#34;, float_format=&#34;%.4f&#34;)
         else:
             self._pd_matrix.to_csv(path, encoding=&#34;utf8&#34;)
 
-    def to_all_formats(self, logdir: str, name: str) -&gt; Tuple[Path, Path, Path]:
+    def to_all_formats(self, logdir: str | Path, name: str) -&gt; Tuple[Path, Path, Path]:
         &#34;&#34;&#34;Write to logdir files of the confusion matrix.
         out 1 : Path of csv of non-normalized matrix
         out 2 : Path of csv of normalized matrix
@@ -258,7 +297,7 @@ class ConfusionMatrixWriter(object):
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt id="epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter"><code class="flex name class">
+<dt id="python.core.confusion_matrix.ConfusionMatrixWriter"><code class="flex name class">
 <span>class <span class="ident">ConfusionMatrixWriter</span></span>
 <span>(</span><span>labels, confusion_matrix: np.ndarray)</span>
 </code></dt>
@@ -278,15 +317,17 @@ Expects a confusion matrix input with prediction rows (row value: pred1 pred2 pr
     confusion_matrix : A confusion matrix that counts each final prediction (int matrix)
     Expects a confusion matrix input with prediction rows (row value: pred1 pred2 pred3 ...) and target columns.
     &#34;&#34;&#34;
+
     def __init__(self, labels, confusion_matrix: np.ndarray):
         self._labels = sorted(labels)
         self._og_confusion_mat = np.array(confusion_matrix)
-        self._pd_matrix, self._pd_rel_matrix = self.init_confusion_matrices(confusion_matrix) #pd dataframe
+        self._pd_matrix, self._pd_rel_matrix = self.init_confusion_matrices(
+            confusion_matrix
+        )  # pd dataframe
 
     def __add__(self, other: ConfusionMatrixWriter) -&gt; ConfusionMatrixWriter:
         if set(self._labels) != set(other._labels):
-            warnings.warn(&#34;Cannot add matrices with different labels&#34;)
-            return None
+            raise ValueError(&#34;Cannot add matrices with different labels.&#34;)
 
         new_mat = self._og_confusion_mat + other._og_confusion_mat
         new_mat = ConfusionMatrixWriter(self._labels, new_mat)
@@ -303,15 +344,19 @@ Expects a confusion matrix input with prediction rows (row value: pred1 pred2 pr
         The state of the matrix (relative or not) needs to be specified.
         &#34;&#34;&#34;
         obj = cls.__new__(cls)  # Does not call __init__
-        content = pd.DataFrame(pd.read_csv(csv_path, sep=&#39;,&#39;, index_col=0))
+        content = pd.DataFrame(pd.read_csv(csv_path, sep=&#34;,&#34;, index_col=0))
         labels_w_count = content.index.tolist()
         values = content.values
         if relative:
-            if np.any(a=values&gt;=2, axis=None):
-                raise InputMatrixError(&#34;Inputed file seems to contain count values, but relative=True was given.&#34;)
+            if np.any(a=values &gt;= 2, axis=None):
+                raise InputMatrixError(
+                    &#34;Inputed file seems to contain count values, but relative=True was given.&#34;
+                )
 
             obj._pd_rel_matrix = content
-            obj._labels = sorted([ConfusionMatrixWriter._extract_class(val) for val in labels_w_count])
+            obj._labels = sorted(
+                [ConfusionMatrixWriter._extract_class(val) for val in labels_w_count]
+            )
 
             labels_count = re.findall(r&#34;\(([0-9]+)\)&#34;, &#34;&#34;.join(labels_w_count))
             labels_count = np.array(labels_count, dtype=int)
@@ -319,21 +364,29 @@ Expects a confusion matrix input with prediction rows (row value: pred1 pred2 pr
             mat = np.array((content.values.T * labels_count).T, dtype=float)
             obj._og_confusion_mat = np.around(mat).astype(int)
 
-            obj._pd_matrix = pd.DataFrame(data=obj._og_confusion_mat, index=content.index, columns=content.columns) # pylint: disable=no-member
+            obj._pd_matrix = pd.DataFrame(
+                data=obj._og_confusion_mat, index=content.index, columns=content.columns
+            )  # pylint: disable=no-member
         else:
-            if np.any(a=(values&lt;=0.99)&amp;(values&gt;=0.01), axis=None):
-                raise InputMatrixError(&#34;Inputed file seems to contain relative values, but relative=False was given.&#34;)
+            if np.any(a=(values &lt;= 0.99) &amp; (values &gt;= 0.01), axis=None):
+                raise InputMatrixError(
+                    &#34;Inputed file seems to contain relative values, but relative=False was given.&#34;
+                )
 
             obj._pd_matrix = content
-            obj._labels = sorted([ConfusionMatrixWriter._extract_class(val) for val in labels_w_count]) # pylint: disable=no-member
+            obj._labels = sorted(
+                [ConfusionMatrixWriter._extract_class(val) for val in labels_w_count]
+            )  # pylint: disable=no-member
 
-            obj._og_confusion_mat = content.to_numpy() # pylint: disable=no-member
+            obj._og_confusion_mat = content.to_numpy()  # pylint: disable=no-member
 
             rel_mat = ConfusionMatrixWriter.to_relative_confusion_matrix(
                 labels_count=obj._og_confusion_mat.sum(axis=1),
-                confusion_matrix=obj._og_confusion_mat
+                confusion_matrix=obj._og_confusion_mat,
             )
-            obj._pd_rel_matrix = pd.DataFrame(data=rel_mat, index=content.index, columns=content.columns) # pylint: disable=no-member
+            obj._pd_rel_matrix = pd.DataFrame(
+                data=rel_mat, index=content.index, columns=content.columns
+            )  # pylint: disable=no-member
         return obj
 
     def init_confusion_matrices(self, confusion_matrix: np.ndarray):
@@ -341,18 +394,29 @@ Expects a confusion matrix input with prediction rows (row value: pred1 pred2 pr
         Expects prediction rows (target pred1 pred2 pred3 ....) and target columns.
         Returns original and normalized on rows matrices.
         &#34;&#34;&#34;
-        labels_count = confusion_matrix.sum(axis=1) # total nb examples of each label
-        labels_w_count = [f&#34;{label}({label_count})&#34; for label, label_count in zip(self._labels, labels_count)]
+        labels_count = confusion_matrix.sum(axis=1)  # total nb examples of each label
+        labels_w_count = [
+            f&#34;{label}({label_count})&#34;
+            for label, label_count in zip(self._labels, labels_count)
+        ]
 
-        count_matrix = pd.DataFrame(data=confusion_matrix, index=labels_w_count, columns=self._labels, dtype=int)
+        count_matrix = pd.DataFrame(
+            data=confusion_matrix, index=labels_w_count, columns=self._labels, dtype=int
+        )
 
-        rel_confusion_mat = ConfusionMatrixWriter.to_relative_confusion_matrix(labels_count, confusion_matrix)
-        rel_matrix = pd.DataFrame(data=rel_confusion_mat, index=labels_w_count, columns=self._labels)
+        rel_confusion_mat = ConfusionMatrixWriter.to_relative_confusion_matrix(
+            labels_count, confusion_matrix
+        )
+        rel_matrix = pd.DataFrame(
+            data=rel_confusion_mat, index=labels_w_count, columns=self._labels
+        )
 
         return count_matrix, rel_matrix
 
     @staticmethod
-    def to_relative_confusion_matrix(labels_count: np.ndarray, confusion_matrix: np.ndarray):
+    def to_relative_confusion_matrix(
+        labels_count: np.ndarray, confusion_matrix: np.ndarray
+    ):
         &#34;&#34;&#34;Normalize confusion matrix per row.
         Expects prediction rows (target pred1 pred2 pred3 ....) and target columns.
         &#34;&#34;&#34;
@@ -368,7 +432,7 @@ Expects a confusion matrix input with prediction rows (row value: pred1 pred2 pr
         &#34;&#34;&#34;
         plt.figure()
 
-        vmax = 0.9999 #this is so exactly 1.0 is a different color from the rest
+        vmax = 0.9999  # this is so exactly 1.0 is a different color from the rest
         vmin = 0.0
 
         # mask empty values, so they are white in the image
@@ -376,15 +440,18 @@ Expects a confusion matrix input with prediction rows (row value: pred1 pred2 pr
 
         # prep colormap
         nb_colors = 20
-        gnuplot = cm.get_cmap(&#34;gnuplot&#34;, nb_colors) #20 colors
-        newcolors = gnuplot(np.linspace(0., 1., nb_colors))
-        new_cmap = ListedColormap(newcolors)
-        new_cmap.set_over(matplotlib.colors.to_rgba(&#34;GreenYellow&#34;)) # color for max values, do it LAST
-
+        gnuplot = cm.get_cmap(&#34;gnuplot&#34;, nb_colors)  # 20 colors
+        newcolors = gnuplot(np.linspace(0.0, 1.0, nb_colors))
+        new_cmap = ListedColormap(newcolors)  # type: ignore
+        new_cmap.set_over(
+            matplotlib.colors.to_rgba(&#34;GreenYellow&#34;)  # type: ignore
+        )  # color for max values, do it LAST
 
         # create color mesh and arrange ticks
         fig, ax = plt.subplots()
-        mesh = ax.pcolormesh(data_mask, cmap=new_cmap, vmin=vmin, vmax=vmax, edgecolors=&#39;k&#39;)
+        mesh = ax.pcolormesh(
+            data_mask, cmap=new_cmap, vmin=vmin, vmax=vmax, edgecolors=&#34;k&#34;
+        )
 
         nb_labels = self._pd_rel_matrix.columns.shape[0]
         ax.set_frame_on(False)
@@ -413,25 +480,35 @@ Expects a confusion matrix input with prediction rows (row value: pred1 pred2 pr
                 if count != 0:
                     text = f&#34;{count}\n{self._pd_rel_matrix.iat[i, j]*100:.1f}%&#34;
                     text_obj = plt.text(
-                        x=j+0.5, y=i+0.5, s=text,
-                        horizontalalignment=&#39;center&#39;,
-                        verticalalignment=&#39;center&#39;,
+                        x=j + 0.5,
+                        y=i + 0.5,
+                        s=text,
+                        horizontalalignment=&#34;center&#34;,
+                        verticalalignment=&#34;center&#34;,
                         color=&#34;w&#34;,
-                        size=5
-                        )
+                        size=5,
+                    )
+
                     text_obj.set_path_effects(
-                        [path_effects.Stroke(linewidth=1, foreground=&#39;black&#39;), path_effects.Normal()]
-                        )
+                        [
+                            path_effects.Stroke(linewidth=1, foreground=&#34;black&#34;),
+                            path_effects.Normal(),
+                        ]  # type: ignore
+                    )
 
         # Color bar
-        bounds = np.linspace(vmin, math.ceil(vmax), nb_colors+1) #just to have the max tick appear properly
+        bounds = np.linspace(
+            vmin, math.ceil(vmax), nb_colors + 1
+        )  # just to have the max tick appear properly
         ticks = np.linspace(vmin, math.ceil(vmax), 11)
-        cbar = fig.colorbar(mesh, ax=ax, shrink=0.75, boundaries=bounds, ticks=ticks, extend=&#34;max&#34;)
+        cbar = fig.colorbar(
+            mesh, ax=ax, shrink=0.75, boundaries=bounds, ticks=ticks, extend=&#34;max&#34;
+        )
         cbar.ax.tick_params(labelsize=7)
 
-
         plt.tight_layout()
-        plt.savefig(path, format=&#39;png&#39;, dpi=500)
+        plt.savefig(path, format=&#34;png&#34;, dpi=500)
+        plt.clf()
 
     def to_csv(self, path, relative):
         &#34;&#34;&#34;Write to path a csv file of the confusion matrix.
@@ -439,11 +516,11 @@ Expects a confusion matrix input with prediction rows (row value: pred1 pred2 pr
         The type of matrix (relative by row, or not) needs to be specified.
         &#34;&#34;&#34;
         if relative:
-            self._pd_rel_matrix.to_csv(path, encoding=&#34;utf8&#34;, float_format=&#39;%.4f&#39;)
+            self._pd_rel_matrix.to_csv(path, encoding=&#34;utf8&#34;, float_format=&#34;%.4f&#34;)
         else:
             self._pd_matrix.to_csv(path, encoding=&#34;utf8&#34;)
 
-    def to_all_formats(self, logdir: str, name: str) -&gt; Tuple[Path, Path, Path]:
+    def to_all_formats(self, logdir: str | Path, name: str) -&gt; Tuple[Path, Path, Path]:
         &#34;&#34;&#34;Write to logdir files of the confusion matrix.
         out 1 : Path of csv of non-normalized matrix
         out 2 : Path of csv of normalized matrix
@@ -472,7 +549,7 @@ Expects a confusion matrix input with prediction rows (row value: pred1 pred2 pr
 </details>
 <h3>Static methods</h3>
 <dl>
-<dt id="epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.convert_matrix_csv_to_png"><code class="name flex">
+<dt id="python.core.confusion_matrix.ConfusionMatrixWriter.convert_matrix_csv_to_png"><code class="name flex">
 <span>def <span class="ident">convert_matrix_csv_to_png</span></span>(<span>in_path, out_path, relative)</span>
 </code></dt>
 <dd>
@@ -492,7 +569,7 @@ def convert_matrix_csv_to_png(in_path, out_path, relative):
     writer.to_png(out_path)</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.from_csv"><code class="name flex">
+<dt id="python.core.confusion_matrix.ConfusionMatrixWriter.from_csv"><code class="name flex">
 <span>def <span class="ident">from_csv</span></span>(<span>csv_path, relative: bool)</span>
 </code></dt>
 <dd>
@@ -508,15 +585,19 @@ def from_csv(cls, csv_path, relative: bool):
     The state of the matrix (relative or not) needs to be specified.
     &#34;&#34;&#34;
     obj = cls.__new__(cls)  # Does not call __init__
-    content = pd.DataFrame(pd.read_csv(csv_path, sep=&#39;,&#39;, index_col=0))
+    content = pd.DataFrame(pd.read_csv(csv_path, sep=&#34;,&#34;, index_col=0))
     labels_w_count = content.index.tolist()
     values = content.values
     if relative:
-        if np.any(a=values&gt;=2, axis=None):
-            raise InputMatrixError(&#34;Inputed file seems to contain count values, but relative=True was given.&#34;)
+        if np.any(a=values &gt;= 2, axis=None):
+            raise InputMatrixError(
+                &#34;Inputed file seems to contain count values, but relative=True was given.&#34;
+            )
 
         obj._pd_rel_matrix = content
-        obj._labels = sorted([ConfusionMatrixWriter._extract_class(val) for val in labels_w_count])
+        obj._labels = sorted(
+            [ConfusionMatrixWriter._extract_class(val) for val in labels_w_count]
+        )
 
         labels_count = re.findall(r&#34;\(([0-9]+)\)&#34;, &#34;&#34;.join(labels_w_count))
         labels_count = np.array(labels_count, dtype=int)
@@ -524,25 +605,33 @@ def from_csv(cls, csv_path, relative: bool):
         mat = np.array((content.values.T * labels_count).T, dtype=float)
         obj._og_confusion_mat = np.around(mat).astype(int)
 
-        obj._pd_matrix = pd.DataFrame(data=obj._og_confusion_mat, index=content.index, columns=content.columns) # pylint: disable=no-member
+        obj._pd_matrix = pd.DataFrame(
+            data=obj._og_confusion_mat, index=content.index, columns=content.columns
+        )  # pylint: disable=no-member
     else:
-        if np.any(a=(values&lt;=0.99)&amp;(values&gt;=0.01), axis=None):
-            raise InputMatrixError(&#34;Inputed file seems to contain relative values, but relative=False was given.&#34;)
+        if np.any(a=(values &lt;= 0.99) &amp; (values &gt;= 0.01), axis=None):
+            raise InputMatrixError(
+                &#34;Inputed file seems to contain relative values, but relative=False was given.&#34;
+            )
 
         obj._pd_matrix = content
-        obj._labels = sorted([ConfusionMatrixWriter._extract_class(val) for val in labels_w_count]) # pylint: disable=no-member
+        obj._labels = sorted(
+            [ConfusionMatrixWriter._extract_class(val) for val in labels_w_count]
+        )  # pylint: disable=no-member
 
-        obj._og_confusion_mat = content.to_numpy() # pylint: disable=no-member
+        obj._og_confusion_mat = content.to_numpy()  # pylint: disable=no-member
 
         rel_mat = ConfusionMatrixWriter.to_relative_confusion_matrix(
             labels_count=obj._og_confusion_mat.sum(axis=1),
-            confusion_matrix=obj._og_confusion_mat
+            confusion_matrix=obj._og_confusion_mat,
         )
-        obj._pd_rel_matrix = pd.DataFrame(data=rel_mat, index=content.index, columns=content.columns) # pylint: disable=no-member
+        obj._pd_rel_matrix = pd.DataFrame(
+            data=rel_mat, index=content.index, columns=content.columns
+        )  # pylint: disable=no-member
     return obj</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.to_relative_confusion_matrix"><code class="name flex">
+<dt id="python.core.confusion_matrix.ConfusionMatrixWriter.to_relative_confusion_matrix"><code class="name flex">
 <span>def <span class="ident">to_relative_confusion_matrix</span></span>(<span>labels_count: np.ndarray, confusion_matrix: np.ndarray)</span>
 </code></dt>
 <dd>
@@ -553,7 +642,9 @@ Expects prediction rows (target pred1 pred2 pred3 ....) and target columns.</p><
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">@staticmethod
-def to_relative_confusion_matrix(labels_count: np.ndarray, confusion_matrix: np.ndarray):
+def to_relative_confusion_matrix(
+    labels_count: np.ndarray, confusion_matrix: np.ndarray
+):
     &#34;&#34;&#34;Normalize confusion matrix per row.
     Expects prediction rows (target pred1 pred2 pred3 ....) and target columns.
     &#34;&#34;&#34;
@@ -565,7 +656,7 @@ def to_relative_confusion_matrix(labels_count: np.ndarray, confusion_matrix: np.
 </dl>
 <h3>Methods</h3>
 <dl>
-<dt id="epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.init_confusion_matrices"><code class="name flex">
+<dt id="python.core.confusion_matrix.ConfusionMatrixWriter.init_confusion_matrices"><code class="name flex">
 <span>def <span class="ident">init_confusion_matrices</span></span>(<span>self, confusion_matrix: np.ndarray)</span>
 </code></dt>
 <dd>
@@ -581,19 +672,28 @@ Returns original and normalized on rows matrices.</p></div>
     Expects prediction rows (target pred1 pred2 pred3 ....) and target columns.
     Returns original and normalized on rows matrices.
     &#34;&#34;&#34;
-    labels_count = confusion_matrix.sum(axis=1) # total nb examples of each label
-    labels_w_count = [f&#34;{label}({label_count})&#34; for label, label_count in zip(self._labels, labels_count)]
+    labels_count = confusion_matrix.sum(axis=1)  # total nb examples of each label
+    labels_w_count = [
+        f&#34;{label}({label_count})&#34;
+        for label, label_count in zip(self._labels, labels_count)
+    ]
 
-    count_matrix = pd.DataFrame(data=confusion_matrix, index=labels_w_count, columns=self._labels, dtype=int)
+    count_matrix = pd.DataFrame(
+        data=confusion_matrix, index=labels_w_count, columns=self._labels, dtype=int
+    )
 
-    rel_confusion_mat = ConfusionMatrixWriter.to_relative_confusion_matrix(labels_count, confusion_matrix)
-    rel_matrix = pd.DataFrame(data=rel_confusion_mat, index=labels_w_count, columns=self._labels)
+    rel_confusion_mat = ConfusionMatrixWriter.to_relative_confusion_matrix(
+        labels_count, confusion_matrix
+    )
+    rel_matrix = pd.DataFrame(
+        data=rel_confusion_mat, index=labels_w_count, columns=self._labels
+    )
 
     return count_matrix, rel_matrix</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.to_all_formats"><code class="name flex">
-<span>def <span class="ident">to_all_formats</span></span>(<span>self, logdir: str, name: str) ‑> Tuple[pathlib.Path, pathlib.Path, pathlib.Path]</span>
+<dt id="python.core.confusion_matrix.ConfusionMatrixWriter.to_all_formats"><code class="name flex">
+<span>def <span class="ident">to_all_formats</span></span>(<span>self, logdir: str | Path, name: str) ‑> Tuple[Path, Path, Path]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Write to logdir files of the confusion matrix.
@@ -604,7 +704,7 @@ out 3 : Path of png of matrix</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def to_all_formats(self, logdir: str, name: str) -&gt; Tuple[Path, Path, Path]:
+<pre><code class="python">def to_all_formats(self, logdir: str | Path, name: str) -&gt; Tuple[Path, Path, Path]:
     &#34;&#34;&#34;Write to logdir files of the confusion matrix.
     out 1 : Path of csv of non-normalized matrix
     out 2 : Path of csv of normalized matrix
@@ -623,7 +723,7 @@ out 3 : Path of png of matrix</p></div>
     return out1, out1_rel, out2</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.to_csv"><code class="name flex">
+<dt id="python.core.confusion_matrix.ConfusionMatrixWriter.to_csv"><code class="name flex">
 <span>def <span class="ident">to_csv</span></span>(<span>self, path, relative)</span>
 </code></dt>
 <dd>
@@ -639,12 +739,12 @@ out 3 : Path of png of matrix</p></div>
     The type of matrix (relative by row, or not) needs to be specified.
     &#34;&#34;&#34;
     if relative:
-        self._pd_rel_matrix.to_csv(path, encoding=&#34;utf8&#34;, float_format=&#39;%.4f&#39;)
+        self._pd_rel_matrix.to_csv(path, encoding=&#34;utf8&#34;, float_format=&#34;%.4f&#34;)
     else:
         self._pd_matrix.to_csv(path, encoding=&#34;utf8&#34;)</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.to_png"><code class="name flex">
+<dt id="python.core.confusion_matrix.ConfusionMatrixWriter.to_png"><code class="name flex">
 <span>def <span class="ident">to_png</span></span>(<span>self, path)</span>
 </code></dt>
 <dd>
@@ -664,7 +764,7 @@ Ref code : <a href="https://matplotlib.org/3.1.0/tutorials/colors/colormap-manip
     &#34;&#34;&#34;
     plt.figure()
 
-    vmax = 0.9999 #this is so exactly 1.0 is a different color from the rest
+    vmax = 0.9999  # this is so exactly 1.0 is a different color from the rest
     vmin = 0.0
 
     # mask empty values, so they are white in the image
@@ -672,15 +772,18 @@ Ref code : <a href="https://matplotlib.org/3.1.0/tutorials/colors/colormap-manip
 
     # prep colormap
     nb_colors = 20
-    gnuplot = cm.get_cmap(&#34;gnuplot&#34;, nb_colors) #20 colors
-    newcolors = gnuplot(np.linspace(0., 1., nb_colors))
-    new_cmap = ListedColormap(newcolors)
-    new_cmap.set_over(matplotlib.colors.to_rgba(&#34;GreenYellow&#34;)) # color for max values, do it LAST
-
+    gnuplot = cm.get_cmap(&#34;gnuplot&#34;, nb_colors)  # 20 colors
+    newcolors = gnuplot(np.linspace(0.0, 1.0, nb_colors))
+    new_cmap = ListedColormap(newcolors)  # type: ignore
+    new_cmap.set_over(
+        matplotlib.colors.to_rgba(&#34;GreenYellow&#34;)  # type: ignore
+    )  # color for max values, do it LAST
 
     # create color mesh and arrange ticks
     fig, ax = plt.subplots()
-    mesh = ax.pcolormesh(data_mask, cmap=new_cmap, vmin=vmin, vmax=vmax, edgecolors=&#39;k&#39;)
+    mesh = ax.pcolormesh(
+        data_mask, cmap=new_cmap, vmin=vmin, vmax=vmax, edgecolors=&#34;k&#34;
+    )
 
     nb_labels = self._pd_rel_matrix.columns.shape[0]
     ax.set_frame_on(False)
@@ -709,30 +812,40 @@ Ref code : <a href="https://matplotlib.org/3.1.0/tutorials/colors/colormap-manip
             if count != 0:
                 text = f&#34;{count}\n{self._pd_rel_matrix.iat[i, j]*100:.1f}%&#34;
                 text_obj = plt.text(
-                    x=j+0.5, y=i+0.5, s=text,
-                    horizontalalignment=&#39;center&#39;,
-                    verticalalignment=&#39;center&#39;,
+                    x=j + 0.5,
+                    y=i + 0.5,
+                    s=text,
+                    horizontalalignment=&#34;center&#34;,
+                    verticalalignment=&#34;center&#34;,
                     color=&#34;w&#34;,
-                    size=5
-                    )
+                    size=5,
+                )
+
                 text_obj.set_path_effects(
-                    [path_effects.Stroke(linewidth=1, foreground=&#39;black&#39;), path_effects.Normal()]
-                    )
+                    [
+                        path_effects.Stroke(linewidth=1, foreground=&#34;black&#34;),
+                        path_effects.Normal(),
+                    ]  # type: ignore
+                )
 
     # Color bar
-    bounds = np.linspace(vmin, math.ceil(vmax), nb_colors+1) #just to have the max tick appear properly
+    bounds = np.linspace(
+        vmin, math.ceil(vmax), nb_colors + 1
+    )  # just to have the max tick appear properly
     ticks = np.linspace(vmin, math.ceil(vmax), 11)
-    cbar = fig.colorbar(mesh, ax=ax, shrink=0.75, boundaries=bounds, ticks=ticks, extend=&#34;max&#34;)
+    cbar = fig.colorbar(
+        mesh, ax=ax, shrink=0.75, boundaries=bounds, ticks=ticks, extend=&#34;max&#34;
+    )
     cbar.ax.tick_params(labelsize=7)
 
-
     plt.tight_layout()
-    plt.savefig(path, format=&#39;png&#39;, dpi=500)</code></pre>
+    plt.savefig(path, format=&#34;png&#34;, dpi=500)
+    plt.clf()</code></pre>
 </details>
 </dd>
 </dl>
 </dd>
-<dt id="epi_ml.python.core.confusion_matrix.InputMatrixError"><code class="flex name class">
+<dt id="python.core.confusion_matrix.InputMatrixError"><code class="flex name class">
 <span>class <span class="ident">InputMatrixError</span></span>
 <span>(</span><span>*args, **kwargs)</span>
 </code></dt>
@@ -762,25 +875,25 @@ Ref code : <a href="https://matplotlib.org/3.1.0/tutorials/colors/colormap-manip
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="epi_ml.python.core" href="index.html">epi_ml.python.core</a></code></li>
+<li><code><a title="python.core" href="index.html">python.core</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
-<h4><code><a title="epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter" href="#epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter">ConfusionMatrixWriter</a></code></h4>
+<h4><code><a title="python.core.confusion_matrix.ConfusionMatrixWriter" href="#python.core.confusion_matrix.ConfusionMatrixWriter">ConfusionMatrixWriter</a></code></h4>
 <ul class="">
-<li><code><a title="epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.convert_matrix_csv_to_png" href="#epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.convert_matrix_csv_to_png">convert_matrix_csv_to_png</a></code></li>
-<li><code><a title="epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.from_csv" href="#epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.from_csv">from_csv</a></code></li>
-<li><code><a title="epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.init_confusion_matrices" href="#epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.init_confusion_matrices">init_confusion_matrices</a></code></li>
-<li><code><a title="epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.to_all_formats" href="#epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.to_all_formats">to_all_formats</a></code></li>
-<li><code><a title="epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.to_csv" href="#epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.to_csv">to_csv</a></code></li>
-<li><code><a title="epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.to_png" href="#epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.to_png">to_png</a></code></li>
-<li><code><a title="epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.to_relative_confusion_matrix" href="#epi_ml.python.core.confusion_matrix.ConfusionMatrixWriter.to_relative_confusion_matrix">to_relative_confusion_matrix</a></code></li>
+<li><code><a title="python.core.confusion_matrix.ConfusionMatrixWriter.convert_matrix_csv_to_png" href="#python.core.confusion_matrix.ConfusionMatrixWriter.convert_matrix_csv_to_png">convert_matrix_csv_to_png</a></code></li>
+<li><code><a title="python.core.confusion_matrix.ConfusionMatrixWriter.from_csv" href="#python.core.confusion_matrix.ConfusionMatrixWriter.from_csv">from_csv</a></code></li>
+<li><code><a title="python.core.confusion_matrix.ConfusionMatrixWriter.init_confusion_matrices" href="#python.core.confusion_matrix.ConfusionMatrixWriter.init_confusion_matrices">init_confusion_matrices</a></code></li>
+<li><code><a title="python.core.confusion_matrix.ConfusionMatrixWriter.to_all_formats" href="#python.core.confusion_matrix.ConfusionMatrixWriter.to_all_formats">to_all_formats</a></code></li>
+<li><code><a title="python.core.confusion_matrix.ConfusionMatrixWriter.to_csv" href="#python.core.confusion_matrix.ConfusionMatrixWriter.to_csv">to_csv</a></code></li>
+<li><code><a title="python.core.confusion_matrix.ConfusionMatrixWriter.to_png" href="#python.core.confusion_matrix.ConfusionMatrixWriter.to_png">to_png</a></code></li>
+<li><code><a title="python.core.confusion_matrix.ConfusionMatrixWriter.to_relative_confusion_matrix" href="#python.core.confusion_matrix.ConfusionMatrixWriter.to_relative_confusion_matrix">to_relative_confusion_matrix</a></code></li>
 </ul>
 </li>
 <li>
-<h4><code><a title="epi_ml.python.core.confusion_matrix.InputMatrixError" href="#epi_ml.python.core.confusion_matrix.InputMatrixError">InputMatrixError</a></code></h4>
+<h4><code><a title="python.core.confusion_matrix.InputMatrixError" href="#python.core.confusion_matrix.InputMatrixError">InputMatrixError</a></code></h4>
 </li>
 </ul>
 </li>

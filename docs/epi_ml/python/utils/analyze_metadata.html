@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
-<title>epi_ml.python.utils.analyze_metadata API documentation</title>
+<title>python.utils.analyze_metadata API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
@@ -19,7 +19,7 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>epi_ml.python.utils.analyze_metadata</code></h1>
+<h1 class="title">Module <code>python.utils.analyze_metadata</code></h1>
 </header>
 <section id="section-intro">
 <details class="source">
@@ -29,15 +29,20 @@
 <pre><code class="python">import collections
 import copy
 from pathlib import Path
-import os
 
 import pandas as pd
 
-from epi_ml.python.core.metadata import Metadata
+import src.python.utils.modify_metadata as modify_metadata
+from src.python.core.epiatlas_treatment import TRACKS_MAPPING
+from src.python.core.metadata import Metadata
+from src.python.utils.augment_predict_file import add_coherence
+
 
 def two_step_long_analysis(my_metadata: Metadata, category1, category2):
 
-    print(f&#34;First we remove small classes from {category1} and only keep datasets which have a {category2}.&#34;)
+    print(
+        f&#34;First we remove small classes from {category1} and only keep datasets which have a {category2}.&#34;
+    )
     my_metadata.remove_small_classes(10, category1)
     my_metadata.remove_missing_labels(category2)
     my_metadata.display_labels(category1)
@@ -48,13 +53,15 @@ def two_step_long_analysis(my_metadata: Metadata, category1, category2):
     for label in sorted(labels):
         print(f&#34;--{label}--&#34;)
         temp_metadata = copy.deepcopy(my_metadata)
-        temp_metadata.select_category_subset(label, category1)
+        temp_metadata.select_category_subsets(label, [category1])
         temp_metadata.remove_small_classes(10, category2)
         if len(temp_metadata.label_counter(category2).most_common()) &gt; 1:
             nb_classes_kept += 1
         temp_metadata.display_labels(category2)
 
-    print(f&#34;Number of classes with &gt;1 cell_type label, from {category1}: {nb_classes_kept}/{len(labels)}&#34;)
+    print(
+        f&#34;Number of classes with &gt;1 cell_type label, from {category1}: {nb_classes_kept}/{len(labels)}&#34;
+    )
 
 
 def two_step_table_analysis(my_metadata: Metadata, category1, category2):
@@ -71,9 +78,11 @@ def two_step_table_analysis(my_metadata: Metadata, category1, category2):
         info[label][&#34;total_examples_before_step2_filter&#34;] = counter_cat1[label]
 
         temp_metadata = copy.deepcopy(my_metadata)
-        temp_metadata.select_category_subset(label, category1)
+        temp_metadata.select_category_subsets(label, [category1])
 
-        info[label][&#34;total_classes_before_step2_filter&#34;] = len(temp_metadata.label_counter(category2))
+        info[label][&#34;total_classes_before_step2_filter&#34;] = len(
+            temp_metadata.label_counter(category2)
+        )
 
         temp_metadata.remove_small_classes(10, category2)
 
@@ -82,100 +91,169 @@ def two_step_table_analysis(my_metadata: Metadata, category1, category2):
         info[label][&#34;total_classes_after_step2_filter&#34;] = len(counter_cat2)
 
     line = &#34;\t{total_classes_before_step2_filter}\t{total_classes_after_step2_filter}\t{total_examples_before_step2_filter}\t{total_examples_after_step2_filter}\t&#34;
-    print(&#34;class_step1\t#labels_before\t#labels_after\t#dsets_before\t#dsets_after\tratio #dsets/#labels&#34;)
+    print(
+        &#34;class_step1\t#labels_before\t#labels_after\t#dsets_before\t#dsets_after\tratio #dsets/#labels&#34;
+    )
     for label, infos in info.items():
         try:
-            ratio = float(infos[&#34;total_examples_after_step2_filter&#34;])/infos[&#34;total_classes_after_step2_filter&#34;]
+            ratio = (
+                float(infos[&#34;total_examples_after_step2_filter&#34;])
+                / infos[&#34;total_classes_after_step2_filter&#34;]
+            )
         except ZeroDivisionError:
             ratio = &#34;--&#34;
         print(label + line.format(**infos) + str(ratio))
 
 
-def test(my_metadata: Metadata, category1):
-
-    my_metadata.remove_small_classes(10, category1)
-    counter_cat1 = my_metadata.label_counter(category1)
-    for label in sorted(counter_cat1.keys()):
-        temp_metadata = copy.deepcopy(my_metadata)
-        temp_metadata.select_category_subset(label, category1)
-
-
-def count_pairs(my_metadata: Metadata, cat1, cat2):
-    &#34;&#34;&#34;Return label pairs counter from the given metadata categories.&#34;&#34;&#34;
-    counter = collections.Counter(
-        (dset.get(cat1, &#34;--empty--&#34;), dset.get(cat2, &#34;--empty--&#34;))
-        for dset in my_metadata.datasets
-    )
-    return counter
-
-
 def print_pairs(my_metadata: Metadata, cat1, cat2):
     &#34;&#34;&#34;Print label pairs from the given metadata categories.&#34;&#34;&#34;
-    counter = count_pairs(my_metadata, cat1, cat2)
+    counter = modify_metadata.count_pairs(my_metadata, cat1, cat2)
     for pair, count in sorted(counter.items()):
         print(pair, count)
 
 
-def make_table(my_metadata: Metadata, cat1, cat2, filepath):
+def make_table(my_metadata: Metadata, cat1: str, cat2: str, filepath: str):
     &#34;&#34;&#34;Write metadata content tsv table for given metadata categories&#34;&#34;&#34;
-    counter = count_pairs(my_metadata, cat1, cat2)
+    counter = modify_metadata.count_pairs(my_metadata, cat1, cat2)
     triplets = [(pair[0], pair[1], count) for pair, count in sorted(counter.items())]
 
     df = pd.DataFrame(triplets, columns=[&#34;assay&#34;, &#34;cell_type&#34;, &#34;count&#34;])
-    table = df.pivot_table(values=&#34;count&#34;, index=&#34;assay&#34;, columns=&#34;cell_type&#34;, fill_value=0)
-    table.to_csv(filepath, sep=&#39;\t&#39;)
+    table = df.pivot_table(
+        values=&#34;count&#34;, index=&#34;assay&#34;, columns=&#34;cell_type&#34;, fill_value=0
+    )
+    table.to_csv(Path(filepath).with_suffix(&#34;.tsv&#34;), sep=&#34;\t&#34;)
 
 
-def analyze_chromatin_acc(my_metadata: Metadata):
-    counter = collections.Counter(
-        my_metadata[md5][&#34;cell_type&#34;] for md5 in my_metadata.md5s
-        if my_metadata[md5][&#34;assay&#34;] == &#34;chromatin_acc&#34;
-        )
-    print(counter)
-    counter = collections.Counter(
-        my_metadata[md5][&#34;assay&#34;] for md5 in my_metadata.md5s
-        if my_metadata[md5][&#34;cell_type&#34;] == &#34;fetal_muscle_arm&#34;
-        )
-    print(counter)
+def compute_coherence_on_all(meta: Metadata):
+    &#34;&#34;&#34;Compute coherence on all metadata categories.&#34;&#34;&#34;
+    for dset in list(meta.datasets):
+        if dset[&#34;track_type&#34;] in set({&#34;pval&#34;, &#34;fc&#34;}):
+            del meta[dset[&#34;md5sum&#34;]]
+
+    df = pd.DataFrame(list(meta.datasets))  # type: ignore
+    df = df.replace(r&#34;^\s*$&#34;, &#34;--&#34;, regex=True)
+
+    for category in list(df.columns):
+        if category not in modify_metadata.epiatlas_cats | set(
+            [
+                &#34;md5sum&#34;,
+                &#34;EpiRR&#34;,
+                &#34;epirr_id&#34;,
+                &#34;track_type&#34;,
+                &#34;assay&#34;,
+            ]
+        ):
+            add_coherence(df, category)
+
+    df.drop(df.filter(regex=&#34;Coherence count&#34;).columns, axis=1, inplace=True)  # type: ignore
+
+    df.to_csv(&#34;test.csv&#34;, index=False)
+
+
+def check_epitatlas_uuid_premise(metadata: Metadata):
+    &#34;&#34;&#34;Check that there is only one file per track type, for a given uuid.&#34;&#34;&#34;
+    uuid_to_md5s = collections.defaultdict(collections.Counter)
+    for dset in metadata.datasets:
+        uuid = dset[&#34;uuid&#34;]
+        uuid_to_md5s[uuid].update([dset[&#34;track_type&#34;]])
+
+    for uuid, counter in uuid_to_md5s.items():
+        for nb in counter.values():
+            if nb != 1:
+                print(uuid, counter)
+
+
+def create_json_from_md5_list(md5_list: Path, metadata: Metadata):
+    &#34;&#34;&#34;Save json with metadata from selected signals.&#34;&#34;&#34;
+    metadata = copy.deepcopy(metadata)
+    with open(md5_list, &#34;r&#34;, encoding=&#34;utf8&#34;) as f:
+        md5_set = set([md5.strip() for md5 in f.readlines()])
+
+    for md5 in list(metadata.md5s):
+        if md5 not in md5_set:
+            del metadata[md5]
+
+    new_path = md5_list.parent / f&#34;{md5_list.stem}-metadata.json&#34;
+    metadata.save(new_path)
+
+
+def test_generic_classifiers(my_metadata):
+    &#34;&#34;&#34;Multiple tests to understand how much correct answers you could get
+    from statistical derivations, without making any assumptions about the actual data.&#34;&#34;&#34;
+    import numpy as np
+    import scipy
+    import sklearn
+    from statsmodels.multivariate.manova import MANOVA
+
+    modify_metadata.merge_pair_end_info(my_metadata)
+    my_metadata.select_category_subsets(&#34;paired_end_mode&#34;, [&#34;single_end&#34;, &#34;paired_end&#34;])
+
+    # -- test 1 with simple classifiers --
+    df = pd.DataFrame(my_metadata.datasets)
+    y = df[&#34;paired_end_mode&#34;]
+    y = sklearn.preprocessing.LabelEncoder().fit_transform(y)
+    classifier = sklearn.linear_model.LogisticRegression(penalty=&#34;none&#34;)
+    classifier = sklearn.ensemble.RandomForestClassifier(
+        class_weight=&#34;balanced_subsample&#34;
+    )
+    correlations = []
+    for category in my_metadata.get_categories():
+        X = df[category]
+        X = sklearn.preprocessing.LabelEncoder().fit_transform(X).reshape(-1, 1)
+        acc = []
+        classifier = classifier.fit(X, y)
+        for i in range(10):
+            X, y = sklearn.utils.shuffle(X, y)
+            y_pred = classifier.predict(X)
+            acc_1 = sklearn.metrics.accuracy_score(y, y_pred)
+            adj_acc = sklearn.metrics.balanced_accuracy_score(y, y_pred, adjusted=True)
+            acc.append((acc_1, adj_acc))
+        acc = np.array(acc)
+        mean_acc = acc.mean(axis=0)
+        std = acc.std(axis=0)[0]
+        correlations.append((category, str(mean_acc[0]), str(mean_acc[1]), str(std)))
+
+    for metrics in correlations:
+        print(&#34; &#34;.join(metrics))
+
+    # -- test 2: Evaluate chi2 --
+    import statsmodels.api as sm
+
+    pivot = pd.crosstab(
+        df[&#34;sample_ontology_term_high_order_unique&#34;], df[&#34;paired_end_mode&#34;]
+    )
+    print(pivot)
+    chi2_stat, p, dof, expected = scipy.stats.chi2_contingency(pivot)
+    print(chi2_stat, expected)
+
+    table = sm.stats.Table.from_data(
+        df[[&#34;sample_ontology_term_high_order_unique&#34;, &#34;paired_end_mode&#34;]]
+    )
+    print(table.table_orig, &#34;\n&#34;)
+    print(table.fittedvalues, &#34;\n&#34;)
+    print(table.resid_pearson, &#34;\n&#34;)
+    print(table.chi2_contribs, &#34;\n&#34;)
+
+    # -- test 3: MANOVA --
+    # encode labels
+    df = df.apply(lambda x: pd.factorize(x)[0])
+    maov = MANOVA.from_formula(
+        &#34;sample_ontology_term_high_order_unique ~ paired_end_mode&#34;, data=df
+    )
+    print(maov.mv_test())
 
 
 def main():
 
-    base = Path(&#34;/home/local/USHERBROOKE/rabj2301/Projects/ihec/2018-10/&#34;)
-    path = base / &#34;hg19_2018-10_final.json&#34;
+    base = Path(&#34;/home/local/USHERBROOKE/rabj2301/Projects/epilap/input/metadata&#34;)
+    path = base / &#34;merge_EpiAtlas_allmetadata-v10.json&#34;
     my_metadata = Metadata(path)
 
-    cat1 = &#34;assay&#34;
-    cat2 = &#34;cell_type&#34;
+    # md5_list = &#34;/home/local/USHERBROOKE/rabj2301/Projects/sources/epi_ml/src/python/tests/fixtures/test-epilap-empty-biotype-n40.md5&#34;
+    # create_json_from_md5_list(Path(md5_list), my_metadata)
 
-    # my_metadata = metadata.special_case(my_metadata)
-    # my_metadata = metadata.special_case_2(my_metadata)
+    my_metadata.display_labels(&#34;track_type&#34;)
 
-    # my_metadata = metadata.five_cell_types_selection(my_metadata)
-    # assays_to_remove = [os.getenv(var, &#34;&#34;) for var in [&#34;REMOVE_ASSAY1&#34;, &#34;REMOVE_ASSAY2&#34;, &#34;REMOVE_ASSAY3&#34;]]
-    # my_metadata.remove_category_subsets(&#34;assay&#34;, assays_to_remove)
-    # my_metadata.select_category_subsets(&#34;assay&#34;, [&#34;h3k4me1&#34;])
-    # my_metadata.remove_small_classes(10, &#34;cell_type&#34;)
-
-    # ---
-    # two_step_long_analysis(my_metadata, cat1, cat2)
-    # two_step_table_analysis(my_metadata, cat1, cat2)
-    # test(my_metadata, cat1)
-    # my_metadata = metadata.keep_major_cell_types(my_metadata)
-    # my_metadata = metadata.keep_major_cell_types_alt(my_metadata)
-    # ---
-
-    # my_metadata.display_labels(&#34;assay&#34;)
-    # my_metadata.display_labels(&#34;cell_type&#34;)
-
-    # my_metadata.display_labels(&#34;publishing_group&#34;)
-    # my_metadata.display_labels(&#34;releasing_group&#34;)
-
-    # print_pairs(my_metadata, cat1, cat2)
-    # make_table(my_metadata, cat1, cat2, &#34;5_cell_types.tsv&#34;)
-
-    # for md5 in sorted(my_metadata.md5s):
-    #     print(md5)
 
 if __name__ == &#34;__main__&#34;:
     main()</code></pre>
@@ -188,47 +266,87 @@ if __name__ == &#34;__main__&#34;:
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="epi_ml.python.utils.analyze_metadata.analyze_chromatin_acc"><code class="name flex">
-<span>def <span class="ident">analyze_chromatin_acc</span></span>(<span>my_metadata: <a title="epi_ml.python.core.metadata.Metadata" href="../core/metadata.html#epi_ml.python.core.metadata.Metadata">Metadata</a>)</span>
+<dt id="python.utils.analyze_metadata.check_epitatlas_uuid_premise"><code class="name flex">
+<span>def <span class="ident">check_epitatlas_uuid_premise</span></span>(<span>metadata: src.python.core.metadata.Metadata)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Check that there is only one file per track type, for a given uuid.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def analyze_chromatin_acc(my_metadata: Metadata):
-    counter = collections.Counter(
-        my_metadata[md5][&#34;cell_type&#34;] for md5 in my_metadata.md5s
-        if my_metadata[md5][&#34;assay&#34;] == &#34;chromatin_acc&#34;
-        )
-    print(counter)
-    counter = collections.Counter(
-        my_metadata[md5][&#34;assay&#34;] for md5 in my_metadata.md5s
-        if my_metadata[md5][&#34;cell_type&#34;] == &#34;fetal_muscle_arm&#34;
-        )
-    print(counter)</code></pre>
+<pre><code class="python">def check_epitatlas_uuid_premise(metadata: Metadata):
+    &#34;&#34;&#34;Check that there is only one file per track type, for a given uuid.&#34;&#34;&#34;
+    uuid_to_md5s = collections.defaultdict(collections.Counter)
+    for dset in metadata.datasets:
+        uuid = dset[&#34;uuid&#34;]
+        uuid_to_md5s[uuid].update([dset[&#34;track_type&#34;]])
+
+    for uuid, counter in uuid_to_md5s.items():
+        for nb in counter.values():
+            if nb != 1:
+                print(uuid, counter)</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.utils.analyze_metadata.count_pairs"><code class="name flex">
-<span>def <span class="ident">count_pairs</span></span>(<span>my_metadata: <a title="epi_ml.python.core.metadata.Metadata" href="../core/metadata.html#epi_ml.python.core.metadata.Metadata">Metadata</a>, cat1, cat2)</span>
+<dt id="python.utils.analyze_metadata.compute_coherence_on_all"><code class="name flex">
+<span>def <span class="ident">compute_coherence_on_all</span></span>(<span>meta: src.python.core.metadata.Metadata)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Return label pairs counter from the given metadata categories.</p></div>
+<div class="desc"><p>Compute coherence on all metadata categories.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def count_pairs(my_metadata: Metadata, cat1, cat2):
-    &#34;&#34;&#34;Return label pairs counter from the given metadata categories.&#34;&#34;&#34;
-    counter = collections.Counter(
-        (dset.get(cat1, &#34;--empty--&#34;), dset.get(cat2, &#34;--empty--&#34;))
-        for dset in my_metadata.datasets
-    )
-    return counter</code></pre>
+<pre><code class="python">def compute_coherence_on_all(meta: Metadata):
+    &#34;&#34;&#34;Compute coherence on all metadata categories.&#34;&#34;&#34;
+    for dset in list(meta.datasets):
+        if dset[&#34;track_type&#34;] in set({&#34;pval&#34;, &#34;fc&#34;}):
+            del meta[dset[&#34;md5sum&#34;]]
+
+    df = pd.DataFrame(list(meta.datasets))  # type: ignore
+    df = df.replace(r&#34;^\s*$&#34;, &#34;--&#34;, regex=True)
+
+    for category in list(df.columns):
+        if category not in modify_metadata.epiatlas_cats | set(
+            [
+                &#34;md5sum&#34;,
+                &#34;EpiRR&#34;,
+                &#34;epirr_id&#34;,
+                &#34;track_type&#34;,
+                &#34;assay&#34;,
+            ]
+        ):
+            add_coherence(df, category)
+
+    df.drop(df.filter(regex=&#34;Coherence count&#34;).columns, axis=1, inplace=True)  # type: ignore
+
+    df.to_csv(&#34;test.csv&#34;, index=False)</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.utils.analyze_metadata.main"><code class="name flex">
+<dt id="python.utils.analyze_metadata.create_json_from_md5_list"><code class="name flex">
+<span>def <span class="ident">create_json_from_md5_list</span></span>(<span>md5_list: pathlib.Path, metadata: src.python.core.metadata.Metadata)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Save json with metadata from selected signals.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def create_json_from_md5_list(md5_list: Path, metadata: Metadata):
+    &#34;&#34;&#34;Save json with metadata from selected signals.&#34;&#34;&#34;
+    metadata = copy.deepcopy(metadata)
+    with open(md5_list, &#34;r&#34;, encoding=&#34;utf8&#34;) as f:
+        md5_set = set([md5.strip() for md5 in f.readlines()])
+
+    for md5 in list(metadata.md5s):
+        if md5 not in md5_set:
+            del metadata[md5]
+
+    new_path = md5_list.parent / f&#34;{md5_list.stem}-metadata.json&#34;
+    metadata.save(new_path)</code></pre>
+</details>
+</dd>
+<dt id="python.utils.analyze_metadata.main"><code class="name flex">
 <span>def <span class="ident">main</span></span>(<span>)</span>
 </code></dt>
 <dd>
@@ -239,45 +357,18 @@ if __name__ == &#34;__main__&#34;:
 </summary>
 <pre><code class="python">def main():
 
-    base = Path(&#34;/home/local/USHERBROOKE/rabj2301/Projects/ihec/2018-10/&#34;)
-    path = base / &#34;hg19_2018-10_final.json&#34;
+    base = Path(&#34;/home/local/USHERBROOKE/rabj2301/Projects/epilap/input/metadata&#34;)
+    path = base / &#34;merge_EpiAtlas_allmetadata-v10.json&#34;
     my_metadata = Metadata(path)
 
-    cat1 = &#34;assay&#34;
-    cat2 = &#34;cell_type&#34;
+    # md5_list = &#34;/home/local/USHERBROOKE/rabj2301/Projects/sources/epi_ml/src/python/tests/fixtures/test-epilap-empty-biotype-n40.md5&#34;
+    # create_json_from_md5_list(Path(md5_list), my_metadata)
 
-    # my_metadata = metadata.special_case(my_metadata)
-    # my_metadata = metadata.special_case_2(my_metadata)
-
-    # my_metadata = metadata.five_cell_types_selection(my_metadata)
-    # assays_to_remove = [os.getenv(var, &#34;&#34;) for var in [&#34;REMOVE_ASSAY1&#34;, &#34;REMOVE_ASSAY2&#34;, &#34;REMOVE_ASSAY3&#34;]]
-    # my_metadata.remove_category_subsets(&#34;assay&#34;, assays_to_remove)
-    # my_metadata.select_category_subsets(&#34;assay&#34;, [&#34;h3k4me1&#34;])
-    # my_metadata.remove_small_classes(10, &#34;cell_type&#34;)
-
-    # ---
-    # two_step_long_analysis(my_metadata, cat1, cat2)
-    # two_step_table_analysis(my_metadata, cat1, cat2)
-    # test(my_metadata, cat1)
-    # my_metadata = metadata.keep_major_cell_types(my_metadata)
-    # my_metadata = metadata.keep_major_cell_types_alt(my_metadata)
-    # ---
-
-    # my_metadata.display_labels(&#34;assay&#34;)
-    # my_metadata.display_labels(&#34;cell_type&#34;)
-
-    # my_metadata.display_labels(&#34;publishing_group&#34;)
-    # my_metadata.display_labels(&#34;releasing_group&#34;)
-
-    # print_pairs(my_metadata, cat1, cat2)
-    # make_table(my_metadata, cat1, cat2, &#34;5_cell_types.tsv&#34;)
-
-    # for md5 in sorted(my_metadata.md5s):
-    #     print(md5)</code></pre>
+    my_metadata.display_labels(&#34;track_type&#34;)</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.utils.analyze_metadata.make_table"><code class="name flex">
-<span>def <span class="ident">make_table</span></span>(<span>my_metadata: <a title="epi_ml.python.core.metadata.Metadata" href="../core/metadata.html#epi_ml.python.core.metadata.Metadata">Metadata</a>, cat1, cat2, filepath)</span>
+<dt id="python.utils.analyze_metadata.make_table"><code class="name flex">
+<span>def <span class="ident">make_table</span></span>(<span>my_metadata: src.python.core.metadata.Metadata, cat1: str, cat2: str, filepath: str)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Write metadata content tsv table for given metadata categories</p></div>
@@ -285,18 +376,20 @@ if __name__ == &#34;__main__&#34;:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def make_table(my_metadata: Metadata, cat1, cat2, filepath):
+<pre><code class="python">def make_table(my_metadata: Metadata, cat1: str, cat2: str, filepath: str):
     &#34;&#34;&#34;Write metadata content tsv table for given metadata categories&#34;&#34;&#34;
-    counter = count_pairs(my_metadata, cat1, cat2)
+    counter = modify_metadata.count_pairs(my_metadata, cat1, cat2)
     triplets = [(pair[0], pair[1], count) for pair, count in sorted(counter.items())]
 
     df = pd.DataFrame(triplets, columns=[&#34;assay&#34;, &#34;cell_type&#34;, &#34;count&#34;])
-    table = df.pivot_table(values=&#34;count&#34;, index=&#34;assay&#34;, columns=&#34;cell_type&#34;, fill_value=0)
-    table.to_csv(filepath, sep=&#39;\t&#39;)</code></pre>
+    table = df.pivot_table(
+        values=&#34;count&#34;, index=&#34;assay&#34;, columns=&#34;cell_type&#34;, fill_value=0
+    )
+    table.to_csv(Path(filepath).with_suffix(&#34;.tsv&#34;), sep=&#34;\t&#34;)</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.utils.analyze_metadata.print_pairs"><code class="name flex">
-<span>def <span class="ident">print_pairs</span></span>(<span>my_metadata: <a title="epi_ml.python.core.metadata.Metadata" href="../core/metadata.html#epi_ml.python.core.metadata.Metadata">Metadata</a>, cat1, cat2)</span>
+<dt id="python.utils.analyze_metadata.print_pairs"><code class="name flex">
+<span>def <span class="ident">print_pairs</span></span>(<span>my_metadata: src.python.core.metadata.Metadata, cat1, cat2)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Print label pairs from the given metadata categories.</p></div>
@@ -306,31 +399,89 @@ if __name__ == &#34;__main__&#34;:
 </summary>
 <pre><code class="python">def print_pairs(my_metadata: Metadata, cat1, cat2):
     &#34;&#34;&#34;Print label pairs from the given metadata categories.&#34;&#34;&#34;
-    counter = count_pairs(my_metadata, cat1, cat2)
+    counter = modify_metadata.count_pairs(my_metadata, cat1, cat2)
     for pair, count in sorted(counter.items()):
         print(pair, count)</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.utils.analyze_metadata.test"><code class="name flex">
-<span>def <span class="ident">test</span></span>(<span>my_metadata: <a title="epi_ml.python.core.metadata.Metadata" href="../core/metadata.html#epi_ml.python.core.metadata.Metadata">Metadata</a>, category1)</span>
+<dt id="python.utils.analyze_metadata.test_generic_classifiers"><code class="name flex">
+<span>def <span class="ident">test_generic_classifiers</span></span>(<span>my_metadata)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Multiple tests to understand how much correct answers you could get
+from statistical derivations, without making any assumptions about the actual data.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def test(my_metadata: Metadata, category1):
+<pre><code class="python">def test_generic_classifiers(my_metadata):
+    &#34;&#34;&#34;Multiple tests to understand how much correct answers you could get
+    from statistical derivations, without making any assumptions about the actual data.&#34;&#34;&#34;
+    import numpy as np
+    import scipy
+    import sklearn
+    from statsmodels.multivariate.manova import MANOVA
 
-    my_metadata.remove_small_classes(10, category1)
-    counter_cat1 = my_metadata.label_counter(category1)
-    for label in sorted(counter_cat1.keys()):
-        temp_metadata = copy.deepcopy(my_metadata)
-        temp_metadata.select_category_subset(label, category1)</code></pre>
+    modify_metadata.merge_pair_end_info(my_metadata)
+    my_metadata.select_category_subsets(&#34;paired_end_mode&#34;, [&#34;single_end&#34;, &#34;paired_end&#34;])
+
+    # -- test 1 with simple classifiers --
+    df = pd.DataFrame(my_metadata.datasets)
+    y = df[&#34;paired_end_mode&#34;]
+    y = sklearn.preprocessing.LabelEncoder().fit_transform(y)
+    classifier = sklearn.linear_model.LogisticRegression(penalty=&#34;none&#34;)
+    classifier = sklearn.ensemble.RandomForestClassifier(
+        class_weight=&#34;balanced_subsample&#34;
+    )
+    correlations = []
+    for category in my_metadata.get_categories():
+        X = df[category]
+        X = sklearn.preprocessing.LabelEncoder().fit_transform(X).reshape(-1, 1)
+        acc = []
+        classifier = classifier.fit(X, y)
+        for i in range(10):
+            X, y = sklearn.utils.shuffle(X, y)
+            y_pred = classifier.predict(X)
+            acc_1 = sklearn.metrics.accuracy_score(y, y_pred)
+            adj_acc = sklearn.metrics.balanced_accuracy_score(y, y_pred, adjusted=True)
+            acc.append((acc_1, adj_acc))
+        acc = np.array(acc)
+        mean_acc = acc.mean(axis=0)
+        std = acc.std(axis=0)[0]
+        correlations.append((category, str(mean_acc[0]), str(mean_acc[1]), str(std)))
+
+    for metrics in correlations:
+        print(&#34; &#34;.join(metrics))
+
+    # -- test 2: Evaluate chi2 --
+    import statsmodels.api as sm
+
+    pivot = pd.crosstab(
+        df[&#34;sample_ontology_term_high_order_unique&#34;], df[&#34;paired_end_mode&#34;]
+    )
+    print(pivot)
+    chi2_stat, p, dof, expected = scipy.stats.chi2_contingency(pivot)
+    print(chi2_stat, expected)
+
+    table = sm.stats.Table.from_data(
+        df[[&#34;sample_ontology_term_high_order_unique&#34;, &#34;paired_end_mode&#34;]]
+    )
+    print(table.table_orig, &#34;\n&#34;)
+    print(table.fittedvalues, &#34;\n&#34;)
+    print(table.resid_pearson, &#34;\n&#34;)
+    print(table.chi2_contribs, &#34;\n&#34;)
+
+    # -- test 3: MANOVA --
+    # encode labels
+    df = df.apply(lambda x: pd.factorize(x)[0])
+    maov = MANOVA.from_formula(
+        &#34;sample_ontology_term_high_order_unique ~ paired_end_mode&#34;, data=df
+    )
+    print(maov.mv_test())</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.utils.analyze_metadata.two_step_long_analysis"><code class="name flex">
-<span>def <span class="ident">two_step_long_analysis</span></span>(<span>my_metadata: <a title="epi_ml.python.core.metadata.Metadata" href="../core/metadata.html#epi_ml.python.core.metadata.Metadata">Metadata</a>, category1, category2)</span>
+<dt id="python.utils.analyze_metadata.two_step_long_analysis"><code class="name flex">
+<span>def <span class="ident">two_step_long_analysis</span></span>(<span>my_metadata: src.python.core.metadata.Metadata, category1, category2)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -340,7 +491,9 @@ if __name__ == &#34;__main__&#34;:
 </summary>
 <pre><code class="python">def two_step_long_analysis(my_metadata: Metadata, category1, category2):
 
-    print(f&#34;First we remove small classes from {category1} and only keep datasets which have a {category2}.&#34;)
+    print(
+        f&#34;First we remove small classes from {category1} and only keep datasets which have a {category2}.&#34;
+    )
     my_metadata.remove_small_classes(10, category1)
     my_metadata.remove_missing_labels(category2)
     my_metadata.display_labels(category1)
@@ -351,17 +504,19 @@ if __name__ == &#34;__main__&#34;:
     for label in sorted(labels):
         print(f&#34;--{label}--&#34;)
         temp_metadata = copy.deepcopy(my_metadata)
-        temp_metadata.select_category_subset(label, category1)
+        temp_metadata.select_category_subsets(label, [category1])
         temp_metadata.remove_small_classes(10, category2)
         if len(temp_metadata.label_counter(category2).most_common()) &gt; 1:
             nb_classes_kept += 1
         temp_metadata.display_labels(category2)
 
-    print(f&#34;Number of classes with &gt;1 cell_type label, from {category1}: {nb_classes_kept}/{len(labels)}&#34;)</code></pre>
+    print(
+        f&#34;Number of classes with &gt;1 cell_type label, from {category1}: {nb_classes_kept}/{len(labels)}&#34;
+    )</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.utils.analyze_metadata.two_step_table_analysis"><code class="name flex">
-<span>def <span class="ident">two_step_table_analysis</span></span>(<span>my_metadata: <a title="epi_ml.python.core.metadata.Metadata" href="../core/metadata.html#epi_ml.python.core.metadata.Metadata">Metadata</a>, category1, category2)</span>
+<dt id="python.utils.analyze_metadata.two_step_table_analysis"><code class="name flex">
+<span>def <span class="ident">two_step_table_analysis</span></span>(<span>my_metadata: src.python.core.metadata.Metadata, category1, category2)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -383,9 +538,11 @@ if __name__ == &#34;__main__&#34;:
         info[label][&#34;total_examples_before_step2_filter&#34;] = counter_cat1[label]
 
         temp_metadata = copy.deepcopy(my_metadata)
-        temp_metadata.select_category_subset(label, category1)
+        temp_metadata.select_category_subsets(label, [category1])
 
-        info[label][&#34;total_classes_before_step2_filter&#34;] = len(temp_metadata.label_counter(category2))
+        info[label][&#34;total_classes_before_step2_filter&#34;] = len(
+            temp_metadata.label_counter(category2)
+        )
 
         temp_metadata.remove_small_classes(10, category2)
 
@@ -394,10 +551,15 @@ if __name__ == &#34;__main__&#34;:
         info[label][&#34;total_classes_after_step2_filter&#34;] = len(counter_cat2)
 
     line = &#34;\t{total_classes_before_step2_filter}\t{total_classes_after_step2_filter}\t{total_examples_before_step2_filter}\t{total_examples_after_step2_filter}\t&#34;
-    print(&#34;class_step1\t#labels_before\t#labels_after\t#dsets_before\t#dsets_after\tratio #dsets/#labels&#34;)
+    print(
+        &#34;class_step1\t#labels_before\t#labels_after\t#dsets_before\t#dsets_after\tratio #dsets/#labels&#34;
+    )
     for label, infos in info.items():
         try:
-            ratio = float(infos[&#34;total_examples_after_step2_filter&#34;])/infos[&#34;total_classes_after_step2_filter&#34;]
+            ratio = (
+                float(infos[&#34;total_examples_after_step2_filter&#34;])
+                / infos[&#34;total_classes_after_step2_filter&#34;]
+            )
         except ZeroDivisionError:
             ratio = &#34;--&#34;
         print(label + line.format(**infos) + str(ratio))</code></pre>
@@ -416,19 +578,20 @@ if __name__ == &#34;__main__&#34;:
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="epi_ml.python.utils" href="index.html">epi_ml.python.utils</a></code></li>
+<li><code><a title="python.utils" href="index.html">python.utils</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="epi_ml.python.utils.analyze_metadata.analyze_chromatin_acc" href="#epi_ml.python.utils.analyze_metadata.analyze_chromatin_acc">analyze_chromatin_acc</a></code></li>
-<li><code><a title="epi_ml.python.utils.analyze_metadata.count_pairs" href="#epi_ml.python.utils.analyze_metadata.count_pairs">count_pairs</a></code></li>
-<li><code><a title="epi_ml.python.utils.analyze_metadata.main" href="#epi_ml.python.utils.analyze_metadata.main">main</a></code></li>
-<li><code><a title="epi_ml.python.utils.analyze_metadata.make_table" href="#epi_ml.python.utils.analyze_metadata.make_table">make_table</a></code></li>
-<li><code><a title="epi_ml.python.utils.analyze_metadata.print_pairs" href="#epi_ml.python.utils.analyze_metadata.print_pairs">print_pairs</a></code></li>
-<li><code><a title="epi_ml.python.utils.analyze_metadata.test" href="#epi_ml.python.utils.analyze_metadata.test">test</a></code></li>
-<li><code><a title="epi_ml.python.utils.analyze_metadata.two_step_long_analysis" href="#epi_ml.python.utils.analyze_metadata.two_step_long_analysis">two_step_long_analysis</a></code></li>
-<li><code><a title="epi_ml.python.utils.analyze_metadata.two_step_table_analysis" href="#epi_ml.python.utils.analyze_metadata.two_step_table_analysis">two_step_table_analysis</a></code></li>
+<li><code><a title="python.utils.analyze_metadata.check_epitatlas_uuid_premise" href="#python.utils.analyze_metadata.check_epitatlas_uuid_premise">check_epitatlas_uuid_premise</a></code></li>
+<li><code><a title="python.utils.analyze_metadata.compute_coherence_on_all" href="#python.utils.analyze_metadata.compute_coherence_on_all">compute_coherence_on_all</a></code></li>
+<li><code><a title="python.utils.analyze_metadata.create_json_from_md5_list" href="#python.utils.analyze_metadata.create_json_from_md5_list">create_json_from_md5_list</a></code></li>
+<li><code><a title="python.utils.analyze_metadata.main" href="#python.utils.analyze_metadata.main">main</a></code></li>
+<li><code><a title="python.utils.analyze_metadata.make_table" href="#python.utils.analyze_metadata.make_table">make_table</a></code></li>
+<li><code><a title="python.utils.analyze_metadata.print_pairs" href="#python.utils.analyze_metadata.print_pairs">print_pairs</a></code></li>
+<li><code><a title="python.utils.analyze_metadata.test_generic_classifiers" href="#python.utils.analyze_metadata.test_generic_classifiers">test_generic_classifiers</a></code></li>
+<li><code><a title="python.utils.analyze_metadata.two_step_long_analysis" href="#python.utils.analyze_metadata.two_step_long_analysis">two_step_long_analysis</a></code></li>
+<li><code><a title="python.utils.analyze_metadata.two_step_table_analysis" href="#python.utils.analyze_metadata.two_step_table_analysis">two_step_table_analysis</a></code></li>
 </ul>
 </li>
 </ul>

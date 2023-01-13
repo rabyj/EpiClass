@@ -1,0 +1,70 @@
+[tool.black]
+line-length = 90 # override black's default line-length
+force-exclude = '''
+/(
+    \.git
+  | \.mypy_cache
+  | \.tox
+  | venv
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+
+[tool.isort]
+# make it compatible with black
+profile = "black"
+atomic = true
+combine_as_imports = true
+line_length = 90
+known_first_party = ["epi_ml", "src"]
+src_paths = ["epi_ml/**", "src"]
+known_local_folder = ["epi_ml/**", "src"]
+
+
+[tool.pyright]
+include = ["src"]
+ignore = [
+    "**/__pycache__",
+    "**/epilap/**",
+    "**/notes",
+    ".git",
+    "**/bin/**",
+    "**/site-packages/**"
+    ]
+
+[tool.pylint.main]
+extension-pkg-allow-list = [
+    "numpy",
+    "torch",
+    "pytorch_lightning",
+    "optuna.integration.lightgbm"
+]
+ignore-pattern = ["bin/**.py", "epilap/**.py"]
+
+[tool.pylint.messages_control]
+disable = [
+    "raw-checker-failed",
+    "bad-inline-option",
+    "locally-disabled",
+    "file-ignored",
+    "suppressed-message",
+    "useless-suppression",
+    "deprecated-pragma",
+    "use-symbolic-message-instead",
+    "abstract-method",
+    "arguments-differ",
+    "invalid-name",
+    "wrong-import-order",
+    "wrong-import-position",
+]
+
+[tool.pylint.typecheck]
+generated-members = ["numpy.*","torch.*","pytorch_lightning.*", "optuna.integration.lightgbm.*"]
+
+[tool.pylint.format]
+max-line-length = 120

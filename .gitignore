@@ -3,6 +3,7 @@ slurm_files/
 
 # Dev environnement
 .vscode
+*.lprof
 
 # macOS
 .DS_Store
@@ -33,6 +34,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+bin/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
