@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
-<title>python.core.spectro API documentation</title>
-<meta name="description" content="" />
+<title>python.utils.merge_all_predictions API documentation</title>
+<meta name="description" content="Merge predictions files produced from epilap program.
+Tightly linked with the output of augment_predict_file.py." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -19,50 +20,90 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>python.core.spectro</code></h1>
+<h1 class="title">Module <code>python.utils.merge_all_predictions</code></h1>
 </header>
 <section id="section-intro">
+<p>Merge predictions files produced from epilap program.
+Tightly linked with the output of augment_predict_file.py.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import matplotlib
+<pre><code class="python">&#34;&#34;&#34;Merge predictions files produced from epilap program.
+Tightly linked with the output of augment_predict_file.py.
+&#34;&#34;&#34;
+import argparse
+from pathlib import Path
 
-matplotlib.use(&#34;Agg&#34;)
-
-import h5py
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy import signal
-
-
-def spectro_hg(path):
-    f = h5py.File(path)
-    for group in f:
-        md5 = group
-        break
-    array = np.array([])
-    # fmt: off
-    for i in [&#34;chr1&#34;,&#34;chr2&#34;,&#34;chr3&#34;,&#34;chr4&#34;,&#34;chr5&#34;,&#34;chr6&#34;,&#34;chr7&#34;,&#34;chr8&#34;,&#34;chr9&#34;,&#34;chr10&#34;,&#34;chr11&#34;,&#34;chr12&#34;,&#34;chr13&#34;,&#34;chr14&#34;,&#34;chr15&#34;,&#34;chr16&#34;,&#34;chr17&#34;,&#34;chr18&#34;,&#34;chr19&#34;,&#34;chr20&#34;,&#34;chr21&#34;,&#34;chr22&#34;,&#34;chrX&#34;]:  # fmt: on
-        array = np.concatenate((array, f[md5][i][...]), axis=0)
-    norm = (array - array.mean()) / array.std()
-    # print(norm.size)
-    spectro(norm)
+import pandas as pd
 
 
-def spectro(x):
-    f, t, Sxx = signal.spectrogram(
-        x, window=(&#34;tukey&#34;, 0.005), noverlap=40, nfft=80, nperseg=64, fs=16000
+def parse_arguments() -&gt; argparse.Namespace:
+    &#34;&#34;&#34;argument parser for command line&#34;&#34;&#34;
+    arg_parser = argparse.ArgumentParser(
+        description=&#34;Merge predictions files produced from epilap program. Probabilities only kept for first given file.&#34;
     )
-    # f, t, Sxx = signal.spectrogram(x, window=(&#34;gaussian&#34;,5), nperseg=2**16)
-    # f, t, Sxx = signal.spectrogram(x)
-    # plt.figure()
-    # plt.plot(x)
-    plt.figure()
-    plt.pcolormesh(t, f, np.log10(Sxx))
-    plt.ylabel(&#34;Frequency [Hz]&#34;)
-    plt.xlabel(&#34;Time [sec]&#34;)
-    plt.show()</code></pre>
+    arg_parser.add_argument(
+        &#34;files&#34;,
+        type=Path,
+        nargs=&#34;+&#34;,
+        help=&#34;The predictions files to merge. Should have same columns.&#34;,
+    )
+    arg_parser.add_argument(
+        &#34;-o&#34;,
+        &#34;--output&#34;,
+        type=Path,
+        nargs=&#34;?&#34;,
+        help=&#34;Give a path for the output file.&#34;,
+        default=&#34;all-predictions-merged.csv&#34;,
+    )
+    return arg_parser.parse_args()
+
+
+def main():
+    &#34;&#34;&#34;Main&#34;&#34;&#34;
+    cli = parse_arguments()
+
+    dfs = {file.stem: pd.read_csv(file, sep=&#34;,&#34;) for file in cli.files}
+
+    first_df = list(dfs.values())[0]
+    df_shape = first_df.shape
+    column_names = first_df.columns
+    for name, df in dfs.items():
+        if df.shape != df_shape:
+            raise AssertionError(
+                f&#34;Expected shape {df_shape}, got {df.shape}. File named {name} does not contain same csv shape as first file.&#34;
+            )
+        if not df.columns.equals(column_names):
+            raise AssertionError(
+                f&#34;Headers are not identical. {name} differs from first file&#34;
+            )
+
+    column_names = pd.Index(column_names)
+    join_pos = column_names.get_loc(&#34;True class&#34;)
+    col1 = &#34;1rst/2nd prob ratio&#34;
+    col2 = &#34;files/epiRR&#34;
+    cut_pos_1 = column_names.get_loc(col1)
+    cut_pos_2 = column_names.get_loc(col2)
+    print(
+        f&#34;Will remove content between &#39;{col1}&#39; and &#39;{col2}&#39; columns except for first file.&#34;
+    )
+
+    new_df = first_df
+    for name, df in dfs.items():
+        df = df.drop(df.columns[cut_pos_1 + 1 : cut_pos_2], axis=1)
+        new_df = new_df.merge(
+            df,
+            on=list(column_names)[0 : join_pos + 1],
+            suffixes=(None, f&#34;-{name}&#34;),
+            validate=&#34;1:1&#34;,
+        )
+
+    new_df.to_csv(cli.output, sep=&#34;,&#34;, index=False)
+
+
+if __name__ == &#34;__main__&#34;:
+    main()</code></pre>
 </details>
 </section>
 <section>
@@ -72,51 +113,86 @@ def spectro(x):
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="python.core.spectro.spectro"><code class="name flex">
-<span>def <span class="ident">spectro</span></span>(<span>x)</span>
+<dt id="python.utils.merge_all_predictions.main"><code class="name flex">
+<span>def <span class="ident">main</span></span>(<span>)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Main</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def spectro(x):
-    f, t, Sxx = signal.spectrogram(
-        x, window=(&#34;tukey&#34;, 0.005), noverlap=40, nfft=80, nperseg=64, fs=16000
+<pre><code class="python">def main():
+    &#34;&#34;&#34;Main&#34;&#34;&#34;
+    cli = parse_arguments()
+
+    dfs = {file.stem: pd.read_csv(file, sep=&#34;,&#34;) for file in cli.files}
+
+    first_df = list(dfs.values())[0]
+    df_shape = first_df.shape
+    column_names = first_df.columns
+    for name, df in dfs.items():
+        if df.shape != df_shape:
+            raise AssertionError(
+                f&#34;Expected shape {df_shape}, got {df.shape}. File named {name} does not contain same csv shape as first file.&#34;
+            )
+        if not df.columns.equals(column_names):
+            raise AssertionError(
+                f&#34;Headers are not identical. {name} differs from first file&#34;
+            )
+
+    column_names = pd.Index(column_names)
+    join_pos = column_names.get_loc(&#34;True class&#34;)
+    col1 = &#34;1rst/2nd prob ratio&#34;
+    col2 = &#34;files/epiRR&#34;
+    cut_pos_1 = column_names.get_loc(col1)
+    cut_pos_2 = column_names.get_loc(col2)
+    print(
+        f&#34;Will remove content between &#39;{col1}&#39; and &#39;{col2}&#39; columns except for first file.&#34;
     )
-    # f, t, Sxx = signal.spectrogram(x, window=(&#34;gaussian&#34;,5), nperseg=2**16)
-    # f, t, Sxx = signal.spectrogram(x)
-    # plt.figure()
-    # plt.plot(x)
-    plt.figure()
-    plt.pcolormesh(t, f, np.log10(Sxx))
-    plt.ylabel(&#34;Frequency [Hz]&#34;)
-    plt.xlabel(&#34;Time [sec]&#34;)
-    plt.show()</code></pre>
+
+    new_df = first_df
+    for name, df in dfs.items():
+        df = df.drop(df.columns[cut_pos_1 + 1 : cut_pos_2], axis=1)
+        new_df = new_df.merge(
+            df,
+            on=list(column_names)[0 : join_pos + 1],
+            suffixes=(None, f&#34;-{name}&#34;),
+            validate=&#34;1:1&#34;,
+        )
+
+    new_df.to_csv(cli.output, sep=&#34;,&#34;, index=False)</code></pre>
 </details>
 </dd>
-<dt id="python.core.spectro.spectro_hg"><code class="name flex">
-<span>def <span class="ident">spectro_hg</span></span>(<span>path)</span>
+<dt id="python.utils.merge_all_predictions.parse_arguments"><code class="name flex">
+<span>def <span class="ident">parse_arguments</span></span>(<span>) ‑> argparse.Namespace</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>argument parser for command line</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def spectro_hg(path):
-    f = h5py.File(path)
-    for group in f:
-        md5 = group
-        break
-    array = np.array([])
-    # fmt: off
-    for i in [&#34;chr1&#34;,&#34;chr2&#34;,&#34;chr3&#34;,&#34;chr4&#34;,&#34;chr5&#34;,&#34;chr6&#34;,&#34;chr7&#34;,&#34;chr8&#34;,&#34;chr9&#34;,&#34;chr10&#34;,&#34;chr11&#34;,&#34;chr12&#34;,&#34;chr13&#34;,&#34;chr14&#34;,&#34;chr15&#34;,&#34;chr16&#34;,&#34;chr17&#34;,&#34;chr18&#34;,&#34;chr19&#34;,&#34;chr20&#34;,&#34;chr21&#34;,&#34;chr22&#34;,&#34;chrX&#34;]:  # fmt: on
-        array = np.concatenate((array, f[md5][i][...]), axis=0)
-    norm = (array - array.mean()) / array.std()
-    # print(norm.size)
-    spectro(norm)</code></pre>
+<pre><code class="python">def parse_arguments() -&gt; argparse.Namespace:
+    &#34;&#34;&#34;argument parser for command line&#34;&#34;&#34;
+    arg_parser = argparse.ArgumentParser(
+        description=&#34;Merge predictions files produced from epilap program. Probabilities only kept for first given file.&#34;
+    )
+    arg_parser.add_argument(
+        &#34;files&#34;,
+        type=Path,
+        nargs=&#34;+&#34;,
+        help=&#34;The predictions files to merge. Should have same columns.&#34;,
+    )
+    arg_parser.add_argument(
+        &#34;-o&#34;,
+        &#34;--output&#34;,
+        type=Path,
+        nargs=&#34;?&#34;,
+        help=&#34;Give a path for the output file.&#34;,
+        default=&#34;all-predictions-merged.csv&#34;,
+    )
+    return arg_parser.parse_args()</code></pre>
 </details>
 </dd>
 </dl>
@@ -132,13 +208,13 @@ def spectro(x):
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="python.core" href="index.html">python.core</a></code></li>
+<li><code><a title="python.utils" href="index.html">python.utils</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="python.core.spectro.spectro" href="#python.core.spectro.spectro">spectro</a></code></li>
-<li><code><a title="python.core.spectro.spectro_hg" href="#python.core.spectro.spectro_hg">spectro_hg</a></code></li>
+<li><code><a title="python.utils.merge_all_predictions.main" href="#python.utils.merge_all_predictions.main">main</a></code></li>
+<li><code><a title="python.utils.merge_all_predictions.parse_arguments" href="#python.utils.merge_all_predictions.parse_arguments">parse_arguments</a></code></li>
 </ul>
 </li>
 </ul>

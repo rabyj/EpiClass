@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
-<title>python.core.spectro API documentation</title>
-<meta name="description" content="" />
+<title>python.utils.preconditions API documentation</title>
+<meta name="description" content="Check for specific conditions before running the main program, .e.g git in clean state, metadata passes all test flags, etc …" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -19,50 +19,78 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>python.core.spectro</code></h1>
+<h1 class="title">Module <code>python.utils.preconditions</code></h1>
 </header>
 <section id="section-intro">
+<p>Check for specific conditions before running the main program, .e.g git in clean state, metadata passes all test flags, etc.</p>
+<p>Uses GitPython package.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import matplotlib
+<pre><code class="python">&#34;&#34;&#34;Check for specific conditions before running the main program, .e.g git in clean state, metadata passes all test flags, etc.
 
-matplotlib.use(&#34;Agg&#34;)
+Uses GitPython package.
+&#34;&#34;&#34;
+from __future__ import annotations
 
-import h5py
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy import signal
+import sys
+from pathlib import Path
 
-
-def spectro_hg(path):
-    f = h5py.File(path)
-    for group in f:
-        md5 = group
-        break
-    array = np.array([])
-    # fmt: off
-    for i in [&#34;chr1&#34;,&#34;chr2&#34;,&#34;chr3&#34;,&#34;chr4&#34;,&#34;chr5&#34;,&#34;chr6&#34;,&#34;chr7&#34;,&#34;chr8&#34;,&#34;chr9&#34;,&#34;chr10&#34;,&#34;chr11&#34;,&#34;chr12&#34;,&#34;chr13&#34;,&#34;chr14&#34;,&#34;chr15&#34;,&#34;chr16&#34;,&#34;chr17&#34;,&#34;chr18&#34;,&#34;chr19&#34;,&#34;chr20&#34;,&#34;chr21&#34;,&#34;chr22&#34;,&#34;chrX&#34;]:  # fmt: on
-        array = np.concatenate((array, f[md5][i][...]), axis=0)
-    norm = (array - array.mean()) / array.std()
-    # print(norm.size)
-    spectro(norm)
+from git import Repo
 
 
-def spectro(x):
-    f, t, Sxx = signal.spectrogram(
-        x, window=(&#34;tukey&#34;, 0.005), noverlap=40, nfft=80, nperseg=64, fs=16000
-    )
-    # f, t, Sxx = signal.spectrogram(x, window=(&#34;gaussian&#34;,5), nperseg=2**16)
-    # f, t, Sxx = signal.spectrogram(x)
-    # plt.figure()
-    # plt.plot(x)
-    plt.figure()
-    plt.pcolormesh(t, f, np.log10(Sxx))
-    plt.ylabel(&#34;Frequency [Hz]&#34;)
-    plt.xlabel(&#34;Time [sec]&#34;)
-    plt.show()</code></pre>
+def find_upwards(cwd: Path, filename: str) -&gt; Path | None:
+    &#34;&#34;&#34;Python: search for a file in current directory and all it&#39;s parents
+    https://stackoverflow.com/a/70859914/11472153&#34;&#34;&#34;
+    if cwd == Path(cwd.root) or cwd == cwd.parent:
+        return None
+
+    fullpath = cwd / filename
+
+    return fullpath if fullpath.exists() else find_upwards(cwd.parent, filename)
+
+
+def git_repo_is_clean(verbose=True) -&gt; bool:
+    &#34;&#34;&#34;Verifies that the git has no staged or tracked unstaged changes.
+
+    Return True if condition verified.
+    &#34;&#34;&#34;
+    is_clean = True
+    dir_here = Path(__file__).resolve()
+    git_dir = find_upwards(dir_here, &#34;.git&#34;)
+    if git_dir is None:
+        raise OSError(&#34;Could not find git directory.&#34;)
+
+    repo = Repo(git_dir)
+
+    # Verify if staged changes exist
+    staged = [item.a_path for item in repo.index.diff(&#34;HEAD&#34;)]
+    if staged:
+        is_clean = False
+        if verbose:
+            print(f&#34;Staged files exist: {staged}&#34;)
+
+    # Verify if tracked+unstaged changes exist
+    unstaged = [item.a_path for item in repo.index.diff(None)]
+    if unstaged:
+        is_clean = False
+        if verbose:
+            print(f&#34;Tracked+unstaged changes exist: {unstaged}&#34;)
+
+    return is_clean
+
+
+def main():
+    &#34;&#34;&#34;Exit with error a precondition is not met.&#34;&#34;&#34;
+
+    if not git_repo_is_clean():
+        print(&#34;Git directory not in a clean state, exiting with error.&#34;)
+        sys.exit(1)
+
+
+if __name__ == &#34;__main__&#34;:
+    main()</code></pre>
 </details>
 </section>
 <section>
@@ -72,51 +100,82 @@ def spectro(x):
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="python.core.spectro.spectro"><code class="name flex">
-<span>def <span class="ident">spectro</span></span>(<span>x)</span>
+<dt id="python.utils.preconditions.find_upwards"><code class="name flex">
+<span>def <span class="ident">find_upwards</span></span>(<span>cwd: Path, filename: str) ‑> Path | None</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Python: search for a file in current directory and all it's parents
+<a href="https://stackoverflow.com/a/70859914/11472153">https://stackoverflow.com/a/70859914/11472153</a></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def spectro(x):
-    f, t, Sxx = signal.spectrogram(
-        x, window=(&#34;tukey&#34;, 0.005), noverlap=40, nfft=80, nperseg=64, fs=16000
-    )
-    # f, t, Sxx = signal.spectrogram(x, window=(&#34;gaussian&#34;,5), nperseg=2**16)
-    # f, t, Sxx = signal.spectrogram(x)
-    # plt.figure()
-    # plt.plot(x)
-    plt.figure()
-    plt.pcolormesh(t, f, np.log10(Sxx))
-    plt.ylabel(&#34;Frequency [Hz]&#34;)
-    plt.xlabel(&#34;Time [sec]&#34;)
-    plt.show()</code></pre>
+<pre><code class="python">def find_upwards(cwd: Path, filename: str) -&gt; Path | None:
+    &#34;&#34;&#34;Python: search for a file in current directory and all it&#39;s parents
+    https://stackoverflow.com/a/70859914/11472153&#34;&#34;&#34;
+    if cwd == Path(cwd.root) or cwd == cwd.parent:
+        return None
+
+    fullpath = cwd / filename
+
+    return fullpath if fullpath.exists() else find_upwards(cwd.parent, filename)</code></pre>
 </details>
 </dd>
-<dt id="python.core.spectro.spectro_hg"><code class="name flex">
-<span>def <span class="ident">spectro_hg</span></span>(<span>path)</span>
+<dt id="python.utils.preconditions.git_repo_is_clean"><code class="name flex">
+<span>def <span class="ident">git_repo_is_clean</span></span>(<span>verbose=True) ‑> bool</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Verifies that the git has no staged or tracked unstaged changes.</p>
+<p>Return True if condition verified.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def spectro_hg(path):
-    f = h5py.File(path)
-    for group in f:
-        md5 = group
-        break
-    array = np.array([])
-    # fmt: off
-    for i in [&#34;chr1&#34;,&#34;chr2&#34;,&#34;chr3&#34;,&#34;chr4&#34;,&#34;chr5&#34;,&#34;chr6&#34;,&#34;chr7&#34;,&#34;chr8&#34;,&#34;chr9&#34;,&#34;chr10&#34;,&#34;chr11&#34;,&#34;chr12&#34;,&#34;chr13&#34;,&#34;chr14&#34;,&#34;chr15&#34;,&#34;chr16&#34;,&#34;chr17&#34;,&#34;chr18&#34;,&#34;chr19&#34;,&#34;chr20&#34;,&#34;chr21&#34;,&#34;chr22&#34;,&#34;chrX&#34;]:  # fmt: on
-        array = np.concatenate((array, f[md5][i][...]), axis=0)
-    norm = (array - array.mean()) / array.std()
-    # print(norm.size)
-    spectro(norm)</code></pre>
+<pre><code class="python">def git_repo_is_clean(verbose=True) -&gt; bool:
+    &#34;&#34;&#34;Verifies that the git has no staged or tracked unstaged changes.
+
+    Return True if condition verified.
+    &#34;&#34;&#34;
+    is_clean = True
+    dir_here = Path(__file__).resolve()
+    git_dir = find_upwards(dir_here, &#34;.git&#34;)
+    if git_dir is None:
+        raise OSError(&#34;Could not find git directory.&#34;)
+
+    repo = Repo(git_dir)
+
+    # Verify if staged changes exist
+    staged = [item.a_path for item in repo.index.diff(&#34;HEAD&#34;)]
+    if staged:
+        is_clean = False
+        if verbose:
+            print(f&#34;Staged files exist: {staged}&#34;)
+
+    # Verify if tracked+unstaged changes exist
+    unstaged = [item.a_path for item in repo.index.diff(None)]
+    if unstaged:
+        is_clean = False
+        if verbose:
+            print(f&#34;Tracked+unstaged changes exist: {unstaged}&#34;)
+
+    return is_clean</code></pre>
+</details>
+</dd>
+<dt id="python.utils.preconditions.main"><code class="name flex">
+<span>def <span class="ident">main</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Exit with error a precondition is not met.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def main():
+    &#34;&#34;&#34;Exit with error a precondition is not met.&#34;&#34;&#34;
+
+    if not git_repo_is_clean():
+        print(&#34;Git directory not in a clean state, exiting with error.&#34;)
+        sys.exit(1)</code></pre>
 </details>
 </dd>
 </dl>
@@ -132,13 +191,14 @@ def spectro(x):
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="python.core" href="index.html">python.core</a></code></li>
+<li><code><a title="python.utils" href="index.html">python.utils</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="python.core.spectro.spectro" href="#python.core.spectro.spectro">spectro</a></code></li>
-<li><code><a title="python.core.spectro.spectro_hg" href="#python.core.spectro.spectro_hg">spectro_hg</a></code></li>
+<li><code><a title="python.utils.preconditions.find_upwards" href="#python.utils.preconditions.find_upwards">find_upwards</a></code></li>
+<li><code><a title="python.utils.preconditions.git_repo_is_clean" href="#python.utils.preconditions.git_repo_is_clean">git_repo_is_clean</a></code></li>
+<li><code><a title="python.utils.preconditions.main" href="#python.utils.preconditions.main">main</a></code></li>
 </ul>
 </li>
 </ul>
