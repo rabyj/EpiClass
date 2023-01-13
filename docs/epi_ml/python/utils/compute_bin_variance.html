@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
-<title>epi_ml.python.utils.compute_bin_variance API documentation</title>
+<title>python.utils.compute_bin_variance API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
@@ -19,7 +19,7 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>epi_ml.python.utils.compute_bin_variance</code></h1>
+<h1 class="title">Module <code>python.utils.compute_bin_variance</code></h1>
 </header>
 <section id="section-intro">
 <details class="source">
@@ -28,54 +28,60 @@
 </summary>
 <pre><code class="python">import argparse
 from pathlib import Path
-import sys
 
 import numpy as np
 
-from epi_ml.python.argparseutils.directorychecker import DirectoryChecker
-from epi_ml.python.core import data
-from epi_ml.python.core import analysis
+from src.python.argparseutils.directorychecker import DirectoryChecker
+from src.python.core import analysis, data
 
-def parse_arguments(args: list) -&gt; argparse.Namespace:
+
+def parse_arguments() -&gt; argparse.Namespace:
     &#34;&#34;&#34;argument parser for command line&#34;&#34;&#34;
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument(&#39;hdf5&#39;, type=Path, help=&#39;A file with hdf5 filenames. Use absolute path!&#39;)
-    arg_parser.add_argument(&#39;chromsize&#39;, type=Path, help=&#39;A file with chrom sizes.&#39;)
-    arg_parser.add_argument(&#39;metadata&#39;, type=Path, help=&#39;A metadata JSON file.&#39;)
-    arg_parser.add_argument(&#39;logdir&#39;, type=DirectoryChecker(), help=&#39;A directory for the logs.&#39;)
-    return arg_parser.parse_args(args)
+    arg_parser.add_argument(
+        &#34;hdf5&#34;, type=Path, help=&#34;A file with hdf5 filenames. Use absolute path!&#34;
+    )
+    arg_parser.add_argument(&#34;chromsize&#34;, type=Path, help=&#34;A file with chrom sizes.&#34;)
+    arg_parser.add_argument(&#34;metadata&#34;, type=Path, help=&#34;A metadata JSON file.&#34;)
+    arg_parser.add_argument(
+        &#34;logdir&#34;, type=DirectoryChecker(), help=&#34;A directory for the logs.&#34;
+    )
+    return arg_parser.parse_args()
+
 
 def compute_variance(hdf5s):
     &#34;&#34;&#34;Return array of variance per signal bin from hdf5 signals dict.&#34;&#34;&#34;
     return np.var(list(hdf5s.values()), axis=0)
 
-def main(args):
+
+def main():
     &#34;&#34;&#34;main called from command line, edit to change behavior&#34;&#34;&#34;
     # parse params
-    epiml_options = parse_arguments(args)
+    epiml_options = parse_arguments()
 
     # load external files
     my_datasource = data.EpiDataSource(
-        epiml_options.hdf5,
-        epiml_options.chromsize,
-        epiml_options.metadata
-        )
+        epiml_options.hdf5, epiml_options.chromsize, epiml_options.metadata
+    )
 
     # load useful info
     hdf5_resolution = my_datasource.hdf5_resolution()
     chroms = my_datasource.load_chrom_sizes()
 
     # md5:signal dict
-    signals = data.Hdf5Loader(
-        my_datasource.chromsize_file, normalization=True
-        ).load_hdf5s(my_datasource.hdf5_file).signals
+    signals = (
+        data.Hdf5Loader(my_datasource.chromsize_file, normalization=True)
+        .load_hdf5s(my_datasource.hdf5_file)
+        .signals
+    )
 
     variance = compute_variance(signals)
     bedgraph_path = epiml_options.logdir / &#34;variance.bedgraph&#34;
     analysis.values_to_bedgraph(variance, chroms, hdf5_resolution, bedgraph_path)
 
+
 if __name__ == &#34;__main__&#34;:
-    main(sys.argv[1:])</code></pre>
+    main()</code></pre>
 </details>
 </section>
 <section>
@@ -85,7 +91,7 @@ if __name__ == &#34;__main__&#34;:
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="epi_ml.python.utils.compute_bin_variance.compute_variance"><code class="name flex">
+<dt id="python.utils.compute_bin_variance.compute_variance"><code class="name flex">
 <span>def <span class="ident">compute_variance</span></span>(<span>hdf5s)</span>
 </code></dt>
 <dd>
@@ -99,8 +105,8 @@ if __name__ == &#34;__main__&#34;:
     return np.var(list(hdf5s.values()), axis=0)</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.utils.compute_bin_variance.main"><code class="name flex">
-<span>def <span class="ident">main</span></span>(<span>args)</span>
+<dt id="python.utils.compute_bin_variance.main"><code class="name flex">
+<span>def <span class="ident">main</span></span>(<span>)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>main called from command line, edit to change behavior</p></div>
@@ -108,34 +114,34 @@ if __name__ == &#34;__main__&#34;:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def main(args):
+<pre><code class="python">def main():
     &#34;&#34;&#34;main called from command line, edit to change behavior&#34;&#34;&#34;
     # parse params
-    epiml_options = parse_arguments(args)
+    epiml_options = parse_arguments()
 
     # load external files
     my_datasource = data.EpiDataSource(
-        epiml_options.hdf5,
-        epiml_options.chromsize,
-        epiml_options.metadata
-        )
+        epiml_options.hdf5, epiml_options.chromsize, epiml_options.metadata
+    )
 
     # load useful info
     hdf5_resolution = my_datasource.hdf5_resolution()
     chroms = my_datasource.load_chrom_sizes()
 
     # md5:signal dict
-    signals = data.Hdf5Loader(
-        my_datasource.chromsize_file, normalization=True
-        ).load_hdf5s(my_datasource.hdf5_file).signals
+    signals = (
+        data.Hdf5Loader(my_datasource.chromsize_file, normalization=True)
+        .load_hdf5s(my_datasource.hdf5_file)
+        .signals
+    )
 
     variance = compute_variance(signals)
     bedgraph_path = epiml_options.logdir / &#34;variance.bedgraph&#34;
     analysis.values_to_bedgraph(variance, chroms, hdf5_resolution, bedgraph_path)</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.utils.compute_bin_variance.parse_arguments"><code class="name flex">
-<span>def <span class="ident">parse_arguments</span></span>(<span>args: list) ‑> argparse.Namespace</span>
+<dt id="python.utils.compute_bin_variance.parse_arguments"><code class="name flex">
+<span>def <span class="ident">parse_arguments</span></span>(<span>) ‑> argparse.Namespace</span>
 </code></dt>
 <dd>
 <div class="desc"><p>argument parser for command line</p></div>
@@ -143,14 +149,18 @@ if __name__ == &#34;__main__&#34;:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def parse_arguments(args: list) -&gt; argparse.Namespace:
+<pre><code class="python">def parse_arguments() -&gt; argparse.Namespace:
     &#34;&#34;&#34;argument parser for command line&#34;&#34;&#34;
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument(&#39;hdf5&#39;, type=Path, help=&#39;A file with hdf5 filenames. Use absolute path!&#39;)
-    arg_parser.add_argument(&#39;chromsize&#39;, type=Path, help=&#39;A file with chrom sizes.&#39;)
-    arg_parser.add_argument(&#39;metadata&#39;, type=Path, help=&#39;A metadata JSON file.&#39;)
-    arg_parser.add_argument(&#39;logdir&#39;, type=DirectoryChecker(), help=&#39;A directory for the logs.&#39;)
-    return arg_parser.parse_args(args)</code></pre>
+    arg_parser.add_argument(
+        &#34;hdf5&#34;, type=Path, help=&#34;A file with hdf5 filenames. Use absolute path!&#34;
+    )
+    arg_parser.add_argument(&#34;chromsize&#34;, type=Path, help=&#34;A file with chrom sizes.&#34;)
+    arg_parser.add_argument(&#34;metadata&#34;, type=Path, help=&#34;A metadata JSON file.&#34;)
+    arg_parser.add_argument(
+        &#34;logdir&#34;, type=DirectoryChecker(), help=&#34;A directory for the logs.&#34;
+    )
+    return arg_parser.parse_args()</code></pre>
 </details>
 </dd>
 </dl>
@@ -166,14 +176,14 @@ if __name__ == &#34;__main__&#34;:
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="epi_ml.python.utils" href="index.html">epi_ml.python.utils</a></code></li>
+<li><code><a title="python.utils" href="index.html">python.utils</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="epi_ml.python.utils.compute_bin_variance.compute_variance" href="#epi_ml.python.utils.compute_bin_variance.compute_variance">compute_variance</a></code></li>
-<li><code><a title="epi_ml.python.utils.compute_bin_variance.main" href="#epi_ml.python.utils.compute_bin_variance.main">main</a></code></li>
-<li><code><a title="epi_ml.python.utils.compute_bin_variance.parse_arguments" href="#epi_ml.python.utils.compute_bin_variance.parse_arguments">parse_arguments</a></code></li>
+<li><code><a title="python.utils.compute_bin_variance.compute_variance" href="#python.utils.compute_bin_variance.compute_variance">compute_variance</a></code></li>
+<li><code><a title="python.utils.compute_bin_variance.main" href="#python.utils.compute_bin_variance.main">main</a></code></li>
+<li><code><a title="python.utils.compute_bin_variance.parse_arguments" href="#python.utils.compute_bin_variance.parse_arguments">parse_arguments</a></code></li>
 </ul>
 </li>
 </ul>

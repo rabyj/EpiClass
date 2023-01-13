@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
-<title>epi_ml.python.core.metadata API documentation</title>
+<title>python.core.metadata API documentation</title>
 <meta name="description" content="Module from Metadata class and HealthyCategory." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
@@ -19,7 +19,7 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>epi_ml.python.core.metadata</code></h1>
+<h1 class="title">Module <code>python.core.metadata</code></h1>
 </header>
 <section id="section-intro">
 <p>Module from Metadata class and HealthyCategory.</p>
@@ -28,24 +28,37 @@
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Module from Metadata class and HealthyCategory.&#34;&#34;&#34;
+# pylint: disable=unnecessary-lambda-assignment
 from __future__ import annotations
+
 import copy
-import collections
 import json
+import os
+from collections import Counter, defaultdict
+from collections.abc import Iterable
 from pathlib import Path
-from typing import List
+from typing import Dict, List
+
 
 class Metadata(object):
-    &#34;&#34;&#34;Wrapper around metadata md5:dataset dict.&#34;&#34;&#34;
-    def __init__(self, meta_file: Path):
-        self._metadata = self._load_metadata(meta_file)
+    &#34;&#34;&#34;
+    Wrapper around metadata md5:dataset dict.
+
+    path (Path): Path to json file containing metadata for some datasets.
+    &#34;&#34;&#34;
+
+    def __init__(self, path: Path):
+        self._metadata = self._load_metadata(path)
+        self._rest = {}
 
     @classmethod
-    def from_dict(cls, metadata: dict) -&gt; Metadata:
+    def from_dict(cls, metadata: Dict[str, dict]) -&gt; Metadata:
         &#34;&#34;&#34;Creates an object from a dict conforming to {md5sum:dset} format.&#34;&#34;&#34;
         first_key = list(metadata.keys())[0]
         if len(first_key) != 32:
-            raise Exception(f&#34;Incorrect format of metadata. Key need to be md5sum (len=32). Is: {first_key}&#34;)
+            raise Exception(
+                f&#34;Incorrect format of metadata. Key need to be md5sum (len=32). Is: {first_key}&#34;
+            )
 
         obj = cls.__new__(cls)
         obj._metadata = copy.deepcopy(metadata)
@@ -78,6 +91,10 @@ class Metadata(object):
         &#34;&#34;&#34;Dict .update equivalent. Info needs to respect {md5sum:dset} format.&#34;&#34;&#34;
         self._metadata.update(info.items)
 
+    def save(self, path):
+        &#34;&#34;&#34;Save the metadata to path, in original epigeec_json format.&#34;&#34;&#34;
+        self._save_metadata(path)
+
     @property
     def md5s(self):
         &#34;&#34;&#34;Return md5s (iterator). dict.keys() equivalent.&#34;&#34;&#34;
@@ -93,33 +110,48 @@ class Metadata(object):
         &#34;&#34;&#34;Return pairs (iterator). dict.items() equivalent&#34;&#34;&#34;
         return self._metadata.items()
 
-    def _load_metadata(self, meta_file):
+    def _load_metadata(self, path):
         &#34;&#34;&#34;Return md5:dataset dict.&#34;&#34;&#34;
-        with open(meta_file, &#39;r&#39;, encoding=&#34;utf-8&#34;) as file:
+        with open(path, &#34;r&#34;, encoding=&#34;utf-8&#34;) as file:
             meta_raw = json.load(file)
-        return {dset[&#34;md5sum&#34;]:dset for dset in meta_raw[&#34;datasets&#34;]}
+
+        self._rest = {k: v for k, v in meta_raw.items() if k != &#34;datasets&#34;}
+        return {dset[&#34;md5sum&#34;]: dset for dset in meta_raw[&#34;datasets&#34;]}
+
+    def _save_metadata(self, path):
+        &#34;&#34;&#34;Save the metadata to path, in original epigeec_json format.
+
+        Only saves dataset information.
+        &#34;&#34;&#34;
+        to_save = {&#34;datasets&#34;: list(self.datasets)}
+        to_save.update(self._rest)
+        with open(path, &#34;w&#34;, encoding=&#34;utf-8&#34;) as file:
+            json.dump(to_save, file)
 
     def apply_filter(self, meta_filter=lambda item: True):
         &#34;&#34;&#34;Apply a filter on items (md5:dataset).&#34;&#34;&#34;
-        self._metadata = dict(filter(meta_filter, self._metadata.items()))
+        self._metadata = dict(filter(meta_filter, self.items))
 
     def remove_missing_labels(self, label_category: str):
         &#34;&#34;&#34;Remove datasets where the metadata category is missing.&#34;&#34;&#34;
         filt = lambda item: label_category in item[1]
-        self.apply_filter(filt)
+        self.apply_filter(filt)  # type: ignore
 
-    def md5_per_class(self, label_category: str):
+    def md5_per_class(self, label_category: str) -&gt; Dict[str, List[str]]:
         &#34;&#34;&#34;Return {label/class:md5 list} dict for a given metadata category.
 
         Can fail if remove_missing_labels has not been ran before.
         &#34;&#34;&#34;
-        sorted_md5 = sorted(self._metadata.keys())
-        data = collections.defaultdict(list)
+        sorted_md5 = sorted(self.md5s)
+        data = defaultdict(list)
         for md5 in sorted_md5:
-            data[self._metadata[md5][label_category]].append(md5)
+            label = self[md5][label_category]
+            data[label].append(md5)
         return data
 
-    def remove_small_classes(self, min_class_size, label_category: str, verbose=True):
+    def remove_small_classes(
+        self, min_class_size: int, label_category: str, verbose=True
+    ):
         &#34;&#34;&#34;Remove classes with less than min_class_size examples
         for a given metatada category.
 
@@ -133,7 +165,7 @@ class Metadata(object):
             if size &lt; min_class_size:
                 nb_removed_class += 1
                 for md5 in data[label]:
-                    del self._metadata[md5]
+                    del self[md5]
 
         if verbose:
             remaining = nb_class - nb_removed_class
@@ -143,26 +175,30 @@ class Metadata(object):
                 f&#34;after removing classes with less than {min_class_size} signals.&#34;
             )
 
-    def select_category_subsets(self, label_category: str, labels: list):
+    def select_category_subsets(self, label_category: str, labels: Iterable[str]):
         &#34;&#34;&#34;Select only datasets which possess the given labels
         for the given label category.
         &#34;&#34;&#34;
         filt = lambda item: item[1].get(label_category) in set(labels)
-        self.apply_filter(filt)
+        self.apply_filter(filt)  # type: ignore
 
-    def remove_category_subsets(self, label_category: str, labels: list):
+    def remove_category_subsets(self, label_category: str, labels: Iterable[str]):
         &#34;&#34;&#34;Remove datasets which possess the given labels
         for the given label category.
         &#34;&#34;&#34;
         filt = lambda item: item[1].get(label_category) not in set(labels)
-        self.apply_filter(filt)
+        self.apply_filter(filt)  # type: ignore
 
-    def label_counter(self, label_category: str):
-        &#34;&#34;&#34;Return a Counter() with label count from the given category.&#34;&#34;&#34;
-        counter = collections.Counter()
-        for labels in self._metadata.values():
-            label = labels[label_category]
-            counter.update([label])
+    def label_counter(self, label_category: str, verbose=True) -&gt; Counter[str]:
+        &#34;&#34;&#34;Return a Counter() with label count from the given category.
+        Ignores missing labels.
+        &#34;&#34;&#34;
+        counter = Counter([dset.get(label_category) for dset in self.datasets])
+
+        if verbose:
+            print(f&#34;{counter[None]} labels missing and ignored from count&#34;)
+        del counter[None]
+
         return counter
 
     def unique_classes(self, label_category: str) -&gt; List[str]:
@@ -175,30 +211,70 @@ class Metadata(object):
 
     def display_labels(self, label_category: str):
         &#34;&#34;&#34;Print number of examples for each label in given category.&#34;&#34;&#34;
-        print(&#39;\nExamples&#39;)
+        print(f&#34;\nLabel breakdown for {label_category}&#34;)
         i = 0
         for label, count in self.label_counter(label_category).most_common():
-            print(f&#39;{label}: {count}&#39;)
+            print(f&#34;{label}: {count}&#34;)
             i += count
         print(f&#34;For a total of {i} examples\n&#34;)
 
-    def get_categories(self):
-        &#34;&#34;&#34;Return a sorted list of all metadata categories.&#34;&#34;&#34;
+    def get_categories(self) -&gt; list[str]:
+        &#34;&#34;&#34;Return a list of all metadata categories sorted by lowercase.&#34;&#34;&#34;
         categories = set()
-        for dset in self._metadata.values():
+        for dset in self.datasets:
             categories.update(dset.keys())
-        return sorted(categories)
+        return sorted(categories, key=str.lower)
 
-    def merge_classes(self, category: str, converter: dict):
-        &#34;&#34;&#34;Combine classes labels in the given category using the converter mapping.&#34;&#34;&#34;
+    def convert_classes(self, category: str, converter: Dict[str, str]):
+        &#34;&#34;&#34;Convert classes labels in the given category using the converter mapping.&#34;&#34;&#34;
         for dataset in self.datasets:
             label = dataset.get(category, None)
             if label in converter:
                 dataset[category] = converter[label]
 
 
+def env_filtering(metadata: Metadata, category: str) -&gt; List[str]:
+    &#34;&#34;&#34;Filter metadata using environment variables.
+    Return the list of classes/labels to consider.
+
+    Currently supports:
+    EXCLUDE_LIST
+    ASSAY_LIST
+    LABEL_LIST
+    &#34;&#34;&#34;
+    print(&#34;Checking environment variables.&#34;)
+    # fmt: off
+    name = &#34;ASSAY_LIST&#34;
+    if os.getenv(name) is not None:
+        assay_list = json.loads(os.environ[name])
+        print(f&#34;{name}: {assay_list}&#34;)
+        print(f&#34;Filtering metadata: Only keeping examples with targets/assay {assay_list}&#34;)
+        metadata.select_category_subsets(&#34;assay&#34;, assay_list)
+
+    name = &#34;EXCLUDE_LIST&#34;
+    if os.getenv(name) is not None:
+        exclude_list = json.loads(os.environ[name])
+        print(f&#34;{name}: {exclude_list}&#34;)
+        print(f&#34;Filtering metadata: Removing labels {exclude_list} from category &#39;{category}&#39;.&#34;)
+        metadata.remove_category_subsets(label_category=category, labels=exclude_list)
+
+    name = &#34;LABEL_LIST&#34;
+    if os.getenv(name) is not None:
+        label_list = json.loads(os.environ[name])
+        print(f&#34;{name}: {label_list}&#34;)
+        print(f&#34;Filtering metadata: Only keeping examples with labels {label_list} from &#39;{category}&#39;&#34;)
+        metadata.select_category_subsets(category, label_list)
+    else:
+        label_list = metadata.unique_classes(category)
+        print(f&#34;No label list, considering all left classes : {label_list}&#34;)
+    # fmt: on
+
+    return label_list
+
+
 class HealthyCategory(object):
     &#34;&#34;&#34;Create/Represent/manipulate the &#34;healthy&#34; metadata category&#34;&#34;&#34;
+
     def __init__(self):
         self.pairs_file = Path(__file__).parent / &#34;healthy_category.tsv&#34;
         self.healthy_dict = self.read_healthy_pairs()
@@ -224,9 +300,9 @@ class HealthyCategory(object):
         &#34;&#34;&#34;
         healthy_dict = {}
         with open(self.pairs_file, &#34;r&#34;, encoding=&#34;utf-8&#34;) as tsv_file:
-            next(tsv_file) # skip header
+            next(tsv_file)  # skip header
             for line in tsv_file:
-                disease, donor_health_status, healthy = line.rstrip(&#39;\n&#39;).split(&#39;\t&#39;)
+                disease, donor_health_status, healthy = line.rstrip(&#34;\n&#34;).split(&#34;\t&#34;)
                 healthy_dict[(disease, donor_health_status)] = healthy
         return healthy_dict
 
@@ -248,207 +324,7 @@ class HealthyCategory(object):
             healthy = healthy_category.get_healthy_status(dataset)
             if healthy == &#34;?&#34;:
                 continue
-            dataset[&#34;healthy&#34;] = healthy
-
-
-def keep_major_cell_types(my_metadata: Metadata):
-    &#34;&#34;&#34;Remove datasets which are not part of a cell_type which has
-    at least 10 signals in two assays. Those assays must also have
-    at least two cell_type.
-    &#34;&#34;&#34;
-    # First pass to remove useless classes
-    for category in [&#34;assay&#34;, &#34;cell_type&#34;]:
-        my_metadata.remove_small_classes(10, category)
-
-    # Find big enough cell types in each assay
-    md5s_per_assay = my_metadata.md5_per_class(&#34;assay&#34;)
-    cell_types_in_assay = {}
-    for assay, md5s in md5s_per_assay.items():
-
-        # count cell_type occurence in assay
-        cell_types_count = collections.Counter(
-            my_metadata[md5][&#34;cell_type&#34;] for md5 in md5s
-            )
-
-        # remove small classes from counter
-        cell_types_count = {
-            cell_type:size for cell_type, size in cell_types_count.items()
-            if size &gt;= 10
-            }
-
-        # bad assay if only one class left with more than 10 examples
-        if len(cell_types_count) == 1:
-            cell_types_count = {}
-
-        # delete small classes from metadata
-        for md5 in md5s:
-            if my_metadata[md5][&#34;cell_type&#34;] not in cell_types_count:
-                del my_metadata[md5]
-
-        # keep track of big enough classes
-        if cell_types_count:
-            cell_types_in_assay[assay] = set(cell_types_count.keys())
-
-    # Count in how many assay each passing cell_type is
-    cell_type_counter = collections.Counter()
-    for cell_type_set in cell_types_in_assay.values():
-        for cell_type in cell_type_set:
-            cell_type_counter[cell_type] += 1
-
-    # Remove signals which are not part of common+big cell_types
-    for md5 in list(my_metadata.md5s):
-        dset = my_metadata[md5]
-        good_cell_type = cell_type_counter.get(dset[&#34;cell_type&#34;], 0) &gt; 1
-        if not good_cell_type:
-            del my_metadata[md5]
-
-    return my_metadata
-
-
-def keep_major_cell_types_alt(my_metadata: Metadata):
-    &#34;&#34;&#34;Return a filtered metadata with certain assays. Datasets which are
-    not part of a cell_type which has at least 10 signals are removed.
-    &#34;&#34;&#34;
-    my_meta = copy.deepcopy(my_metadata)
-
-    # remove useless assays and cell_types
-    assays = [
-        &#34;chromatin_acc&#34;, &#34;h3k27ac&#34;, &#34;h3k27me3&#34;, &#34;h3k36me3&#34;, &#34;h3k4me1&#34;,
-        &#34;h3k4me3&#34;, &#34;h3k9me3&#34;, &#34;input&#34;, &#34;mrna_seq&#34;, &#34;rna_seq&#34;, &#34;wgb_seq&#34;
-        ]
-    my_meta.select_category_subsets(&#34;assay&#34;, assays)
-    my_meta.remove_small_classes(10, &#34;cell_type&#34;)
-    my_meta.merge_fetal_tissues()
-
-    new_meta = copy.deepcopy(my_meta)
-    new_meta.empty()
-    for assay in assays:
-        temp_meta = copy.deepcopy(my_meta)
-        temp_meta.select_category_subsets(&#34;assay&#34;, [assay])
-        temp_meta.remove_small_classes(10, &#34;cell_type&#34;)
-        for md5 in temp_meta.md5s:
-            new_meta[md5] = temp_meta[md5]
-
-    return new_meta
-
-
-def five_cell_types_selection(my_metadata: Metadata):
-    &#34;&#34;&#34;Return a filtered metadata with 5 major cell_types and certain assays.&#34;&#34;&#34;
-    cell_types = [
-        &#34;monocyte&#34;, &#34;cd4_positive_helper_t_cell&#34;, &#34;macrophage&#34;,
-        &#34;skeletal_muscle_tissue&#34;, &#34;thyroid&#34;
-        ]
-    assays = [
-        &#34;chromatin_acc&#34;, &#34;h3k27ac&#34;, &#34;h3k27me3&#34;, &#34;h3k36me3&#34;, &#34;h3k4me1&#34;,
-        &#34;h3k4me3&#34;, &#34;h3k9me3&#34;, &#34;input&#34;, &#34;mrna_seq&#34;, &#34;rna_seq&#34;, &#34;wgb_seq&#34;
-        ]
-    my_metadata.select_category_subsets(&#34;cell_type&#34;, cell_types)
-    my_metadata.select_category_subsets(&#34;assay&#34;, assays)
-    return my_metadata
-
-
-def special_case(my_metadata):
-    &#34;&#34;&#34;Return a filtered metadata with only rna_seq examples,
-    but also add 3 thyroid (for model construction).
-
-    Made to evaluate an already trained model,
-    works with min_class_size=3 and oversample=False.
-    &#34;&#34;&#34;
-    my_metadata = five_cell_types_selection(my_metadata)
-
-    # get some thyroid examples md5s, there are none in rna_seq
-    temp_meta = copy.deepcopy(my_metadata)
-    temp_meta.select_category_subsets(&#34;assay&#34;, [&#34;h3k9me3&#34;])
-    md5s = temp_meta.md5_per_class(&#34;cell_type&#34;)[&#34;thyroid&#34;][0:3]
-
-    # select only rna_seq examples + 3 thyroid examples for model making
-    my_metadata.select_category_subsets(&#34;assay&#34;, [&#34;rna_seq&#34;])
-    for md5 in md5s:
-        my_metadata[md5] = temp_meta[md5]
-
-    return my_metadata
-
-
-def special_case_2(my_metadata):
-    &#34;&#34;&#34;Return a filtered metadata without 2 examples
-    from all assay/cell_type pairs, and all mrna_seq.
-    &#34;&#34;&#34;
-    my_metadata = five_cell_types_selection(my_metadata)
-    my_metadata.remove_category_subsets(&#34;assay&#34;, [&#34;mrna_seq&#34;],)
-
-    cell_types = my_metadata.md5_per_class(&#34;cell_type&#34;).keys()
-    to_del = []
-    for cell_type in cell_types:
-        temp_meta = copy.deepcopy(my_metadata)
-        temp_meta.select_category_subsets(&#34;cell_type&#34;, [cell_type])
-        for md5s in temp_meta.md5_per_class(&#34;assay&#34;).values():
-            to_del.extend(md5s[0:2])
-
-    for md5 in to_del:
-        del my_metadata[md5]
-
-    return my_metadata
-
-
-def keep_major_assays_2019(my_metadata):
-    &#34;&#34;&#34;Combine rna_seq and polr2a classes pairs in the assay category.
-    Written for the 2019-11 release.
-    &#34;&#34;&#34;
-    print(&#34;Filtering, removing smrna_seq, and then merging rna/polr2a similar labels&#34;)
-    my_metadata.remove_small_classes(10, &#34;assay&#34;)
-    my_metadata.remove_category_subsets(&#34;assay&#34;, [&#34;smrna_seq&#34;],)
-    for dataset in my_metadata.datasets:
-        assay = dataset.get(&#34;assay&#34;, None)
-        if assay == &#34;mrna_seq&#34;:
-            dataset[&#34;assay&#34;] = &#34;rna_seq&#34;
-        elif assay == &#34;polr2aphosphos5&#34;:
-            dataset[&#34;assay&#34;] = &#34;polr2a&#34;
-
-    return my_metadata
-
-
-def keep_major_cell_types_2019(my_metadata):
-    &#34;&#34;&#34;Select 20 cell types in the major assays signal subset.
-    A cell type needs to have at least 10 signals in one assay.
-    Selection choices made out of the code.
-    Written for the 2019-11 release.
-    &#34;&#34;&#34;
-    my_metadata = keep_major_assays_2019(my_metadata)
-
-    brain_labels = set([&#34;brain_occipetal_lobe_right&#34;, &#34;brain_right_temporal&#34;, &#34;brain_temporal_lobe_left&#34;, &#34;brain&#34;, &#34;brain_frontal_lobe_left&#34;])
-    hepatocyte_labels = set([&#34;hepatocytes&#34;, &#34;hepatocyte&#34;])
-    large_intestin_colon_labels = set([&#34;large_intestine_colon_ascending_(right)&#34;, &#34;large_intestine_colon&#34;, &#34;large_intestine_colon_rectosigmoid&#34;])
-
-    for dataset in my_metadata.datasets:
-        cell_type = dataset.get(&#34;cell_type&#34;, None)
-        if cell_type in brain_labels:
-            dataset[&#34;cell_type&#34;] = &#34;brain&#34;
-        elif cell_type in hepatocyte_labels:
-            dataset[&#34;cell_type&#34;] = &#34;hepatocytes&#34;
-        elif cell_type in large_intestin_colon_labels:
-            dataset[&#34;cell_type&#34;] = &#34;large_intestine_colon&#34;
-
-    selected_cell_types = set([&#34;myeloid_cell&#34;, &#34;venous_blood&#34;, &#34;monocyte&#34;, &#34;thyroid&#34;, &#34;mature_neutrophil&#34;, &#34;macrophage&#34;, &#34;b_cells&#34;, &#34;cd14_positive,_cd16_negative_classical_monocyte&#34;, &#34;normal_human_colon_absorptive_epithelial_cells&#34;, &#34;cd4_positive,_alpha_beta_t_cell&#34;, &#34;precursor_b_cell&#34;, &#34;naive_b_cell&#34;, &#34;stomach&#34;, &#34;lymph_node&#34;, &#34;muscle_of_leg&#34;, &#34;neoplastic_plasma_cell&#34;, &#34;plasma_cell&#34;, &#34;brain&#34;, &#34;hepatocytes&#34;, &#34;large_intestine_colon&#34;])
-    my_metadata.select_category_subsets(&#34;cell_type&#34;, selected_cell_types,)
-
-    return my_metadata
-
-merge_fetal_tissues = {
-    &#34;fetal_intestine_large&#34;:&#34;fetal_intestine&#34;,
-    &#34;fetal_intestine_small&#34;:&#34;fetal_intestine&#34;,
-    &#34;fetal_lung_left&#34;:&#34;fetal_lung&#34;,
-    &#34;fetal_lung_right&#34;:&#34;fetal_lung&#34;,
-    &#34;fetal_muscle_arm&#34;:&#34;fetal_muscle&#34;,
-    &#34;fetal_muscle_back&#34;:&#34;fetal_muscle&#34;,
-    &#34;fetal_muscle_leg&#34;:&#34;fetal_muscle&#34;,
-    &#34;fetal_renal_cortex&#34;:&#34;fetal_kidney&#34;,
-    &#34;fetal_renal_pelvis&#34;:&#34;fetal_kidney&#34;
-}
-
-merge_molecule = {
-    &#34;rna&#34;:&#34;total_rna&#34;,
-    &#34;polyadenylated_mrna&#34;:&#34;polya_rna&#34;
-}</code></pre>
+            dataset[&#34;healthy&#34;] = healthy</code></pre>
 </details>
 </section>
 <section>
@@ -458,261 +334,57 @@ merge_molecule = {
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="epi_ml.python.core.metadata.five_cell_types_selection"><code class="name flex">
-<span>def <span class="ident">five_cell_types_selection</span></span>(<span>my_metadata: <a title="epi_ml.python.core.metadata.Metadata" href="#epi_ml.python.core.metadata.Metadata">Metadata</a>)</span>
+<dt id="python.core.metadata.env_filtering"><code class="name flex">
+<span>def <span class="ident">env_filtering</span></span>(<span>metadata: <a title="python.core.metadata.Metadata" href="#python.core.metadata.Metadata">Metadata</a>, category: str) ‑> List[str]</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Return a filtered metadata with 5 major cell_types and certain assays.</p></div>
+<div class="desc"><p>Filter metadata using environment variables.
+Return the list of classes/labels to consider.</p>
+<p>Currently supports:
+EXCLUDE_LIST
+ASSAY_LIST
+LABEL_LIST</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def five_cell_types_selection(my_metadata: Metadata):
-    &#34;&#34;&#34;Return a filtered metadata with 5 major cell_types and certain assays.&#34;&#34;&#34;
-    cell_types = [
-        &#34;monocyte&#34;, &#34;cd4_positive_helper_t_cell&#34;, &#34;macrophage&#34;,
-        &#34;skeletal_muscle_tissue&#34;, &#34;thyroid&#34;
-        ]
-    assays = [
-        &#34;chromatin_acc&#34;, &#34;h3k27ac&#34;, &#34;h3k27me3&#34;, &#34;h3k36me3&#34;, &#34;h3k4me1&#34;,
-        &#34;h3k4me3&#34;, &#34;h3k9me3&#34;, &#34;input&#34;, &#34;mrna_seq&#34;, &#34;rna_seq&#34;, &#34;wgb_seq&#34;
-        ]
-    my_metadata.select_category_subsets(&#34;cell_type&#34;, cell_types)
-    my_metadata.select_category_subsets(&#34;assay&#34;, assays)
-    return my_metadata</code></pre>
-</details>
-</dd>
-<dt id="epi_ml.python.core.metadata.keep_major_assays_2019"><code class="name flex">
-<span>def <span class="ident">keep_major_assays_2019</span></span>(<span>my_metadata)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Combine rna_seq and polr2a classes pairs in the assay category.
-Written for the 2019-11 release.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def keep_major_assays_2019(my_metadata):
-    &#34;&#34;&#34;Combine rna_seq and polr2a classes pairs in the assay category.
-    Written for the 2019-11 release.
+<pre><code class="python">def env_filtering(metadata: Metadata, category: str) -&gt; List[str]:
+    &#34;&#34;&#34;Filter metadata using environment variables.
+    Return the list of classes/labels to consider.
+
+    Currently supports:
+    EXCLUDE_LIST
+    ASSAY_LIST
+    LABEL_LIST
     &#34;&#34;&#34;
-    print(&#34;Filtering, removing smrna_seq, and then merging rna/polr2a similar labels&#34;)
-    my_metadata.remove_small_classes(10, &#34;assay&#34;)
-    my_metadata.remove_category_subsets(&#34;assay&#34;, [&#34;smrna_seq&#34;],)
-    for dataset in my_metadata.datasets:
-        assay = dataset.get(&#34;assay&#34;, None)
-        if assay == &#34;mrna_seq&#34;:
-            dataset[&#34;assay&#34;] = &#34;rna_seq&#34;
-        elif assay == &#34;polr2aphosphos5&#34;:
-            dataset[&#34;assay&#34;] = &#34;polr2a&#34;
+    print(&#34;Checking environment variables.&#34;)
+    # fmt: off
+    name = &#34;ASSAY_LIST&#34;
+    if os.getenv(name) is not None:
+        assay_list = json.loads(os.environ[name])
+        print(f&#34;{name}: {assay_list}&#34;)
+        print(f&#34;Filtering metadata: Only keeping examples with targets/assay {assay_list}&#34;)
+        metadata.select_category_subsets(&#34;assay&#34;, assay_list)
 
-    return my_metadata</code></pre>
-</details>
-</dd>
-<dt id="epi_ml.python.core.metadata.keep_major_cell_types"><code class="name flex">
-<span>def <span class="ident">keep_major_cell_types</span></span>(<span>my_metadata: <a title="epi_ml.python.core.metadata.Metadata" href="#epi_ml.python.core.metadata.Metadata">Metadata</a>)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Remove datasets which are not part of a cell_type which has
-at least 10 signals in two assays. Those assays must also have
-at least two cell_type.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def keep_major_cell_types(my_metadata: Metadata):
-    &#34;&#34;&#34;Remove datasets which are not part of a cell_type which has
-    at least 10 signals in two assays. Those assays must also have
-    at least two cell_type.
-    &#34;&#34;&#34;
-    # First pass to remove useless classes
-    for category in [&#34;assay&#34;, &#34;cell_type&#34;]:
-        my_metadata.remove_small_classes(10, category)
+    name = &#34;EXCLUDE_LIST&#34;
+    if os.getenv(name) is not None:
+        exclude_list = json.loads(os.environ[name])
+        print(f&#34;{name}: {exclude_list}&#34;)
+        print(f&#34;Filtering metadata: Removing labels {exclude_list} from category &#39;{category}&#39;.&#34;)
+        metadata.remove_category_subsets(label_category=category, labels=exclude_list)
 
-    # Find big enough cell types in each assay
-    md5s_per_assay = my_metadata.md5_per_class(&#34;assay&#34;)
-    cell_types_in_assay = {}
-    for assay, md5s in md5s_per_assay.items():
+    name = &#34;LABEL_LIST&#34;
+    if os.getenv(name) is not None:
+        label_list = json.loads(os.environ[name])
+        print(f&#34;{name}: {label_list}&#34;)
+        print(f&#34;Filtering metadata: Only keeping examples with labels {label_list} from &#39;{category}&#39;&#34;)
+        metadata.select_category_subsets(category, label_list)
+    else:
+        label_list = metadata.unique_classes(category)
+        print(f&#34;No label list, considering all left classes : {label_list}&#34;)
+    # fmt: on
 
-        # count cell_type occurence in assay
-        cell_types_count = collections.Counter(
-            my_metadata[md5][&#34;cell_type&#34;] for md5 in md5s
-            )
-
-        # remove small classes from counter
-        cell_types_count = {
-            cell_type:size for cell_type, size in cell_types_count.items()
-            if size &gt;= 10
-            }
-
-        # bad assay if only one class left with more than 10 examples
-        if len(cell_types_count) == 1:
-            cell_types_count = {}
-
-        # delete small classes from metadata
-        for md5 in md5s:
-            if my_metadata[md5][&#34;cell_type&#34;] not in cell_types_count:
-                del my_metadata[md5]
-
-        # keep track of big enough classes
-        if cell_types_count:
-            cell_types_in_assay[assay] = set(cell_types_count.keys())
-
-    # Count in how many assay each passing cell_type is
-    cell_type_counter = collections.Counter()
-    for cell_type_set in cell_types_in_assay.values():
-        for cell_type in cell_type_set:
-            cell_type_counter[cell_type] += 1
-
-    # Remove signals which are not part of common+big cell_types
-    for md5 in list(my_metadata.md5s):
-        dset = my_metadata[md5]
-        good_cell_type = cell_type_counter.get(dset[&#34;cell_type&#34;], 0) &gt; 1
-        if not good_cell_type:
-            del my_metadata[md5]
-
-    return my_metadata</code></pre>
-</details>
-</dd>
-<dt id="epi_ml.python.core.metadata.keep_major_cell_types_2019"><code class="name flex">
-<span>def <span class="ident">keep_major_cell_types_2019</span></span>(<span>my_metadata)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Select 20 cell types in the major assays signal subset.
-A cell type needs to have at least 10 signals in one assay.
-Selection choices made out of the code.
-Written for the 2019-11 release.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def keep_major_cell_types_2019(my_metadata):
-    &#34;&#34;&#34;Select 20 cell types in the major assays signal subset.
-    A cell type needs to have at least 10 signals in one assay.
-    Selection choices made out of the code.
-    Written for the 2019-11 release.
-    &#34;&#34;&#34;
-    my_metadata = keep_major_assays_2019(my_metadata)
-
-    brain_labels = set([&#34;brain_occipetal_lobe_right&#34;, &#34;brain_right_temporal&#34;, &#34;brain_temporal_lobe_left&#34;, &#34;brain&#34;, &#34;brain_frontal_lobe_left&#34;])
-    hepatocyte_labels = set([&#34;hepatocytes&#34;, &#34;hepatocyte&#34;])
-    large_intestin_colon_labels = set([&#34;large_intestine_colon_ascending_(right)&#34;, &#34;large_intestine_colon&#34;, &#34;large_intestine_colon_rectosigmoid&#34;])
-
-    for dataset in my_metadata.datasets:
-        cell_type = dataset.get(&#34;cell_type&#34;, None)
-        if cell_type in brain_labels:
-            dataset[&#34;cell_type&#34;] = &#34;brain&#34;
-        elif cell_type in hepatocyte_labels:
-            dataset[&#34;cell_type&#34;] = &#34;hepatocytes&#34;
-        elif cell_type in large_intestin_colon_labels:
-            dataset[&#34;cell_type&#34;] = &#34;large_intestine_colon&#34;
-
-    selected_cell_types = set([&#34;myeloid_cell&#34;, &#34;venous_blood&#34;, &#34;monocyte&#34;, &#34;thyroid&#34;, &#34;mature_neutrophil&#34;, &#34;macrophage&#34;, &#34;b_cells&#34;, &#34;cd14_positive,_cd16_negative_classical_monocyte&#34;, &#34;normal_human_colon_absorptive_epithelial_cells&#34;, &#34;cd4_positive,_alpha_beta_t_cell&#34;, &#34;precursor_b_cell&#34;, &#34;naive_b_cell&#34;, &#34;stomach&#34;, &#34;lymph_node&#34;, &#34;muscle_of_leg&#34;, &#34;neoplastic_plasma_cell&#34;, &#34;plasma_cell&#34;, &#34;brain&#34;, &#34;hepatocytes&#34;, &#34;large_intestine_colon&#34;])
-    my_metadata.select_category_subsets(&#34;cell_type&#34;, selected_cell_types,)
-
-    return my_metadata</code></pre>
-</details>
-</dd>
-<dt id="epi_ml.python.core.metadata.keep_major_cell_types_alt"><code class="name flex">
-<span>def <span class="ident">keep_major_cell_types_alt</span></span>(<span>my_metadata: <a title="epi_ml.python.core.metadata.Metadata" href="#epi_ml.python.core.metadata.Metadata">Metadata</a>)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Return a filtered metadata with certain assays. Datasets which are
-not part of a cell_type which has at least 10 signals are removed.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def keep_major_cell_types_alt(my_metadata: Metadata):
-    &#34;&#34;&#34;Return a filtered metadata with certain assays. Datasets which are
-    not part of a cell_type which has at least 10 signals are removed.
-    &#34;&#34;&#34;
-    my_meta = copy.deepcopy(my_metadata)
-
-    # remove useless assays and cell_types
-    assays = [
-        &#34;chromatin_acc&#34;, &#34;h3k27ac&#34;, &#34;h3k27me3&#34;, &#34;h3k36me3&#34;, &#34;h3k4me1&#34;,
-        &#34;h3k4me3&#34;, &#34;h3k9me3&#34;, &#34;input&#34;, &#34;mrna_seq&#34;, &#34;rna_seq&#34;, &#34;wgb_seq&#34;
-        ]
-    my_meta.select_category_subsets(&#34;assay&#34;, assays)
-    my_meta.remove_small_classes(10, &#34;cell_type&#34;)
-    my_meta.merge_fetal_tissues()
-
-    new_meta = copy.deepcopy(my_meta)
-    new_meta.empty()
-    for assay in assays:
-        temp_meta = copy.deepcopy(my_meta)
-        temp_meta.select_category_subsets(&#34;assay&#34;, [assay])
-        temp_meta.remove_small_classes(10, &#34;cell_type&#34;)
-        for md5 in temp_meta.md5s:
-            new_meta[md5] = temp_meta[md5]
-
-    return new_meta</code></pre>
-</details>
-</dd>
-<dt id="epi_ml.python.core.metadata.special_case"><code class="name flex">
-<span>def <span class="ident">special_case</span></span>(<span>my_metadata)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Return a filtered metadata with only rna_seq examples,
-but also add 3 thyroid (for model construction).</p>
-<p>Made to evaluate an already trained model,
-works with min_class_size=3 and oversample=False.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def special_case(my_metadata):
-    &#34;&#34;&#34;Return a filtered metadata with only rna_seq examples,
-    but also add 3 thyroid (for model construction).
-
-    Made to evaluate an already trained model,
-    works with min_class_size=3 and oversample=False.
-    &#34;&#34;&#34;
-    my_metadata = five_cell_types_selection(my_metadata)
-
-    # get some thyroid examples md5s, there are none in rna_seq
-    temp_meta = copy.deepcopy(my_metadata)
-    temp_meta.select_category_subsets(&#34;assay&#34;, [&#34;h3k9me3&#34;])
-    md5s = temp_meta.md5_per_class(&#34;cell_type&#34;)[&#34;thyroid&#34;][0:3]
-
-    # select only rna_seq examples + 3 thyroid examples for model making
-    my_metadata.select_category_subsets(&#34;assay&#34;, [&#34;rna_seq&#34;])
-    for md5 in md5s:
-        my_metadata[md5] = temp_meta[md5]
-
-    return my_metadata</code></pre>
-</details>
-</dd>
-<dt id="epi_ml.python.core.metadata.special_case_2"><code class="name flex">
-<span>def <span class="ident">special_case_2</span></span>(<span>my_metadata)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Return a filtered metadata without 2 examples
-from all assay/cell_type pairs, and all mrna_seq.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def special_case_2(my_metadata):
-    &#34;&#34;&#34;Return a filtered metadata without 2 examples
-    from all assay/cell_type pairs, and all mrna_seq.
-    &#34;&#34;&#34;
-    my_metadata = five_cell_types_selection(my_metadata)
-    my_metadata.remove_category_subsets(&#34;assay&#34;, [&#34;mrna_seq&#34;],)
-
-    cell_types = my_metadata.md5_per_class(&#34;cell_type&#34;).keys()
-    to_del = []
-    for cell_type in cell_types:
-        temp_meta = copy.deepcopy(my_metadata)
-        temp_meta.select_category_subsets(&#34;cell_type&#34;, [cell_type])
-        for md5s in temp_meta.md5_per_class(&#34;assay&#34;).values():
-            to_del.extend(md5s[0:2])
-
-    for md5 in to_del:
-        del my_metadata[md5]
-
-    return my_metadata</code></pre>
+    return label_list</code></pre>
 </details>
 </dd>
 </dl>
@@ -720,7 +392,7 @@ from all assay/cell_type pairs, and all mrna_seq.</p></div>
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt id="epi_ml.python.core.metadata.HealthyCategory"><code class="flex name class">
+<dt id="python.core.metadata.HealthyCategory"><code class="flex name class">
 <span>class <span class="ident">HealthyCategory</span></span>
 </code></dt>
 <dd>
@@ -731,6 +403,7 @@ from all assay/cell_type pairs, and all mrna_seq.</p></div>
 </summary>
 <pre><code class="python">class HealthyCategory(object):
     &#34;&#34;&#34;Create/Represent/manipulate the &#34;healthy&#34; metadata category&#34;&#34;&#34;
+
     def __init__(self):
         self.pairs_file = Path(__file__).parent / &#34;healthy_category.tsv&#34;
         self.healthy_dict = self.read_healthy_pairs()
@@ -756,9 +429,9 @@ from all assay/cell_type pairs, and all mrna_seq.</p></div>
         &#34;&#34;&#34;
         healthy_dict = {}
         with open(self.pairs_file, &#34;r&#34;, encoding=&#34;utf-8&#34;) as tsv_file:
-            next(tsv_file) # skip header
+            next(tsv_file)  # skip header
             for line in tsv_file:
-                disease, donor_health_status, healthy = line.rstrip(&#39;\n&#39;).split(&#39;\t&#39;)
+                disease, donor_health_status, healthy = line.rstrip(&#34;\n&#34;).split(&#34;\t&#34;)
                 healthy_dict[(disease, donor_health_status)] = healthy
         return healthy_dict
 
@@ -784,8 +457,8 @@ from all assay/cell_type pairs, and all mrna_seq.</p></div>
 </details>
 <h3>Static methods</h3>
 <dl>
-<dt id="epi_ml.python.core.metadata.HealthyCategory.create_healthy_category"><code class="name flex">
-<span>def <span class="ident">create_healthy_category</span></span>(<span>metadata: <a title="epi_ml.python.core.metadata.Metadata" href="#epi_ml.python.core.metadata.Metadata">Metadata</a>)</span>
+<dt id="python.core.metadata.HealthyCategory.create_healthy_category"><code class="name flex">
+<span>def <span class="ident">create_healthy_category</span></span>(<span>metadata: <a title="python.core.metadata.Metadata" href="#python.core.metadata.Metadata">Metadata</a>)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Combine "disease" and "donor_health_status" to create a "healthy" category.</p>
@@ -810,7 +483,7 @@ def create_healthy_category(metadata: Metadata):
         dataset[&#34;healthy&#34;] = healthy</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.metadata.HealthyCategory.get_healthy_pairs"><code class="name flex">
+<dt id="python.core.metadata.HealthyCategory.get_healthy_pairs"><code class="name flex">
 <span>def <span class="ident">get_healthy_pairs</span></span>(<span>datasets)</span>
 </code></dt>
 <dd>
@@ -833,7 +506,7 @@ def get_healthy_pairs(datasets):
 </dl>
 <h3>Methods</h3>
 <dl>
-<dt id="epi_ml.python.core.metadata.HealthyCategory.get_healthy_status"><code class="name flex">
+<dt id="python.core.metadata.HealthyCategory.get_healthy_status"><code class="name flex">
 <span>def <span class="ident">get_healthy_status</span></span>(<span>self, dataset)</span>
 </code></dt>
 <dd>
@@ -849,7 +522,7 @@ def get_healthy_pairs(datasets):
     return self.healthy_dict[(disease, donor_health_status)]</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.metadata.HealthyCategory.list_healthy_pairs"><code class="name flex">
+<dt id="python.core.metadata.HealthyCategory.list_healthy_pairs"><code class="name flex">
 <span>def <span class="ident">list_healthy_pairs</span></span>(<span>self, datasets)</span>
 </code></dt>
 <dd>
@@ -864,7 +537,7 @@ def get_healthy_pairs(datasets):
         print(f&#34;{x1}\t{x2}&#34;)</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.metadata.HealthyCategory.read_healthy_pairs"><code class="name flex">
+<dt id="python.core.metadata.HealthyCategory.read_healthy_pairs"><code class="name flex">
 <span>def <span class="ident">read_healthy_pairs</span></span>(<span>self)</span>
 </code></dt>
 <dd>
@@ -880,36 +553,45 @@ a tsv file with disease|donor_health_status|healthy columns.</p></div>
     &#34;&#34;&#34;
     healthy_dict = {}
     with open(self.pairs_file, &#34;r&#34;, encoding=&#34;utf-8&#34;) as tsv_file:
-        next(tsv_file) # skip header
+        next(tsv_file)  # skip header
         for line in tsv_file:
-            disease, donor_health_status, healthy = line.rstrip(&#39;\n&#39;).split(&#39;\t&#39;)
+            disease, donor_health_status, healthy = line.rstrip(&#34;\n&#34;).split(&#34;\t&#34;)
             healthy_dict[(disease, donor_health_status)] = healthy
     return healthy_dict</code></pre>
 </details>
 </dd>
 </dl>
 </dd>
-<dt id="epi_ml.python.core.metadata.Metadata"><code class="flex name class">
+<dt id="python.core.metadata.Metadata"><code class="flex name class">
 <span>class <span class="ident">Metadata</span></span>
-<span>(</span><span>meta_file: Path)</span>
+<span>(</span><span>path: Path)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Wrapper around metadata md5:dataset dict.</p></div>
+<div class="desc"><p>Wrapper around metadata md5:dataset dict.</p>
+<p>path (Path): Path to json file containing metadata for some datasets.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class Metadata(object):
-    &#34;&#34;&#34;Wrapper around metadata md5:dataset dict.&#34;&#34;&#34;
-    def __init__(self, meta_file: Path):
-        self._metadata = self._load_metadata(meta_file)
+    &#34;&#34;&#34;
+    Wrapper around metadata md5:dataset dict.
+
+    path (Path): Path to json file containing metadata for some datasets.
+    &#34;&#34;&#34;
+
+    def __init__(self, path: Path):
+        self._metadata = self._load_metadata(path)
+        self._rest = {}
 
     @classmethod
-    def from_dict(cls, metadata: dict) -&gt; Metadata:
+    def from_dict(cls, metadata: Dict[str, dict]) -&gt; Metadata:
         &#34;&#34;&#34;Creates an object from a dict conforming to {md5sum:dset} format.&#34;&#34;&#34;
         first_key = list(metadata.keys())[0]
         if len(first_key) != 32:
-            raise Exception(f&#34;Incorrect format of metadata. Key need to be md5sum (len=32). Is: {first_key}&#34;)
+            raise Exception(
+                f&#34;Incorrect format of metadata. Key need to be md5sum (len=32). Is: {first_key}&#34;
+            )
 
         obj = cls.__new__(cls)
         obj._metadata = copy.deepcopy(metadata)
@@ -942,6 +624,10 @@ a tsv file with disease|donor_health_status|healthy columns.</p></div>
         &#34;&#34;&#34;Dict .update equivalent. Info needs to respect {md5sum:dset} format.&#34;&#34;&#34;
         self._metadata.update(info.items)
 
+    def save(self, path):
+        &#34;&#34;&#34;Save the metadata to path, in original epigeec_json format.&#34;&#34;&#34;
+        self._save_metadata(path)
+
     @property
     def md5s(self):
         &#34;&#34;&#34;Return md5s (iterator). dict.keys() equivalent.&#34;&#34;&#34;
@@ -957,33 +643,48 @@ a tsv file with disease|donor_health_status|healthy columns.</p></div>
         &#34;&#34;&#34;Return pairs (iterator). dict.items() equivalent&#34;&#34;&#34;
         return self._metadata.items()
 
-    def _load_metadata(self, meta_file):
+    def _load_metadata(self, path):
         &#34;&#34;&#34;Return md5:dataset dict.&#34;&#34;&#34;
-        with open(meta_file, &#39;r&#39;, encoding=&#34;utf-8&#34;) as file:
+        with open(path, &#34;r&#34;, encoding=&#34;utf-8&#34;) as file:
             meta_raw = json.load(file)
-        return {dset[&#34;md5sum&#34;]:dset for dset in meta_raw[&#34;datasets&#34;]}
+
+        self._rest = {k: v for k, v in meta_raw.items() if k != &#34;datasets&#34;}
+        return {dset[&#34;md5sum&#34;]: dset for dset in meta_raw[&#34;datasets&#34;]}
+
+    def _save_metadata(self, path):
+        &#34;&#34;&#34;Save the metadata to path, in original epigeec_json format.
+
+        Only saves dataset information.
+        &#34;&#34;&#34;
+        to_save = {&#34;datasets&#34;: list(self.datasets)}
+        to_save.update(self._rest)
+        with open(path, &#34;w&#34;, encoding=&#34;utf-8&#34;) as file:
+            json.dump(to_save, file)
 
     def apply_filter(self, meta_filter=lambda item: True):
         &#34;&#34;&#34;Apply a filter on items (md5:dataset).&#34;&#34;&#34;
-        self._metadata = dict(filter(meta_filter, self._metadata.items()))
+        self._metadata = dict(filter(meta_filter, self.items))
 
     def remove_missing_labels(self, label_category: str):
         &#34;&#34;&#34;Remove datasets where the metadata category is missing.&#34;&#34;&#34;
         filt = lambda item: label_category in item[1]
-        self.apply_filter(filt)
+        self.apply_filter(filt)  # type: ignore
 
-    def md5_per_class(self, label_category: str):
+    def md5_per_class(self, label_category: str) -&gt; Dict[str, List[str]]:
         &#34;&#34;&#34;Return {label/class:md5 list} dict for a given metadata category.
 
         Can fail if remove_missing_labels has not been ran before.
         &#34;&#34;&#34;
-        sorted_md5 = sorted(self._metadata.keys())
-        data = collections.defaultdict(list)
+        sorted_md5 = sorted(self.md5s)
+        data = defaultdict(list)
         for md5 in sorted_md5:
-            data[self._metadata[md5][label_category]].append(md5)
+            label = self[md5][label_category]
+            data[label].append(md5)
         return data
 
-    def remove_small_classes(self, min_class_size, label_category: str, verbose=True):
+    def remove_small_classes(
+        self, min_class_size: int, label_category: str, verbose=True
+    ):
         &#34;&#34;&#34;Remove classes with less than min_class_size examples
         for a given metatada category.
 
@@ -997,7 +698,7 @@ a tsv file with disease|donor_health_status|healthy columns.</p></div>
             if size &lt; min_class_size:
                 nb_removed_class += 1
                 for md5 in data[label]:
-                    del self._metadata[md5]
+                    del self[md5]
 
         if verbose:
             remaining = nb_class - nb_removed_class
@@ -1007,26 +708,30 @@ a tsv file with disease|donor_health_status|healthy columns.</p></div>
                 f&#34;after removing classes with less than {min_class_size} signals.&#34;
             )
 
-    def select_category_subsets(self, label_category: str, labels: list):
+    def select_category_subsets(self, label_category: str, labels: Iterable[str]):
         &#34;&#34;&#34;Select only datasets which possess the given labels
         for the given label category.
         &#34;&#34;&#34;
         filt = lambda item: item[1].get(label_category) in set(labels)
-        self.apply_filter(filt)
+        self.apply_filter(filt)  # type: ignore
 
-    def remove_category_subsets(self, label_category: str, labels: list):
+    def remove_category_subsets(self, label_category: str, labels: Iterable[str]):
         &#34;&#34;&#34;Remove datasets which possess the given labels
         for the given label category.
         &#34;&#34;&#34;
         filt = lambda item: item[1].get(label_category) not in set(labels)
-        self.apply_filter(filt)
+        self.apply_filter(filt)  # type: ignore
 
-    def label_counter(self, label_category: str):
-        &#34;&#34;&#34;Return a Counter() with label count from the given category.&#34;&#34;&#34;
-        counter = collections.Counter()
-        for labels in self._metadata.values():
-            label = labels[label_category]
-            counter.update([label])
+    def label_counter(self, label_category: str, verbose=True) -&gt; Counter[str]:
+        &#34;&#34;&#34;Return a Counter() with label count from the given category.
+        Ignores missing labels.
+        &#34;&#34;&#34;
+        counter = Counter([dset.get(label_category) for dset in self.datasets])
+
+        if verbose:
+            print(f&#34;{counter[None]} labels missing and ignored from count&#34;)
+        del counter[None]
+
         return counter
 
     def unique_classes(self, label_category: str) -&gt; List[str]:
@@ -1039,22 +744,22 @@ a tsv file with disease|donor_health_status|healthy columns.</p></div>
 
     def display_labels(self, label_category: str):
         &#34;&#34;&#34;Print number of examples for each label in given category.&#34;&#34;&#34;
-        print(&#39;\nExamples&#39;)
+        print(f&#34;\nLabel breakdown for {label_category}&#34;)
         i = 0
         for label, count in self.label_counter(label_category).most_common():
-            print(f&#39;{label}: {count}&#39;)
+            print(f&#34;{label}: {count}&#34;)
             i += count
         print(f&#34;For a total of {i} examples\n&#34;)
 
-    def get_categories(self):
-        &#34;&#34;&#34;Return a sorted list of all metadata categories.&#34;&#34;&#34;
+    def get_categories(self) -&gt; list[str]:
+        &#34;&#34;&#34;Return a list of all metadata categories sorted by lowercase.&#34;&#34;&#34;
         categories = set()
-        for dset in self._metadata.values():
+        for dset in self.datasets:
             categories.update(dset.keys())
-        return sorted(categories)
+        return sorted(categories, key=str.lower)
 
-    def merge_classes(self, category: str, converter: dict):
-        &#34;&#34;&#34;Combine classes labels in the given category using the converter mapping.&#34;&#34;&#34;
+    def convert_classes(self, category: str, converter: Dict[str, str]):
+        &#34;&#34;&#34;Convert classes labels in the given category using the converter mapping.&#34;&#34;&#34;
         for dataset in self.datasets:
             label = dataset.get(category, None)
             if label in converter:
@@ -1062,8 +767,8 @@ a tsv file with disease|donor_health_status|healthy columns.</p></div>
 </details>
 <h3>Static methods</h3>
 <dl>
-<dt id="epi_ml.python.core.metadata.Metadata.from_dict"><code class="name flex">
-<span>def <span class="ident">from_dict</span></span>(<span>metadata: dict) ‑> <a title="epi_ml.python.core.metadata.Metadata" href="#epi_ml.python.core.metadata.Metadata">Metadata</a></span>
+<dt id="python.core.metadata.Metadata.from_dict"><code class="name flex">
+<span>def <span class="ident">from_dict</span></span>(<span>metadata: Dict[str, dict]) ‑> <a title="python.core.metadata.Metadata" href="#python.core.metadata.Metadata">Metadata</a></span>
 </code></dt>
 <dd>
 <div class="desc"><p>Creates an object from a dict conforming to {md5sum:dset} format.</p></div>
@@ -1072,11 +777,13 @@ a tsv file with disease|donor_health_status|healthy columns.</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">@classmethod
-def from_dict(cls, metadata: dict) -&gt; Metadata:
+def from_dict(cls, metadata: Dict[str, dict]) -&gt; Metadata:
     &#34;&#34;&#34;Creates an object from a dict conforming to {md5sum:dset} format.&#34;&#34;&#34;
     first_key = list(metadata.keys())[0]
     if len(first_key) != 32:
-        raise Exception(f&#34;Incorrect format of metadata. Key need to be md5sum (len=32). Is: {first_key}&#34;)
+        raise Exception(
+            f&#34;Incorrect format of metadata. Key need to be md5sum (len=32). Is: {first_key}&#34;
+        )
 
     obj = cls.__new__(cls)
     obj._metadata = copy.deepcopy(metadata)
@@ -1086,7 +793,7 @@ def from_dict(cls, metadata: dict) -&gt; Metadata:
 </dl>
 <h3>Instance variables</h3>
 <dl>
-<dt id="epi_ml.python.core.metadata.Metadata.datasets"><code class="name">var <span class="ident">datasets</span></code></dt>
+<dt id="python.core.metadata.Metadata.datasets"><code class="name">var <span class="ident">datasets</span></code></dt>
 <dd>
 <div class="desc"><p>Return datasets (iterator). dict.values() equivalent.</p></div>
 <details class="source">
@@ -1099,7 +806,7 @@ def datasets(self):
     return self._metadata.values()</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.metadata.Metadata.items"><code class="name">var <span class="ident">items</span></code></dt>
+<dt id="python.core.metadata.Metadata.items"><code class="name">var <span class="ident">items</span></code></dt>
 <dd>
 <div class="desc"><p>Return pairs (iterator). dict.items() equivalent</p></div>
 <details class="source">
@@ -1112,7 +819,7 @@ def items(self):
     return self._metadata.items()</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.metadata.Metadata.md5s"><code class="name">var <span class="ident">md5s</span></code></dt>
+<dt id="python.core.metadata.Metadata.md5s"><code class="name">var <span class="ident">md5s</span></code></dt>
 <dd>
 <div class="desc"><p>Return md5s (iterator). dict.keys() equivalent.</p></div>
 <details class="source">
@@ -1128,7 +835,7 @@ def md5s(self):
 </dl>
 <h3>Methods</h3>
 <dl>
-<dt id="epi_ml.python.core.metadata.Metadata.apply_filter"><code class="name flex">
+<dt id="python.core.metadata.Metadata.apply_filter"><code class="name flex">
 <span>def <span class="ident">apply_filter</span></span>(<span>self, meta_filter=&lt;function Metadata.&lt;lambda&gt;&gt;)</span>
 </code></dt>
 <dd>
@@ -1139,10 +846,27 @@ def md5s(self):
 </summary>
 <pre><code class="python">def apply_filter(self, meta_filter=lambda item: True):
     &#34;&#34;&#34;Apply a filter on items (md5:dataset).&#34;&#34;&#34;
-    self._metadata = dict(filter(meta_filter, self._metadata.items()))</code></pre>
+    self._metadata = dict(filter(meta_filter, self.items))</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.metadata.Metadata.display_labels"><code class="name flex">
+<dt id="python.core.metadata.Metadata.convert_classes"><code class="name flex">
+<span>def <span class="ident">convert_classes</span></span>(<span>self, category: str, converter: Dict[str, str])</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Convert classes labels in the given category using the converter mapping.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def convert_classes(self, category: str, converter: Dict[str, str]):
+    &#34;&#34;&#34;Convert classes labels in the given category using the converter mapping.&#34;&#34;&#34;
+    for dataset in self.datasets:
+        label = dataset.get(category, None)
+        if label in converter:
+            dataset[category] = converter[label]</code></pre>
+</details>
+</dd>
+<dt id="python.core.metadata.Metadata.display_labels"><code class="name flex">
 <span>def <span class="ident">display_labels</span></span>(<span>self, label_category: str)</span>
 </code></dt>
 <dd>
@@ -1153,15 +877,15 @@ def md5s(self):
 </summary>
 <pre><code class="python">def display_labels(self, label_category: str):
     &#34;&#34;&#34;Print number of examples for each label in given category.&#34;&#34;&#34;
-    print(&#39;\nExamples&#39;)
+    print(f&#34;\nLabel breakdown for {label_category}&#34;)
     i = 0
     for label, count in self.label_counter(label_category).most_common():
-        print(f&#39;{label}: {count}&#39;)
+        print(f&#34;{label}: {count}&#34;)
         i += count
     print(f&#34;For a total of {i} examples\n&#34;)</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.metadata.Metadata.empty"><code class="name flex">
+<dt id="python.core.metadata.Metadata.empty"><code class="name flex">
 <span>def <span class="ident">empty</span></span>(<span>self)</span>
 </code></dt>
 <dd>
@@ -1175,7 +899,7 @@ def md5s(self):
     self._metadata = {}</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.metadata.Metadata.get"><code class="name flex">
+<dt id="python.core.metadata.Metadata.get"><code class="name flex">
 <span>def <span class="ident">get</span></span>(<span>self, md5, default=None)</span>
 </code></dt>
 <dd>
@@ -1189,43 +913,48 @@ def md5s(self):
     return self._metadata.get(md5, default)</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.metadata.Metadata.get_categories"><code class="name flex">
-<span>def <span class="ident">get_categories</span></span>(<span>self)</span>
+<dt id="python.core.metadata.Metadata.get_categories"><code class="name flex">
+<span>def <span class="ident">get_categories</span></span>(<span>self) ‑> list[str]</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Return a sorted list of all metadata categories.</p></div>
+<div class="desc"><p>Return a list of all metadata categories sorted by lowercase.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def get_categories(self):
-    &#34;&#34;&#34;Return a sorted list of all metadata categories.&#34;&#34;&#34;
+<pre><code class="python">def get_categories(self) -&gt; list[str]:
+    &#34;&#34;&#34;Return a list of all metadata categories sorted by lowercase.&#34;&#34;&#34;
     categories = set()
-    for dset in self._metadata.values():
+    for dset in self.datasets:
         categories.update(dset.keys())
-    return sorted(categories)</code></pre>
+    return sorted(categories, key=str.lower)</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.metadata.Metadata.label_counter"><code class="name flex">
-<span>def <span class="ident">label_counter</span></span>(<span>self, label_category: str)</span>
+<dt id="python.core.metadata.Metadata.label_counter"><code class="name flex">
+<span>def <span class="ident">label_counter</span></span>(<span>self, label_category: str, verbose=True) ‑> Counter[str]</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Return a Counter() with label count from the given category.</p></div>
+<div class="desc"><p>Return a Counter() with label count from the given category.
+Ignores missing labels.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def label_counter(self, label_category: str):
-    &#34;&#34;&#34;Return a Counter() with label count from the given category.&#34;&#34;&#34;
-    counter = collections.Counter()
-    for labels in self._metadata.values():
-        label = labels[label_category]
-        counter.update([label])
+<pre><code class="python">def label_counter(self, label_category: str, verbose=True) -&gt; Counter[str]:
+    &#34;&#34;&#34;Return a Counter() with label count from the given category.
+    Ignores missing labels.
+    &#34;&#34;&#34;
+    counter = Counter([dset.get(label_category) for dset in self.datasets])
+
+    if verbose:
+        print(f&#34;{counter[None]} labels missing and ignored from count&#34;)
+    del counter[None]
+
     return counter</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.metadata.Metadata.md5_per_class"><code class="name flex">
-<span>def <span class="ident">md5_per_class</span></span>(<span>self, label_category: str)</span>
+<dt id="python.core.metadata.Metadata.md5_per_class"><code class="name flex">
+<span>def <span class="ident">md5_per_class</span></span>(<span>self, label_category: str) ‑> Dict[str, List[str]]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Return {label/class:md5 list} dict for a given metadata category.</p>
@@ -1234,37 +963,21 @@ def md5s(self):
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def md5_per_class(self, label_category: str):
+<pre><code class="python">def md5_per_class(self, label_category: str) -&gt; Dict[str, List[str]]:
     &#34;&#34;&#34;Return {label/class:md5 list} dict for a given metadata category.
 
     Can fail if remove_missing_labels has not been ran before.
     &#34;&#34;&#34;
-    sorted_md5 = sorted(self._metadata.keys())
-    data = collections.defaultdict(list)
+    sorted_md5 = sorted(self.md5s)
+    data = defaultdict(list)
     for md5 in sorted_md5:
-        data[self._metadata[md5][label_category]].append(md5)
+        label = self[md5][label_category]
+        data[label].append(md5)
     return data</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.metadata.Metadata.merge_classes"><code class="name flex">
-<span>def <span class="ident">merge_classes</span></span>(<span>self, category: str, converter: dict)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Combine classes labels in the given category using the converter mapping.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def merge_classes(self, category: str, converter: dict):
-    &#34;&#34;&#34;Combine classes labels in the given category using the converter mapping.&#34;&#34;&#34;
-    for dataset in self.datasets:
-        label = dataset.get(category, None)
-        if label in converter:
-            dataset[category] = converter[label]</code></pre>
-</details>
-</dd>
-<dt id="epi_ml.python.core.metadata.Metadata.remove_category_subsets"><code class="name flex">
-<span>def <span class="ident">remove_category_subsets</span></span>(<span>self, label_category: str, labels: list)</span>
+<dt id="python.core.metadata.Metadata.remove_category_subsets"><code class="name flex">
+<span>def <span class="ident">remove_category_subsets</span></span>(<span>self, label_category: str, labels: Iterable[str])</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Remove datasets which possess the given labels
@@ -1273,15 +986,15 @@ for the given label category.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def remove_category_subsets(self, label_category: str, labels: list):
+<pre><code class="python">def remove_category_subsets(self, label_category: str, labels: Iterable[str]):
     &#34;&#34;&#34;Remove datasets which possess the given labels
     for the given label category.
     &#34;&#34;&#34;
     filt = lambda item: item[1].get(label_category) not in set(labels)
-    self.apply_filter(filt)</code></pre>
+    self.apply_filter(filt)  # type: ignore</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.metadata.Metadata.remove_missing_labels"><code class="name flex">
+<dt id="python.core.metadata.Metadata.remove_missing_labels"><code class="name flex">
 <span>def <span class="ident">remove_missing_labels</span></span>(<span>self, label_category: str)</span>
 </code></dt>
 <dd>
@@ -1293,11 +1006,11 @@ for the given label category.</p></div>
 <pre><code class="python">def remove_missing_labels(self, label_category: str):
     &#34;&#34;&#34;Remove datasets where the metadata category is missing.&#34;&#34;&#34;
     filt = lambda item: label_category in item[1]
-    self.apply_filter(filt)</code></pre>
+    self.apply_filter(filt)  # type: ignore</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.metadata.Metadata.remove_small_classes"><code class="name flex">
-<span>def <span class="ident">remove_small_classes</span></span>(<span>self, min_class_size, label_category: str, verbose=True)</span>
+<dt id="python.core.metadata.Metadata.remove_small_classes"><code class="name flex">
+<span>def <span class="ident">remove_small_classes</span></span>(<span>self, min_class_size: int, label_category: str, verbose=True)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Remove classes with less than min_class_size examples
@@ -1307,7 +1020,9 @@ for a given metatada category.</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def remove_small_classes(self, min_class_size, label_category: str, verbose=True):
+<pre><code class="python">def remove_small_classes(
+    self, min_class_size: int, label_category: str, verbose=True
+):
     &#34;&#34;&#34;Remove classes with less than min_class_size examples
     for a given metatada category.
 
@@ -1321,7 +1036,7 @@ for a given metatada category.</p>
         if size &lt; min_class_size:
             nb_removed_class += 1
             for md5 in data[label]:
-                del self._metadata[md5]
+                del self[md5]
 
     if verbose:
         remaining = nb_class - nb_removed_class
@@ -1332,8 +1047,22 @@ for a given metatada category.</p>
         )</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.metadata.Metadata.select_category_subsets"><code class="name flex">
-<span>def <span class="ident">select_category_subsets</span></span>(<span>self, label_category: str, labels: list)</span>
+<dt id="python.core.metadata.Metadata.save"><code class="name flex">
+<span>def <span class="ident">save</span></span>(<span>self, path)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Save the metadata to path, in original epigeec_json format.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def save(self, path):
+    &#34;&#34;&#34;Save the metadata to path, in original epigeec_json format.&#34;&#34;&#34;
+    self._save_metadata(path)</code></pre>
+</details>
+</dd>
+<dt id="python.core.metadata.Metadata.select_category_subsets"><code class="name flex">
+<span>def <span class="ident">select_category_subsets</span></span>(<span>self, label_category: str, labels: Iterable[str])</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Select only datasets which possess the given labels
@@ -1342,15 +1071,15 @@ for the given label category.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def select_category_subsets(self, label_category: str, labels: list):
+<pre><code class="python">def select_category_subsets(self, label_category: str, labels: Iterable[str]):
     &#34;&#34;&#34;Select only datasets which possess the given labels
     for the given label category.
     &#34;&#34;&#34;
     filt = lambda item: item[1].get(label_category) in set(labels)
-    self.apply_filter(filt)</code></pre>
+    self.apply_filter(filt)  # type: ignore</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.metadata.Metadata.unique_classes"><code class="name flex">
+<dt id="python.core.metadata.Metadata.unique_classes"><code class="name flex">
 <span>def <span class="ident">unique_classes</span></span>(<span>self, label_category: str) ‑> List[str]</span>
 </code></dt>
 <dd>
@@ -1368,8 +1097,8 @@ for the given label category.</p></div>
     return sorted(list(uniq))</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.metadata.Metadata.update"><code class="name flex">
-<span>def <span class="ident">update</span></span>(<span>self, info: <a title="epi_ml.python.core.metadata.Metadata" href="#epi_ml.python.core.metadata.Metadata">Metadata</a>) ‑> None</span>
+<dt id="python.core.metadata.Metadata.update"><code class="name flex">
+<span>def <span class="ident">update</span></span>(<span>self, info: <a title="python.core.metadata.Metadata" href="#python.core.metadata.Metadata">Metadata</a>) ‑> None</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Dict .update equivalent. Info needs to respect {md5sum:dset} format.</p></div>
@@ -1395,53 +1124,48 @@ for the given label category.</p></div>
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="epi_ml.python.core" href="index.html">epi_ml.python.core</a></code></li>
+<li><code><a title="python.core" href="index.html">python.core</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="epi_ml.python.core.metadata.five_cell_types_selection" href="#epi_ml.python.core.metadata.five_cell_types_selection">five_cell_types_selection</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.keep_major_assays_2019" href="#epi_ml.python.core.metadata.keep_major_assays_2019">keep_major_assays_2019</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.keep_major_cell_types" href="#epi_ml.python.core.metadata.keep_major_cell_types">keep_major_cell_types</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.keep_major_cell_types_2019" href="#epi_ml.python.core.metadata.keep_major_cell_types_2019">keep_major_cell_types_2019</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.keep_major_cell_types_alt" href="#epi_ml.python.core.metadata.keep_major_cell_types_alt">keep_major_cell_types_alt</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.special_case" href="#epi_ml.python.core.metadata.special_case">special_case</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.special_case_2" href="#epi_ml.python.core.metadata.special_case_2">special_case_2</a></code></li>
+<li><code><a title="python.core.metadata.env_filtering" href="#python.core.metadata.env_filtering">env_filtering</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
-<h4><code><a title="epi_ml.python.core.metadata.HealthyCategory" href="#epi_ml.python.core.metadata.HealthyCategory">HealthyCategory</a></code></h4>
+<h4><code><a title="python.core.metadata.HealthyCategory" href="#python.core.metadata.HealthyCategory">HealthyCategory</a></code></h4>
 <ul class="">
-<li><code><a title="epi_ml.python.core.metadata.HealthyCategory.create_healthy_category" href="#epi_ml.python.core.metadata.HealthyCategory.create_healthy_category">create_healthy_category</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.HealthyCategory.get_healthy_pairs" href="#epi_ml.python.core.metadata.HealthyCategory.get_healthy_pairs">get_healthy_pairs</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.HealthyCategory.get_healthy_status" href="#epi_ml.python.core.metadata.HealthyCategory.get_healthy_status">get_healthy_status</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.HealthyCategory.list_healthy_pairs" href="#epi_ml.python.core.metadata.HealthyCategory.list_healthy_pairs">list_healthy_pairs</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.HealthyCategory.read_healthy_pairs" href="#epi_ml.python.core.metadata.HealthyCategory.read_healthy_pairs">read_healthy_pairs</a></code></li>
+<li><code><a title="python.core.metadata.HealthyCategory.create_healthy_category" href="#python.core.metadata.HealthyCategory.create_healthy_category">create_healthy_category</a></code></li>
+<li><code><a title="python.core.metadata.HealthyCategory.get_healthy_pairs" href="#python.core.metadata.HealthyCategory.get_healthy_pairs">get_healthy_pairs</a></code></li>
+<li><code><a title="python.core.metadata.HealthyCategory.get_healthy_status" href="#python.core.metadata.HealthyCategory.get_healthy_status">get_healthy_status</a></code></li>
+<li><code><a title="python.core.metadata.HealthyCategory.list_healthy_pairs" href="#python.core.metadata.HealthyCategory.list_healthy_pairs">list_healthy_pairs</a></code></li>
+<li><code><a title="python.core.metadata.HealthyCategory.read_healthy_pairs" href="#python.core.metadata.HealthyCategory.read_healthy_pairs">read_healthy_pairs</a></code></li>
 </ul>
 </li>
 <li>
-<h4><code><a title="epi_ml.python.core.metadata.Metadata" href="#epi_ml.python.core.metadata.Metadata">Metadata</a></code></h4>
+<h4><code><a title="python.core.metadata.Metadata" href="#python.core.metadata.Metadata">Metadata</a></code></h4>
 <ul class="">
-<li><code><a title="epi_ml.python.core.metadata.Metadata.apply_filter" href="#epi_ml.python.core.metadata.Metadata.apply_filter">apply_filter</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.Metadata.datasets" href="#epi_ml.python.core.metadata.Metadata.datasets">datasets</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.Metadata.display_labels" href="#epi_ml.python.core.metadata.Metadata.display_labels">display_labels</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.Metadata.empty" href="#epi_ml.python.core.metadata.Metadata.empty">empty</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.Metadata.from_dict" href="#epi_ml.python.core.metadata.Metadata.from_dict">from_dict</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.Metadata.get" href="#epi_ml.python.core.metadata.Metadata.get">get</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.Metadata.get_categories" href="#epi_ml.python.core.metadata.Metadata.get_categories">get_categories</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.Metadata.items" href="#epi_ml.python.core.metadata.Metadata.items">items</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.Metadata.label_counter" href="#epi_ml.python.core.metadata.Metadata.label_counter">label_counter</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.Metadata.md5_per_class" href="#epi_ml.python.core.metadata.Metadata.md5_per_class">md5_per_class</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.Metadata.md5s" href="#epi_ml.python.core.metadata.Metadata.md5s">md5s</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.Metadata.merge_classes" href="#epi_ml.python.core.metadata.Metadata.merge_classes">merge_classes</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.Metadata.remove_category_subsets" href="#epi_ml.python.core.metadata.Metadata.remove_category_subsets">remove_category_subsets</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.Metadata.remove_missing_labels" href="#epi_ml.python.core.metadata.Metadata.remove_missing_labels">remove_missing_labels</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.Metadata.remove_small_classes" href="#epi_ml.python.core.metadata.Metadata.remove_small_classes">remove_small_classes</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.Metadata.select_category_subsets" href="#epi_ml.python.core.metadata.Metadata.select_category_subsets">select_category_subsets</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.Metadata.unique_classes" href="#epi_ml.python.core.metadata.Metadata.unique_classes">unique_classes</a></code></li>
-<li><code><a title="epi_ml.python.core.metadata.Metadata.update" href="#epi_ml.python.core.metadata.Metadata.update">update</a></code></li>
+<li><code><a title="python.core.metadata.Metadata.apply_filter" href="#python.core.metadata.Metadata.apply_filter">apply_filter</a></code></li>
+<li><code><a title="python.core.metadata.Metadata.convert_classes" href="#python.core.metadata.Metadata.convert_classes">convert_classes</a></code></li>
+<li><code><a title="python.core.metadata.Metadata.datasets" href="#python.core.metadata.Metadata.datasets">datasets</a></code></li>
+<li><code><a title="python.core.metadata.Metadata.display_labels" href="#python.core.metadata.Metadata.display_labels">display_labels</a></code></li>
+<li><code><a title="python.core.metadata.Metadata.empty" href="#python.core.metadata.Metadata.empty">empty</a></code></li>
+<li><code><a title="python.core.metadata.Metadata.from_dict" href="#python.core.metadata.Metadata.from_dict">from_dict</a></code></li>
+<li><code><a title="python.core.metadata.Metadata.get" href="#python.core.metadata.Metadata.get">get</a></code></li>
+<li><code><a title="python.core.metadata.Metadata.get_categories" href="#python.core.metadata.Metadata.get_categories">get_categories</a></code></li>
+<li><code><a title="python.core.metadata.Metadata.items" href="#python.core.metadata.Metadata.items">items</a></code></li>
+<li><code><a title="python.core.metadata.Metadata.label_counter" href="#python.core.metadata.Metadata.label_counter">label_counter</a></code></li>
+<li><code><a title="python.core.metadata.Metadata.md5_per_class" href="#python.core.metadata.Metadata.md5_per_class">md5_per_class</a></code></li>
+<li><code><a title="python.core.metadata.Metadata.md5s" href="#python.core.metadata.Metadata.md5s">md5s</a></code></li>
+<li><code><a title="python.core.metadata.Metadata.remove_category_subsets" href="#python.core.metadata.Metadata.remove_category_subsets">remove_category_subsets</a></code></li>
+<li><code><a title="python.core.metadata.Metadata.remove_missing_labels" href="#python.core.metadata.Metadata.remove_missing_labels">remove_missing_labels</a></code></li>
+<li><code><a title="python.core.metadata.Metadata.remove_small_classes" href="#python.core.metadata.Metadata.remove_small_classes">remove_small_classes</a></code></li>
+<li><code><a title="python.core.metadata.Metadata.save" href="#python.core.metadata.Metadata.save">save</a></code></li>
+<li><code><a title="python.core.metadata.Metadata.select_category_subsets" href="#python.core.metadata.Metadata.select_category_subsets">select_category_subsets</a></code></li>
+<li><code><a title="python.core.metadata.Metadata.unique_classes" href="#python.core.metadata.Metadata.unique_classes">unique_classes</a></code></li>
+<li><code><a title="python.core.metadata.Metadata.update" href="#python.core.metadata.Metadata.update">update</a></code></li>
 </ul>
 </li>
 </ul>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
-<title>epi_ml.python.core.trainer API documentation</title>
+<title>python.core.trainer API documentation</title>
 <meta name="description" content="Trainer class extensions module" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
@@ -19,7 +19,7 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>epi_ml.python.core.trainer</code></h1>
+<h1 class="title">Module <code>python.core.trainer</code></h1>
 </header>
 <section id="section-intro">
 <p>Trainer class extensions module</p>
@@ -28,21 +28,24 @@
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Trainer class extensions module&#34;&#34;&#34;
-from pathlib import Path
+from __future__ import annotations
+
 from datetime import datetime
+from pathlib import Path
 
 import pytorch_lightning as pl
 import pytorch_lightning.callbacks as torch_callbacks
 
+
 class MyTrainer(pl.Trainer):
     &#34;&#34;&#34;Personalized trainer&#34;&#34;&#34;
 
-    def __init__(self, general_log_dir: str, last_trained_model=None, **kwargs):
+    def __init__(self, general_log_dir: str, model, **kwargs):
         &#34;&#34;&#34;Metrics expect probabilities and not logits.&#34;&#34;&#34;
         super().__init__(**kwargs)
 
         self.best_checkpoint_file = Path(general_log_dir) / &#34;best_checkpoint.list&#34;
-        self.model = last_trained_model
+        self.my_model = model
         self.batch_size = None
 
     def fit(self, *args, verbose=True, **kwargs):
@@ -52,54 +55,72 @@ class MyTrainer(pl.Trainer):
             print(f&#34;Training batch size : {self.batch_size}&#34;)
         super().fit(*args, **kwargs)
 
-
     def save_model_path(self):
         &#34;&#34;&#34;Save best checkpoint path to a file.&#34;&#34;&#34;
-        print(f&#34;Saving model to {self.checkpoint_callback.best_model_path}&#34;)
-        with open(self.best_checkpoint_file, &#34;a&#34;, encoding=&#34;utf-8&#34;) as ckpt_file:
-            ckpt_file.write(f&#34;{self.checkpoint_callback.best_model_path} {datetime.now()}\n&#34;)
+        try:
+            model_path = self.checkpoint_callback.best_model_path  # type: ignore
+            print(f&#34;Saving model to {model_path}&#34;)
+            with open(self.best_checkpoint_file, &#34;a&#34;, encoding=&#34;utf-8&#34;) as ckpt_file:
+                ckpt_file.write(f&#34;{model_path} {datetime.now()}\n&#34;)
+        except AttributeError:
+            print(&#34;Cannot save model, no checkpoint callback.&#34;)
 
     def print_hyperparameters(self):
         &#34;&#34;&#34;Print training hyperparameters.&#34;&#34;&#34;
-        stop_callback = self.early_stopping_callback
         print(&#34;--TRAINING HYPERPARAMETERS--&#34;)
-        print(f&#34;L2 scale : {self.model.l2_scale}&#34;)
-        print(f&#34;Dropout rate : {self.model.dropout_rate}&#34;)
-        print(f&#34;Learning rate : {self.model.learning_rate}&#34;)
-        print(f&#34;Patience : {stop_callback.patience}&#34;)
-        print(f&#34;Monitored value : {stop_callback.monitor}&#34;)
+        print(f&#34;L2 scale : {self.my_model.l2_scale}&#34;)
+        print(f&#34;Dropout rate : {self.my_model.dropout_rate}&#34;)
+        print(f&#34;Learning rate : {self.my_model.learning_rate}&#34;)
+        try:
+            stop_callback = self.early_stopping_callback
+            print(f&#34;Patience : {stop_callback.patience}&#34;)  # type: ignore
+            print(f&#34;Monitored value : {stop_callback.monitor}&#34;)  # type: ignore
+        except AttributeError:
+            print(&#34;No early stopping.&#34;)
 
 
-def define_callbacks(early_stop_limit: int, show_summary=True):
+def define_callbacks(early_stop_limit: int | None, show_summary=True):
     &#34;&#34;&#34;Returns list of PyTorch trainer callbacks.
     RichModelSummary, EarlyStopping, ModelCheckpoint
-    &#34;&#34;&#34;
-    if show_summary:
-        summary = torch_callbacks.RichModelSummary(max_depth=3)
-    else:
-        summary = None
 
-    monitored_value = &#34;valid_acc&#34; #have same name as TorchMetrics
+    Will only save last epoch model if there is no early stopping.
+    &#34;&#34;&#34;
+    callbacks = []
+    if show_summary:
+        callbacks.append(torch_callbacks.RichModelSummary(max_depth=3))
+
+    monitored_value = &#34;valid_acc&#34;  # have same name as TorchMetrics
     mode = &#34;max&#34;
 
-    early_stop = torch_callbacks.EarlyStopping(
-        monitor=monitored_value,
-        mode=mode,
-        patience=early_stop_limit,
-        check_on_train_epoch_end=False
-    )
+    if early_stop_limit is not None:
+        callbacks.append(
+            torch_callbacks.EarlyStopping(
+                monitor=monitored_value,
+                mode=mode,
+                patience=early_stop_limit,
+                check_on_train_epoch_end=False,
+            )
+        )
 
-    checkpoint = torch_callbacks.ModelCheckpoint(
-        monitor=monitored_value,
-        mode=mode,
-        save_last=True,
-        auto_insert_metric_name=True,
-        every_n_epochs=1,
-        save_top_k=2,
-        save_on_train_epoch_end=False
-    )
+        callbacks.append(
+            torch_callbacks.ModelCheckpoint(
+                monitor=monitored_value,
+                mode=mode,
+                save_last=True,
+                auto_insert_metric_name=True,
+                every_n_epochs=1,
+                save_top_k=2,
+                save_on_train_epoch_end=False,
+            )
+        )
+    else:
+        callbacks.append(
+            torch_callbacks.ModelCheckpoint(
+                monitor=None,
+            )
+        )
 
-    return [summary, early_stop, checkpoint]</code></pre>
+    return callbacks</code></pre>
 </details>
 </section>
 <section>
@@ -109,46 +130,59 @@ def define_callbacks(early_stop_limit: int, show_summary=True):
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="epi_ml.python.core.trainer.define_callbacks"><code class="name flex">
-<span>def <span class="ident">define_callbacks</span></span>(<span>early_stop_limit: int, show_summary=True)</span>
+<dt id="python.core.trainer.define_callbacks"><code class="name flex">
+<span>def <span class="ident">define_callbacks</span></span>(<span>early_stop_limit: int | None, show_summary=True)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Returns list of PyTorch trainer callbacks.
-RichModelSummary, EarlyStopping, ModelCheckpoint</p></div>
+RichModelSummary, EarlyStopping, ModelCheckpoint</p>
+<p>Will only save last epoch model if there is no early stopping.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def define_callbacks(early_stop_limit: int, show_summary=True):
+<pre><code class="python">def define_callbacks(early_stop_limit: int | None, show_summary=True):
     &#34;&#34;&#34;Returns list of PyTorch trainer callbacks.
     RichModelSummary, EarlyStopping, ModelCheckpoint
-    &#34;&#34;&#34;
-    if show_summary:
-        summary = torch_callbacks.RichModelSummary(max_depth=3)
-    else:
-        summary = None
 
-    monitored_value = &#34;valid_acc&#34; #have same name as TorchMetrics
+    Will only save last epoch model if there is no early stopping.
+    &#34;&#34;&#34;
+    callbacks = []
+    if show_summary:
+        callbacks.append(torch_callbacks.RichModelSummary(max_depth=3))
+
+    monitored_value = &#34;valid_acc&#34;  # have same name as TorchMetrics
     mode = &#34;max&#34;
 
-    early_stop = torch_callbacks.EarlyStopping(
-        monitor=monitored_value,
-        mode=mode,
-        patience=early_stop_limit,
-        check_on_train_epoch_end=False
-    )
+    if early_stop_limit is not None:
+        callbacks.append(
+            torch_callbacks.EarlyStopping(
+                monitor=monitored_value,
+                mode=mode,
+                patience=early_stop_limit,
+                check_on_train_epoch_end=False,
+            )
+        )
 
-    checkpoint = torch_callbacks.ModelCheckpoint(
-        monitor=monitored_value,
-        mode=mode,
-        save_last=True,
-        auto_insert_metric_name=True,
-        every_n_epochs=1,
-        save_top_k=2,
-        save_on_train_epoch_end=False
-    )
+        callbacks.append(
+            torch_callbacks.ModelCheckpoint(
+                monitor=monitored_value,
+                mode=mode,
+                save_last=True,
+                auto_insert_metric_name=True,
+                every_n_epochs=1,
+                save_top_k=2,
+                save_on_train_epoch_end=False,
+            )
+        )
+    else:
+        callbacks.append(
+            torch_callbacks.ModelCheckpoint(
+                monitor=None,
+            )
+        )
 
-    return [summary, early_stop, checkpoint]</code></pre>
+    return callbacks</code></pre>
 </details>
 </dd>
 </dl>
@@ -156,9 +190,9 @@ RichModelSummary, EarlyStopping, ModelCheckpoint</p></div>
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt id="epi_ml.python.core.trainer.MyTrainer"><code class="flex name class">
+<dt id="python.core.trainer.MyTrainer"><code class="flex name class">
 <span>class <span class="ident">MyTrainer</span></span>
-<span>(</span><span>general_log_dir: str, last_trained_model=None, **kwargs)</span>
+<span>(</span><span>general_log_dir: str, model, **kwargs)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Personalized trainer</p>
@@ -170,12 +204,12 @@ RichModelSummary, EarlyStopping, ModelCheckpoint</p></div>
 <pre><code class="python">class MyTrainer(pl.Trainer):
     &#34;&#34;&#34;Personalized trainer&#34;&#34;&#34;
 
-    def __init__(self, general_log_dir: str, last_trained_model=None, **kwargs):
+    def __init__(self, general_log_dir: str, model, **kwargs):
         &#34;&#34;&#34;Metrics expect probabilities and not logits.&#34;&#34;&#34;
         super().__init__(**kwargs)
 
         self.best_checkpoint_file = Path(general_log_dir) / &#34;best_checkpoint.list&#34;
-        self.model = last_trained_model
+        self.my_model = model
         self.batch_size = None
 
     def fit(self, *args, verbose=True, **kwargs):
@@ -185,22 +219,28 @@ RichModelSummary, EarlyStopping, ModelCheckpoint</p></div>
             print(f&#34;Training batch size : {self.batch_size}&#34;)
         super().fit(*args, **kwargs)
 
-
     def save_model_path(self):
         &#34;&#34;&#34;Save best checkpoint path to a file.&#34;&#34;&#34;
-        print(f&#34;Saving model to {self.checkpoint_callback.best_model_path}&#34;)
-        with open(self.best_checkpoint_file, &#34;a&#34;, encoding=&#34;utf-8&#34;) as ckpt_file:
-            ckpt_file.write(f&#34;{self.checkpoint_callback.best_model_path} {datetime.now()}\n&#34;)
+        try:
+            model_path = self.checkpoint_callback.best_model_path  # type: ignore
+            print(f&#34;Saving model to {model_path}&#34;)
+            with open(self.best_checkpoint_file, &#34;a&#34;, encoding=&#34;utf-8&#34;) as ckpt_file:
+                ckpt_file.write(f&#34;{model_path} {datetime.now()}\n&#34;)
+        except AttributeError:
+            print(&#34;Cannot save model, no checkpoint callback.&#34;)
 
     def print_hyperparameters(self):
         &#34;&#34;&#34;Print training hyperparameters.&#34;&#34;&#34;
-        stop_callback = self.early_stopping_callback
         print(&#34;--TRAINING HYPERPARAMETERS--&#34;)
-        print(f&#34;L2 scale : {self.model.l2_scale}&#34;)
-        print(f&#34;Dropout rate : {self.model.dropout_rate}&#34;)
-        print(f&#34;Learning rate : {self.model.learning_rate}&#34;)
-        print(f&#34;Patience : {stop_callback.patience}&#34;)
-        print(f&#34;Monitored value : {stop_callback.monitor}&#34;)</code></pre>
+        print(f&#34;L2 scale : {self.my_model.l2_scale}&#34;)
+        print(f&#34;Dropout rate : {self.my_model.dropout_rate}&#34;)
+        print(f&#34;Learning rate : {self.my_model.learning_rate}&#34;)
+        try:
+            stop_callback = self.early_stopping_callback
+            print(f&#34;Patience : {stop_callback.patience}&#34;)  # type: ignore
+            print(f&#34;Monitored value : {stop_callback.monitor}&#34;)  # type: ignore
+        except AttributeError:
+            print(&#34;No early stopping.&#34;)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -213,14 +253,14 @@ RichModelSummary, EarlyStopping, ModelCheckpoint</p></div>
 </ul>
 <h3>Class variables</h3>
 <dl>
-<dt id="epi_ml.python.core.trainer.MyTrainer.callbacks"><code class="name">var <span class="ident">callbacks</span> : List[pytorch_lightning.callbacks.base.Callback]</code></dt>
+<dt id="python.core.trainer.MyTrainer.callbacks"><code class="name">var <span class="ident">callbacks</span> : List[pytorch_lightning.callbacks.base.Callback]</code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
 </dl>
 <h3>Instance variables</h3>
 <dl>
-<dt id="epi_ml.python.core.trainer.MyTrainer.lightning_module"><code class="name">var <span class="ident">lightning_module</span> : pytorch_lightning.core.lightning.LightningModule</code></dt>
+<dt id="python.core.trainer.MyTrainer.lightning_module"><code class="name">var <span class="ident">lightning_module</span> : pytorch_lightning.core.lightning.LightningModule</code></dt>
 <dd>
 <div class="desc"></div>
 <details class="source">
@@ -235,7 +275,7 @@ def lightning_module(self) -&gt; &#34;pl.LightningModule&#34;:
 </dl>
 <h3>Methods</h3>
 <dl>
-<dt id="epi_ml.python.core.trainer.MyTrainer.fit"><code class="name flex">
+<dt id="python.core.trainer.MyTrainer.fit"><code class="name flex">
 <span>def <span class="ident">fit</span></span>(<span>self, *args, verbose=True, **kwargs)</span>
 </code></dt>
 <dd>
@@ -252,7 +292,7 @@ def lightning_module(self) -&gt; &#34;pl.LightningModule&#34;:
     super().fit(*args, **kwargs)</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.trainer.MyTrainer.print_hyperparameters"><code class="name flex">
+<dt id="python.core.trainer.MyTrainer.print_hyperparameters"><code class="name flex">
 <span>def <span class="ident">print_hyperparameters</span></span>(<span>self)</span>
 </code></dt>
 <dd>
@@ -263,16 +303,19 @@ def lightning_module(self) -&gt; &#34;pl.LightningModule&#34;:
 </summary>
 <pre><code class="python">def print_hyperparameters(self):
     &#34;&#34;&#34;Print training hyperparameters.&#34;&#34;&#34;
-    stop_callback = self.early_stopping_callback
     print(&#34;--TRAINING HYPERPARAMETERS--&#34;)
-    print(f&#34;L2 scale : {self.model.l2_scale}&#34;)
-    print(f&#34;Dropout rate : {self.model.dropout_rate}&#34;)
-    print(f&#34;Learning rate : {self.model.learning_rate}&#34;)
-    print(f&#34;Patience : {stop_callback.patience}&#34;)
-    print(f&#34;Monitored value : {stop_callback.monitor}&#34;)</code></pre>
+    print(f&#34;L2 scale : {self.my_model.l2_scale}&#34;)
+    print(f&#34;Dropout rate : {self.my_model.dropout_rate}&#34;)
+    print(f&#34;Learning rate : {self.my_model.learning_rate}&#34;)
+    try:
+        stop_callback = self.early_stopping_callback
+        print(f&#34;Patience : {stop_callback.patience}&#34;)  # type: ignore
+        print(f&#34;Monitored value : {stop_callback.monitor}&#34;)  # type: ignore
+    except AttributeError:
+        print(&#34;No early stopping.&#34;)</code></pre>
 </details>
 </dd>
-<dt id="epi_ml.python.core.trainer.MyTrainer.save_model_path"><code class="name flex">
+<dt id="python.core.trainer.MyTrainer.save_model_path"><code class="name flex">
 <span>def <span class="ident">save_model_path</span></span>(<span>self)</span>
 </code></dt>
 <dd>
@@ -283,9 +326,13 @@ def lightning_module(self) -&gt; &#34;pl.LightningModule&#34;:
 </summary>
 <pre><code class="python">def save_model_path(self):
     &#34;&#34;&#34;Save best checkpoint path to a file.&#34;&#34;&#34;
-    print(f&#34;Saving model to {self.checkpoint_callback.best_model_path}&#34;)
-    with open(self.best_checkpoint_file, &#34;a&#34;, encoding=&#34;utf-8&#34;) as ckpt_file:
-        ckpt_file.write(f&#34;{self.checkpoint_callback.best_model_path} {datetime.now()}\n&#34;)</code></pre>
+    try:
+        model_path = self.checkpoint_callback.best_model_path  # type: ignore
+        print(f&#34;Saving model to {model_path}&#34;)
+        with open(self.best_checkpoint_file, &#34;a&#34;, encoding=&#34;utf-8&#34;) as ckpt_file:
+            ckpt_file.write(f&#34;{model_path} {datetime.now()}\n&#34;)
+    except AttributeError:
+        print(&#34;Cannot save model, no checkpoint callback.&#34;)</code></pre>
 </details>
 </dd>
 </dl>
@@ -301,24 +348,24 @@ def lightning_module(self) -&gt; &#34;pl.LightningModule&#34;:
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="epi_ml.python.core" href="index.html">epi_ml.python.core</a></code></li>
+<li><code><a title="python.core" href="index.html">python.core</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="epi_ml.python.core.trainer.define_callbacks" href="#epi_ml.python.core.trainer.define_callbacks">define_callbacks</a></code></li>
+<li><code><a title="python.core.trainer.define_callbacks" href="#python.core.trainer.define_callbacks">define_callbacks</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
-<h4><code><a title="epi_ml.python.core.trainer.MyTrainer" href="#epi_ml.python.core.trainer.MyTrainer">MyTrainer</a></code></h4>
+<h4><code><a title="python.core.trainer.MyTrainer" href="#python.core.trainer.MyTrainer">MyTrainer</a></code></h4>
 <ul class="">
-<li><code><a title="epi_ml.python.core.trainer.MyTrainer.callbacks" href="#epi_ml.python.core.trainer.MyTrainer.callbacks">callbacks</a></code></li>
-<li><code><a title="epi_ml.python.core.trainer.MyTrainer.fit" href="#epi_ml.python.core.trainer.MyTrainer.fit">fit</a></code></li>
-<li><code><a title="epi_ml.python.core.trainer.MyTrainer.lightning_module" href="#epi_ml.python.core.trainer.MyTrainer.lightning_module">lightning_module</a></code></li>
-<li><code><a title="epi_ml.python.core.trainer.MyTrainer.print_hyperparameters" href="#epi_ml.python.core.trainer.MyTrainer.print_hyperparameters">print_hyperparameters</a></code></li>
-<li><code><a title="epi_ml.python.core.trainer.MyTrainer.save_model_path" href="#epi_ml.python.core.trainer.MyTrainer.save_model_path">save_model_path</a></code></li>
+<li><code><a title="python.core.trainer.MyTrainer.callbacks" href="#python.core.trainer.MyTrainer.callbacks">callbacks</a></code></li>
+<li><code><a title="python.core.trainer.MyTrainer.fit" href="#python.core.trainer.MyTrainer.fit">fit</a></code></li>
+<li><code><a title="python.core.trainer.MyTrainer.lightning_module" href="#python.core.trainer.MyTrainer.lightning_module">lightning_module</a></code></li>
+<li><code><a title="python.core.trainer.MyTrainer.print_hyperparameters" href="#python.core.trainer.MyTrainer.print_hyperparameters">print_hyperparameters</a></code></li>
+<li><code><a title="python.core.trainer.MyTrainer.save_model_path" href="#python.core.trainer.MyTrainer.save_model_path">save_model_path</a></code></li>
 </ul>
 </li>
 </ul>
