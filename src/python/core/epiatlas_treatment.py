@@ -253,12 +253,12 @@ class EpiAtlasDataset:
 
         return new_dset
 
-    def create_total_data(self) -> data.KnownData:
-        """Return a data set with all signals (no oversampling)"""
+    def create_total_data(self, oversampling=False) -> data.KnownData:
+        """Return a data set with all signals."""
         return self.add_other_tracks(
             range(self._raw_dset.train.num_examples),
             self._raw_dset.train,  # type: ignore
-            resample=False,
+            resample=oversampling,
         )
 
 
