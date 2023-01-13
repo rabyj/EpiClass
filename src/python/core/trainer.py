@@ -11,12 +11,12 @@ import pytorch_lightning.callbacks as torch_callbacks
 class MyTrainer(pl.Trainer):
     """Personalized trainer"""
 
-    def __init__(self, general_log_dir: str, last_trained_model=None, **kwargs):
+    def __init__(self, general_log_dir: str, model, **kwargs):
         """Metrics expect probabilities and not logits."""
         super().__init__(**kwargs)
 
         self.best_checkpoint_file = Path(general_log_dir) / "best_checkpoint.list"
-        self.model = last_trained_model
+        self.my_model = model
         self.batch_size = None
 
     def fit(self, *args, verbose=True, **kwargs):
@@ -28,21 +28,26 @@ class MyTrainer(pl.Trainer):
 
     def save_model_path(self):
         """Save best checkpoint path to a file."""
-        print(f"Saving model to {self.checkpoint_callback.best_model_path}")
-        with open(self.best_checkpoint_file, "a", encoding="utf-8") as ckpt_file:
-            ckpt_file.write(
-                f"{self.checkpoint_callback.best_model_path} {datetime.now()}\n"
-            )
+        try:
+            model_path = self.checkpoint_callback.best_model_path  # type: ignore
+            print(f"Saving model to {model_path}")
+            with open(self.best_checkpoint_file, "a", encoding="utf-8") as ckpt_file:
+                ckpt_file.write(f"{model_path} {datetime.now()}\n")
+        except AttributeError:
+            print("Cannot save model, no checkpoint callback.")
 
     def print_hyperparameters(self):
         """Print training hyperparameters."""
-        stop_callback = self.early_stopping_callback
         print("--TRAINING HYPERPARAMETERS--")
-        print(f"L2 scale : {self.model.l2_scale}")
-        print(f"Dropout rate : {self.model.dropout_rate}")
-        print(f"Learning rate : {self.model.learning_rate}")
-        print(f"Patience : {stop_callback.patience}")
-        print(f"Monitored value : {stop_callback.monitor}")
+        print(f"L2 scale : {self.my_model.l2_scale}")
+        print(f"Dropout rate : {self.my_model.dropout_rate}")
+        print(f"Learning rate : {self.my_model.learning_rate}")
+        try:
+            stop_callback = self.early_stopping_callback
+            print(f"Patience : {stop_callback.patience}")  # type: ignore
+            print(f"Monitored value : {stop_callback.monitor}")  # type: ignore
+        except AttributeError:
+            print("No early stopping.")
 
 
 def define_callbacks(early_stop_limit: int | None, show_summary=True):

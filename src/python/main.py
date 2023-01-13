@@ -282,7 +282,7 @@ def main():
         if torch.cuda.device_count():
             trainer = MyTrainer(
                 general_log_dir=cli.logdir,
-                last_trained_model=my_model,
+                model=my_model,
                 max_epochs=hparams.get("training_epochs", 50),
                 check_val_every_n_epoch=hparams.get("measure_frequency", 1),
                 logger=comet_logger,
@@ -297,7 +297,7 @@ def main():
             callbacks.append(pl_callbacks.RichProgressBar(leave=True))
             trainer = MyTrainer(
                 general_log_dir=cli.logdir,
-                last_trained_model=my_model,
+                model=my_model,
                 max_epochs=hparams.get("training_epochs", 50),
                 check_val_every_n_epoch=hparams.get("measure_frequency", 1),
                 logger=comet_logger,

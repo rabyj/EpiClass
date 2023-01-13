@@ -259,7 +259,7 @@ def do_one_experiment(
         if torch.cuda.device_count():
             trainer = MyTrainer(
                 general_log_dir=logger.save_dir,  # type: ignore
-                last_trained_model=my_model,
+                model=my_model,
                 max_epochs=hparams.get("training_epochs", 50),
                 check_val_every_n_epoch=hparams.get("measure_frequency", 1),
                 logger=logger,
@@ -274,7 +274,7 @@ def do_one_experiment(
             callbacks.append(pl_callbacks.RichProgressBar(leave=True))
             trainer = MyTrainer(
                 general_log_dir=logger.save_dir,  # type: ignore
-                last_trained_model=my_model,
+                model=my_model,
                 max_epochs=hparams.get("training_epochs", 50),
                 check_val_every_n_epoch=hparams.get("measure_frequency", 1),
                 logger=logger,
@@ -320,8 +320,14 @@ def do_one_experiment(
         )
         logger.experiment.log_metric("Training time", training_time, step=split_nb)
         logger.experiment.log_metric("Last epoch", my_model.current_epoch, step=split_nb)
-
-    my_model = LightningDenseClassifier.restore_model(logger.save_dir)
+    try:
+        my_model = LightningDenseClassifier.restore_model(logger.save_dir)
+    except (FileNotFoundError, OSError) as e:
+        print(e)
+        print("Closing logger and skipping this split.")
+        logger.experiment.add_tag("ModelNotFoundError")
+        logger.finalize(status="ModelNotFoundError")
+        return
 
     # --- OUTPUTS ---
     my_analyzer = analysis.Analysis(
