@@ -1,4 +1,3 @@
-import collections
 import copy
 from pathlib import Path
 
@@ -8,6 +7,7 @@ import src.python.utils.modify_metadata as modify_metadata
 from src.python.core.epiatlas_treatment import TRACKS_MAPPING
 from src.python.core.metadata import Metadata
 from src.python.utils.augment_predict_file import add_coherence
+from src.python.utils.preconditions import check_epitatlas_uuid_premise
 
 
 def two_step_long_analysis(my_metadata: Metadata, category1, category2):
@@ -122,19 +122,6 @@ def compute_coherence_on_all(meta: Metadata):
     df.to_csv("test.csv", index=False)
 
 
-def check_epitatlas_uuid_premise(metadata: Metadata):
-    """Check that there is only one file per track type, for a given uuid."""
-    uuid_to_md5s = collections.defaultdict(collections.Counter)
-    for dset in metadata.datasets:
-        uuid = dset["uuid"]
-        uuid_to_md5s[uuid].update([dset["track_type"]])
-
-    for uuid, counter in uuid_to_md5s.items():
-        for nb in counter.values():
-            if nb != 1:
-                print(uuid, counter)
-
-
 def create_json_from_md5_list(md5_list: Path, metadata: Metadata):
     """Save json with metadata from selected signals."""
     metadata = copy.deepcopy(metadata)
@@ -218,13 +205,14 @@ def test_generic_classifiers(my_metadata):
 def main():
 
     base = Path("/home/local/USHERBROOKE/rabj2301/Projects/epilap/input/metadata")
-    path = base / "merge_EpiAtlas_allmetadata-v10.json"
+    path = base / "hg38_2023-epiatlas-dfreeze_version1.json"
     my_metadata = Metadata(path)
 
     # md5_list = "/home/local/USHERBROOKE/rabj2301/Projects/sources/epi_ml/src/python/tests/fixtures/test-epilap-empty-biotype-n40.md5"
     # create_json_from_md5_list(Path(md5_list), my_metadata)
 
-    my_metadata.display_labels("track_type")
+    # my_metadata.display_labels("track_type")
+    check_epitatlas_uuid_premise(my_metadata)
 
 
 if __name__ == "__main__":
