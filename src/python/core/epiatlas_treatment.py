@@ -164,11 +164,19 @@ class EpiAtlasDataset:
                 uuid_to_md5s[uuid] = {dset["track_type"]: dset["md5sum"]}
 
         raw_to_others = {}
-        for val in uuid_to_md5s.values():
-            for init in LEADER_TRACKS:
-                if init in val:
-                    others = TRACKS_MAPPING[init]
-                    raw_to_others[val[init]] = {track: val[track] for track in others}
+        for tracks_to_md5 in uuid_to_md5s.values():
+
+            for lead_track in LEADER_TRACKS:
+                if lead_track in tracks_to_md5:
+
+                    non_lead_tracks = set(TRACKS_MAPPING[lead_track]) & set(
+                        tracks_to_md5.values()
+                    )
+                    lead_md5 = tracks_to_md5[lead_track]
+
+                    raw_to_others[lead_md5] = {
+                        track: tracks_to_md5[track] for track in non_lead_tracks
+                    }
 
         return raw_to_others
 
