@@ -67,7 +67,8 @@ class Hdf5Loader(object):
         """
         files = self.read_list(data_file)
 
-        files = Hdf5Loader.adapt_to_environment(files)
+        new_parent = os.getenv("HDF5_PARENT", "hdf5s")
+        files = Hdf5Loader.adapt_to_environment(files, new_parent)
         self._files = files
 
         # Remove undesired files
@@ -134,7 +135,7 @@ class Hdf5Loader(object):
         Files : {md5:path} dict.
         new_parent : directory after $SLURM_TMPDIR.
         """
-        local_tmp = Path(os.getenv("$SLURM_TMPDIR", "./bleh")) / new_parent
+        local_tmp = Path(os.getenv("SLURM_TMPDIR", "./bleh")) / new_parent
 
         if local_tmp.exists():
             print(f"Using files in {local_tmp}")
