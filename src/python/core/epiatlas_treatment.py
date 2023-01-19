@@ -65,7 +65,7 @@ class EpiAtlasDataset:
 
         self._filter_metadata(min_class_size, verbose=True)
 
-        self._raw_to_others = self._epiatlas_prepare_split()
+        self._raw_to_others = EpiAtlasDataset.epiatlas_prepare_split(self._metadata)
 
         # Load files
         self._raw_dset = self._create_raw_dataset(test_ratio, min_class_size)
@@ -146,17 +146,16 @@ class EpiAtlasDataset:
 
         return my_data
 
-    def _epiatlas_prepare_split(self) -> Dict[str, Dict[str, str]]:
+    @staticmethod
+    def epiatlas_prepare_split(metadata: Metadata) -> Dict[str, Dict[str, str]]:
         """Return track_type mapping dict assuming the datasource is complete.
 
         Assumption/Condition: Only one file per track type, for a given uuid.
 
         e.g. { raw_md5sum : {"pval":md5sum, "fc":md5sum} }
         """
-        meta = self.metadata
-
         uuid_to_md5s = {}  # { uuid : {track_type1:md5sum, track_type2:md5sum, ...} }
-        for dset in meta.datasets:
+        for dset in metadata.datasets:
             uuid = dset["uuid"]
             if uuid in uuid_to_md5s:
                 uuid_to_md5s[uuid].update({dset["track_type"]: dset["md5sum"]})

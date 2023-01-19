@@ -1,16 +1,19 @@
 """EpiAtlas data treatment testing module."""
 from __future__ import annotations
 
+import copy
+
 import numpy as np
 import pytest
 from sklearn.model_selection import StratifiedKFold
 
-from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
+from src.python.core.epiatlas_treatment import EpiAtlasDataset, EpiAtlasFoldFactory
+from src.python.core.metadata import Metadata
 from src.python.tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
 
 
-class TestEpiAtlasTreatment:
-    """Test class EpiAtlasFoldFactory and
+class TestEpiAtlasFoldFactory:
+    """Test class EpiAtlasFoldFactory.
 
     Preconditions: Exact same input labels list. (raw_dset.train.encoded_labels)
     """
@@ -66,6 +69,49 @@ class TestEpiAtlasTreatment:
         nb_split = 10
         with pytest.raises(ValueError):
             next(test_data.yield_subsample_validation(chosen_split=0, nb_split=nb_split))
+
+
+class TestEpiAtlasDataset:
+    """Test class EpiAtlasDataset"""
+
+    @pytest.fixture(scope="class")
+    def test_metadata(self) -> Metadata:
+        """Mock test EpiAtlasFoldFactory."""
+        meta_path = (
+            EpiAtlasTreatmentTestData.default_test_data().epiatlas_dataset.datasource.metadata_file
+        )
+        return Metadata(meta_path)
+
+    @pytest.fixture(scope="class")
+    def test_datasource(self):
+        return EpiAtlasTreatmentTestData.default_test_data().epiatlas_dataset.datasource
+
+    def modified_metadata(self, test_metadata, del_track: str):
+        meta = copy.deepcopy(test_metadata)
+        for md5, dset in list(meta.items):
+            if dset["track_type"] == del_track:
+                del meta[md5]
+        return meta
+
+    @pytest.mark.parametrize("del_track,", ["pval", "fc", "Unique_minusRaw"])
+    def test_epiatlas_prepare_split(self, test_metadata: Metadata, del_track):
+        """Verify that having missing non-leading tracks does not cause an error."""
+        meta = self.modified_metadata(test_metadata, del_track)
+        EpiAtlasDataset.epiatlas_prepare_split(meta)
+
+    @pytest.mark.parametrize("del_track,", ["pval", "fc", "Unique_minusRaw"])
+    def test_yield_missing_tracks(self, test_datasource, test_metadata, del_track: str):
+        """Make sure splitter can handle missing non-leading tracks."""
+        meta = self.modified_metadata(test_metadata, del_track)
+        ea_handler = EpiAtlasFoldFactory.from_datasource(
+            test_datasource,
+            label_category="biomaterial_type",
+            min_class_size=2,
+            n_fold=3,
+            metadata=meta,
+        )
+        for _ in ea_handler.yield_split():
+            pass
 
 
 def test_StratifiedKFold_sanity():
