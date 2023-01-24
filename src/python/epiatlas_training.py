@@ -299,8 +299,6 @@ def do_one_experiment(
         training_time = time_now() - before_train
         print(f"training time: {training_time}")
 
-        del trainer
-
         # reload comet logger for further logging, will create new experience in offline mode
         if type(logger.experiment).__name__ == "OfflineExperiment":
             IsOffline = True
@@ -348,15 +346,6 @@ def do_one_experiment(
 
     logger.experiment.add_tag("Finished")
     logger.finalize(status="Finished")
-
-    del logger
-    del my_analyzer
-    del my_model
-    del train_dataset
-    del valid_dataset
-    del train_dataloader
-    del valid_dataloader
-    gc.collect()
 
 
 if __name__ == "__main__":
