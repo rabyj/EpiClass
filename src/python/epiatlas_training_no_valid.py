@@ -146,8 +146,6 @@ def main():
         "hdf5_resolution": str(hdf5_resolution),
         "category": category,
     }
-    if os.getenv("SLURM_JOB_ID") is not None:
-        to_log["SLURM_JOB_ID"] = os.environ["SLURM_JOB_ID"]
 
     # --- Startup LOGGER ---
     # api key in config file
