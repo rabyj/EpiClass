@@ -23,6 +23,10 @@ TRACKS_MAPPING = {
     "gembs_pos": ["gembs_neg"],
 }
 
+ACCEPTED_TRACKS = list(TRACKS_MAPPING.keys()) + list(
+    itertools.chain.from_iterable(TRACKS_MAPPING.values())
+)
+
 LEADER_TRACKS = frozenset(["raw", "Unique_plusRaw", "gembs_pos"])
 
 
@@ -126,7 +130,7 @@ class EpiAtlasDataset:
         meta.display_labels(self.target_category)
         meta.display_labels("track_type")
 
-        print("Selected signals in accordance with metadata:")
+        print("raw dataset: Selected signals in accordance with metadata:")
         meta.select_category_subsets("track_type", list(TRACKS_MAPPING.keys()))
         meta.display_labels("track_type")
 
@@ -154,13 +158,11 @@ class EpiAtlasDataset:
 
         e.g. { raw_md5sum : {"pval":md5sum, "fc":md5sum} }
         """
-        uuid_to_md5s = {}  # { uuid : {track_type1:md5sum, track_type2:md5sum, ...} }
+        # { uuid : {track_type1:md5sum, track_type2:md5sum, ...} }
+        uuid_to_md5s = collections.defaultdict(dict)
         for dset in metadata.datasets:
             uuid = dset["uuid"]
-            if uuid in uuid_to_md5s:
-                uuid_to_md5s[uuid].update({dset["track_type"]: dset["md5sum"]})
-            else:
-                uuid_to_md5s[uuid] = {dset["track_type"]: dset["md5sum"]}
+            uuid_to_md5s[uuid].update({dset["track_type"]: dset["md5sum"]})
 
         raw_to_others = {}
         for tracks_to_md5 in uuid_to_md5s.values():
@@ -169,7 +171,7 @@ class EpiAtlasDataset:
                 if lead_track in tracks_to_md5:
 
                     non_lead_tracks = set(TRACKS_MAPPING[lead_track]) & set(
-                        tracks_to_md5.values()
+                        tracks_to_md5.keys()
                     )
                     lead_md5 = tracks_to_md5[lead_track]
 
