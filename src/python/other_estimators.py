@@ -4,9 +4,13 @@ from __future__ import annotations
 import argparse
 import glob
 import json
+import logging
 import os
 import sys
 from pathlib import Path
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 import src.python.core.estimators as estimators
 from src.python.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
@@ -99,7 +103,7 @@ def main():
         raise ValueError("Houston we have a problem.")
 
     if "all" in cli.models:
-        models = estimators.model_mapping.keys()
+        models = list(estimators.model_mapping.keys())
     else:
         models = cli.models
 
@@ -140,11 +144,16 @@ def main():
         n_iter = cli.n
 
         for name in models:
-            if name == "LGBM":
-                # optuna.logging.set_verbosity(optuna.logging.DEBUG)  # type: ignore
-                tune_lgbm(ea_handler, cli.logdir)
-            else:
-                estimators.optimize_estimator(ea_handler, cli.logdir, n_iter, name)
+            try:
+                if name == "LGBM":
+                    # optuna.logging.set_verbosity(optuna.logging.DEBUG)  # type: ignore
+                    tune_lgbm(ea_handler, cli.logdir)
+                else:
+                    estimators.optimize_estimator(ea_handler, cli.logdir, n_iter, name)
+            except OverflowError as error:
+                print("{name} model failed with OverflowError. Logging error to stderr")
+                logger.exception(error)
+                continue
 
     # Predict mode
     # TODO: Pre-check, with a separate init script for best_params.json existence
