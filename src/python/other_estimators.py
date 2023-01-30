@@ -12,10 +12,9 @@ from pathlib import Path
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-import src.python.core.estimators as estimators
 from src.python.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from src.python.argparseutils.directorychecker import DirectoryChecker
-from src.python.core import data, metadata
+from src.python.core import data, estimators, metadata
 from src.python.core.data_source import EpiDataSource
 from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
 from src.python.core.lgbm import tune_lgbm
