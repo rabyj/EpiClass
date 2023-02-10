@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+import warnings
 from pathlib import Path
 from typing import Dict
 
@@ -91,20 +92,19 @@ class Hdf5Loader(object):
         for md5, file in files.items():
 
             # Trying to open hdf5 file.
-            try:
-                f = h5py.File(file)
-            except OSError as err:
-                print(f"Error occured with {md5}: {file}. {err}", file=sys.stderr)
-                if strict:
-                    print(
-                        "Strict hdf5 loading policy true, raising original error.",
-                        file=sys.stderr,
-                    )
-                    raise err from None
-                else:
-                    continue
-
-            signals[md5] = self._normalize(self._read_hdf5(f, md5))
+            with h5py.File(file, "r") as f:
+                try:
+                    signals[md5] = self._normalize(self._read_hdf5(f, md5))
+                except OSError as err:
+                    print(f"Error occured with {md5}: {file}. {err}", file=sys.stderr)
+                    if strict:
+                        print(
+                            "Strict hdf5 loading policy true, raising original error.",
+                            file=sys.stderr,
+                        )
+                        raise err from None
+                    else:
+                        continue
 
         self._signals = signals
 
@@ -112,7 +112,16 @@ class Hdf5Loader(object):
 
     def _read_hdf5(self, file: h5py.File, md5: str) -> np.ndarray:
         """Read and return concatenated genome signal for open hdf5 file."""
-        chrom_signals = [file[md5][chrom][...] for chrom in self._chroms]  # type: ignore
+        try:
+            hdf5_data = file[md5]
+        except KeyError:
+            header = list(file.keys())[0]
+            warnings.warn(
+                f"Cannot read file directly with {md5}, header is different. Using header {header}."
+            )
+            hdf5_data = file[header]
+
+        chrom_signals = [hdf5_data[chrom][...] for chrom in self._chroms]  # type: ignore
         return np.concatenate(chrom_signals, dtype=np.float32)  # type: ignore
 
     def _normalize(self, array: np.ndarray) -> np.ndarray:
