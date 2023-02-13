@@ -5,6 +5,8 @@ to verify that the logging directory is present, and create it if not.
 This permits proper redirection of stdout and stderr to files in bash to said directory,
 in the following scripts.
 """
+from __future__ import annotations
+
 import argparse
 from pathlib import Path
 
@@ -26,7 +28,7 @@ def parse_arguments() -> argparse.Namespace:
     return arg_parser.parse_args()
 
 
-def create_dirs(dir_path):
+def create_dirs(dir_path: str | Path):
     """Create recursively needed directories to directory."""
     path = Path(dir_path)
     for parent in reversed(path.parents):
@@ -37,9 +39,10 @@ def create_dirs(dir_path):
 def main():
     """main called from command line, edit to change behavior"""
 
+    cli = parse_arguments()
+    dir_checker = DirectoryChecker()
+
     try:
-        cli = parse_arguments()
-        dir_checker = DirectoryChecker()
         dir_checker(cli.dir)
     except DirectoryCheckerError as dir_err:
 
