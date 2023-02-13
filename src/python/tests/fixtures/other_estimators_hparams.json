@@ -1,0 +1,7 @@
+{
+  "LinearSVC": {
+    "model__C": 643.1854566491933,
+    "model__intercept_scaling": 5,
+    "model__loss": "hinge"
+  }
+}
