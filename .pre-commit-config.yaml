@@ -21,7 +21,7 @@ repos:
     - id: check-yaml
     - id: debug-statements
     - id: end-of-file-fixer
-      exclude: .html$
+      exclude: \.html$|__init__.py
     - id: forbid-submodules
     - id: mixed-line-ending
     - id: name-tests-test
@@ -46,5 +46,6 @@ repos:
       additional_dependencies: [black==22.6.0]
     - id: nbqa-pylint
       name: pylint
+      files: \.py$
       args: ["--rcfile=./pyproject.toml"]
       additional_dependencies: [pylint==2.14.5]
