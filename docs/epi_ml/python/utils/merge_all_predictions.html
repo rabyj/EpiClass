@@ -33,6 +33,7 @@ Tightly linked with the output of augment_predict_file.py.</p>
 Tightly linked with the output of augment_predict_file.py.
 &#34;&#34;&#34;
 import argparse
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -75,8 +76,12 @@ def main():
                 f&#34;Expected shape {df_shape}, got {df.shape}. File named {name} does not contain same csv shape as first file.&#34;
             )
         if not df.columns.equals(column_names):
+            for col1, col2 in zip(df.columns.to_list(), column_names.to_list()):
+                print(col1, col2, file=sys.stderr)
+                if col1 != col2:
+                    print(&#34;-- PROBLEMATIC COLUMNS DIRECTLY ABOVE --&#34;, file=sys.stderr)
             raise AssertionError(
-                f&#34;Headers are not identical. {name} differs from first file&#34;
+                f&#34;Headers are not identical. {name} differs from first file. See stderr for all columns.&#34;
             )
 
     column_names = pd.Index(column_names)
@@ -99,7 +104,8 @@ def main():
             validate=&#34;1:1&#34;,
         )
 
-    new_df.to_csv(cli.output, sep=&#34;,&#34;, index=False)
+    print(&#34;New file written to {cli.output.resolve()}.&#34;)
+    new_df.to_csv(cli.output.resolve(), sep=&#34;,&#34;, index=False)
 
 
 if __name__ == &#34;__main__&#34;:
@@ -137,8 +143,12 @@ if __name__ == &#34;__main__&#34;:
                 f&#34;Expected shape {df_shape}, got {df.shape}. File named {name} does not contain same csv shape as first file.&#34;
             )
         if not df.columns.equals(column_names):
+            for col1, col2 in zip(df.columns.to_list(), column_names.to_list()):
+                print(col1, col2, file=sys.stderr)
+                if col1 != col2:
+                    print(&#34;-- PROBLEMATIC COLUMNS DIRECTLY ABOVE --&#34;, file=sys.stderr)
             raise AssertionError(
-                f&#34;Headers are not identical. {name} differs from first file&#34;
+                f&#34;Headers are not identical. {name} differs from first file. See stderr for all columns.&#34;
             )
 
     column_names = pd.Index(column_names)
@@ -161,7 +171,8 @@ if __name__ == &#34;__main__&#34;:
             validate=&#34;1:1&#34;,
         )
 
-    new_df.to_csv(cli.output, sep=&#34;,&#34;, index=False)</code></pre>
+    print(&#34;New file written to {cli.output.resolve()}.&#34;)
+    new_df.to_csv(cli.output.resolve(), sep=&#34;,&#34;, index=False)</code></pre>
 </details>
 </dd>
 <dt id="python.utils.merge_all_predictions.parse_arguments"><code class="name flex">

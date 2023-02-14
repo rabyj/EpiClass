@@ -18,7 +18,6 @@ def log_pre_training(
     - category
     - hdf5_resolution
     - loading_time (initial, for hdf5)
-    - SLURM_JOB_ID (optional)
     When step is an int:
     - split_time (generator yield time)
     """
@@ -32,7 +31,7 @@ def log_pre_training(
     )
 
     # job id when done on HPC
-    if "SLURM_JOB_ID" in to_log:
+    if os.getenv("SLURM_JOB_ID") is not None:
         logger.experiment.log_other("SLURM_JOB_ID", os.environ["SLURM_JOB_ID"])
         logger.experiment.add_tag("Cluster")
 

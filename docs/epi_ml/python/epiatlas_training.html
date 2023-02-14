@@ -58,12 +58,12 @@ from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
 from src.python.core.model_pytorch import LightningDenseClassifier
 from src.python.core.trainer import MyTrainer, define_callbacks
 from src.python.utils.check_dir import create_dirs
-from src.python.utils.logging import log_pre_training
 from src.python.utils.modify_metadata import (
     filter_cell_types_by_pairs,
     fix_roadmap,
     merge_pair_end_info,
 )
+from src.python.utils.my_logging import log_pre_training
 from src.python.utils.time import time_now
 
 
@@ -328,8 +328,6 @@ def do_one_experiment(
         training_time = time_now() - before_train
         print(f&#34;training time: {training_time}&#34;)
 
-        del trainer
-
         # reload comet logger for further logging, will create new experience in offline mode
         if type(logger.experiment).__name__ == &#34;OfflineExperiment&#34;:
             IsOffline = True
@@ -377,15 +375,6 @@ def do_one_experiment(
 
     logger.experiment.add_tag(&#34;Finished&#34;)
     logger.finalize(status=&#34;Finished&#34;)
-
-    del logger
-    del my_analyzer
-    del my_model
-    del train_dataset
-    del valid_dataset
-    del train_dataloader
-    del valid_dataloader
-    gc.collect()
 
 
 if __name__ == &#34;__main__&#34;:
@@ -523,8 +512,6 @@ if __name__ == &#34;__main__&#34;:
         training_time = time_now() - before_train
         print(f&#34;training time: {training_time}&#34;)
 
-        del trainer
-
         # reload comet logger for further logging, will create new experience in offline mode
         if type(logger.experiment).__name__ == &#34;OfflineExperiment&#34;:
             IsOffline = True
@@ -571,16 +558,7 @@ if __name__ == &#34;__main__&#34;:
     print(f&#34;Loop time (excludes split time): {loop_time}&#34;)
 
     logger.experiment.add_tag(&#34;Finished&#34;)
-    logger.finalize(status=&#34;Finished&#34;)
-
-    del logger
-    del my_analyzer
-    del my_model
-    del train_dataset
-    del valid_dataset
-    del train_dataloader
-    del valid_dataloader
-    gc.collect()</code></pre>
+    logger.finalize(status=&#34;Finished&#34;)</code></pre>
 </details>
 </dd>
 <dt id="python.epiatlas_training.main"><code class="name flex">

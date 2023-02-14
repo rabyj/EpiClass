@@ -131,7 +131,7 @@ def tune_lgbm(ea_handler: EpiAtlasFoldFactory, logdir: Path):
 
     name = &#34;LGBM&#34;
     with open(logdir / f&#34;{name}_best_params.json&#34;, &#34;w&#34;, encoding=&#34;utf-8&#34;) as f:
-        json.dump(best_params, f)
+        json.dump(best_params, f, sort_keys=True, indent=4)
 
     with open(logdir / f&#34;{name}_study.pickle&#34;, &#34;wb&#34;) as f:
         pickle.dump(study, f)
@@ -266,7 +266,7 @@ hyperparameters of a LightGBM classifier using Optuna.</p>
 
     name = &#34;LGBM&#34;
     with open(logdir / f&#34;{name}_best_params.json&#34;, &#34;w&#34;, encoding=&#34;utf-8&#34;) as f:
-        json.dump(best_params, f)
+        json.dump(best_params, f, sort_keys=True, indent=4)
 
     with open(logdir / f&#34;{name}_study.pickle&#34;, &#34;wb&#34;) as f:
         pickle.dump(study, f)

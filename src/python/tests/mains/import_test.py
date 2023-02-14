@@ -1,8 +1,10 @@
 """Test if all main scripts imports run without errors."""
+# pylint: disable=unused-import, import-outside-toplevel
 from __future__ import annotations
 
 
 def import_test():
+    """Test if all main scripts imports run without errors."""
     import argparse
     import glob
     import json

@@ -379,3 +379,14 @@ def fix_roadmap(metadata: Metadata):
     """
     converter = {"NIH Roadmap Epigenomics": "Roadmap"}
     metadata.convert_classes("data_generating_centre", converter)
+
+
+def add_fake_epiatlas_metadata(metadata: Metadata) -> None:
+    """Add uuid and track_type info to non epiatlas metadata.
+    uuid will be md5sum, and track_type will be raw.
+    """
+    for md5, dset in list(metadata.items):
+        if "uuid" not in dset:
+            metadata[md5]["uuid"] = md5
+        if "track_type" not in dset:
+            metadata[md5]["track_type"] = "raw"

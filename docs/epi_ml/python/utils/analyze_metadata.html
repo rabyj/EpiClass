@@ -26,8 +26,7 @@
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import collections
-import copy
+<pre><code class="python">import copy
 from pathlib import Path
 
 import pandas as pd
@@ -36,6 +35,7 @@ import src.python.utils.modify_metadata as modify_metadata
 from src.python.core.epiatlas_treatment import TRACKS_MAPPING
 from src.python.core.metadata import Metadata
 from src.python.utils.augment_predict_file import add_coherence
+from src.python.utils.preconditions import check_epitatlas_uuid_premise
 
 
 def two_step_long_analysis(my_metadata: Metadata, category1, category2):
@@ -150,19 +150,6 @@ def compute_coherence_on_all(meta: Metadata):
     df.to_csv(&#34;test.csv&#34;, index=False)
 
 
-def check_epitatlas_uuid_premise(metadata: Metadata):
-    &#34;&#34;&#34;Check that there is only one file per track type, for a given uuid.&#34;&#34;&#34;
-    uuid_to_md5s = collections.defaultdict(collections.Counter)
-    for dset in metadata.datasets:
-        uuid = dset[&#34;uuid&#34;]
-        uuid_to_md5s[uuid].update([dset[&#34;track_type&#34;]])
-
-    for uuid, counter in uuid_to_md5s.items():
-        for nb in counter.values():
-            if nb != 1:
-                print(uuid, counter)
-
-
 def create_json_from_md5_list(md5_list: Path, metadata: Metadata):
     &#34;&#34;&#34;Save json with metadata from selected signals.&#34;&#34;&#34;
     metadata = copy.deepcopy(metadata)
@@ -246,13 +233,14 @@ def test_generic_classifiers(my_metadata):
 def main():
 
     base = Path(&#34;/home/local/USHERBROOKE/rabj2301/Projects/epilap/input/metadata&#34;)
-    path = base / &#34;merge_EpiAtlas_allmetadata-v10.json&#34;
+    path = base / &#34;hg38_2023-epiatlas-dfreeze_version1.json&#34;
     my_metadata = Metadata(path)
 
     # md5_list = &#34;/home/local/USHERBROOKE/rabj2301/Projects/sources/epi_ml/src/python/tests/fixtures/test-epilap-empty-biotype-n40.md5&#34;
     # create_json_from_md5_list(Path(md5_list), my_metadata)
 
-    my_metadata.display_labels(&#34;track_type&#34;)
+    # my_metadata.display_labels(&#34;track_type&#34;)
+    check_epitatlas_uuid_premise(my_metadata)
 
 
 if __name__ == &#34;__main__&#34;:
@@ -266,28 +254,6 @@ if __name__ == &#34;__main__&#34;:
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="python.utils.analyze_metadata.check_epitatlas_uuid_premise"><code class="name flex">
-<span>def <span class="ident">check_epitatlas_uuid_premise</span></span>(<span>metadata: src.python.core.metadata.Metadata)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Check that there is only one file per track type, for a given uuid.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def check_epitatlas_uuid_premise(metadata: Metadata):
-    &#34;&#34;&#34;Check that there is only one file per track type, for a given uuid.&#34;&#34;&#34;
-    uuid_to_md5s = collections.defaultdict(collections.Counter)
-    for dset in metadata.datasets:
-        uuid = dset[&#34;uuid&#34;]
-        uuid_to_md5s[uuid].update([dset[&#34;track_type&#34;]])
-
-    for uuid, counter in uuid_to_md5s.items():
-        for nb in counter.values():
-            if nb != 1:
-                print(uuid, counter)</code></pre>
-</details>
-</dd>
 <dt id="python.utils.analyze_metadata.compute_coherence_on_all"><code class="name flex">
 <span>def <span class="ident">compute_coherence_on_all</span></span>(<span>meta: src.python.core.metadata.Metadata)</span>
 </code></dt>
@@ -358,13 +324,14 @@ if __name__ == &#34;__main__&#34;:
 <pre><code class="python">def main():
 
     base = Path(&#34;/home/local/USHERBROOKE/rabj2301/Projects/epilap/input/metadata&#34;)
-    path = base / &#34;merge_EpiAtlas_allmetadata-v10.json&#34;
+    path = base / &#34;hg38_2023-epiatlas-dfreeze_version1.json&#34;
     my_metadata = Metadata(path)
 
     # md5_list = &#34;/home/local/USHERBROOKE/rabj2301/Projects/sources/epi_ml/src/python/tests/fixtures/test-epilap-empty-biotype-n40.md5&#34;
     # create_json_from_md5_list(Path(md5_list), my_metadata)
 
-    my_metadata.display_labels(&#34;track_type&#34;)</code></pre>
+    # my_metadata.display_labels(&#34;track_type&#34;)
+    check_epitatlas_uuid_premise(my_metadata)</code></pre>
 </details>
 </dd>
 <dt id="python.utils.analyze_metadata.make_table"><code class="name flex">
@@ -583,7 +550,6 @@ from statistical derivations, without making any assumptions about the actual da
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="python.utils.analyze_metadata.check_epitatlas_uuid_premise" href="#python.utils.analyze_metadata.check_epitatlas_uuid_premise">check_epitatlas_uuid_premise</a></code></li>
 <li><code><a title="python.utils.analyze_metadata.compute_coherence_on_all" href="#python.utils.analyze_metadata.compute_coherence_on_all">compute_coherence_on_all</a></code></li>
 <li><code><a title="python.utils.analyze_metadata.create_json_from_md5_list" href="#python.utils.analyze_metadata.create_json_from_md5_list">create_json_from_md5_list</a></code></li>
 <li><code><a title="python.utils.analyze_metadata.main" href="#python.utils.analyze_metadata.main">main</a></code></li>

@@ -33,14 +33,17 @@ from __future__ import annotations
 import argparse
 import glob
 import json
+import logging
 import os
 import sys
 from pathlib import Path
 
-import src.python.core.estimators as estimators
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 from src.python.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from src.python.argparseutils.directorychecker import DirectoryChecker
-from src.python.core import data, metadata
+from src.python.core import data, estimators, metadata
 from src.python.core.data_source import EpiDataSource
 from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
 from src.python.core.lgbm import tune_lgbm
@@ -84,7 +87,7 @@ def parse_arguments() -&gt; argparse.Namespace:
         &#34;--tune&#34;, action=&#34;store_true&#34;, help=&#34;Search best hyperparameters.&#34;
         )
     mode.add_argument(
-        &#34;--predict&#34;, action=&#34;store_true&#34;, help=&#34;Fit and predict using hyperparameters.&#34;
+        &#34;--predict&#34;, action=&#34;store_true&#34;, help=&#34;FIT and PREDICT using hyperparameters.&#34;
         )
     mode.add_argument(
         &#34;--predict-new&#34;, action=&#34;store_true&#34;, help=&#34;Use saved models to predict labels of new samples.&#34;
@@ -99,6 +102,11 @@ def parse_arguments() -&gt; argparse.Namespace:
         type=int,
         default=30,
         help=&#34;Number of BayesSearchCV hyperparameters iterations.&#34;,
+    )
+
+    predict = parser.add_argument_group(&#34;Predictions and Final training&#34;)
+    predict.add_argument(
+        &#34;--hyperparams&#34;, type=Path, help=&#34;A json file containing model(s) hyperparameters.&#34;,
     )
     # fmt: on
     return parser.parse_args()
@@ -127,8 +135,9 @@ def main():
     else:
         raise ValueError(&#34;Houston we have a problem.&#34;)
 
+    acceptable_models = list(estimators.model_mapping.keys())
     if &#34;all&#34; in cli.models:
-        models = estimators.model_mapping.keys()
+        models = acceptable_models
     else:
         models = cli.models
 
@@ -169,64 +178,64 @@ def main():
         n_iter = cli.n
 
         for name in models:
-            if name == &#34;LGBM&#34;:
-                # optuna.logging.set_verbosity(optuna.logging.DEBUG)  # type: ignore
-                tune_lgbm(ea_handler, cli.logdir)
-            else:
-                estimators.optimize_estimator(ea_handler, cli.logdir, n_iter, name)
+            try:
+                if name == &#34;LGBM&#34;:
+                    # optuna.logging.set_verbosity(optuna.logging.DEBUG)  # type: ignore
+                    tune_lgbm(ea_handler, cli.logdir)
+                else:
+                    estimators.optimize_estimator(ea_handler, cli.logdir, n_iter, name)
+            except OverflowError as error:
+                print(&#34;{name} model failed with OverflowError. Logging error to stderr&#34;)
+                logger.exception(error)
+                continue
 
     # Predict mode
-    # TODO: Pre-check, with a separate init script for best_params.json existence
     if mode_predict is True:  # type: ignore
         print(&#34;Entering fit/prediction mode&#34;)
 
-        pattern = f&#34;{cli.logdir / estimators.best_params_file_format.format(name=&#39;*&#39;)}&#34;
-        hparam_files = glob.glob(pattern)
-        if hparam_files:
-
-            ea_handler = EpiAtlasFoldFactory.from_datasource(
-                my_datasource,
-                cli.category,
-                label_list,
-                n_fold=estimators.NFOLD_PREDICT,
-                test_ratio=0,
-                min_class_size=min_class_size,
-                metadata=my_metadata,
+        if cli.hyperparams is None:
+            raise ValueError(
+                &#34;No hyperparameter file given for final fit(s) and prediction.&#34;
             )
-            loading_time = time_now() - loading_begin
-            print(f&#34;Initial hdf5 loading time: {loading_time}&#34;)
 
-            # Intersect available hparam files with chose models.
-            available = set([estimators.get_model_name(path) for path in hparam_files])
-            chosen = available &amp; set(models)
-            hparam_files = [pattern.replace(&#34;*&#34;, name) for name in chosen]
+        with open(cli.hyperparams, &#34;r&#34;, encoding=&#34;utf-8&#34;) as file:
+            loaded_hparams = json.load(file)
 
-            if not hparam_files:
-                print(&#34;No parameters file found, finishing now.&#34;)
-                sys.exit()
+        # Intersect available model hparams with chosen models.
+        model_w_hparams = set(loaded_hparams.keys())
+        selected_models = model_w_hparams &amp; set(models)
 
-            for filepath in hparam_files:
-
-                print(f&#34;Using {Path(filepath).resolve()}.&#34;)
-                with open(filepath, &#34;r&#34;, encoding=&#34;utf-8&#34;) as file:
-                    hparams = json.load(file)
-
-                name = estimators.get_model_name(filepath)
-                if name == &#34;LGBM&#34;:
-                    hparams = {
-                        k: v
-                        for k, v in hparams.items()
-                        if k in estimators.lgbm_allowed_params
-                    }
-
-                estimator = estimators.model_mapping[name]
-                estimator.set_params(**hparams)
-
-                estimators.run_predictions(ea_handler, estimator, name, cli.logdir)
-
-        else:
-            print(&#34;No parameters file found, finishing now.&#34;)
+        if not selected_models:
+            print(&#34;No parameters found for selected models {models}, finishing now.&#34;)
             sys.exit()
+
+        ea_handler = EpiAtlasFoldFactory.from_datasource(
+            my_datasource,
+            cli.category,
+            label_list,
+            n_fold=estimators.NFOLD_PREDICT,
+            test_ratio=0,
+            min_class_size=min_class_size,
+            metadata=my_metadata,
+        )
+        loading_time = time_now() - loading_begin
+        print(f&#34;Initial hdf5 loading time: {loading_time}&#34;)
+
+        for model_name in selected_models:
+
+            model_hparams = loaded_hparams[model_name]
+
+            if model_name == &#34;LGBM&#34;:
+                model_hparams = {
+                    k: v
+                    for k, v in model_hparams.items()
+                    if k in estimators.lgbm_allowed_params
+                }
+
+            estimator = estimators.model_mapping[model_name]
+            estimator.set_params(**model_hparams)
+
+            estimators.run_predictions(ea_handler, estimator, model_name, cli.logdir)
 
     # Giving predictions with chosen models, for all files in hdf5 list.
     if cli.predict_new:
@@ -319,8 +328,9 @@ if __name__ == &#34;__main__&#34;:
     else:
         raise ValueError(&#34;Houston we have a problem.&#34;)
 
+    acceptable_models = list(estimators.model_mapping.keys())
     if &#34;all&#34; in cli.models:
-        models = estimators.model_mapping.keys()
+        models = acceptable_models
     else:
         models = cli.models
 
@@ -361,64 +371,64 @@ if __name__ == &#34;__main__&#34;:
         n_iter = cli.n
 
         for name in models:
-            if name == &#34;LGBM&#34;:
-                # optuna.logging.set_verbosity(optuna.logging.DEBUG)  # type: ignore
-                tune_lgbm(ea_handler, cli.logdir)
-            else:
-                estimators.optimize_estimator(ea_handler, cli.logdir, n_iter, name)
+            try:
+                if name == &#34;LGBM&#34;:
+                    # optuna.logging.set_verbosity(optuna.logging.DEBUG)  # type: ignore
+                    tune_lgbm(ea_handler, cli.logdir)
+                else:
+                    estimators.optimize_estimator(ea_handler, cli.logdir, n_iter, name)
+            except OverflowError as error:
+                print(&#34;{name} model failed with OverflowError. Logging error to stderr&#34;)
+                logger.exception(error)
+                continue
 
     # Predict mode
-    # TODO: Pre-check, with a separate init script for best_params.json existence
     if mode_predict is True:  # type: ignore
         print(&#34;Entering fit/prediction mode&#34;)
 
-        pattern = f&#34;{cli.logdir / estimators.best_params_file_format.format(name=&#39;*&#39;)}&#34;
-        hparam_files = glob.glob(pattern)
-        if hparam_files:
-
-            ea_handler = EpiAtlasFoldFactory.from_datasource(
-                my_datasource,
-                cli.category,
-                label_list,
-                n_fold=estimators.NFOLD_PREDICT,
-                test_ratio=0,
-                min_class_size=min_class_size,
-                metadata=my_metadata,
+        if cli.hyperparams is None:
+            raise ValueError(
+                &#34;No hyperparameter file given for final fit(s) and prediction.&#34;
             )
-            loading_time = time_now() - loading_begin
-            print(f&#34;Initial hdf5 loading time: {loading_time}&#34;)
 
-            # Intersect available hparam files with chose models.
-            available = set([estimators.get_model_name(path) for path in hparam_files])
-            chosen = available &amp; set(models)
-            hparam_files = [pattern.replace(&#34;*&#34;, name) for name in chosen]
+        with open(cli.hyperparams, &#34;r&#34;, encoding=&#34;utf-8&#34;) as file:
+            loaded_hparams = json.load(file)
 
-            if not hparam_files:
-                print(&#34;No parameters file found, finishing now.&#34;)
-                sys.exit()
+        # Intersect available model hparams with chosen models.
+        model_w_hparams = set(loaded_hparams.keys())
+        selected_models = model_w_hparams &amp; set(models)
 
-            for filepath in hparam_files:
-
-                print(f&#34;Using {Path(filepath).resolve()}.&#34;)
-                with open(filepath, &#34;r&#34;, encoding=&#34;utf-8&#34;) as file:
-                    hparams = json.load(file)
-
-                name = estimators.get_model_name(filepath)
-                if name == &#34;LGBM&#34;:
-                    hparams = {
-                        k: v
-                        for k, v in hparams.items()
-                        if k in estimators.lgbm_allowed_params
-                    }
-
-                estimator = estimators.model_mapping[name]
-                estimator.set_params(**hparams)
-
-                estimators.run_predictions(ea_handler, estimator, name, cli.logdir)
-
-        else:
-            print(&#34;No parameters file found, finishing now.&#34;)
+        if not selected_models:
+            print(&#34;No parameters found for selected models {models}, finishing now.&#34;)
             sys.exit()
+
+        ea_handler = EpiAtlasFoldFactory.from_datasource(
+            my_datasource,
+            cli.category,
+            label_list,
+            n_fold=estimators.NFOLD_PREDICT,
+            test_ratio=0,
+            min_class_size=min_class_size,
+            metadata=my_metadata,
+        )
+        loading_time = time_now() - loading_begin
+        print(f&#34;Initial hdf5 loading time: {loading_time}&#34;)
+
+        for model_name in selected_models:
+
+            model_hparams = loaded_hparams[model_name]
+
+            if model_name == &#34;LGBM&#34;:
+                model_hparams = {
+                    k: v
+                    for k, v in model_hparams.items()
+                    if k in estimators.lgbm_allowed_params
+                }
+
+            estimator = estimators.model_mapping[model_name]
+            estimator.set_params(**model_hparams)
+
+            estimators.run_predictions(ea_handler, estimator, model_name, cli.logdir)
 
     # Giving predictions with chosen models, for all files in hdf5 list.
     if cli.predict_new:
@@ -507,7 +517,7 @@ if __name__ == &#34;__main__&#34;:
         &#34;--tune&#34;, action=&#34;store_true&#34;, help=&#34;Search best hyperparameters.&#34;
         )
     mode.add_argument(
-        &#34;--predict&#34;, action=&#34;store_true&#34;, help=&#34;Fit and predict using hyperparameters.&#34;
+        &#34;--predict&#34;, action=&#34;store_true&#34;, help=&#34;FIT and PREDICT using hyperparameters.&#34;
         )
     mode.add_argument(
         &#34;--predict-new&#34;, action=&#34;store_true&#34;, help=&#34;Use saved models to predict labels of new samples.&#34;
@@ -522,6 +532,11 @@ if __name__ == &#34;__main__&#34;:
         type=int,
         default=30,
         help=&#34;Number of BayesSearchCV hyperparameters iterations.&#34;,
+    )
+
+    predict = parser.add_argument_group(&#34;Predictions and Final training&#34;)
+    predict.add_argument(
+        &#34;--hyperparams&#34;, type=Path, help=&#34;A json file containing model(s) hyperparameters.&#34;,
     )
     # fmt: on
     return parser.parse_args()</code></pre>

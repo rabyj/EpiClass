@@ -18,6 +18,8 @@ from src.python.argparseutils.DefaultHelpParser import DefaultHelpParser as Argu
 from src.python.core.confusion_matrix import ConfusionMatrixWriter as ConfusionMatrix
 from src.python.core.metadata import Metadata
 
+TARGET = "assay_epiclass"
+
 
 def parse_arguments() -> argparse.Namespace:
     """Return argument line parser."""
@@ -192,11 +194,11 @@ def add_track_type_coherence(df):
     cat2 = "Track type coherence count"
     cat3 = "Track type coherence ratio"
 
-    groups = df.groupby(["EpiRR", "assay"])
+    groups = df.groupby(["EpiRR", TARGET])
     if cat1 not in df.columns:
         df[cat1] = groups["md5sum"].transform("size")
 
-    groups = df.groupby(["EpiRR", "assay", "Predicted class"])
+    groups = df.groupby(["EpiRR", TARGET, "Predicted class"])
     df[cat2] = groups["md5sum"].transform("size")
 
     df[cat3] = df[cat2] / (1.0 * df[cat1])

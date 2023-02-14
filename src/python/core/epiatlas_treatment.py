@@ -23,6 +23,10 @@ TRACKS_MAPPING = {
     "gembs_pos": ["gembs_neg"],
 }
 
+ACCEPTED_TRACKS = list(TRACKS_MAPPING.keys()) + list(
+    itertools.chain.from_iterable(TRACKS_MAPPING.values())
+)
+
 LEADER_TRACKS = frozenset(["raw", "Unique_plusRaw", "gembs_pos"])
 
 
@@ -65,7 +69,7 @@ class EpiAtlasDataset:
 
         self._filter_metadata(min_class_size, verbose=True)
 
-        self._raw_to_others = self._epiatlas_prepare_split()
+        self._raw_to_others = EpiAtlasDataset.epiatlas_prepare_split(self._metadata)
 
         # Load files
         self._raw_dset = self._create_raw_dataset(test_ratio, min_class_size)
@@ -126,7 +130,7 @@ class EpiAtlasDataset:
         meta.display_labels(self.target_category)
         meta.display_labels("track_type")
 
-        print("Selected signals in accordance with metadata:")
+        print("raw dataset: Selected signals in accordance with metadata:")
         meta.select_category_subsets("track_type", list(TRACKS_MAPPING.keys()))
         meta.display_labels("track_type")
 
@@ -146,29 +150,34 @@ class EpiAtlasDataset:
 
         return my_data
 
-    def _epiatlas_prepare_split(self) -> Dict[str, Dict[str, str]]:
+    @staticmethod
+    def epiatlas_prepare_split(metadata: Metadata) -> Dict[str, Dict[str, str]]:
         """Return track_type mapping dict assuming the datasource is complete.
 
         Assumption/Condition: Only one file per track type, for a given uuid.
 
         e.g. { raw_md5sum : {"pval":md5sum, "fc":md5sum} }
         """
-        meta = self.metadata
-
-        uuid_to_md5s = {}  # { uuid : {track_type1:md5sum, track_type2:md5sum, ...} }
-        for dset in meta.datasets:
+        # { uuid : {track_type1:md5sum, track_type2:md5sum, ...} }
+        uuid_to_md5s = collections.defaultdict(dict)
+        for dset in metadata.datasets:
             uuid = dset["uuid"]
-            if uuid in uuid_to_md5s:
-                uuid_to_md5s[uuid].update({dset["track_type"]: dset["md5sum"]})
-            else:
-                uuid_to_md5s[uuid] = {dset["track_type"]: dset["md5sum"]}
+            uuid_to_md5s[uuid].update({dset["track_type"]: dset["md5sum"]})
 
         raw_to_others = {}
-        for val in uuid_to_md5s.values():
-            for init in LEADER_TRACKS:
-                if init in val:
-                    others = TRACKS_MAPPING[init]
-                    raw_to_others[val[init]] = {track: val[track] for track in others}
+        for tracks_to_md5 in uuid_to_md5s.values():
+
+            for lead_track in LEADER_TRACKS:
+                if lead_track in tracks_to_md5:
+
+                    non_lead_tracks = set(TRACKS_MAPPING[lead_track]) & set(
+                        tracks_to_md5.keys()
+                    )
+                    lead_md5 = tracks_to_md5[lead_track]
+
+                    raw_to_others[lead_md5] = {
+                        track: tracks_to_md5[track] for track in non_lead_tracks
+                    }
 
         return raw_to_others
 

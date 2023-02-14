@@ -52,6 +52,10 @@ TRACKS_MAPPING = {
     &#34;gembs_pos&#34;: [&#34;gembs_neg&#34;],
 }
 
+ACCEPTED_TRACKS = list(TRACKS_MAPPING.keys()) + list(
+    itertools.chain.from_iterable(TRACKS_MAPPING.values())
+)
+
 LEADER_TRACKS = frozenset([&#34;raw&#34;, &#34;Unique_plusRaw&#34;, &#34;gembs_pos&#34;])
 
 
@@ -94,7 +98,7 @@ class EpiAtlasDataset:
 
         self._filter_metadata(min_class_size, verbose=True)
 
-        self._raw_to_others = self._epiatlas_prepare_split()
+        self._raw_to_others = EpiAtlasDataset.epiatlas_prepare_split(self._metadata)
 
         # Load files
         self._raw_dset = self._create_raw_dataset(test_ratio, min_class_size)
@@ -155,7 +159,7 @@ class EpiAtlasDataset:
         meta.display_labels(self.target_category)
         meta.display_labels(&#34;track_type&#34;)
 
-        print(&#34;Selected signals in accordance with metadata:&#34;)
+        print(&#34;raw dataset: Selected signals in accordance with metadata:&#34;)
         meta.select_category_subsets(&#34;track_type&#34;, list(TRACKS_MAPPING.keys()))
         meta.display_labels(&#34;track_type&#34;)
 
@@ -175,29 +179,34 @@ class EpiAtlasDataset:
 
         return my_data
 
-    def _epiatlas_prepare_split(self) -&gt; Dict[str, Dict[str, str]]:
+    @staticmethod
+    def epiatlas_prepare_split(metadata: Metadata) -&gt; Dict[str, Dict[str, str]]:
         &#34;&#34;&#34;Return track_type mapping dict assuming the datasource is complete.
 
         Assumption/Condition: Only one file per track type, for a given uuid.
 
         e.g. { raw_md5sum : {&#34;pval&#34;:md5sum, &#34;fc&#34;:md5sum} }
         &#34;&#34;&#34;
-        meta = self.metadata
-
-        uuid_to_md5s = {}  # { uuid : {track_type1:md5sum, track_type2:md5sum, ...} }
-        for dset in meta.datasets:
+        # { uuid : {track_type1:md5sum, track_type2:md5sum, ...} }
+        uuid_to_md5s = collections.defaultdict(dict)
+        for dset in metadata.datasets:
             uuid = dset[&#34;uuid&#34;]
-            if uuid in uuid_to_md5s:
-                uuid_to_md5s[uuid].update({dset[&#34;track_type&#34;]: dset[&#34;md5sum&#34;]})
-            else:
-                uuid_to_md5s[uuid] = {dset[&#34;track_type&#34;]: dset[&#34;md5sum&#34;]}
+            uuid_to_md5s[uuid].update({dset[&#34;track_type&#34;]: dset[&#34;md5sum&#34;]})
 
         raw_to_others = {}
-        for val in uuid_to_md5s.values():
-            for init in LEADER_TRACKS:
-                if init in val:
-                    others = TRACKS_MAPPING[init]
-                    raw_to_others[val[init]] = {track: val[track] for track in others}
+        for tracks_to_md5 in uuid_to_md5s.values():
+
+            for lead_track in LEADER_TRACKS:
+                if lead_track in tracks_to_md5:
+
+                    non_lead_tracks = set(TRACKS_MAPPING[lead_track]) &amp; set(
+                        tracks_to_md5.keys()
+                    )
+                    lead_md5 = tracks_to_md5[lead_track]
+
+                    raw_to_others[lead_md5] = {
+                        track: tracks_to_md5[track] for track in non_lead_tracks
+                    }
 
         return raw_to_others
 
@@ -606,7 +615,7 @@ class EpiAtlasFoldFactory:
 
         self._filter_metadata(min_class_size, verbose=True)
 
-        self._raw_to_others = self._epiatlas_prepare_split()
+        self._raw_to_others = EpiAtlasDataset.epiatlas_prepare_split(self._metadata)
 
         # Load files
         self._raw_dset = self._create_raw_dataset(test_ratio, min_class_size)
@@ -667,7 +676,7 @@ class EpiAtlasFoldFactory:
         meta.display_labels(self.target_category)
         meta.display_labels(&#34;track_type&#34;)
 
-        print(&#34;Selected signals in accordance with metadata:&#34;)
+        print(&#34;raw dataset: Selected signals in accordance with metadata:&#34;)
         meta.select_category_subsets(&#34;track_type&#34;, list(TRACKS_MAPPING.keys()))
         meta.display_labels(&#34;track_type&#34;)
 
@@ -687,29 +696,34 @@ class EpiAtlasFoldFactory:
 
         return my_data
 
-    def _epiatlas_prepare_split(self) -&gt; Dict[str, Dict[str, str]]:
+    @staticmethod
+    def epiatlas_prepare_split(metadata: Metadata) -&gt; Dict[str, Dict[str, str]]:
         &#34;&#34;&#34;Return track_type mapping dict assuming the datasource is complete.
 
         Assumption/Condition: Only one file per track type, for a given uuid.
 
         e.g. { raw_md5sum : {&#34;pval&#34;:md5sum, &#34;fc&#34;:md5sum} }
         &#34;&#34;&#34;
-        meta = self.metadata
-
-        uuid_to_md5s = {}  # { uuid : {track_type1:md5sum, track_type2:md5sum, ...} }
-        for dset in meta.datasets:
+        # { uuid : {track_type1:md5sum, track_type2:md5sum, ...} }
+        uuid_to_md5s = collections.defaultdict(dict)
+        for dset in metadata.datasets:
             uuid = dset[&#34;uuid&#34;]
-            if uuid in uuid_to_md5s:
-                uuid_to_md5s[uuid].update({dset[&#34;track_type&#34;]: dset[&#34;md5sum&#34;]})
-            else:
-                uuid_to_md5s[uuid] = {dset[&#34;track_type&#34;]: dset[&#34;md5sum&#34;]}
+            uuid_to_md5s[uuid].update({dset[&#34;track_type&#34;]: dset[&#34;md5sum&#34;]})
 
         raw_to_others = {}
-        for val in uuid_to_md5s.values():
-            for init in LEADER_TRACKS:
-                if init in val:
-                    others = TRACKS_MAPPING[init]
-                    raw_to_others[val[init]] = {track: val[track] for track in others}
+        for tracks_to_md5 in uuid_to_md5s.values():
+
+            for lead_track in LEADER_TRACKS:
+                if lead_track in tracks_to_md5:
+
+                    non_lead_tracks = set(TRACKS_MAPPING[lead_track]) &amp; set(
+                        tracks_to_md5.keys()
+                    )
+                    lead_md5 = tracks_to_md5[lead_track]
+
+                    raw_to_others[lead_md5] = {
+                        track: tracks_to_md5[track] for track in non_lead_tracks
+                    }
 
         return raw_to_others
 
@@ -802,6 +816,52 @@ class EpiAtlasFoldFactory:
             resample=oversampling,
         )</code></pre>
 </details>
+<h3>Static methods</h3>
+<dl>
+<dt id="python.core.epiatlas_treatment.EpiAtlasDataset.epiatlas_prepare_split"><code class="name flex">
+<span>def <span class="ident">epiatlas_prepare_split</span></span>(<span>metadata: Metadata) ‑> Dict[str, Dict[str, str]]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return track_type mapping dict assuming the datasource is complete.</p>
+<p>Assumption/Condition: Only one file per track type, for a given uuid.</p>
+<p>e.g. { raw_md5sum : {"pval":md5sum, "fc":md5sum} }</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@staticmethod
+def epiatlas_prepare_split(metadata: Metadata) -&gt; Dict[str, Dict[str, str]]:
+    &#34;&#34;&#34;Return track_type mapping dict assuming the datasource is complete.
+
+    Assumption/Condition: Only one file per track type, for a given uuid.
+
+    e.g. { raw_md5sum : {&#34;pval&#34;:md5sum, &#34;fc&#34;:md5sum} }
+    &#34;&#34;&#34;
+    # { uuid : {track_type1:md5sum, track_type2:md5sum, ...} }
+    uuid_to_md5s = collections.defaultdict(dict)
+    for dset in metadata.datasets:
+        uuid = dset[&#34;uuid&#34;]
+        uuid_to_md5s[uuid].update({dset[&#34;track_type&#34;]: dset[&#34;md5sum&#34;]})
+
+    raw_to_others = {}
+    for tracks_to_md5 in uuid_to_md5s.values():
+
+        for lead_track in LEADER_TRACKS:
+            if lead_track in tracks_to_md5:
+
+                non_lead_tracks = set(TRACKS_MAPPING[lead_track]) &amp; set(
+                    tracks_to_md5.keys()
+                )
+                lead_md5 = tracks_to_md5[lead_track]
+
+                raw_to_others[lead_md5] = {
+                    track: tracks_to_md5[track] for track in non_lead_tracks
+                }
+
+    return raw_to_others</code></pre>
+</details>
+</dd>
+</dl>
 <h3>Instance variables</h3>
 <dl>
 <dt id="python.core.epiatlas_treatment.EpiAtlasDataset.classes"><code class="name">var <span class="ident">classes</span> : List[str]</code></dt>
@@ -1483,11 +1543,12 @@ nb_split (int): How many splits to make into the chosen split.</p>
 <ul>
 <li>
 <h4><code><a title="python.core.epiatlas_treatment.EpiAtlasDataset" href="#python.core.epiatlas_treatment.EpiAtlasDataset">EpiAtlasDataset</a></code></h4>
-<ul class="two-column">
+<ul class="">
 <li><code><a title="python.core.epiatlas_treatment.EpiAtlasDataset.add_other_tracks" href="#python.core.epiatlas_treatment.EpiAtlasDataset.add_other_tracks">add_other_tracks</a></code></li>
 <li><code><a title="python.core.epiatlas_treatment.EpiAtlasDataset.classes" href="#python.core.epiatlas_treatment.EpiAtlasDataset.classes">classes</a></code></li>
 <li><code><a title="python.core.epiatlas_treatment.EpiAtlasDataset.create_total_data" href="#python.core.epiatlas_treatment.EpiAtlasDataset.create_total_data">create_total_data</a></code></li>
 <li><code><a title="python.core.epiatlas_treatment.EpiAtlasDataset.datasource" href="#python.core.epiatlas_treatment.EpiAtlasDataset.datasource">datasource</a></code></li>
+<li><code><a title="python.core.epiatlas_treatment.EpiAtlasDataset.epiatlas_prepare_split" href="#python.core.epiatlas_treatment.EpiAtlasDataset.epiatlas_prepare_split">epiatlas_prepare_split</a></code></li>
 <li><code><a title="python.core.epiatlas_treatment.EpiAtlasDataset.group_mapper" href="#python.core.epiatlas_treatment.EpiAtlasDataset.group_mapper">group_mapper</a></code></li>
 <li><code><a title="python.core.epiatlas_treatment.EpiAtlasDataset.label_list" href="#python.core.epiatlas_treatment.EpiAtlasDataset.label_list">label_list</a></code></li>
 <li><code><a title="python.core.epiatlas_treatment.EpiAtlasDataset.metadata" href="#python.core.epiatlas_treatment.EpiAtlasDataset.metadata">metadata</a></code></li>

@@ -1,11 +1,11 @@
 {
-    "learning_rate": 1e-6,
-    "training_epochs": 200,
-    "batch_size": 64,
-    "measure_frequency": 1,
-    "l1_scale": 0.001,
-    "l2_scale": 0.01,
-    "keep_prob": 0.5,
-    "is_training": true,
-    "early_stop_limit": 30
+  "batch_size": 64,
+  "early_stop_limit": 30,
+  "is_training": true,
+  "keep_prob": 0.5,
+  "l1_scale": 0.001,
+  "l2_scale": 0.01,
+  "learning_rate": 1e-06,
+  "measure_frequency": 1,
+  "training_epochs": 200
 }

@@ -130,8 +130,9 @@ class Data(abc.ABC):
     def subsample(self, idxs: List[int]):
         raise NotImplementedError("This is an abstract method. Use child class.")
 
-    @abc.abstractclassmethod
-    def empty_collection(self):
+    @classmethod
+    @abc.abstractmethod
+    def empty_collection(cls):
         raise NotImplementedError("This is an abstract class method. Use child class.")
 
 

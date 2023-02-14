@@ -5,7 +5,6 @@ import argparse
 import gc
 import json
 import os
-import subprocess
 import sys
 import warnings
 from pathlib import Path
@@ -16,7 +15,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 import comet_ml  # needed because special snowflake # pylint: disable=unused-import
 import pytorch_lightning as pl  # in case GCC or CUDA needs it # pylint: disable=unused-import
-import pytorch_lightning.callbacks as pl_callbacks
+import pytorch_lightning.callbacks as torch_callbacks
 import torch
 from pytorch_lightning import loggers as pl_loggers
 
@@ -148,68 +147,57 @@ def main():
         "category": category,
     }
 
-    time_before_split = time_now()
-    for i, my_data in enumerate(ea_handler.yield_split()):
+    # --- Startup LOGGER ---
+    # api key in config file
+    IsOffline = cli.offline  # additional logging fails with True
+    logdir = Path(cli.logdir)
+    create_dirs(logdir)
 
-        split_time = time_now() - time_before_split
-        to_log.update({"split_time": str(split_time)})
+    exp_name = "-".join(cli.logdir.parts[-3:])
+    comet_logger = pl_loggers.CometLogger(
+        project_name="EpiLaP",
+        experiment_name=exp_name,
+        save_dir=logdir,  # type: ignore
+        offline=IsOffline,
+        auto_metric_logging=False,
+    )
 
-        # --- Startup LOGGER ---
-        # api key in config file
-        IsOffline = cli.offline  # additional logging fails with True
+    comet_logger.experiment.add_tag("EpiAtlas")
+    log_pre_training(logger=comet_logger, to_log=to_log, step=None)
 
-        logdir = Path(cli.logdir / f"split{i}")
-        create_dirs(logdir)
+    my_data = ea_handler.epiatlas_dataset.create_total_data(oversampling=True)
+    my_dataset = DataSet.empty_collection()
+    my_dataset.set_train(my_data)
 
-        exp_name = "-".join(cli.logdir.parts[-3:]) + f"-split{i}"
-        comet_logger = pl_loggers.CometLogger(
-            project_name="EpiLaP",
-            experiment_name=exp_name,
-            save_dir=logdir,  # type: ignore
-            offline=IsOffline,
-            auto_metric_logging=False,
-        )
-
-        comet_logger.experiment.add_tag("EpiAtlas")
-        log_pre_training(logger=comet_logger, to_log=to_log, step=i)
-
-        # Everything happens in there
-        do_one_experiment(
-            split_nb=i,
-            my_data=my_data,
-            hparams=hparams,
-            logger=comet_logger,
-            restore=restore_model,
-        )
-
-        time_before_split = time_now()
+    # Everything happens in there
+    train_without_valid(
+        my_data=my_dataset,
+        hparams=hparams,
+        logger=comet_logger,
+        restore=restore_model,
+    )
 
 
-def do_one_experiment(
-    split_nb: int,
+def train_without_valid(
     my_data: DataSet,
     hparams: Dict,
     logger: pl_loggers.CometLogger,
     restore: bool,
 ) -> None:
     """Wrapper for convenience. Skip training if restore is True"""
-    begin_loop = time_now()
-
     logger.experiment.log_other("Training size", my_data.train.num_examples)
-    print(f"Split {split_nb} training size: {my_data.train.num_examples}")
+    print(f"training size: {my_data.train.num_examples}")
 
-    nb_files = len(set(my_data.train.ids.tolist() + my_data.validation.ids.tolist()))
+    nb_files = len(set(my_data.train.ids.tolist()))
     logger.experiment.log_other("Total nb of files", nb_files)
 
-    dsets_dict = create_torch_datasets(
+    train_dataset, train_dataloader = create_torch_datasets(
         data=my_data,
         bs=hparams.get("batch_size", 64),
-    )
-    train_dataset, train_dataloader = dsets_dict["training"]
-    valid_dataset, valid_dataloader = dsets_dict["validation"]
+    )["training"]
 
-    if my_data.train.num_examples == 0 or my_data.validation.num_examples == 0:
-        raise DatasetError("Trying to train without any training or validation data.")
+    if my_data.train.num_examples == 0:
+        raise DatasetError("Trying to train without any training data.")
 
     # Warning : output mapping of model created from training dataset
     mapping_file = Path(logger.save_dir) / "training_mapping.tsv"  # type: ignore
@@ -236,19 +224,11 @@ def do_one_experiment(
             nb_layer=nb_layers,
         )
 
-        if split_nb == 0:
-            print("--MODEL STRUCTURE--\n", my_model)
-            my_model.print_model_summary()
+        print("--MODEL STRUCTURE--\n", my_model)
+        my_model.print_model_summary()
 
         # --- TRAIN the model ---
-        if split_nb == 0:
-            callbacks = define_callbacks(
-                early_stop_limit=hparams.get("early_stop_limit", 20), show_summary=True
-            )
-        else:
-            callbacks = define_callbacks(
-                early_stop_limit=hparams.get("early_stop_limit", 20), show_summary=False
-            )
+        callbacks = define_callbacks(early_stop_limit=None)
 
         before_train = time_now()
 
@@ -267,7 +247,7 @@ def do_one_experiment(
                 enable_progress_bar=False,
             )
         else:
-            callbacks.append(pl_callbacks.RichProgressBar(leave=True))
+            callbacks.append(torch_callbacks.RichProgressBar(leave=True))
             trainer = MyTrainer(
                 general_log_dir=logger.save_dir,  # type: ignore
                 model=my_model,
@@ -280,21 +260,14 @@ def do_one_experiment(
                 devices=1,
             )
 
-        if split_nb == 0:
-            trainer.print_hyperparameters()
-            trainer.fit(
-                my_model,
-                train_dataloaders=train_dataloader,
-                val_dataloaders=valid_dataloader,
-                verbose=True,
-            )
-        else:
-            trainer.fit(
-                my_model,
-                train_dataloaders=train_dataloader,
-                val_dataloaders=valid_dataloader,
-                verbose=False,
-            )
+        trainer.print_hyperparameters()
+        trainer.fit(
+            my_model,
+            train_dataloaders=train_dataloader,
+            val_dataloaders=None,
+            verbose=True,
+        )
+
         trainer.save_model_path()
         training_time = time_now() - before_train
         print(f"training time: {training_time}")
@@ -312,13 +285,14 @@ def do_one_experiment(
             auto_metric_logging=False,
             experiment_key=logger.experiment.get_key(),
         )
-        logger.experiment.log_metric("Training time", training_time, step=split_nb)
-        logger.experiment.log_metric("Last epoch", my_model.current_epoch, step=split_nb)
+        logger.experiment.log_metric("Training time", training_time)
+        logger.experiment.log_metric("Last epoch", my_model.current_epoch)
+
     try:
         my_model = LightningDenseClassifier.restore_model(logger.save_dir)
     except (FileNotFoundError, OSError) as e:
         print(e)
-        print("Closing logger and skipping this split.")
+        print("Closing logger and finishing program.")
         logger.experiment.add_tag("ModelNotFoundError")
         logger.finalize(status="ModelNotFoundError")
         return
@@ -329,20 +303,12 @@ def do_one_experiment(
         my_data,
         logger,
         train_dataset=train_dataset,
-        val_dataset=valid_dataset,
+        val_dataset=None,
         test_dataset=None,
     )
 
     my_analyzer.get_training_metrics(verbose=True)
-    my_analyzer.get_validation_metrics(verbose=True)
-
-    my_analyzer.write_validation_prediction()
-    my_analyzer.validation_confusion_matrix()
-
-    end_loop = time_now()
-    loop_time = end_loop - begin_loop
-    logger.experiment.log_metric("Loop time", loop_time, step=split_nb)
-    print(f"Loop time (excludes split time): {loop_time}")
+    my_analyzer.train_confusion_matrix()
 
     logger.experiment.add_tag("Finished")
     logger.finalize(status="Finished")
