@@ -42,4 +42,3 @@ for hdf5_file in ${hdf5_list[@]}; do
     epigeec filter --select ${filter} ${hdf5_file} ${chroms} ${new_hdf5}
 
 done
-
