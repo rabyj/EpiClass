@@ -32,9 +32,9 @@ chrom_file_path="${project_path}/chromsizes/${chrom_file}"
 json_path="${project_path}/metadata/${json}"
 log_dir_path="${project_path}/sub/logs/${log_dir}"
 
-# echo ${hdf5_list_path} 
-# echo ${chrom_file_path} 
-# echo ${json_path} 
+# echo ${hdf5_list_path}
+# echo ${chrom_file_path}
+# echo ${json_path}
 # echo ${log_dir_path}
 
 python ${script_path} ${hdf5_list_path} ${chrom_file_path} ${json_path} ${log_dir_path}

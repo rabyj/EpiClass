@@ -1,0 +1,51 @@
+default_stages: [commit, push]
+default_language_version:
+  python: python3
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.4.0
+  hooks:
+    - id: check-added-large-files
+      args: [--maxkb=5000, --enforce-all]
+    - id: check-ast
+    - id: check-builtin-literals
+    - id: check-case-conflict
+    - id: check-executables-have-shebangs
+    - id: check-json
+    - id: check-merge-conflict
+      args: [--assume-in-merge]
+    - id: check-shebang-scripts-are-executable
+    - id: check-symlinks
+    - id: check-toml
+    - id: check-xml
+    - id: check-yaml
+    - id: debug-statements
+    - id: end-of-file-fixer
+      exclude: \.html$|__init__.py
+    - id: forbid-submodules
+    - id: mixed-line-ending
+    - id: name-tests-test
+    - id: pretty-format-json
+      args: [--autofix]
+    - id: requirements-txt-fixer
+      exclude: .*pipdeptree.*
+    - id: sort-simple-yaml
+      files: \.yaml$
+    - id: trailing-whitespace
+      args: [--markdown-linebreak-ext=md]
+- repo: https://github.com/nbQA-dev/nbQA
+  rev: 1.6.1
+  hooks:
+    - id: nbqa-isort
+      name: isort
+      args: ["--settings-path=./pyproject.toml"]
+      additional_dependencies: [isort==5.12.0]
+    - id: nbqa-black
+      name: black
+      args: ["--config=./pyproject.toml"]
+      additional_dependencies: [black==22.6.0]
+    - id: nbqa-pylint
+      name: pylint
+      files: \.py$
+      args: ["--rcfile=./pyproject.toml"]
+      additional_dependencies: [pylint==2.14.5]

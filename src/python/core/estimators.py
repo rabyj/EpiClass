@@ -244,6 +244,7 @@ class EstimatorAnalyzer(object):
 
     @classmethod
     def restore_model_from_path(cls, full_path: str) -> EstimatorAnalyzer:
+        """Restore EstimatorAnalyzer instance from a previous pickle save."""
         print(f"Loading model {full_path}")
         with open(full_path, "rb") as f:
             return pickle.load(f)
@@ -365,7 +366,7 @@ def log_tune_results(logdir: Path, name: str, opt: BayesSearchCV):
 
     file = best_params_file_format.format(name=name)
     with open(logdir / file, "w", encoding="utf-8") as f:
-        json.dump(obj=opt.best_params_, fp=f)
+        json.dump(obj=opt.best_params_, fp=f, sort_keys=True, indent=4)
 
 
 def run_predictions(
@@ -437,10 +438,7 @@ def run_prediction(
     try:
         logdir = logdir / f"{name}"
         create_dirs(logdir)
-    except KeyboardInterrupt:
-        print("Shutdown requested (KeyboardInterrupt)...exiting")
-        sys.exit(1)
-    except Exception as err:
+    except (ValueError, OSError, KeyError, RuntimeError) as err:
         (print(err))
         print("Continuing with default logdir.")
 

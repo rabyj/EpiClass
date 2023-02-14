@@ -34,10 +34,27 @@ Uses GitPython package.
 &#34;&#34;&#34;
 from __future__ import annotations
 
+import argparse
+import collections
 import sys
 from pathlib import Path
 
 from git import Repo
+
+from src.python.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
+from src.python.core.metadata import Metadata
+
+
+def parse_arguments() -&gt; argparse.Namespace:
+    &#34;&#34;&#34;argument parser for command line&#34;&#34;&#34;
+    arg_parser = ArgumentParser()
+
+    # fmt: off
+    arg_parser.add_argument(
+        &#34;-m&#34;, &#34;--metadata&#34;, type=Path, help=&#34;A metadata JSON file to analyze for errors.&#34;,
+    )
+    # fmt: on
+    return arg_parser.parse_args()
 
 
 def find_upwards(cwd: Path, filename: str) -&gt; Path | None:
@@ -81,11 +98,60 @@ def git_repo_is_clean(verbose=True) -&gt; bool:
     return is_clean
 
 
-def main():
-    &#34;&#34;&#34;Exit with error a precondition is not met.&#34;&#34;&#34;
+def check_epitatlas_uuid_premise(metadata: Metadata):
+    &#34;&#34;&#34;Check that there is only one file per track type, for a given uuid.&#34;&#34;&#34;
 
+    uuid_to_track_count = collections.defaultdict(collections.Counter)
+    uuid_to_md5s = collections.defaultdict(list)
+    for md5, dset in metadata.items:
+        uuid = dset[&#34;uuid&#34;]
+        track_type = dset[&#34;track_type&#34;]
+
+        uuid_to_track_count[uuid].update([track_type])
+        uuid_to_md5s[uuid].append((md5, track_type))
+
+    is_okay = True
+    bad_uuid = []
+    for uuid, counter in uuid_to_track_count.items():
+        for nb in counter.values():
+            if nb != 1:
+                print(uuid, counter)
+                bad_uuid.append(uuid)
+                break
+
+    if bad_uuid:
+        is_okay = False
+
+    for uuid in bad_uuid:
+        print(f&#34;Problematic uuid: {uuid}&#34;)
+        print(uuid_to_track_count[uuid])
+        for md5, track_type in uuid_to_md5s[uuid]:
+            print(md5, track_type)
+
+    return is_okay
+
+
+def main():
+    &#34;&#34;&#34;Exit with error if a precondition is not met.&#34;&#34;&#34;
+
+    cli = parse_arguments()
+    print(&#34;\n&#34;)
+    pass_preconditions = []
     if not git_repo_is_clean():
-        print(&#34;Git directory not in a clean state, exiting with error.&#34;)
+        print(&#34;Git directory not in a clean state.\n&#34;)
+        pass_preconditions.append(False)
+
+    metadata_path = cli.metadata
+    if metadata_path is not None:
+        metadata_path = metadata_path.resolve()
+
+        metadata = Metadata(metadata_path)
+        if not check_epitatlas_uuid_premise(metadata):
+            pass_preconditions.append(False)
+            print(&#34;Metadata did not pass uuid check (1 file per track type per uuid).\n&#34;)
+
+    if not all(pass_preconditions):
+        print(&#34;A precondition was not met, exiting with error.&#34;)
         sys.exit(1)
 
 
@@ -100,6 +166,48 @@ if __name__ == &#34;__main__&#34;:
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
+<dt id="python.utils.preconditions.check_epitatlas_uuid_premise"><code class="name flex">
+<span>def <span class="ident">check_epitatlas_uuid_premise</span></span>(<span>metadata: Metadata)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Check that there is only one file per track type, for a given uuid.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def check_epitatlas_uuid_premise(metadata: Metadata):
+    &#34;&#34;&#34;Check that there is only one file per track type, for a given uuid.&#34;&#34;&#34;
+
+    uuid_to_track_count = collections.defaultdict(collections.Counter)
+    uuid_to_md5s = collections.defaultdict(list)
+    for md5, dset in metadata.items:
+        uuid = dset[&#34;uuid&#34;]
+        track_type = dset[&#34;track_type&#34;]
+
+        uuid_to_track_count[uuid].update([track_type])
+        uuid_to_md5s[uuid].append((md5, track_type))
+
+    is_okay = True
+    bad_uuid = []
+    for uuid, counter in uuid_to_track_count.items():
+        for nb in counter.values():
+            if nb != 1:
+                print(uuid, counter)
+                bad_uuid.append(uuid)
+                break
+
+    if bad_uuid:
+        is_okay = False
+
+    for uuid in bad_uuid:
+        print(f&#34;Problematic uuid: {uuid}&#34;)
+        print(uuid_to_track_count[uuid])
+        for md5, track_type in uuid_to_md5s[uuid]:
+            print(md5, track_type)
+
+    return is_okay</code></pre>
+</details>
+</dd>
 <dt id="python.utils.preconditions.find_upwards"><code class="name flex">
 <span>def <span class="ident">find_upwards</span></span>(<span>cwd: Path, filename: str) ‑> Path | None</span>
 </code></dt>
@@ -165,17 +273,54 @@ if __name__ == &#34;__main__&#34;:
 <span>def <span class="ident">main</span></span>(<span>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Exit with error a precondition is not met.</p></div>
+<div class="desc"><p>Exit with error if a precondition is not met.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def main():
-    &#34;&#34;&#34;Exit with error a precondition is not met.&#34;&#34;&#34;
+    &#34;&#34;&#34;Exit with error if a precondition is not met.&#34;&#34;&#34;
 
+    cli = parse_arguments()
+    print(&#34;\n&#34;)
+    pass_preconditions = []
     if not git_repo_is_clean():
-        print(&#34;Git directory not in a clean state, exiting with error.&#34;)
+        print(&#34;Git directory not in a clean state.\n&#34;)
+        pass_preconditions.append(False)
+
+    metadata_path = cli.metadata
+    if metadata_path is not None:
+        metadata_path = metadata_path.resolve()
+
+        metadata = Metadata(metadata_path)
+        if not check_epitatlas_uuid_premise(metadata):
+            pass_preconditions.append(False)
+            print(&#34;Metadata did not pass uuid check (1 file per track type per uuid).\n&#34;)
+
+    if not all(pass_preconditions):
+        print(&#34;A precondition was not met, exiting with error.&#34;)
         sys.exit(1)</code></pre>
+</details>
+</dd>
+<dt id="python.utils.preconditions.parse_arguments"><code class="name flex">
+<span>def <span class="ident">parse_arguments</span></span>(<span>) ‑> argparse.Namespace</span>
+</code></dt>
+<dd>
+<div class="desc"><p>argument parser for command line</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def parse_arguments() -&gt; argparse.Namespace:
+    &#34;&#34;&#34;argument parser for command line&#34;&#34;&#34;
+    arg_parser = ArgumentParser()
+
+    # fmt: off
+    arg_parser.add_argument(
+        &#34;-m&#34;, &#34;--metadata&#34;, type=Path, help=&#34;A metadata JSON file to analyze for errors.&#34;,
+    )
+    # fmt: on
+    return arg_parser.parse_args()</code></pre>
 </details>
 </dd>
 </dl>
@@ -196,9 +341,11 @@ if __name__ == &#34;__main__&#34;:
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
+<li><code><a title="python.utils.preconditions.check_epitatlas_uuid_premise" href="#python.utils.preconditions.check_epitatlas_uuid_premise">check_epitatlas_uuid_premise</a></code></li>
 <li><code><a title="python.utils.preconditions.find_upwards" href="#python.utils.preconditions.find_upwards">find_upwards</a></code></li>
 <li><code><a title="python.utils.preconditions.git_repo_is_clean" href="#python.utils.preconditions.git_repo_is_clean">git_repo_is_clean</a></code></li>
 <li><code><a title="python.utils.preconditions.main" href="#python.utils.preconditions.main">main</a></code></li>
+<li><code><a title="python.utils.preconditions.parse_arguments" href="#python.utils.preconditions.parse_arguments">parse_arguments</a></code></li>
 </ul>
 </li>
 </ul>

@@ -406,7 +406,18 @@ def fix_roadmap(metadata: Metadata):
     Convert &#39;NIH Roadmap Epigenomics&#39; to &#39;Roadmap&#39;.
     &#34;&#34;&#34;
     converter = {&#34;NIH Roadmap Epigenomics&#34;: &#34;Roadmap&#34;}
-    metadata.convert_classes(&#34;data_generating_centre&#34;, converter)</code></pre>
+    metadata.convert_classes(&#34;data_generating_centre&#34;, converter)
+
+
+def add_fake_epiatlas_metadata(metadata: Metadata) -&gt; None:
+    &#34;&#34;&#34;Add uuid and track_type info to non epiatlas metadata.
+    uuid will be md5sum, and track_type will be raw.
+    &#34;&#34;&#34;
+    for md5, dset in list(metadata.items):
+        if &#34;uuid&#34; not in dset:
+            metadata[md5][&#34;uuid&#34;] = md5
+        if &#34;track_type&#34; not in dset:
+            metadata[md5][&#34;track_type&#34;] = &#34;raw&#34;</code></pre>
 </details>
 </section>
 <section>
@@ -416,6 +427,27 @@ def fix_roadmap(metadata: Metadata):
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
+<dt id="python.utils.modify_metadata.add_fake_epiatlas_metadata"><code class="name flex">
+<span>def <span class="ident">add_fake_epiatlas_metadata</span></span>(<span>metadata: src.python.core.metadata.Metadata) ‑> None</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Add uuid and track_type info to non epiatlas metadata.
+uuid will be md5sum, and track_type will be raw.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def add_fake_epiatlas_metadata(metadata: Metadata) -&gt; None:
+    &#34;&#34;&#34;Add uuid and track_type info to non epiatlas metadata.
+    uuid will be md5sum, and track_type will be raw.
+    &#34;&#34;&#34;
+    for md5, dset in list(metadata.items):
+        if &#34;uuid&#34; not in dset:
+            metadata[md5][&#34;uuid&#34;] = md5
+        if &#34;track_type&#34; not in dset:
+            metadata[md5][&#34;track_type&#34;] = &#34;raw&#34;</code></pre>
+</details>
+</dd>
 <dt id="python.utils.modify_metadata.count_pairs"><code class="name flex">
 <span>def <span class="ident">count_pairs</span></span>(<span>my_metadata: src.python.core.metadata.Metadata, cat1, cat2)</span>
 </code></dt>
@@ -863,6 +895,7 @@ from all assay/cell_type pairs, and all mrna_seq.</p></div>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
+<li><code><a title="python.utils.modify_metadata.add_fake_epiatlas_metadata" href="#python.utils.modify_metadata.add_fake_epiatlas_metadata">add_fake_epiatlas_metadata</a></code></li>
 <li><code><a title="python.utils.modify_metadata.count_pairs" href="#python.utils.modify_metadata.count_pairs">count_pairs</a></code></li>
 <li><code><a title="python.utils.modify_metadata.filter_cell_types_by_pairs" href="#python.utils.modify_metadata.filter_cell_types_by_pairs">filter_cell_types_by_pairs</a></code></li>
 <li><code><a title="python.utils.modify_metadata.five_cell_types_selection" href="#python.utils.modify_metadata.five_cell_types_selection">five_cell_types_selection</a></code></li>

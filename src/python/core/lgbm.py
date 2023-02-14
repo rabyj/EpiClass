@@ -102,7 +102,7 @@ def tune_lgbm(ea_handler: EpiAtlasFoldFactory, logdir: Path):
 
     name = "LGBM"
     with open(logdir / f"{name}_best_params.json", "w", encoding="utf-8") as f:
-        json.dump(best_params, f)
+        json.dump(best_params, f, sort_keys=True, indent=4)
 
     with open(logdir / f"{name}_study.pickle", "wb") as f:
         pickle.dump(study, f)

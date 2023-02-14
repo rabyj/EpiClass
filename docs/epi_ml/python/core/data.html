@@ -159,8 +159,9 @@ class Data(abc.ABC):
     def subsample(self, idxs: List[int]):
         raise NotImplementedError(&#34;This is an abstract method. Use child class.&#34;)
 
-    @abc.abstractclassmethod
-    def empty_collection(self):
+    @classmethod
+    @abc.abstractmethod
+    def empty_collection(cls):
         raise NotImplementedError(&#34;This is an abstract class method. Use child class.&#34;)
 
 
@@ -830,8 +831,9 @@ def create_torch_datasets(
     def subsample(self, idxs: List[int]):
         raise NotImplementedError(&#34;This is an abstract method. Use child class.&#34;)
 
-    @abc.abstractclassmethod
-    def empty_collection(self):
+    @classmethod
+    @abc.abstractmethod
+    def empty_collection(cls):
         raise NotImplementedError(&#34;This is an abstract class method. Use child class.&#34;)</code></pre>
 </details>
 <h3>Ancestors</h3>
@@ -854,8 +856,9 @@ def create_torch_datasets(
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">@abc.abstractclassmethod
-def empty_collection(self):
+<pre><code class="python">@classmethod
+@abc.abstractmethod
+def empty_collection(cls):
     raise NotImplementedError(&#34;This is an abstract class method. Use child class.&#34;)</code></pre>
 </details>
 </dd>

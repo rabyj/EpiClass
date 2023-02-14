@@ -2,6 +2,7 @@
 Tightly linked with the output of augment_predict_file.py.
 """
 import argparse
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -44,8 +45,12 @@ def main():
                 f"Expected shape {df_shape}, got {df.shape}. File named {name} does not contain same csv shape as first file."
             )
         if not df.columns.equals(column_names):
+            for col1, col2 in zip(df.columns.to_list(), column_names.to_list()):
+                print(col1, col2, file=sys.stderr)
+                if col1 != col2:
+                    print("-- PROBLEMATIC COLUMNS DIRECTLY ABOVE --", file=sys.stderr)
             raise AssertionError(
-                f"Headers are not identical. {name} differs from first file"
+                f"Headers are not identical. {name} differs from first file. See stderr for all columns."
             )
 
     column_names = pd.Index(column_names)
@@ -68,7 +73,8 @@ def main():
             validate="1:1",
         )
 
-    new_df.to_csv(cli.output, sep=",", index=False)
+    print("New file written to {cli.output.resolve()}.")
+    new_df.to_csv(cli.output.resolve(), sep=",", index=False)
 
 
 if __name__ == "__main__":

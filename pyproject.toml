@@ -29,12 +29,18 @@ known_local_folder = ["epi_ml/**", "src"]
 [tool.pyright]
 include = ["src"]
 ignore = [
-    "**/__pycache__",
     "**/epilap/**",
     "**/notes",
     ".git",
     "**/bin/**",
     "**/site-packages/**"
+    ]
+exclude = [
+    "**/notes",
+    "**/epilap/**",
+    ".git",
+    "**/bin/**",
+    "**/lib/**",
     ]
 
 [tool.pylint.main]
@@ -44,7 +50,7 @@ extension-pkg-allow-list = [
     "pytorch_lightning",
     "optuna.integration.lightgbm"
 ]
-ignore-pattern = ["bin/**.py", "epilap/**.py"]
+ignore-pattern = ["bin/*", "epilap/*"]
 
 [tool.pylint.messages_control]
 disable = [
