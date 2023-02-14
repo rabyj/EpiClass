@@ -57,12 +57,12 @@ from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
 from src.python.core.model_pytorch import LightningDenseClassifier
 from src.python.core.trainer import MyTrainer, define_callbacks
 from src.python.utils.check_dir import create_dirs
-from src.python.utils.logging import log_pre_training
 from src.python.utils.modify_metadata import (
     filter_cell_types_by_pairs,
     fix_roadmap,
     merge_pair_end_info,
 )
+from src.python.utils.my_logging import log_pre_training
 from src.python.utils.time import time_now
 
 
@@ -175,8 +175,6 @@ def main():
         &#34;hdf5_resolution&#34;: str(hdf5_resolution),
         &#34;category&#34;: category,
     }
-    if os.getenv(&#34;SLURM_JOB_ID&#34;) is not None:
-        to_log[&#34;SLURM_JOB_ID&#34;] = os.environ[&#34;SLURM_JOB_ID&#34;]
 
     # --- Startup LOGGER ---
     # api key in config file
@@ -339,8 +337,6 @@ def train_without_valid(
     )
 
     my_analyzer.get_training_metrics(verbose=True)
-
-    my_analyzer.write_validation_prediction()
     my_analyzer.train_confusion_matrix()
 
     logger.experiment.add_tag(&#34;Finished&#34;)
@@ -429,8 +425,6 @@ if __name__ == &#34;__main__&#34;:
         &#34;hdf5_resolution&#34;: str(hdf5_resolution),
         &#34;category&#34;: category,
     }
-    if os.getenv(&#34;SLURM_JOB_ID&#34;) is not None:
-        to_log[&#34;SLURM_JOB_ID&#34;] = os.environ[&#34;SLURM_JOB_ID&#34;]
 
     # --- Startup LOGGER ---
     # api key in config file
@@ -648,8 +642,6 @@ if __name__ == &#34;__main__&#34;:
     )
 
     my_analyzer.get_training_metrics(verbose=True)
-
-    my_analyzer.write_validation_prediction()
     my_analyzer.train_confusion_matrix()
 
     logger.experiment.add_tag(&#34;Finished&#34;)

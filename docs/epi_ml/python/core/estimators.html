@@ -273,6 +273,7 @@ class EstimatorAnalyzer(object):
 
     @classmethod
     def restore_model_from_path(cls, full_path: str) -&gt; EstimatorAnalyzer:
+        &#34;&#34;&#34;Restore EstimatorAnalyzer instance from a previous pickle save.&#34;&#34;&#34;
         print(f&#34;Loading model {full_path}&#34;)
         with open(full_path, &#34;rb&#34;) as f:
             return pickle.load(f)
@@ -394,7 +395,7 @@ def log_tune_results(logdir: Path, name: str, opt: BayesSearchCV):
 
     file = best_params_file_format.format(name=name)
     with open(logdir / file, &#34;w&#34;, encoding=&#34;utf-8&#34;) as f:
-        json.dump(obj=opt.best_params_, fp=f)
+        json.dump(obj=opt.best_params_, fp=f, sort_keys=True, indent=4)
 
 
 def run_predictions(
@@ -466,10 +467,7 @@ def run_prediction(
     try:
         logdir = logdir / f&#34;{name}&#34;
         create_dirs(logdir)
-    except KeyboardInterrupt:
-        print(&#34;Shutdown requested (KeyboardInterrupt)...exiting&#34;)
-        sys.exit(1)
-    except Exception as err:
+    except (ValueError, OSError, KeyError, RuntimeError) as err:
         (print(err))
         print(&#34;Continuing with default logdir.&#34;)
 
@@ -553,7 +551,7 @@ file.</p>
 
     file = best_params_file_format.format(name=name)
     with open(logdir / file, &#34;w&#34;, encoding=&#34;utf-8&#34;) as f:
-        json.dump(obj=opt.best_params_, fp=f)</code></pre>
+        json.dump(obj=opt.best_params_, fp=f, sort_keys=True, indent=4)</code></pre>
 </details>
 </dd>
 <dt id="python.core.estimators.optimize_estimator"><code class="name flex">
@@ -683,10 +681,7 @@ the validation data</p>
     try:
         logdir = logdir / f&#34;{name}&#34;
         create_dirs(logdir)
-    except KeyboardInterrupt:
-        print(&#34;Shutdown requested (KeyboardInterrupt)...exiting&#34;)
-        sys.exit(1)
-    except Exception as err:
+    except (ValueError, OSError, KeyError, RuntimeError) as err:
         (print(err))
         print(&#34;Continuing with default logdir.&#34;)
 
@@ -993,6 +988,7 @@ concurrent_cv.</p>
 
     @classmethod
     def restore_model_from_path(cls, full_path: str) -&gt; EstimatorAnalyzer:
+        &#34;&#34;&#34;Restore EstimatorAnalyzer instance from a previous pickle save.&#34;&#34;&#34;
         print(f&#34;Loading model {full_path}&#34;)
         with open(full_path, &#34;rb&#34;) as f:
             return pickle.load(f)</code></pre>
@@ -1056,13 +1052,14 @@ def restore_model_from_name(cls, logdir: str, auto_name: str) -&gt; EstimatorAna
 <span>def <span class="ident">restore_model_from_path</span></span>(<span>full_path: str) ‑> <a title="python.core.estimators.EstimatorAnalyzer" href="#python.core.estimators.EstimatorAnalyzer">EstimatorAnalyzer</a></span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Restore EstimatorAnalyzer instance from a previous pickle save.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">@classmethod
 def restore_model_from_path(cls, full_path: str) -&gt; EstimatorAnalyzer:
+    &#34;&#34;&#34;Restore EstimatorAnalyzer instance from a previous pickle save.&#34;&#34;&#34;
     print(f&#34;Loading model {full_path}&#34;)
     with open(full_path, &#34;rb&#34;) as f:
         return pickle.load(f)</code></pre>

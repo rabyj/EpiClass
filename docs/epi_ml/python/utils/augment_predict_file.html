@@ -48,6 +48,8 @@ from src.python.argparseutils.DefaultHelpParser import DefaultHelpParser as Argu
 from src.python.core.confusion_matrix import ConfusionMatrixWriter as ConfusionMatrix
 from src.python.core.metadata import Metadata
 
+TARGET = &#34;assay_epiclass&#34;
+
 
 def parse_arguments() -&gt; argparse.Namespace:
     &#34;&#34;&#34;Return argument line parser.&#34;&#34;&#34;
@@ -222,11 +224,11 @@ def add_track_type_coherence(df):
     cat2 = &#34;Track type coherence count&#34;
     cat3 = &#34;Track type coherence ratio&#34;
 
-    groups = df.groupby([&#34;EpiRR&#34;, &#34;assay&#34;])
+    groups = df.groupby([&#34;EpiRR&#34;, TARGET])
     if cat1 not in df.columns:
         df[cat1] = groups[&#34;md5sum&#34;].transform(&#34;size&#34;)
 
-    groups = df.groupby([&#34;EpiRR&#34;, &#34;assay&#34;, &#34;Predicted class&#34;])
+    groups = df.groupby([&#34;EpiRR&#34;, TARGET, &#34;Predicted class&#34;])
     df[cat2] = groups[&#34;md5sum&#34;].transform(&#34;size&#34;)
 
     df[cat3] = df[cat2] / (1.0 * df[cat1])
@@ -360,11 +362,11 @@ Tells us how much tracks types agree on predicted class for a unique experiment<
     cat2 = &#34;Track type coherence count&#34;
     cat3 = &#34;Track type coherence ratio&#34;
 
-    groups = df.groupby([&#34;EpiRR&#34;, &#34;assay&#34;])
+    groups = df.groupby([&#34;EpiRR&#34;, TARGET])
     if cat1 not in df.columns:
         df[cat1] = groups[&#34;md5sum&#34;].transform(&#34;size&#34;)
 
-    groups = df.groupby([&#34;EpiRR&#34;, &#34;assay&#34;, &#34;Predicted class&#34;])
+    groups = df.groupby([&#34;EpiRR&#34;, TARGET, &#34;Predicted class&#34;])
     df[cat2] = groups[&#34;md5sum&#34;].transform(&#34;size&#34;)
 
     df[cat3] = df[cat2] / (1.0 * df[cat1])</code></pre>

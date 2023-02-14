@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import os
 import sys
+import warnings
 from pathlib import Path
 from typing import Dict
 
@@ -96,7 +97,8 @@ class Hdf5Loader(object):
         &#34;&#34;&#34;
         files = self.read_list(data_file)
 
-        files = Hdf5Loader.adapt_to_environment(files)
+        new_parent = os.getenv(&#34;HDF5_PARENT&#34;, &#34;hdf5s&#34;)
+        files = Hdf5Loader.adapt_to_environment(files, new_parent)
         self._files = files
 
         # Remove undesired files
@@ -119,20 +121,19 @@ class Hdf5Loader(object):
         for md5, file in files.items():
 
             # Trying to open hdf5 file.
-            try:
-                f = h5py.File(file)
-            except OSError as err:
-                print(f&#34;Error occured with {md5}: {file}. {err}&#34;, file=sys.stderr)
-                if strict:
-                    print(
-                        &#34;Strict hdf5 loading policy true, raising original error.&#34;,
-                        file=sys.stderr,
-                    )
-                    raise err from None
-                else:
-                    continue
-
-            signals[md5] = self._normalize(self._read_hdf5(f, md5))
+            with h5py.File(file, &#34;r&#34;) as f:
+                try:
+                    signals[md5] = self._normalize(self._read_hdf5(f, md5))
+                except OSError as err:
+                    print(f&#34;Error occured with {md5}: {file}. {err}&#34;, file=sys.stderr)
+                    if strict:
+                        print(
+                            &#34;Strict hdf5 loading policy true, raising original error.&#34;,
+                            file=sys.stderr,
+                        )
+                        raise err from None
+                    else:
+                        continue
 
         self._signals = signals
 
@@ -140,7 +141,16 @@ class Hdf5Loader(object):
 
     def _read_hdf5(self, file: h5py.File, md5: str) -&gt; np.ndarray:
         &#34;&#34;&#34;Read and return concatenated genome signal for open hdf5 file.&#34;&#34;&#34;
-        chrom_signals = [file[md5][chrom][...] for chrom in self._chroms]  # type: ignore
+        try:
+            hdf5_data = file[md5]
+        except KeyError:
+            header = list(file.keys())[0]
+            warnings.warn(
+                f&#34;Cannot read file directly with {md5}, header is different. Using header {header}.&#34;
+            )
+            hdf5_data = file[header]
+
+        chrom_signals = [hdf5_data[chrom][...] for chrom in self._chroms]  # type: ignore
         return np.concatenate(chrom_signals, dtype=np.float32)  # type: ignore
 
     def _normalize(self, array: np.ndarray) -&gt; np.ndarray:
@@ -163,7 +173,7 @@ class Hdf5Loader(object):
         Files : {md5:path} dict.
         new_parent : directory after $SLURM_TMPDIR.
         &#34;&#34;&#34;
-        local_tmp = Path(os.getenv(&#34;$SLURM_TMPDIR&#34;, &#34;./bleh&#34;)) / new_parent
+        local_tmp = Path(os.getenv(&#34;SLURM_TMPDIR&#34;, &#34;./bleh&#34;)) / new_parent
 
         if local_tmp.exists():
             print(f&#34;Using files in {local_tmp}&#34;)
@@ -248,7 +258,8 @@ class Hdf5Loader(object):
         &#34;&#34;&#34;
         files = self.read_list(data_file)
 
-        files = Hdf5Loader.adapt_to_environment(files)
+        new_parent = os.getenv(&#34;HDF5_PARENT&#34;, &#34;hdf5s&#34;)
+        files = Hdf5Loader.adapt_to_environment(files, new_parent)
         self._files = files
 
         # Remove undesired files
@@ -271,20 +282,19 @@ class Hdf5Loader(object):
         for md5, file in files.items():
 
             # Trying to open hdf5 file.
-            try:
-                f = h5py.File(file)
-            except OSError as err:
-                print(f&#34;Error occured with {md5}: {file}. {err}&#34;, file=sys.stderr)
-                if strict:
-                    print(
-                        &#34;Strict hdf5 loading policy true, raising original error.&#34;,
-                        file=sys.stderr,
-                    )
-                    raise err from None
-                else:
-                    continue
-
-            signals[md5] = self._normalize(self._read_hdf5(f, md5))
+            with h5py.File(file, &#34;r&#34;) as f:
+                try:
+                    signals[md5] = self._normalize(self._read_hdf5(f, md5))
+                except OSError as err:
+                    print(f&#34;Error occured with {md5}: {file}. {err}&#34;, file=sys.stderr)
+                    if strict:
+                        print(
+                            &#34;Strict hdf5 loading policy true, raising original error.&#34;,
+                            file=sys.stderr,
+                        )
+                        raise err from None
+                    else:
+                        continue
 
         self._signals = signals
 
@@ -292,7 +302,16 @@ class Hdf5Loader(object):
 
     def _read_hdf5(self, file: h5py.File, md5: str) -&gt; np.ndarray:
         &#34;&#34;&#34;Read and return concatenated genome signal for open hdf5 file.&#34;&#34;&#34;
-        chrom_signals = [file[md5][chrom][...] for chrom in self._chroms]  # type: ignore
+        try:
+            hdf5_data = file[md5]
+        except KeyError:
+            header = list(file.keys())[0]
+            warnings.warn(
+                f&#34;Cannot read file directly with {md5}, header is different. Using header {header}.&#34;
+            )
+            hdf5_data = file[header]
+
+        chrom_signals = [hdf5_data[chrom][...] for chrom in self._chroms]  # type: ignore
         return np.concatenate(chrom_signals, dtype=np.float32)  # type: ignore
 
     def _normalize(self, array: np.ndarray) -&gt; np.ndarray:
@@ -315,7 +334,7 @@ class Hdf5Loader(object):
         Files : {md5:path} dict.
         new_parent : directory after $SLURM_TMPDIR.
         &#34;&#34;&#34;
-        local_tmp = Path(os.getenv(&#34;$SLURM_TMPDIR&#34;, &#34;./bleh&#34;)) / new_parent
+        local_tmp = Path(os.getenv(&#34;SLURM_TMPDIR&#34;, &#34;./bleh&#34;)) / new_parent
 
         if local_tmp.exists():
             print(f&#34;Using files in {local_tmp}&#34;)
@@ -346,7 +365,7 @@ def adapt_to_environment(
     Files : {md5:path} dict.
     new_parent : directory after $SLURM_TMPDIR.
     &#34;&#34;&#34;
-    local_tmp = Path(os.getenv(&#34;$SLURM_TMPDIR&#34;, &#34;./bleh&#34;)) / new_parent
+    local_tmp = Path(os.getenv(&#34;SLURM_TMPDIR&#34;, &#34;./bleh&#34;)) / new_parent
 
     if local_tmp.exists():
         print(f&#34;Using files in {local_tmp}&#34;)
@@ -474,7 +493,8 @@ Normalize if internal flag set so.</p>
     &#34;&#34;&#34;
     files = self.read_list(data_file)
 
-    files = Hdf5Loader.adapt_to_environment(files)
+    new_parent = os.getenv(&#34;HDF5_PARENT&#34;, &#34;hdf5s&#34;)
+    files = Hdf5Loader.adapt_to_environment(files, new_parent)
     self._files = files
 
     # Remove undesired files
@@ -497,20 +517,19 @@ Normalize if internal flag set so.</p>
     for md5, file in files.items():
 
         # Trying to open hdf5 file.
-        try:
-            f = h5py.File(file)
-        except OSError as err:
-            print(f&#34;Error occured with {md5}: {file}. {err}&#34;, file=sys.stderr)
-            if strict:
-                print(
-                    &#34;Strict hdf5 loading policy true, raising original error.&#34;,
-                    file=sys.stderr,
-                )
-                raise err from None
-            else:
-                continue
-
-        signals[md5] = self._normalize(self._read_hdf5(f, md5))
+        with h5py.File(file, &#34;r&#34;) as f:
+            try:
+                signals[md5] = self._normalize(self._read_hdf5(f, md5))
+            except OSError as err:
+                print(f&#34;Error occured with {md5}: {file}. {err}&#34;, file=sys.stderr)
+                if strict:
+                    print(
+                        &#34;Strict hdf5 loading policy true, raising original error.&#34;,
+                        file=sys.stderr,
+                    )
+                    raise err from None
+                else:
+                    continue
 
     self._signals = signals
 
