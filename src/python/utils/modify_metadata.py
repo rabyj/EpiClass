@@ -29,6 +29,8 @@ epiatlas_assays = [
     "rna_seq",
     "mrna_seq",
     "wgbs",
+    "wgbs-standard",
+    "wgbs-pbat",
 ]
 
 dp_assays = [
@@ -167,23 +169,25 @@ def five_cell_types_selection(my_metadata: Metadata):
     return my_metadata
 
 
-def filter_cell_types_by_pairs(
-    my_metadata: Metadata, cat2: str, nb_pairs: int = 5, min_per_pair: int = 10
+def filter_by_pairs(
+    my_metadata: Metadata,
+    assay_cat: str = "assay",
+    cat2: str = "cell_type",
+    nb_pairs: int = 5,
+    min_per_pair: int = 10,
 ):
-    """Filter metadata to only keep only certain cell_types based on cellType-Assay pairs conditions.
-
-    cat2 needs to be the name of the cell type category label. (e.g. "cell_type")
+    """Filter metadata to only keep only certain classes from cat2 based on pairs conditions with assay_cat.
 
     MODIFIES GIVEN METADATA.
 
-    1) Remove (assay, cell_type) pairs that have less than 'min_per_pair' signals.
-    2) Only keep cell types that have at least 'nb_pairs' different pairings still non-zero.
+    1) Remove (assay_cat, cat2) pairs that have less than 'min_per_pair' signals.
+    2) Only keep cat2 that have at least 'nb_pairs' different pairings still non-zero.
     """
-    print("Applying metadata filter function 'filter_cell_types_by_pairs'.")
-    cat1 = "assay"
-
+    print("Applying metadata filter function 'filter_by_pairs'.")
     to_ignore = ["other", "--", "", "na"]
-    my_metadata.remove_category_subsets(cat2, to_ignore)
+    for cat in assay_cat, cat2:
+        my_metadata.remove_category_subsets(cat, to_ignore)
+        my_metadata.remove_missing_labels(cat)
 
     full_metadata = copy.deepcopy(my_metadata)
 
@@ -191,23 +195,23 @@ def filter_cell_types_by_pairs(
     my_metadata.select_category_subsets("track_type", TRACKS_MAPPING.keys())
 
     # Select EpiAtlas/IHEC assays.
-    my_metadata.select_category_subsets(cat1, epiatlas_assays)
+    my_metadata.select_category_subsets(assay_cat, epiatlas_assays)
 
     # Remove (cell_type, assay) pairs with less than X examples.
-    counter = count_pairs(my_metadata, cat1, cat2)
+    counter = count_pairs(my_metadata, assay_cat, cat2)
     ok_pairs = set(pair for pair, i in counter.most_common() if i >= min_per_pair)
 
     for dset in list(full_metadata.datasets):
-        pair = (dset[cat1], dset[cat2])
+        pair = (dset[assay_cat], dset[cat2])
         if pair not in ok_pairs:
             del full_metadata[dset["md5sum"]]
 
     # Remove cell types that don't have enough different assays.
     # First get assays per cell type.
     cell_type_assays = collections.defaultdict(set)
-    for pair in count_pairs(full_metadata, cat1, cat2).keys():
+    for pair in count_pairs(full_metadata, assay_cat, cat2).keys():
         cell_type_assays[pair[1]].add(pair[0])
-    print(f"Still {len(cell_type_assays)} cell types labels.")
+    print(f"Still {len(cell_type_assays)} {cat2} labels.")
 
     # Then count assay, and filter cell types.
     ok_ct = []
@@ -215,7 +219,7 @@ def filter_cell_types_by_pairs(
         if len(assays) >= nb_pairs:
             ok_ct.append(cell_type)
 
-    print(f"Keeping {len(ok_ct)} cell types labels.")
+    print(f"Keeping {len(ok_ct)} {cat2} labels.")
     full_metadata.select_category_subsets(cat2, ok_ct)
     full_metadata.display_labels(cat2)
 

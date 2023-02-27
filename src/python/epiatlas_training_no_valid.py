@@ -29,7 +29,7 @@ from src.python.core.model_pytorch import LightningDenseClassifier
 from src.python.core.trainer import MyTrainer, define_callbacks
 from src.python.utils.check_dir import create_dirs
 from src.python.utils.modify_metadata import (
-    filter_cell_types_by_pairs,
+    filter_by_pairs,
     fix_roadmap,
     merge_pair_end_info,
 )
@@ -122,7 +122,7 @@ def main():
         min_class_size = hparams.get("min_class_size", 10)
 
     if category == "harm_sample_ontology_intermediate":
-        my_metadata = filter_cell_types_by_pairs(my_metadata)
+        my_metadata = filter_by_pairs(my_metadata)
 
     # --- Load signals and train ---
     loading_begin = time_now()

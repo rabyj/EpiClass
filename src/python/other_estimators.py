@@ -15,7 +15,7 @@ from src.python.core import data, estimators, metadata
 from src.python.core.data_source import EpiDataSource
 from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
 from src.python.core.lgbm import tune_lgbm
-from src.python.utils.modify_metadata import filter_cell_types_by_pairs
+from src.python.utils.modify_metadata import filter_by_pairs
 from src.python.utils.time import time_now
 
 if os.getenv("CONCURRENT_CV") is not None:
@@ -135,7 +135,14 @@ def main():
             "cell_type",
         ]
     ):
-        my_metadata = filter_cell_types_by_pairs(my_metadata, cat2=category)
+        categories = set(my_metadata.get_categories())
+        if "assay_epiclass" in categories:
+            assay_cat = "assay_epiclass"
+        elif "assay" in categories:
+            assay_cat = "assay"
+        else:
+            raise ValueError("Cannot find assay category for class pairs.")
+        my_metadata = filter_by_pairs(my_metadata, assay_cat=assay_cat, cat2=category)
 
     # Tuning mode
     loading_begin = time_now()

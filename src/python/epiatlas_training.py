@@ -28,7 +28,7 @@ from src.python.core.model_pytorch import LightningDenseClassifier
 from src.python.core.trainer import MyTrainer, define_callbacks
 from src.python.utils.check_dir import create_dirs
 from src.python.utils.modify_metadata import (
-    filter_cell_types_by_pairs,
+    filter_by_pairs,
     fix_roadmap,
     merge_pair_end_info,
 )
@@ -127,7 +127,14 @@ def main():
             "cell_type",
         ]
     ):
-        my_metadata = filter_cell_types_by_pairs(my_metadata, cat2=category)
+        categories = set(my_metadata.get_categories())
+        if "assay_epiclass" in categories:
+            assay_cat = "assay_epiclass"
+        elif "assay" in categories:
+            assay_cat = "assay"
+        else:
+            raise ValueError("Cannot find assay category for class pairs.")
+        my_metadata = filter_by_pairs(my_metadata, assay_cat=assay_cat, cat2=category)
 
     # --- Load signals and train ---
     loading_begin = time_now()
