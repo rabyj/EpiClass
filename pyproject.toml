@@ -54,7 +54,6 @@ ignore-pattern = ["bin/*", "epilap/*"]
 
 [tool.pylint.messages_control]
 disable = [
-    "raw-checker-failed",
     "bad-inline-option",
     "locally-disabled",
     "file-ignored",
@@ -63,10 +62,10 @@ disable = [
     "deprecated-pragma",
     "use-symbolic-message-instead",
     "abstract-method",
-    "arguments-differ",
     "invalid-name",
-    "wrong-import-order",
     "wrong-import-position",
+    "too-many-locals",
+    "too-many-statements"
 ]
 
 [tool.pylint.typecheck]
