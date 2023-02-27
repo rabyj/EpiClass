@@ -1,3 +1,4 @@
+"""Functions to perform more complex operations on the metadata."""
 import collections
 import copy
 
@@ -167,9 +168,11 @@ def five_cell_types_selection(my_metadata: Metadata):
 
 
 def filter_cell_types_by_pairs(
-    my_metadata: Metadata, nb_pairs: int = 5, min_per_pair: int = 10
+    my_metadata: Metadata, cat2: str, nb_pairs: int = 5, min_per_pair: int = 10
 ):
     """Filter metadata to only keep only certain cell_types based on cellType-Assay pairs conditions.
+
+    cat2 needs to be the name of the cell type category label. (e.g. "cell_type")
 
     MODIFIES GIVEN METADATA.
 
@@ -178,7 +181,6 @@ def filter_cell_types_by_pairs(
     """
     print("Applying metadata filter function 'filter_cell_types_by_pairs'.")
     cat1 = "assay"
-    cat2 = "harm_sample_ontology_intermediate"
 
     to_ignore = ["other", "--", "", "na"]
     my_metadata.remove_category_subsets(cat2, to_ignore)

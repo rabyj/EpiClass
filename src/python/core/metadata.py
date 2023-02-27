@@ -177,7 +177,8 @@ class Metadata(object):
         sorted_md5 = sorted(self.md5s)
         uniq = set()
         for md5 in sorted_md5:
-            uniq.add(self[md5][label_category])
+            uniq.add(self[md5].get(label_category))
+        uniq.discard(None)
         return sorted(list(uniq))
 
     def display_labels(self, label_category: str):

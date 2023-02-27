@@ -91,6 +91,8 @@ def main():
     # --- PARSE params and LOAD external files ---
     cli = parse_arguments()
 
+    category = cli.category
+
     if cli.tune:
         mode_tune = True
         mode_predict = False
@@ -120,15 +122,21 @@ def main():
         label_category="track_type", labels=["Unique.raw"]
     )
 
-    label_list = metadata.env_filtering(my_metadata, cli.category)
+    label_list = metadata.env_filtering(my_metadata, category)
 
     if os.getenv("MIN_CLASS_SIZE") is not None:
         min_class_size = int(os.environ["MIN_CLASS_SIZE"])
     else:
         min_class_size = 10
 
-    if cli.category == "harm_sample_ontology_intermediate":
-        my_metadata = filter_cell_types_by_pairs(my_metadata)
+    if category in set(
+        [
+            "harmonized_sample_ontology_intermediate",
+            "harm_sample_ontology_intermediate",
+            "cell_type",
+        ]
+    ):
+        my_metadata = filter_cell_types_by_pairs(my_metadata, cat2=category)
 
     # Tuning mode
     loading_begin = time_now()
@@ -136,7 +144,7 @@ def main():
         print("Entering tuning mode")
         ea_handler = EpiAtlasFoldFactory.from_datasource(
             my_datasource,
-            cli.category,
+            category,
             label_list,
             n_fold=estimators.NFOLD_TUNE,
             test_ratio=0.1,
@@ -182,7 +190,7 @@ def main():
 
         ea_handler = EpiAtlasFoldFactory.from_datasource(
             my_datasource,
-            cli.category,
+            category,
             label_list,
             n_fold=estimators.NFOLD_PREDICT,
             test_ratio=0,
@@ -222,7 +230,7 @@ def main():
             my_data = data.DataSetFactory.from_epidata(
                 my_datasource,
                 my_metadata,
-                cli.category,
+                category,
                 min_class_size=min_class_size,
                 validation_ratio=0,
                 test_ratio=1,
@@ -235,7 +243,7 @@ def main():
                     full_path=model_path
                 )
                 my_analyzer = estimators.EstimatorAnalyzer(
-                    classes=my_metadata.unique_classes(cli.category), estimator=my_model
+                    classes=my_metadata.unique_classes(category), estimator=my_model
                 )
 
                 predict_path = (

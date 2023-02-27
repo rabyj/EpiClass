@@ -2,10 +2,8 @@
 from __future__ import annotations
 
 import argparse
-import gc
 import json
 import os
-import subprocess
 import sys
 import warnings
 from pathlib import Path
@@ -122,8 +120,14 @@ def main():
     else:
         min_class_size = hparams.get("min_class_size", 10)
 
-    if category == "harm_sample_ontology_intermediate":
-        my_metadata = filter_cell_types_by_pairs(my_metadata)
+    if category in set(
+        [
+            "harmonized_sample_ontology_intermediate",
+            "harm_sample_ontology_intermediate",
+            "cell_type",
+        ]
+    ):
+        my_metadata = filter_cell_types_by_pairs(my_metadata, cat2=category)
 
     # --- Load signals and train ---
     loading_begin = time_now()
