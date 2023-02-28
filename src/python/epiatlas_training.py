@@ -159,8 +159,13 @@ def main():
         "category": category,
     }
 
+    min_split = int(os.getenv("MIN_SPLIT", "0"))
+
     time_before_split = time_now()
     for i, my_data in enumerate(ea_handler.yield_split()):
+
+        if i < min_split:
+            continue
 
         split_time = time_now() - time_before_split
         to_log.update({"split_time": str(split_time)})
