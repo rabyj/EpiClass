@@ -33,7 +33,7 @@ def fixture_logdir() -> Path:
 def make_specific_logdir(tmp_logdir):
     """Return fct to create test subdirectory."""
 
-    def _make_specific_logdir(name: str):
+    def _make_specific_logdir(name: str) -> Path:
         logdir = tmp_logdir / name
         logdir.mkdir(exist_ok=True, parents=True)
         return logdir

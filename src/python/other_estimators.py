@@ -220,6 +220,7 @@ def main():
             estimator = estimators.model_mapping[model_name]
             estimator.set_params(**model_hparams)
 
+            print("Using {model_name}.")
             estimators.run_predictions(ea_handler, estimator, model_name, cli.logdir)
 
     # Giving predictions with chosen models, for all files in hdf5 list.

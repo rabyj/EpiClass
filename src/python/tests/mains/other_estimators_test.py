@@ -3,12 +3,20 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
+
 import src.python.core.estimators
 from src.python.other_estimators import main as main_module
 from src.python.tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
 
 
-def test_hyperparams():
+@pytest.fixture(name="test_dir")
+def fixture_test_dir(make_specific_logdir) -> Path:
+    """Make temp logdir for tests."""
+    return make_specific_logdir("other_estimators")
+
+
+def test_hyperparams(test_dir: Path):
     """Test if hyperparameter file is handled properly."""
     os.environ["MIN_CLASS_SIZE"] = "3"
     src.python.core.estimators.NFOLD_PREDICT = 2
@@ -26,7 +34,7 @@ def test_hyperparams():
         f"{datasource.hdf5_file}",
         f"{datasource.chromsize_file}",
         f"{datasource.metadata_file}",
-        f"{current_dir}",
+        str(test_dir),
         "--hyperparams",
         f"{hparams_file}",
     ]

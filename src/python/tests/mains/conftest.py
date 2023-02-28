@@ -12,4 +12,4 @@ def pytest_sessionfinish(session, exitstatus):
     current_dir = Path(__file__).parent.resolve()
 
     to_rm = current_dir / "*.pickle"
-    subprocess.run(args=f"rm {to_rm}", shell=True, check=True)
+    subprocess.run(args=f"rm -f {to_rm}", shell=True, check=True)
