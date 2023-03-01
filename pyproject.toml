@@ -50,7 +50,8 @@ extension-pkg-allow-list = [
     "pytorch_lightning",
     "optuna.integration.lightgbm"
 ]
-ignore-pattern = ["bin/*", "epilap/*"]
+ignore-pattern = ["bin", "epilap"]
+ignore-paths = ["bin/**", "epilap/**"]
 
 [tool.pylint.messages_control]
 disable = [

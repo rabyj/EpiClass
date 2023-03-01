@@ -62,14 +62,15 @@ class Hdf5Loader(object):
         If a list of md5s is given, load only the corresponding files.
         Normalize if internal flag set so.
 
+        Check adapt_to_environment for details on dynamic path changes.
+
         If strict, will raise OSError if an hdf5 cannot be opened.
 
         Loads them as float32.
         """
         files = self.read_list(data_file)
 
-        new_parent = os.getenv("HDF5_PARENT", "hdf5s")
-        files = Hdf5Loader.adapt_to_environment(files, new_parent)
+        files = Hdf5Loader.adapt_to_environment(files)
         self._files = files
 
         # Remove undesired files
@@ -136,15 +137,14 @@ class Hdf5Loader(object):
         return file_name.name.split("_")[0]
 
     @staticmethod
-    def adapt_to_environment(
-        files: Dict[str, Path], new_parent="hdf5s"
-    ) -> Dict[str, Path]:
+    def adapt_to_environment(files: Dict[str, Path]) -> Dict[str, Path]:
         """Change files paths if they exist on cluster scratch.
+        Checks for $SLURM_TMPDIR/$HDF5_PARENT, default is $SLURM_TMPDIR/hdf5s.
 
         Files : {md5:path} dict.
-        new_parent : directory after $SLURM_TMPDIR.
         """
-        local_tmp = Path(os.getenv("SLURM_TMPDIR", "./bleh")) / new_parent
+        local_tmp = Path(os.getenv("SLURM_TMPDIR", "./bleh"))
+        local_tmp = local_tmp / os.getenv("HDF5_PARENT", "hdf5s")
 
         if local_tmp.exists():
             print(f"Using files in {local_tmp}")
