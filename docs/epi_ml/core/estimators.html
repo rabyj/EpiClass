@@ -1,0 +1,1283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>epi_ml.core.estimators API documentation</title>
+<meta name="description" content="Module for wrappers around simple sklearn machine learning estimators." />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>epi_ml.core.estimators</code></h1>
+</header>
+<section id="section-intro">
+<p>Module for wrappers around simple sklearn machine learning estimators.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">&#34;&#34;&#34;Module for wrappers around simple sklearn machine learning estimators.&#34;&#34;&#34;
+# pylint: disable=no-member
+from __future__ import annotations
+
+import glob
+import json
+import multiprocessing as mp
+import os
+import pickle
+import sys
+from functools import partial
+from inspect import signature
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import sklearn.metrics
+from lightgbm import LGBMClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import make_scorer, matthews_corrcoef
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import LabelBinarizer, StandardScaler
+from sklearn.svm import LinearSVC
+from skopt import BayesSearchCV
+from skopt.callbacks import DeadlineStopper
+from skopt.space import Categorical, Integer, Real
+from tabulate import tabulate
+
+from .analysis import write_pred_table
+from epi_ml.core.data import DataSet
+from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory
+from epi_ml.utils.check_dir import create_dirs
+from epi_ml.utils.time import time_now
+
+NFOLD_TUNE = 9
+NFOLD_PREDICT = 10
+RNG = np.random.RandomState(42)
+SCORES = {
+    &#34;acc&#34;: &#34;accuracy&#34;,
+    &#34;precision&#34;: &#34;precision_macro&#34;,
+    &#34;recall&#34;: &#34;recall_macro&#34;,
+    &#34;f1&#34;: &#34;f1_macro&#34;,
+    &#34;mcc&#34;: make_scorer(matthews_corrcoef),
+}
+SVM_LIN_SEARCH = {
+    &#34;model__C&#34;: Real(1e-6, 1e6, prior=&#34;log-uniform&#34;),
+    &#34;model__loss&#34;: Categorical([&#34;hinge&#34;, &#34;squared_hinge&#34;]),
+    &#34;model__intercept_scaling&#34;: Categorical([1, 5]),
+}
+RF_SEARCH = {
+    &#34;model__n_estimators&#34;: Categorical([500, 1000]),
+    &#34;model__criterion&#34;: Categorical([&#34;gini&#34;, &#34;entropy&#34;, &#34;log_loss&#34;]),
+    &#34;model__max_features&#34;: Categorical([&#34;sqrt&#34;, &#34;log2&#34;]),
+    &#34;model__min_samples_leaf&#34;: Integer(1, 5),
+    &#34;model__min_samples_split&#34;: Categorical([0.002, 0.01, 0.05, 0.1, 0.3]),
+}
+LR_SEARCH = {
+    &#34;model__C&#34;: Real(1e-6, 1e6, prior=&#34;log-uniform&#34;),
+}
+
+# fmt: off
+model_mapping = {
+    &#34;LinearSVC&#34;: Pipeline(steps=[(&#34;scaler&#34;, StandardScaler()), (&#34;model&#34;, LinearSVC())]),
+    &#34;RF&#34;: Pipeline(steps=[(&#34;model&#34;, RandomForestClassifier(random_state=RNG, bootstrap=True))]),
+    &#34;LR&#34;: Pipeline(steps=[
+        (&#34;model&#34;, LogisticRegression(penalty=&#34;l2&#34;, multi_class=&#34;multinomial&#34;, solver=&#34;lbfgs&#34;, dual=False, fit_intercept=True, warm_start=True, max_iter=1000))
+        ]),
+    &#34;LGBM&#34;: Pipeline(steps=[(&#34;model&#34;, LGBMClassifier())]),  # type: ignore
+}
+# fmt: on
+lgbm_allowed_params = [
+    f&#34;model__{param}&#34;
+    for param in set(signature(LGBMClassifier.__init__).parameters.keys())
+]
+
+search_mapping = {
+    &#34;LinearSVC&#34;: SVM_LIN_SEARCH,
+    &#34;RF&#34;: RF_SEARCH,
+    &#34;LR&#34;: LR_SEARCH,
+}
+
+save_mapping = {
+    &#34;LinearSVC&#34;: &#34;LinearSVC&#34;,
+    &#34;RF&#34;: &#34;RandomForestClassifier&#34;,
+    &#34;LR&#34;: &#34;LogisticRegression&#34;,
+    &#34;LGBM&#34;: &#34;LGBMClassifier&#34;,
+}
+
+tune_results_file_format = &#34;{name}_optim.csv&#34;
+best_params_file_format = &#34;{name}_best_params.json&#34;
+
+
+def get_model_name(filepath: str) -&gt; str:
+    &#34;&#34;&#34;Extract model name from filepath. (string before first &#39;_&#39;)&#34;&#34;&#34;
+    return Path(filepath).stem.split(sep=&#34;_&#34;, maxsplit=1)[0]
+
+
+class EstimatorAnalyzer(object):
+    &#34;&#34;&#34;Generic class to analyze results given by an estimator.&#34;&#34;&#34;
+
+    def __init__(self, classes, estimator):
+        self.classes = sorted(classes)
+        self.mapping = dict(enumerate(self.classes))
+        self.encoder = LabelBinarizer().fit(list(self.mapping.keys()))
+
+        self._clf = estimator
+        self._name = self._get_name(estimator)
+
+    @staticmethod
+    def _get_name(estimator) -&gt; str:
+        &#34;&#34;&#34;Return estimator model name.&#34;&#34;&#34;
+        name = type(estimator).__name__
+        if name == &#34;Pipeline&#34;:
+            name = type(estimator.named_steps[&#34;model&#34;]).__name__
+        return name
+
+    @property
+    def name(self) -&gt; str:
+        &#34;&#34;&#34;Return classifier name.&#34;&#34;&#34;
+        return self._get_name(self._clf)
+
+    def predict(self, X):
+        &#34;&#34;&#34;Return class predictions.&#34;&#34;&#34;
+        if self.name == &#34;LGBMClassifier&#34;:
+            pred_results = self._clf.predict(
+                X, raw_score=False, pred_leaf=False, pred_contrib=False
+            )
+        else:
+            pred_results = self._clf.predict(X)
+        return pred_results
+
+    def predict_proba(self, X):
+        &#34;&#34;&#34;Return class prediction probabilities.&#34;&#34;&#34;
+        try:
+            if self.name == &#34;LGBMClassifier&#34;:
+                pred_results = self._clf.predict_proba(
+                    X, raw_score=False, pred_leaf=False, pred_contrib=False
+                )
+            else:
+                pred_results = self._clf.predict_proba(X)
+        except AttributeError:  # SVM
+            int_results = self._clf.predict(X)
+            pred_results = self.encoder.transform(int_results)
+            if pred_results.shape[1] == 1:  # 2 classes, e.g. sex
+                pred_results = [[1, 0] if i == 0 else [0, 1] for i in int_results]
+
+        return pred_results
+
+    def metrics(self, X, y, verbose=True):
+        &#34;&#34;&#34;Return a dict of metrics over given set&#34;&#34;&#34;
+        y_pred = self.predict(X)
+        y_true = y
+
+        val_acc = sklearn.metrics.accuracy_score(y_true, y_pred)
+        val_precision = sklearn.metrics.precision_score(y_true, y_pred, average=&#34;macro&#34;)
+        val_recall = sklearn.metrics.recall_score(y_true, y_pred, average=&#34;macro&#34;)
+        val_f1 = sklearn.metrics.f1_score(y_true, y_pred, average=&#34;macro&#34;)
+        val_mcc = sklearn.metrics.matthews_corrcoef(y_true, y_pred)
+
+        metrics_dict = {
+            &#34;val_acc&#34;: val_acc,
+            &#34;val_precision&#34;: val_precision,
+            &#34;val_recall&#34;: val_recall,
+            &#34;val_f1&#34;: val_f1,
+            &#34;val_mcc&#34;: val_mcc,
+        }
+
+        if verbose:
+            EstimatorAnalyzer.print_metrics(metrics_dict)
+
+        return metrics_dict
+
+    @staticmethod
+    def print_metrics(metrics_dict: dict):
+        &#34;&#34;&#34;Print metrics&#34;&#34;&#34;
+        print(f&#34;Validation Accuracy: {metrics_dict[&#39;val_acc&#39;]}&#34;)
+        print(f&#34;Validation Precision: {metrics_dict[&#39;val_precision&#39;]}&#34;)
+        print(f&#34;Validation Recall: {metrics_dict[&#39;val_recall&#39;]}&#34;)
+        print(f&#34;Validation F1_score: {metrics_dict[&#39;val_f1&#39;]}&#34;)
+        print(f&#34;Validation MCC: {metrics_dict[&#39;val_mcc&#39;]}&#34;)
+
+    def predict_file(self, ids, X, y, log):
+        &#34;&#34;&#34;Write predictions table for validation set.
+
+        ids: Sample identifier.
+        X: Sample features
+        y: Sample labels
+        log: path where to save predictions
+        &#34;&#34;&#34;
+
+        pred_results = self.predict_proba(X)
+
+        str_preds = [
+            self.mapping[encoded_label] for encoded_label in np.argmax(pred_results, axis=1)  # type: ignore
+        ]
+
+        str_y = [self.mapping[encoded_label] for encoded_label in y]
+
+        write_pred_table(
+            predictions=pred_results,
+            str_preds=str_preds,
+            str_targets=str_y,
+            classes=self.classes,
+            md5s=ids,
+            path=log,
+        )
+
+    def save_model(self, logdir: Path, name=None):
+        &#34;&#34;&#34;Save model to pickle file. If a filename is given, it will be appended to model name.&#34;&#34;&#34;
+        save_name = f&#34;{self._name}&#34;
+        if name is not None:
+            save_name += f&#34;_{name}&#34;
+
+        time = str(time_now()).replace(&#34; &#34;, &#34;_&#34;)
+        save_name = logdir / f&#34;{save_name}_{time}.pickle&#34;
+
+        print(f&#34;Saving model to {save_name}&#34;)
+        with open(save_name, &#34;wb&#34;) as f:
+            pickle.dump(self, f)
+
+    @classmethod
+    def restore_model_from_name(cls, logdir: str, auto_name: str) -&gt; EstimatorAnalyzer:
+        &#34;&#34;&#34;Restore most recent EstimatorAnalyzer instance from a previous save.
+
+        auto_name is the cli name of the model.
+        &#34;&#34;&#34;
+        if auto_name not in save_mapping:
+            raise ValueError(f&#34;Expected a cli model name (restricted). Gave: {auto_name}&#34;)
+
+        name = save_mapping[auto_name]
+        path = Path(logdir) / f&#34;{name}*.pickle&#34;
+        list_of_files = glob.glob(str(path))
+        try:
+            filepath = max(list_of_files, key=os.path.getctime)
+        except ValueError as err:
+            print(
+                f&#34;Did not find any model file following pattern {path}&#34;,
+                file=sys.stderr,
+            )
+            raise err
+
+        return EstimatorAnalyzer.restore_model_from_path(filepath)
+
+    @classmethod
+    def restore_model_from_path(cls, full_path: str) -&gt; EstimatorAnalyzer:
+        &#34;&#34;&#34;Restore EstimatorAnalyzer instance from a previous pickle save.&#34;&#34;&#34;
+        print(f&#34;Loading model {full_path}&#34;)
+        with open(full_path, &#34;rb&#34;) as f:
+            return pickle.load(f)
+
+
+def best_params_cb(result):
+    &#34;&#34;&#34;BayesSearchCV callback&#34;&#34;&#34;
+    print(f&#34;Best params yet: {result.x}&#34;)
+
+
+def tune_estimator(
+    model: Pipeline,
+    ea_handler: EpiAtlasFoldFactory,
+    params: dict,
+    n_iter: int,
+    concurrent_cv: int,
+    n_jobs: int | None = None,
+) -&gt; BayesSearchCV:
+    &#34;&#34;&#34;
+    Apply Bayesian optimization on model, over hyperparameters search space.
+
+    Args:
+      model (Pipeline): The model to tune.
+      ea_handler (EpiAtlasFoldFactory): Dataset splits creator.
+      params (dict): Hyperparameters search space.
+      n_iter (int): Total number of parameter settings to sample.
+      concurrent_cv (int): Number of full cross-validation process (X folds) to run
+    in parallel.
+      n_jobs (int | None): Number of jobs to run in parallel. Max NFOLD_TUNE *
+    concurrent_cv.
+
+    Returns:
+      A BayesSearchCV object
+    &#34;&#34;&#34;
+    deadline_cb = DeadlineStopper(total_time=60 * 60 * 8)
+    if n_jobs is None:
+        n_jobs = int(NFOLD_TUNE * concurrent_cv)
+
+    if n_jobs &gt; 48:
+        raise AssertionError(&#34;More jobs than cores asked, max 48 jobs.&#34;)
+
+    total_data = ea_handler.epiatlas_dataset.create_total_data()
+    print(f&#34;Number of files used globally {len(total_data)}&#34;)
+
+    opt = BayesSearchCV(
+        model,
+        search_spaces=params,
+        cv=ea_handler.split(total_data),
+        random_state=RNG,
+        return_train_score=True,
+        error_score=-1,  # type: ignore
+        verbose=3,
+        scoring=SCORES,
+        refit=&#34;acc&#34;,  # type: ignore
+        n_jobs=n_jobs,
+        n_points=concurrent_cv,
+        n_iter=n_iter,
+    )
+
+    opt.fit(
+        X=total_data.signals,
+        y=total_data.encoded_labels,
+        callback=[best_params_cb, deadline_cb],
+    )
+    print(f&#34;Current model params: {model.get_params()}&#34;)
+    print(f&#34;best params: {opt.best_params_}&#34;)
+    return opt
+
+
+def optimize_estimator(
+    ea_handler: EpiAtlasFoldFactory,
+    logdir: Path,
+    n_iter: int,
+    name: str,
+    concurrent_cv: int = 1,
+):
+    &#34;&#34;&#34;
+    It takes a dataset and model name, and then it optimizes the model with the given name
+    using the search space with the same name.
+
+    Args:
+      ea_handler (EpiAtlasFoldFactory): Dataset splits creator.
+      logdir (Path): The directory where the results will be saved.
+      n_iter (int): Number of different search space sampling.
+      name (str): The name of the model we&#39;re tuning.
+      concurrent_cv (int): Number of full cross-validation process (X folds) to run
+    in parallel. Defaults to 1.
+    &#34;&#34;&#34;
+
+    print(f&#34;Starting {name} optimization&#34;)
+    start_train = time_now()
+    opt = tune_estimator(
+        model_mapping[name],
+        ea_handler,
+        search_mapping[name],
+        n_iter=n_iter,
+        concurrent_cv=concurrent_cv,
+    )
+    print(f&#34;Total {name} optimisation time: {time_now()-start_train}&#34;)
+
+    log_tune_results(logdir, name, opt)
+
+
+def log_tune_results(logdir: Path, name: str, opt: BayesSearchCV):
+    &#34;&#34;&#34;
+    It takes the results of a parameter optimization run and saves them to a CSV
+    file.
+
+    Args:
+      logdir (Path): The directory where the results will be saved.
+      name (str): The name of the model.
+      opt (BayesSearchCV): Optimizer after tuning.
+    &#34;&#34;&#34;
+    df = pd.DataFrame(opt.cv_results_)
+    print(tabulate(df, headers=&#34;keys&#34;, tablefmt=&#34;psql&#34;))  # type: ignore
+
+    file = tune_results_file_format.format(name=name)
+    df.to_csv(logdir / file, sep=&#34;,&#34;)
+
+    file = best_params_file_format.format(name=name)
+    with open(logdir / file, &#34;w&#34;, encoding=&#34;utf-8&#34;) as f:
+        json.dump(obj=opt.best_params_, fp=f, sort_keys=True, indent=4)
+
+
+def run_predictions(
+    ea_handler: EpiAtlasFoldFactory, estimator: Pipeline, name: str, logdir: Path
+):
+    &#34;&#34;&#34;
+    It will fit and run a prediction for each of the k-folds in the EpiAtlasFoldFactory
+    object, using the estimator provided. Will use all available cpus.
+
+    Args:
+      ea_handler (EpiAtlasFoldFactory): Dataset splits creator.
+      estimator (Pipeline): The model to use.
+      name (str): The name of the model.
+      logdir (Path): The directory where the results will be saved.
+    &#34;&#34;&#34;
+    nb_workers = ea_handler.k
+    available_cpus = len(os.sched_getaffinity(0))
+    if available_cpus &lt; nb_workers:
+        nb_workers = available_cpus
+
+    func = partial(run_prediction, estimator=estimator, name=name, logdir=logdir)
+    items = enumerate(ea_handler.yield_split())
+
+    with mp.Pool(nb_workers) as pool:
+        pool.starmap(func, items)
+
+
+def run_prediction(
+    i: int,
+    my_data: DataSet,
+    estimator: Pipeline,
+    name: str,
+    logdir: Path,
+    verbose=True,
+    save_model=True,
+):
+    &#34;&#34;&#34;
+    It takes a dataset, fits the model on the training data, and then predicts on
+    the validation data
+
+    Args:
+      i (int): the index of the split
+      my_data (DataSet): DataSet
+      estimator (Pipeline): The model to use.
+      name (str): The name of the model.
+      logdir (Path): The directory where the results will be saved.
+      verbose: Whether to print out the metrics. Defaults to True
+    &#34;&#34;&#34;
+    if verbose:
+        print(f&#34;Split {i} training size: {my_data.train.num_examples}&#34;)
+
+    if i == 0:
+        nb_files = len(set(my_data.train.ids.tolist() + my_data.validation.ids.tolist()))
+        print(f&#34;Total nb of files: {nb_files}&#34;)
+
+    estimator.fit(X=my_data.train.signals, y=my_data.train.encoded_labels)
+
+    analyzer = EstimatorAnalyzer(my_data.classes, estimator)
+
+    if save_model:
+        analyzer.save_model(logdir, name=f&#34;split{i}&#34;)
+
+    X, y = my_data.validation.signals, my_data.validation.encoded_labels
+
+    if verbose:
+        print(f&#34;Split {i} metrics:&#34;)
+        analyzer.metrics(X, y, verbose=True)
+
+    try:
+        logdir = logdir / f&#34;{name}&#34;
+        create_dirs(logdir)
+    except (ValueError, OSError, KeyError, RuntimeError) as err:
+        (print(err))
+        print(&#34;Continuing with default logdir.&#34;)
+
+    analyzer.predict_file(
+        my_data.validation.ids,
+        X,
+        y,
+        logdir / f&#34;{name}_split{i}_validation_prediction.csv&#34;,
+    )</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="epi_ml.core.estimators.best_params_cb"><code class="name flex">
+<span>def <span class="ident">best_params_cb</span></span>(<span>result)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>BayesSearchCV callback</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def best_params_cb(result):
+    &#34;&#34;&#34;BayesSearchCV callback&#34;&#34;&#34;
+    print(f&#34;Best params yet: {result.x}&#34;)</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.estimators.get_model_name"><code class="name flex">
+<span>def <span class="ident">get_model_name</span></span>(<span>filepath: str) ‑> str</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Extract model name from filepath. (string before first '_')</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_model_name(filepath: str) -&gt; str:
+    &#34;&#34;&#34;Extract model name from filepath. (string before first &#39;_&#39;)&#34;&#34;&#34;
+    return Path(filepath).stem.split(sep=&#34;_&#34;, maxsplit=1)[0]</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.estimators.log_tune_results"><code class="name flex">
+<span>def <span class="ident">log_tune_results</span></span>(<span>logdir: Path, name: str, opt: BayesSearchCV)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>It takes the results of a parameter optimization run and saves them to a CSV
+file.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>logdir</code></strong> :&ensp;<code>Path</code></dt>
+<dd>The directory where the results will be saved.</dd>
+<dt><strong><code>name</code></strong> :&ensp;<code>str</code></dt>
+<dd>The name of the model.</dd>
+<dt><strong><code>opt</code></strong> :&ensp;<code>BayesSearchCV</code></dt>
+<dd>Optimizer after tuning.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def log_tune_results(logdir: Path, name: str, opt: BayesSearchCV):
+    &#34;&#34;&#34;
+    It takes the results of a parameter optimization run and saves them to a CSV
+    file.
+
+    Args:
+      logdir (Path): The directory where the results will be saved.
+      name (str): The name of the model.
+      opt (BayesSearchCV): Optimizer after tuning.
+    &#34;&#34;&#34;
+    df = pd.DataFrame(opt.cv_results_)
+    print(tabulate(df, headers=&#34;keys&#34;, tablefmt=&#34;psql&#34;))  # type: ignore
+
+    file = tune_results_file_format.format(name=name)
+    df.to_csv(logdir / file, sep=&#34;,&#34;)
+
+    file = best_params_file_format.format(name=name)
+    with open(logdir / file, &#34;w&#34;, encoding=&#34;utf-8&#34;) as f:
+        json.dump(obj=opt.best_params_, fp=f, sort_keys=True, indent=4)</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.estimators.optimize_estimator"><code class="name flex">
+<span>def <span class="ident">optimize_estimator</span></span>(<span>ea_handler: EpiAtlasFoldFactory, logdir: Path, n_iter: int, name: str, concurrent_cv: int = 1)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>It takes a dataset and model name, and then it optimizes the model with the given name
+using the search space with the same name.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>ea_handler</code></strong> :&ensp;<code>EpiAtlasFoldFactory</code></dt>
+<dd>Dataset splits creator.</dd>
+<dt><strong><code>logdir</code></strong> :&ensp;<code>Path</code></dt>
+<dd>The directory where the results will be saved.</dd>
+<dt><strong><code>n_iter</code></strong> :&ensp;<code>int</code></dt>
+<dd>Number of different search space sampling.</dd>
+<dt><strong><code>name</code></strong> :&ensp;<code>str</code></dt>
+<dd>The name of the model we're tuning.</dd>
+<dt><strong><code>concurrent_cv</code></strong> :&ensp;<code>int</code></dt>
+<dd>Number of full cross-validation process (X folds) to run</dd>
+</dl>
+<p>in parallel. Defaults to 1.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def optimize_estimator(
+    ea_handler: EpiAtlasFoldFactory,
+    logdir: Path,
+    n_iter: int,
+    name: str,
+    concurrent_cv: int = 1,
+):
+    &#34;&#34;&#34;
+    It takes a dataset and model name, and then it optimizes the model with the given name
+    using the search space with the same name.
+
+    Args:
+      ea_handler (EpiAtlasFoldFactory): Dataset splits creator.
+      logdir (Path): The directory where the results will be saved.
+      n_iter (int): Number of different search space sampling.
+      name (str): The name of the model we&#39;re tuning.
+      concurrent_cv (int): Number of full cross-validation process (X folds) to run
+    in parallel. Defaults to 1.
+    &#34;&#34;&#34;
+
+    print(f&#34;Starting {name} optimization&#34;)
+    start_train = time_now()
+    opt = tune_estimator(
+        model_mapping[name],
+        ea_handler,
+        search_mapping[name],
+        n_iter=n_iter,
+        concurrent_cv=concurrent_cv,
+    )
+    print(f&#34;Total {name} optimisation time: {time_now()-start_train}&#34;)
+
+    log_tune_results(logdir, name, opt)</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.estimators.run_prediction"><code class="name flex">
+<span>def <span class="ident">run_prediction</span></span>(<span>i: int, my_data: DataSet, estimator: Pipeline, name: str, logdir: Path, verbose=True, save_model=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>It takes a dataset, fits the model on the training data, and then predicts on
+the validation data</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>i</code></strong> :&ensp;<code>int</code></dt>
+<dd>the index of the split</dd>
+<dt><strong><code>my_data</code></strong> :&ensp;<code>DataSet</code></dt>
+<dd>DataSet</dd>
+<dt><strong><code>estimator</code></strong> :&ensp;<code>Pipeline</code></dt>
+<dd>The model to use.</dd>
+<dt><strong><code>name</code></strong> :&ensp;<code>str</code></dt>
+<dd>The name of the model.</dd>
+<dt><strong><code>logdir</code></strong> :&ensp;<code>Path</code></dt>
+<dd>The directory where the results will be saved.</dd>
+<dt><strong><code>verbose</code></strong></dt>
+<dd>Whether to print out the metrics. Defaults to True</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def run_prediction(
+    i: int,
+    my_data: DataSet,
+    estimator: Pipeline,
+    name: str,
+    logdir: Path,
+    verbose=True,
+    save_model=True,
+):
+    &#34;&#34;&#34;
+    It takes a dataset, fits the model on the training data, and then predicts on
+    the validation data
+
+    Args:
+      i (int): the index of the split
+      my_data (DataSet): DataSet
+      estimator (Pipeline): The model to use.
+      name (str): The name of the model.
+      logdir (Path): The directory where the results will be saved.
+      verbose: Whether to print out the metrics. Defaults to True
+    &#34;&#34;&#34;
+    if verbose:
+        print(f&#34;Split {i} training size: {my_data.train.num_examples}&#34;)
+
+    if i == 0:
+        nb_files = len(set(my_data.train.ids.tolist() + my_data.validation.ids.tolist()))
+        print(f&#34;Total nb of files: {nb_files}&#34;)
+
+    estimator.fit(X=my_data.train.signals, y=my_data.train.encoded_labels)
+
+    analyzer = EstimatorAnalyzer(my_data.classes, estimator)
+
+    if save_model:
+        analyzer.save_model(logdir, name=f&#34;split{i}&#34;)
+
+    X, y = my_data.validation.signals, my_data.validation.encoded_labels
+
+    if verbose:
+        print(f&#34;Split {i} metrics:&#34;)
+        analyzer.metrics(X, y, verbose=True)
+
+    try:
+        logdir = logdir / f&#34;{name}&#34;
+        create_dirs(logdir)
+    except (ValueError, OSError, KeyError, RuntimeError) as err:
+        (print(err))
+        print(&#34;Continuing with default logdir.&#34;)
+
+    analyzer.predict_file(
+        my_data.validation.ids,
+        X,
+        y,
+        logdir / f&#34;{name}_split{i}_validation_prediction.csv&#34;,
+    )</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.estimators.run_predictions"><code class="name flex">
+<span>def <span class="ident">run_predictions</span></span>(<span>ea_handler: EpiAtlasFoldFactory, estimator: Pipeline, name: str, logdir: Path)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>It will fit and run a prediction for each of the k-folds in the EpiAtlasFoldFactory
+object, using the estimator provided. Will use all available cpus.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>ea_handler</code></strong> :&ensp;<code>EpiAtlasFoldFactory</code></dt>
+<dd>Dataset splits creator.</dd>
+<dt><strong><code>estimator</code></strong> :&ensp;<code>Pipeline</code></dt>
+<dd>The model to use.</dd>
+<dt><strong><code>name</code></strong> :&ensp;<code>str</code></dt>
+<dd>The name of the model.</dd>
+<dt><strong><code>logdir</code></strong> :&ensp;<code>Path</code></dt>
+<dd>The directory where the results will be saved.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def run_predictions(
+    ea_handler: EpiAtlasFoldFactory, estimator: Pipeline, name: str, logdir: Path
+):
+    &#34;&#34;&#34;
+    It will fit and run a prediction for each of the k-folds in the EpiAtlasFoldFactory
+    object, using the estimator provided. Will use all available cpus.
+
+    Args:
+      ea_handler (EpiAtlasFoldFactory): Dataset splits creator.
+      estimator (Pipeline): The model to use.
+      name (str): The name of the model.
+      logdir (Path): The directory where the results will be saved.
+    &#34;&#34;&#34;
+    nb_workers = ea_handler.k
+    available_cpus = len(os.sched_getaffinity(0))
+    if available_cpus &lt; nb_workers:
+        nb_workers = available_cpus
+
+    func = partial(run_prediction, estimator=estimator, name=name, logdir=logdir)
+    items = enumerate(ea_handler.yield_split())
+
+    with mp.Pool(nb_workers) as pool:
+        pool.starmap(func, items)</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.estimators.tune_estimator"><code class="name flex">
+<span>def <span class="ident">tune_estimator</span></span>(<span>model: Pipeline, ea_handler: EpiAtlasFoldFactory, params: dict, n_iter: int, concurrent_cv: int, n_jobs: int | None = None) ‑> BayesSearchCV</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Apply Bayesian optimization on model, over hyperparameters search space.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>model</code></strong> :&ensp;<code>Pipeline</code></dt>
+<dd>The model to tune.</dd>
+<dt><strong><code>ea_handler</code></strong> :&ensp;<code>EpiAtlasFoldFactory</code></dt>
+<dd>Dataset splits creator.</dd>
+<dt><strong><code>params</code></strong> :&ensp;<code>dict</code></dt>
+<dd>Hyperparameters search space.</dd>
+<dt><strong><code>n_iter</code></strong> :&ensp;<code>int</code></dt>
+<dd>Total number of parameter settings to sample.</dd>
+<dt><strong><code>concurrent_cv</code></strong> :&ensp;<code>int</code></dt>
+<dd>Number of full cross-validation process (X folds) to run</dd>
+</dl>
+<p>in parallel.
+n_jobs (int | None): Number of jobs to run in parallel. Max NFOLD_TUNE *
+concurrent_cv.</p>
+<h2 id="returns">Returns</h2>
+<p>A BayesSearchCV object</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def tune_estimator(
+    model: Pipeline,
+    ea_handler: EpiAtlasFoldFactory,
+    params: dict,
+    n_iter: int,
+    concurrent_cv: int,
+    n_jobs: int | None = None,
+) -&gt; BayesSearchCV:
+    &#34;&#34;&#34;
+    Apply Bayesian optimization on model, over hyperparameters search space.
+
+    Args:
+      model (Pipeline): The model to tune.
+      ea_handler (EpiAtlasFoldFactory): Dataset splits creator.
+      params (dict): Hyperparameters search space.
+      n_iter (int): Total number of parameter settings to sample.
+      concurrent_cv (int): Number of full cross-validation process (X folds) to run
+    in parallel.
+      n_jobs (int | None): Number of jobs to run in parallel. Max NFOLD_TUNE *
+    concurrent_cv.
+
+    Returns:
+      A BayesSearchCV object
+    &#34;&#34;&#34;
+    deadline_cb = DeadlineStopper(total_time=60 * 60 * 8)
+    if n_jobs is None:
+        n_jobs = int(NFOLD_TUNE * concurrent_cv)
+
+    if n_jobs &gt; 48:
+        raise AssertionError(&#34;More jobs than cores asked, max 48 jobs.&#34;)
+
+    total_data = ea_handler.epiatlas_dataset.create_total_data()
+    print(f&#34;Number of files used globally {len(total_data)}&#34;)
+
+    opt = BayesSearchCV(
+        model,
+        search_spaces=params,
+        cv=ea_handler.split(total_data),
+        random_state=RNG,
+        return_train_score=True,
+        error_score=-1,  # type: ignore
+        verbose=3,
+        scoring=SCORES,
+        refit=&#34;acc&#34;,  # type: ignore
+        n_jobs=n_jobs,
+        n_points=concurrent_cv,
+        n_iter=n_iter,
+    )
+
+    opt.fit(
+        X=total_data.signals,
+        y=total_data.encoded_labels,
+        callback=[best_params_cb, deadline_cb],
+    )
+    print(f&#34;Current model params: {model.get_params()}&#34;)
+    print(f&#34;best params: {opt.best_params_}&#34;)
+    return opt</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="epi_ml.core.estimators.EstimatorAnalyzer"><code class="flex name class">
+<span>class <span class="ident">EstimatorAnalyzer</span></span>
+<span>(</span><span>classes, estimator)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Generic class to analyze results given by an estimator.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class EstimatorAnalyzer(object):
+    &#34;&#34;&#34;Generic class to analyze results given by an estimator.&#34;&#34;&#34;
+
+    def __init__(self, classes, estimator):
+        self.classes = sorted(classes)
+        self.mapping = dict(enumerate(self.classes))
+        self.encoder = LabelBinarizer().fit(list(self.mapping.keys()))
+
+        self._clf = estimator
+        self._name = self._get_name(estimator)
+
+    @staticmethod
+    def _get_name(estimator) -&gt; str:
+        &#34;&#34;&#34;Return estimator model name.&#34;&#34;&#34;
+        name = type(estimator).__name__
+        if name == &#34;Pipeline&#34;:
+            name = type(estimator.named_steps[&#34;model&#34;]).__name__
+        return name
+
+    @property
+    def name(self) -&gt; str:
+        &#34;&#34;&#34;Return classifier name.&#34;&#34;&#34;
+        return self._get_name(self._clf)
+
+    def predict(self, X):
+        &#34;&#34;&#34;Return class predictions.&#34;&#34;&#34;
+        if self.name == &#34;LGBMClassifier&#34;:
+            pred_results = self._clf.predict(
+                X, raw_score=False, pred_leaf=False, pred_contrib=False
+            )
+        else:
+            pred_results = self._clf.predict(X)
+        return pred_results
+
+    def predict_proba(self, X):
+        &#34;&#34;&#34;Return class prediction probabilities.&#34;&#34;&#34;
+        try:
+            if self.name == &#34;LGBMClassifier&#34;:
+                pred_results = self._clf.predict_proba(
+                    X, raw_score=False, pred_leaf=False, pred_contrib=False
+                )
+            else:
+                pred_results = self._clf.predict_proba(X)
+        except AttributeError:  # SVM
+            int_results = self._clf.predict(X)
+            pred_results = self.encoder.transform(int_results)
+            if pred_results.shape[1] == 1:  # 2 classes, e.g. sex
+                pred_results = [[1, 0] if i == 0 else [0, 1] for i in int_results]
+
+        return pred_results
+
+    def metrics(self, X, y, verbose=True):
+        &#34;&#34;&#34;Return a dict of metrics over given set&#34;&#34;&#34;
+        y_pred = self.predict(X)
+        y_true = y
+
+        val_acc = sklearn.metrics.accuracy_score(y_true, y_pred)
+        val_precision = sklearn.metrics.precision_score(y_true, y_pred, average=&#34;macro&#34;)
+        val_recall = sklearn.metrics.recall_score(y_true, y_pred, average=&#34;macro&#34;)
+        val_f1 = sklearn.metrics.f1_score(y_true, y_pred, average=&#34;macro&#34;)
+        val_mcc = sklearn.metrics.matthews_corrcoef(y_true, y_pred)
+
+        metrics_dict = {
+            &#34;val_acc&#34;: val_acc,
+            &#34;val_precision&#34;: val_precision,
+            &#34;val_recall&#34;: val_recall,
+            &#34;val_f1&#34;: val_f1,
+            &#34;val_mcc&#34;: val_mcc,
+        }
+
+        if verbose:
+            EstimatorAnalyzer.print_metrics(metrics_dict)
+
+        return metrics_dict
+
+    @staticmethod
+    def print_metrics(metrics_dict: dict):
+        &#34;&#34;&#34;Print metrics&#34;&#34;&#34;
+        print(f&#34;Validation Accuracy: {metrics_dict[&#39;val_acc&#39;]}&#34;)
+        print(f&#34;Validation Precision: {metrics_dict[&#39;val_precision&#39;]}&#34;)
+        print(f&#34;Validation Recall: {metrics_dict[&#39;val_recall&#39;]}&#34;)
+        print(f&#34;Validation F1_score: {metrics_dict[&#39;val_f1&#39;]}&#34;)
+        print(f&#34;Validation MCC: {metrics_dict[&#39;val_mcc&#39;]}&#34;)
+
+    def predict_file(self, ids, X, y, log):
+        &#34;&#34;&#34;Write predictions table for validation set.
+
+        ids: Sample identifier.
+        X: Sample features
+        y: Sample labels
+        log: path where to save predictions
+        &#34;&#34;&#34;
+
+        pred_results = self.predict_proba(X)
+
+        str_preds = [
+            self.mapping[encoded_label] for encoded_label in np.argmax(pred_results, axis=1)  # type: ignore
+        ]
+
+        str_y = [self.mapping[encoded_label] for encoded_label in y]
+
+        write_pred_table(
+            predictions=pred_results,
+            str_preds=str_preds,
+            str_targets=str_y,
+            classes=self.classes,
+            md5s=ids,
+            path=log,
+        )
+
+    def save_model(self, logdir: Path, name=None):
+        &#34;&#34;&#34;Save model to pickle file. If a filename is given, it will be appended to model name.&#34;&#34;&#34;
+        save_name = f&#34;{self._name}&#34;
+        if name is not None:
+            save_name += f&#34;_{name}&#34;
+
+        time = str(time_now()).replace(&#34; &#34;, &#34;_&#34;)
+        save_name = logdir / f&#34;{save_name}_{time}.pickle&#34;
+
+        print(f&#34;Saving model to {save_name}&#34;)
+        with open(save_name, &#34;wb&#34;) as f:
+            pickle.dump(self, f)
+
+    @classmethod
+    def restore_model_from_name(cls, logdir: str, auto_name: str) -&gt; EstimatorAnalyzer:
+        &#34;&#34;&#34;Restore most recent EstimatorAnalyzer instance from a previous save.
+
+        auto_name is the cli name of the model.
+        &#34;&#34;&#34;
+        if auto_name not in save_mapping:
+            raise ValueError(f&#34;Expected a cli model name (restricted). Gave: {auto_name}&#34;)
+
+        name = save_mapping[auto_name]
+        path = Path(logdir) / f&#34;{name}*.pickle&#34;
+        list_of_files = glob.glob(str(path))
+        try:
+            filepath = max(list_of_files, key=os.path.getctime)
+        except ValueError as err:
+            print(
+                f&#34;Did not find any model file following pattern {path}&#34;,
+                file=sys.stderr,
+            )
+            raise err
+
+        return EstimatorAnalyzer.restore_model_from_path(filepath)
+
+    @classmethod
+    def restore_model_from_path(cls, full_path: str) -&gt; EstimatorAnalyzer:
+        &#34;&#34;&#34;Restore EstimatorAnalyzer instance from a previous pickle save.&#34;&#34;&#34;
+        print(f&#34;Loading model {full_path}&#34;)
+        with open(full_path, &#34;rb&#34;) as f:
+            return pickle.load(f)</code></pre>
+</details>
+<h3>Static methods</h3>
+<dl>
+<dt id="epi_ml.core.estimators.EstimatorAnalyzer.print_metrics"><code class="name flex">
+<span>def <span class="ident">print_metrics</span></span>(<span>metrics_dict: dict)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Print metrics</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@staticmethod
+def print_metrics(metrics_dict: dict):
+    &#34;&#34;&#34;Print metrics&#34;&#34;&#34;
+    print(f&#34;Validation Accuracy: {metrics_dict[&#39;val_acc&#39;]}&#34;)
+    print(f&#34;Validation Precision: {metrics_dict[&#39;val_precision&#39;]}&#34;)
+    print(f&#34;Validation Recall: {metrics_dict[&#39;val_recall&#39;]}&#34;)
+    print(f&#34;Validation F1_score: {metrics_dict[&#39;val_f1&#39;]}&#34;)
+    print(f&#34;Validation MCC: {metrics_dict[&#39;val_mcc&#39;]}&#34;)</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.estimators.EstimatorAnalyzer.restore_model_from_name"><code class="name flex">
+<span>def <span class="ident">restore_model_from_name</span></span>(<span>logdir: str, auto_name: str) ‑> <a title="epi_ml.core.estimators.EstimatorAnalyzer" href="#epi_ml.core.estimators.EstimatorAnalyzer">EstimatorAnalyzer</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Restore most recent EstimatorAnalyzer instance from a previous save.</p>
+<p>auto_name is the cli name of the model.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@classmethod
+def restore_model_from_name(cls, logdir: str, auto_name: str) -&gt; EstimatorAnalyzer:
+    &#34;&#34;&#34;Restore most recent EstimatorAnalyzer instance from a previous save.
+
+    auto_name is the cli name of the model.
+    &#34;&#34;&#34;
+    if auto_name not in save_mapping:
+        raise ValueError(f&#34;Expected a cli model name (restricted). Gave: {auto_name}&#34;)
+
+    name = save_mapping[auto_name]
+    path = Path(logdir) / f&#34;{name}*.pickle&#34;
+    list_of_files = glob.glob(str(path))
+    try:
+        filepath = max(list_of_files, key=os.path.getctime)
+    except ValueError as err:
+        print(
+            f&#34;Did not find any model file following pattern {path}&#34;,
+            file=sys.stderr,
+        )
+        raise err
+
+    return EstimatorAnalyzer.restore_model_from_path(filepath)</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.estimators.EstimatorAnalyzer.restore_model_from_path"><code class="name flex">
+<span>def <span class="ident">restore_model_from_path</span></span>(<span>full_path: str) ‑> <a title="epi_ml.core.estimators.EstimatorAnalyzer" href="#epi_ml.core.estimators.EstimatorAnalyzer">EstimatorAnalyzer</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Restore EstimatorAnalyzer instance from a previous pickle save.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@classmethod
+def restore_model_from_path(cls, full_path: str) -&gt; EstimatorAnalyzer:
+    &#34;&#34;&#34;Restore EstimatorAnalyzer instance from a previous pickle save.&#34;&#34;&#34;
+    print(f&#34;Loading model {full_path}&#34;)
+    with open(full_path, &#34;rb&#34;) as f:
+        return pickle.load(f)</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Instance variables</h3>
+<dl>
+<dt id="epi_ml.core.estimators.EstimatorAnalyzer.name"><code class="name">var <span class="ident">name</span> : str</code></dt>
+<dd>
+<div class="desc"><p>Return classifier name.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def name(self) -&gt; str:
+    &#34;&#34;&#34;Return classifier name.&#34;&#34;&#34;
+    return self._get_name(self._clf)</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="epi_ml.core.estimators.EstimatorAnalyzer.metrics"><code class="name flex">
+<span>def <span class="ident">metrics</span></span>(<span>self, X, y, verbose=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return a dict of metrics over given set</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def metrics(self, X, y, verbose=True):
+    &#34;&#34;&#34;Return a dict of metrics over given set&#34;&#34;&#34;
+    y_pred = self.predict(X)
+    y_true = y
+
+    val_acc = sklearn.metrics.accuracy_score(y_true, y_pred)
+    val_precision = sklearn.metrics.precision_score(y_true, y_pred, average=&#34;macro&#34;)
+    val_recall = sklearn.metrics.recall_score(y_true, y_pred, average=&#34;macro&#34;)
+    val_f1 = sklearn.metrics.f1_score(y_true, y_pred, average=&#34;macro&#34;)
+    val_mcc = sklearn.metrics.matthews_corrcoef(y_true, y_pred)
+
+    metrics_dict = {
+        &#34;val_acc&#34;: val_acc,
+        &#34;val_precision&#34;: val_precision,
+        &#34;val_recall&#34;: val_recall,
+        &#34;val_f1&#34;: val_f1,
+        &#34;val_mcc&#34;: val_mcc,
+    }
+
+    if verbose:
+        EstimatorAnalyzer.print_metrics(metrics_dict)
+
+    return metrics_dict</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.estimators.EstimatorAnalyzer.predict"><code class="name flex">
+<span>def <span class="ident">predict</span></span>(<span>self, X)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return class predictions.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def predict(self, X):
+    &#34;&#34;&#34;Return class predictions.&#34;&#34;&#34;
+    if self.name == &#34;LGBMClassifier&#34;:
+        pred_results = self._clf.predict(
+            X, raw_score=False, pred_leaf=False, pred_contrib=False
+        )
+    else:
+        pred_results = self._clf.predict(X)
+    return pred_results</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.estimators.EstimatorAnalyzer.predict_file"><code class="name flex">
+<span>def <span class="ident">predict_file</span></span>(<span>self, ids, X, y, log)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Write predictions table for validation set.</p>
+<p>ids: Sample identifier.
+X: Sample features
+y: Sample labels
+log: path where to save predictions</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def predict_file(self, ids, X, y, log):
+    &#34;&#34;&#34;Write predictions table for validation set.
+
+    ids: Sample identifier.
+    X: Sample features
+    y: Sample labels
+    log: path where to save predictions
+    &#34;&#34;&#34;
+
+    pred_results = self.predict_proba(X)
+
+    str_preds = [
+        self.mapping[encoded_label] for encoded_label in np.argmax(pred_results, axis=1)  # type: ignore
+    ]
+
+    str_y = [self.mapping[encoded_label] for encoded_label in y]
+
+    write_pred_table(
+        predictions=pred_results,
+        str_preds=str_preds,
+        str_targets=str_y,
+        classes=self.classes,
+        md5s=ids,
+        path=log,
+    )</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.estimators.EstimatorAnalyzer.predict_proba"><code class="name flex">
+<span>def <span class="ident">predict_proba</span></span>(<span>self, X)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return class prediction probabilities.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def predict_proba(self, X):
+    &#34;&#34;&#34;Return class prediction probabilities.&#34;&#34;&#34;
+    try:
+        if self.name == &#34;LGBMClassifier&#34;:
+            pred_results = self._clf.predict_proba(
+                X, raw_score=False, pred_leaf=False, pred_contrib=False
+            )
+        else:
+            pred_results = self._clf.predict_proba(X)
+    except AttributeError:  # SVM
+        int_results = self._clf.predict(X)
+        pred_results = self.encoder.transform(int_results)
+        if pred_results.shape[1] == 1:  # 2 classes, e.g. sex
+            pred_results = [[1, 0] if i == 0 else [0, 1] for i in int_results]
+
+    return pred_results</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.estimators.EstimatorAnalyzer.save_model"><code class="name flex">
+<span>def <span class="ident">save_model</span></span>(<span>self, logdir: Path, name=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Save model to pickle file. If a filename is given, it will be appended to model name.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def save_model(self, logdir: Path, name=None):
+    &#34;&#34;&#34;Save model to pickle file. If a filename is given, it will be appended to model name.&#34;&#34;&#34;
+    save_name = f&#34;{self._name}&#34;
+    if name is not None:
+        save_name += f&#34;_{name}&#34;
+
+    time = str(time_now()).replace(&#34; &#34;, &#34;_&#34;)
+    save_name = logdir / f&#34;{save_name}_{time}.pickle&#34;
+
+    print(f&#34;Saving model to {save_name}&#34;)
+    with open(save_name, &#34;wb&#34;) as f:
+        pickle.dump(self, f)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="epi_ml.core" href="index.html">epi_ml.core</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="two-column">
+<li><code><a title="epi_ml.core.estimators.best_params_cb" href="#epi_ml.core.estimators.best_params_cb">best_params_cb</a></code></li>
+<li><code><a title="epi_ml.core.estimators.get_model_name" href="#epi_ml.core.estimators.get_model_name">get_model_name</a></code></li>
+<li><code><a title="epi_ml.core.estimators.log_tune_results" href="#epi_ml.core.estimators.log_tune_results">log_tune_results</a></code></li>
+<li><code><a title="epi_ml.core.estimators.optimize_estimator" href="#epi_ml.core.estimators.optimize_estimator">optimize_estimator</a></code></li>
+<li><code><a title="epi_ml.core.estimators.run_prediction" href="#epi_ml.core.estimators.run_prediction">run_prediction</a></code></li>
+<li><code><a title="epi_ml.core.estimators.run_predictions" href="#epi_ml.core.estimators.run_predictions">run_predictions</a></code></li>
+<li><code><a title="epi_ml.core.estimators.tune_estimator" href="#epi_ml.core.estimators.tune_estimator">tune_estimator</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="epi_ml.core.estimators.EstimatorAnalyzer" href="#epi_ml.core.estimators.EstimatorAnalyzer">EstimatorAnalyzer</a></code></h4>
+<ul class="">
+<li><code><a title="epi_ml.core.estimators.EstimatorAnalyzer.metrics" href="#epi_ml.core.estimators.EstimatorAnalyzer.metrics">metrics</a></code></li>
+<li><code><a title="epi_ml.core.estimators.EstimatorAnalyzer.name" href="#epi_ml.core.estimators.EstimatorAnalyzer.name">name</a></code></li>
+<li><code><a title="epi_ml.core.estimators.EstimatorAnalyzer.predict" href="#epi_ml.core.estimators.EstimatorAnalyzer.predict">predict</a></code></li>
+<li><code><a title="epi_ml.core.estimators.EstimatorAnalyzer.predict_file" href="#epi_ml.core.estimators.EstimatorAnalyzer.predict_file">predict_file</a></code></li>
+<li><code><a title="epi_ml.core.estimators.EstimatorAnalyzer.predict_proba" href="#epi_ml.core.estimators.EstimatorAnalyzer.predict_proba">predict_proba</a></code></li>
+<li><code><a title="epi_ml.core.estimators.EstimatorAnalyzer.print_metrics" href="#epi_ml.core.estimators.EstimatorAnalyzer.print_metrics">print_metrics</a></code></li>
+<li><code><a title="epi_ml.core.estimators.EstimatorAnalyzer.restore_model_from_name" href="#epi_ml.core.estimators.EstimatorAnalyzer.restore_model_from_name">restore_model_from_name</a></code></li>
+<li><code><a title="epi_ml.core.estimators.EstimatorAnalyzer.restore_model_from_path" href="#epi_ml.core.estimators.EstimatorAnalyzer.restore_model_from_path">restore_model_from_path</a></code></li>
+<li><code><a title="epi_ml.core.estimators.EstimatorAnalyzer.save_model" href="#epi_ml.core.estimators.EstimatorAnalyzer.save_model">save_model</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>

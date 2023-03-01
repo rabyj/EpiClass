@@ -23,18 +23,18 @@ def import_test():
     from pytorch_lightning import loggers as pl_loggers
     from torch.utils.data import DataLoader, TensorDataset
 
-    import src.python.core.estimators as estimators
-    from src.python.argparseutils.DefaultHelpParser import (
+    import epi_mlcore.estimators as estimators
+    from epi_ml.argparseutils.DefaultHelpParser import (
         DefaultHelpParser as ArgumentParser,
     )
-    from src.python.argparseutils.directorychecker import DirectoryChecker
-    from src.python.core import analysis, data, metadata
-    from src.python.core.data import DataSet, UnknownData
-    from src.python.core.data_source import EpiDataSource
-    from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
-    from src.python.core.hdf5_loader import Hdf5Loader
-    from src.python.core.lgbm import tune_lgbm
-    from src.python.core.model_pytorch import LightningDenseClassifier
-    from src.python.core.trainer import MyTrainer, define_callbacks
-    from src.python.utils.check_dir import create_dirs
-    from src.python.utils.time import time_now
+    from epi_ml.argparseutils.directorychecker import DirectoryChecker
+    from epi_ml.core import analysis, data, metadata
+    from epi_ml.core.data import DataSet, UnknownData
+    from epi_ml.core.data_source import EpiDataSource
+    from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory
+    from epi_ml.core.hdf5_loader import Hdf5Loader
+    from epi_ml.core.lgbm import tune_lgbm
+    from epi_ml.core.model_pytorch import LightningDenseClassifier
+    from epi_ml.core.trainer import MyTrainer, define_callbacks
+    from epi_ml.utils.check_dir import create_dirs
+    from epi_ml.utils.time import time_now

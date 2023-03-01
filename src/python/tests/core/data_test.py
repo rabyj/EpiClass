@@ -6,7 +6,7 @@ import copy
 import numpy as np
 import pytest
 
-from src.python.core import data, metadata
+from epi_ml.core import data, metadata
 
 
 class TestData:

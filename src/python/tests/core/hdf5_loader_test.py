@@ -8,9 +8,9 @@ from pathlib import Path
 import h5py
 import pytest
 
-from src.python.core.epiatlas_treatment import EpiAtlasDataset
-from src.python.core.hdf5_loader import Hdf5Loader
-from src.python.tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
+from epi_ml.core.epiatlas_treatment import EpiAtlasDataset
+from epi_ml.core.hdf5_loader import Hdf5Loader
+from tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
 
 
 class Test_Hdf5Loader:

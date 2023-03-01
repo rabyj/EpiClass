@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-import src.python.core.estimators
-from src.python.other_estimators import main as main_module
-from src.python.tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
+import epi_ml.core.estimators
+from epi_ml.other_estimators import main as main_module
+from tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
 
 
 @pytest.fixture(name="test_dir")
@@ -19,7 +19,7 @@ def fixture_test_dir(make_specific_logdir) -> Path:
 def test_hyperparams(test_dir: Path):
     """Test if hyperparameter file is handled properly."""
     os.environ["MIN_CLASS_SIZE"] = "3"
-    src.python.core.estimators.NFOLD_PREDICT = 2
+    epi_ml.core.estimators.NFOLD_PREDICT = 2
 
     datasource = EpiAtlasTreatmentTestData.default_test_data().epiatlas_dataset.datasource
 

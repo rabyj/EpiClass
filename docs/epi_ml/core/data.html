@@ -1,0 +1,2155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>epi_ml.core.data API documentation</title>
+<meta name="description" content="Module to define data/datasets processing and representation classes." />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>epi_ml.core.data</code></h1>
+</header>
+<section id="section-intro">
+<p>Module to define data/datasets processing and representation classes.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">&#34;&#34;&#34;Module to define data/datasets processing and representation classes.&#34;&#34;&#34;
+# pylint: disable=unnecessary-lambda-assignment
+from __future__ import annotations
+
+import abc
+import collections
+import copy
+import math
+from typing import Dict, List, Tuple
+
+import numpy as np
+import torch
+from imblearn.over_sampling import RandomOverSampler
+from sklearn import preprocessing
+from torch.utils.data import DataLoader, TensorDataset
+
+from .data_source import EpiDataSource
+from .hdf5_loader import Hdf5Loader
+from .metadata import Metadata
+
+
+class Data(abc.ABC):
+    &#34;&#34;&#34;Generalized object to deal with numerical data.
+
+    Does not have metadata.
+    &#34;&#34;&#34;
+
+    # TODO: actually make a data class without any true labels which is supported within analysis.
+    def __init__(self, ids, x, y, y_str):
+        self._ids = ids
+        self._num_examples = len(x)
+        self._signals = np.array(x, dtype=np.float32)
+        self._labels = np.array(y)
+        self._labels_str = y_str
+        self._shuffle_order = np.arange(
+            self._num_examples
+        )  # To be able to find back ids correctly
+        self._index = 0
+
+    def __len__(self):
+        return self._num_examples
+
+    @property
+    def ids(self) -&gt; np.ndarray:
+        &#34;&#34;&#34;Return md5s in current signals order.&#34;&#34;&#34;
+        return np.take(self._ids, list(self._shuffle_order), axis=0)
+
+    def get_id(self, index: int):
+        &#34;&#34;&#34;Return unique identifier associated with signal position.&#34;&#34;&#34;
+        return self._ids[self._shuffle_order[index]]  # type: ignore
+
+    @property
+    def signals(self) -&gt; np.ndarray:
+        &#34;&#34;&#34;Return signals in current order.&#34;&#34;&#34;
+        return self._signals
+
+    def get_signal(self, index: int):
+        &#34;&#34;&#34;Return current signal at given position. (signals can be shuffled)&#34;&#34;&#34;
+        return self._signals[index]  # type: ignore
+
+    @property
+    def encoded_labels(self) -&gt; np.ndarray:
+        &#34;&#34;&#34;Return encoded labels of examples in current signal order.&#34;&#34;&#34;
+        return self._labels
+
+    def get_encoded_label(self, index: int):
+        &#34;&#34;&#34;Return encoded label at given signal position.&#34;&#34;&#34;
+        return self._labels[index]
+
+    @property
+    def original_labels(self) -&gt; np.ndarray:
+        &#34;&#34;&#34;Return string labels of examples in current signal order.&#34;&#34;&#34;
+        return np.take(self._labels_str, list(self._shuffle_order), axis=0)
+
+    def get_original_label(self, index: int):
+        &#34;&#34;&#34;Return original label at given signal position.&#34;&#34;&#34;
+        return self._labels_str[self._shuffle_order[index]]
+
+    @property
+    def num_examples(self) -&gt; int:
+        &#34;&#34;&#34;Return the number of examples contained in the set.
+
+        Repeated/oversampled signals are part of that count.
+        &#34;&#34;&#34;
+        return self._num_examples
+
+    def __eq__(self, other):
+        if type(other) is type(self):
+            bools = []
+            bools.append(np.array_equal(self.ids, other.ids))
+            bools.append(np.array_equal(self.signals, other.signals))
+            bools.append(np.array_equal(self.encoded_labels, other.encoded_labels))
+            bools.append(np.array_equal(self.original_labels, other.original_labels))
+            bools.append(self.num_examples == other.num_examples)
+            return all(bools)
+        return False
+
+    def preprocess(self, f):
+        &#34;&#34;&#34;Apply a preprocessing function on signals.&#34;&#34;&#34;
+        self._signals = np.apply_along_axis(f, 1, self._signals)
+
+    def next_batch(self, batch_size, shuffle=True):
+        &#34;&#34;&#34;Return next (signals, targets) batch&#34;&#34;&#34;
+        # if index exceeded num examples, start over
+        if self._index &gt;= self._num_examples:
+            self._index = 0
+        if self._index == 0:
+            if shuffle:
+                self._shuffle()
+        start = self._index
+        self._index += batch_size
+        end = self._index
+        return self._signals[start:end], self._labels[start:end]
+
+    def _shuffle(self, seed=False):
+        &#34;&#34;&#34;Shuffle signals and labels together&#34;&#34;&#34;
+        if seed:
+            np.random.seed(42)
+
+        rng_state = np.random.get_state()
+        for array in [self._shuffle_order, self._signals, self._labels]:
+            np.random.shuffle(array)
+            np.random.set_state(rng_state)
+
+    def shuffle(self, seed=False):
+        &#34;&#34;&#34;Shuffle signals and labels together&#34;&#34;&#34;
+        self._shuffle(seed)
+
+    @abc.abstractmethod
+    def subsample(self, idxs: List[int]):
+        raise NotImplementedError(&#34;This is an abstract method. Use child class.&#34;)
+
+    @classmethod
+    @abc.abstractmethod
+    def empty_collection(cls):
+        raise NotImplementedError(&#34;This is an abstract class method. Use child class.&#34;)
+
+
+class KnownData(Data):
+    &#34;&#34;&#34;Generalised object to deal with numerical data.
+
+    ids : Signal identifier
+    x : features
+    y : targets (int)
+    y_str : targets (str)
+    metadata : Metadata object containing signal metadata.
+    &#34;&#34;&#34;
+
+    def __init__(self, ids, x, y, y_str, metadata: Metadata):
+        super().__init__(ids, x, y, y_str)
+        self._metadata = metadata
+
+    @property
+    def metadata(self) -&gt; Metadata:
+        &#34;&#34;&#34;Return the metadata of the dataset. Careful, modifications to it will affect this object.&#34;&#34;&#34;
+        return self._metadata
+
+    def get_metadata(self, index: int) -&gt; dict:
+        &#34;&#34;&#34;Get the metadata from the signal at the given position in the set.&#34;&#34;&#34;
+        return self._metadata[self.get_id(index)]
+
+    @classmethod
+    def empty_collection(cls) -&gt; KnownData:
+        &#34;&#34;&#34;Returns an empty object.&#34;&#34;&#34;
+        obj = cls.__new__(cls)
+        obj._ids = []
+        obj._num_examples = 0
+        obj._signals = np.array([], dtype=np.float32)
+        obj._labels = np.array([])
+        obj._labels_str = []
+        obj._shuffle_order = []  # To be able to find back ids correctly
+        obj._index = 0
+        obj._metadata = {}
+        return obj
+
+    def subsample(self, idxs: List[int]) -&gt; KnownData:
+        &#34;&#34;&#34;Return Data object with subsample of current Data.
+
+        Indexed along current order, not original order.
+        &#34;&#34;&#34;
+        try:
+            new_ids = np.take(self.ids, idxs, axis=0)
+            new_signals = np.take(self.signals, idxs, axis=0)
+            new_targets = np.take(self.encoded_labels, idxs, axis=0)
+            new_str_targets = np.take(self.original_labels, idxs, axis=0)
+
+            new_meta = copy.deepcopy(self.metadata)
+            ok_md5 = set(new_ids)
+            for md5 in list(new_meta.md5s):
+                if md5 not in ok_md5:
+                    del new_meta[md5]
+        except IndexError as e:
+            if len(self) == 0:
+                print(&#34;Empty Data object, cannot subsample.&#34;)
+                return self
+            else:
+                raise e
+
+        return KnownData(new_ids, new_signals, new_targets, new_str_targets, new_meta)
+
+
+class UnknownData(Data):
+    &#34;&#34;&#34;Generalised object to deal with numerical data without any labels/metadata.
+
+    ids : Signal identifier
+    x : features
+    y : targets (int)
+    y_str : targets (str)
+    &#34;&#34;&#34;
+
+    @classmethod
+    def empty_collection(cls) -&gt; UnknownData:
+        &#34;&#34;&#34;Returns an empty object.&#34;&#34;&#34;
+        obj = cls.__new__(cls)
+        obj._ids = []
+        obj._num_examples = 0
+        obj._signals = np.array([], dtype=np.float32)
+        obj._labels = np.array([])
+        obj._labels_str = []
+        obj._shuffle_order = []  # To be able to find back ids correctly
+        obj._index = 0
+        return obj
+
+    def subsample(self, idxs: List[int]) -&gt; UnknownData:
+        &#34;&#34;&#34;Return Data object with subsample of current Data.
+
+        Indexed along current order, not original order.
+        &#34;&#34;&#34;
+        try:
+            new_ids = np.take(self.ids, idxs, axis=0)
+            new_signals = np.take(self.signals, idxs, axis=0)
+            new_targets = np.take(self.encoded_labels, idxs, axis=0)
+            new_str_targets = np.take(self.original_labels, idxs, axis=0)
+        except IndexError as e:
+            if len(self) == 0:
+                print(&#34;Empty Data object, cannot subsample.&#34;)
+                return self
+            else:
+                raise e
+
+        return UnknownData(new_ids, new_signals, new_targets, new_str_targets)
+
+
+class DataSet(abc.ABC):
+    &#34;&#34;&#34;Contains training/valid/test Data objects.&#34;&#34;&#34;
+
+    def __init__(
+        self,
+        training: KnownData | UnknownData,
+        validation: KnownData | UnknownData,
+        test: KnownData | UnknownData,
+        sorted_classes: List[str],
+    ):
+        self._train = training
+        self._validation = validation
+        self._test = test
+        self._sorted_classes = sorted_classes
+
+    @property
+    def train(self) -&gt; KnownData | UnknownData:
+        &#34;&#34;&#34;Training set&#34;&#34;&#34;
+        return self._train
+
+    @property
+    def validation(self) -&gt; KnownData | UnknownData:
+        &#34;&#34;&#34;Validation set&#34;&#34;&#34;
+        return self._validation
+
+    @property
+    def test(self) -&gt; KnownData | UnknownData:
+        &#34;&#34;&#34;Test set&#34;&#34;&#34;
+        return self._test
+
+    @property
+    def classes(self) -&gt; List[str]:
+        &#34;&#34;&#34;Return sorted classes present through datasets&#34;&#34;&#34;
+        return self._sorted_classes
+
+    @classmethod
+    def empty_collection(cls):
+        &#34;&#34;&#34;Returns an empty object&#34;&#34;&#34;
+        obj = cls.__new__(cls)
+        obj._train = KnownData.empty_collection()
+        obj._validation = KnownData.empty_collection()
+        obj._test = KnownData.empty_collection()
+        obj._sorted_classes = []
+        return obj
+
+    def set_train(self, dset: KnownData | UnknownData):
+        &#34;&#34;&#34;Set training set.&#34;&#34;&#34;
+        self._train = dset
+        self._reset_classes()
+
+    def set_validation(self, dset: KnownData | UnknownData):
+        &#34;&#34;&#34;Set validation set.&#34;&#34;&#34;
+        self._validation = dset
+        self._reset_classes()
+
+    def set_test(self, dset: KnownData | UnknownData):
+        &#34;&#34;&#34;Set testing set.&#34;&#34;&#34;
+        self._test = dset
+        self._reset_classes()
+
+    def _reset_classes(self):
+        &#34;&#34;&#34;Reset classes property.&#34;&#34;&#34;
+        new_classes = []
+        for dset in [self._train, self._validation, self._test]:
+            if dset.num_examples:
+                new_classes.extend(dset.original_labels)
+        self._sorted_classes = sorted(list(set(new_classes)))
+
+    def preprocess(self, f):
+        &#34;&#34;&#34;Apply preprocessing function to all datasets.&#34;&#34;&#34;
+        for dset in [self._train, self._validation, self._test]:
+            if dset.num_examples:
+                dset.preprocess(f)
+
+    def save_mapping(self, path):
+        &#34;&#34;&#34;Write the &#39;output position --&gt; label&#39; mapping to path.&#34;&#34;&#34;
+        with open(path, &#34;w&#34;, encoding=&#34;utf-8&#34;) as map_file:
+            for i, label in enumerate(self._sorted_classes):
+                map_file.write(f&#34;{i}\t{label}\n&#34;)
+
+    def load_mapping(self, path):
+        &#34;&#34;&#34;Return dict object representation &#39;output position --&gt; label&#39; mapping from path.&#34;&#34;&#34;
+        with open(path, &#34;r&#34;, encoding=&#34;utf-8&#34;) as map_file:
+            mapping = {}
+            for line in map_file:
+                i, label = line.rstrip().split(&#34;\t&#34;)
+                mapping[int(i)] = label
+        return mapping
+
+    def get_encoder(self, mapping, using_file=False) -&gt; preprocessing.LabelEncoder:
+        &#34;&#34;&#34;Load and return int label encoder.
+
+        Requires the model mapping file itself, or its path (with using_file=True)
+        &#34;&#34;&#34;
+        if using_file:
+            mapping = self.load_mapping(mapping)
+
+        labels = sorted(list(mapping.values()))
+        return preprocessing.LabelEncoder().fit(labels)
+
+
+class DataSetFactory(object):
+    &#34;&#34;&#34;Creation of DataSet from different sources.&#34;&#34;&#34;
+
+    @classmethod
+    def from_epidata(
+        cls,
+        datasource: EpiDataSource,
+        metadata: Metadata,
+        label_category: str,
+        onehot=False,
+        oversample=False,
+        normalization=True,
+        min_class_size=3,
+        validation_ratio=0.1,
+        test_ratio=0.1,
+    ) -&gt; DataSet:
+        &#34;&#34;&#34;Return DataSet created from EpiData.&#34;&#34;&#34;
+        return EpiData(
+            datasource,
+            metadata,
+            label_category,
+            onehot,
+            oversample,
+            normalization,
+            min_class_size,
+            validation_ratio,
+            test_ratio,
+        ).dataset
+
+
+class EpiData(object):
+    &#34;&#34;&#34;Used to load and preprocess epigenomic data. Data factory.
+
+    Test ratio computed from validation ratio and test ratio. Be sure to set both correctly.
+    &#34;&#34;&#34;
+
+    def __init__(
+        self,
+        datasource: EpiDataSource,
+        metadata: Metadata,
+        label_category: str,
+        onehot=False,
+        oversample=False,
+        normalization=True,
+        min_class_size=3,
+        validation_ratio=0.1,
+        test_ratio=0.1,
+    ):
+
+        self._label_category = label_category
+        self._oversample = oversample
+        self._assert_ratios(
+            val_ratio=validation_ratio, test_ratio=test_ratio, verbose=True
+        )
+
+        # load
+        self._metadata = self._load_metadata(metadata)
+        self._files = Hdf5Loader.read_list(datasource.hdf5_file)
+
+        # preprocess
+        self._keep_meta_overlap()
+        self._metadata.remove_small_classes(min_class_size, self._label_category)
+
+        self._hdf5s = (
+            Hdf5Loader(datasource.chromsize_file, normalization)
+            .load_hdf5s(datasource.hdf5_file, md5s=self._files.keys(), strict=True)
+            .signals
+        )
+
+        self._sorted_classes = self._metadata.unique_classes(label_category)
+
+        # TODO : Create encoder class separate from EpiData
+        encoder = EpiData._make_encoder(self._sorted_classes, onehot=onehot)
+
+        self._split_data(validation_ratio, test_ratio, encoder)
+
+    @property
+    def dataset(self) -&gt; DataSet:
+        &#34;&#34;&#34;Return data/metadata processed into separate sets.&#34;&#34;&#34;
+        return DataSet(self._train, self._validation, self._test, self._sorted_classes)
+
+    def _assert_ratios(self, val_ratio, test_ratio, verbose):
+        &#34;&#34;&#34;Verify that splitting ratios make sense.&#34;&#34;&#34;
+        train_ratio = 1 - val_ratio - test_ratio
+        if val_ratio + test_ratio &gt; 1:
+            raise ValueError(
+                f&#34;Validation and test ratios are bigger than 100%: {val_ratio} and {test_ratio}&#34;
+            )
+        elif verbose:
+            print(
+                f&#34;training/validation/test split: {train_ratio*100}%/{val_ratio*100}%/{test_ratio*100}%&#34;
+            )
+        if np.isclose(train_ratio, 0.0):
+            self._oversample = False
+            print(&#34;Forcing oversampling off, training set is empty.&#34;)
+
+    def _load_metadata(self, metadata: Metadata) -&gt; Metadata:
+        metadata.remove_missing_labels(self._label_category)
+        return metadata
+
+    def _keep_meta_overlap(self):
+        self._remove_md5_without_hdf5()
+        self._remove_hdf5_without_md5()
+
+    def _remove_md5_without_hdf5(self):
+        self._metadata.apply_filter(lambda item: item[0] in self._files)  # type: ignore
+
+    def _remove_hdf5_without_md5(self):
+        self._files = {md5: self._files[md5] for md5 in self._metadata.md5s}
+
+    @staticmethod
+    def _create_onehot_dict(classes: List[str]) -&gt; dict:
+        &#34;&#34;&#34;Returns {label:onehot vector} dict corresponding given classes.
+        TODO : put into an encoder class
+        Onehot vectors defined with given classes, no sorting done.
+        &#34;&#34;&#34;
+        onehot_dict = {}
+        for i, label in enumerate(classes):
+            onehot = np.zeros(len(classes))
+            onehot[i] = 1
+            onehot_dict[label] = onehot
+        return onehot_dict
+
+    @staticmethod
+    def _make_encoder(classes, onehot=False):
+        &#34;&#34;&#34;Return an int (default) or onehot vector encoder that takes label sets as entry.
+        TODO : put into an encoder class
+        Classes are sorted beforehand.
+        &#34;&#34;&#34;
+        labels = sorted(classes)
+        if onehot:
+            encoding = EpiData._create_onehot_dict(labels)
+
+            def to_onehot(labels):
+                return [encoding[label] for label in labels]  # type: ignore
+
+            return to_onehot
+        else:
+            encoding = preprocessing.LabelEncoder().fit(labels)  # int mapping
+
+            def to_int(labels):
+                if labels:
+                    return encoding.transform(labels)
+                else:
+                    return []
+
+            return to_int
+
+    def _split_md5s(self, validation_ratio, test_ratio):
+        &#34;&#34;&#34;Return md5s for each set, according to given ratios.&#34;&#34;&#34;
+        size_all_dict = self._metadata.label_counter(self._label_category)
+        data = self._metadata.md5_per_class(self._label_category)
+
+        # A minimum of 3 examples are needed for each label (1 for each set), when splitting into three sets
+        for label, size in size_all_dict.items():
+            if size &lt; 3:
+                print(f&#34;The label `{label}` countains only {size} datasets.&#34;)
+
+        # The point is to try to create indexes for the slices of each different class
+        # the indexes would split this way [valid, test, training]
+        size_validation_dict = collections.Counter(
+            {
+                label: math.ceil(size * validation_ratio)
+                for label, size in size_all_dict.items()
+            }
+        )
+        size_test_dict = collections.Counter(
+            {label: math.ceil(size * test_ratio) for label, size in size_all_dict.items()}
+        )
+
+        # sum(size_validation_dict, size_test_dict) ignores zeros, giving counter without labels, which breaks following lambda
+        split_index_dict = collections.Counter(size_validation_dict)
+        split_index_dict.update(size_test_dict)
+
+        # Will grab the indexes from the dicts and return md5 slices
+        # no end means : [i:None]=[i:]=slice from i to end
+        slice_data = lambda begin={}, end={}: sum(
+            [
+                data[label][begin.get(label, 0) : end.get(label, None)]
+                for label in size_all_dict.keys()
+            ],
+            [],
+        )
+
+        validation_md5s = slice_data(end=size_validation_dict)
+        test_md5s = slice_data(begin=size_validation_dict, end=split_index_dict)
+        train_md5s = slice_data(begin=split_index_dict)
+
+        assert len(self._metadata.md5s) == len(
+            set(sum([train_md5s, validation_md5s, test_md5s], []))
+        )
+
+        return [train_md5s, validation_md5s, test_md5s]
+
+    def _split_data(self, validation_ratio, test_ratio, encoder):
+        &#34;&#34;&#34;Split loaded data into three sets : Training/Validation/Test.
+
+        The encoder/encoding function for a label list needs to be provided.
+        &#34;&#34;&#34;
+        train_md5s, validation_md5s, test_md5s = self._split_md5s(
+            validation_ratio, test_ratio
+        )
+
+        # separate hdf5 files
+        train_signals = [self._hdf5s[md5] for md5 in train_md5s]
+        validation_signals = [self._hdf5s[md5] for md5 in validation_md5s]
+        test_signals = [self._hdf5s[md5] for md5 in test_md5s]
+
+        # separate label values
+        train_labels = [self._metadata[md5][self._label_category] for md5 in train_md5s]
+        validation_labels = [
+            self._metadata[md5][self._label_category] for md5 in validation_md5s
+        ]
+        test_labels = [self._metadata[md5][self._label_category] for md5 in test_md5s]
+
+        if self._oversample:
+            train_signals, train_labels, idxs = EpiData.oversample_data(
+                train_signals, train_labels
+            )
+            train_md5s = np.take(train_md5s, idxs, axis=0)
+
+        encoded_labels = [
+            encoder(labels) for labels in [train_labels, validation_labels, test_labels]
+        ]
+
+        self._train = KnownData(
+            train_md5s, train_signals, encoded_labels[0], train_labels, self._metadata
+        )
+        self._validation = KnownData(
+            validation_md5s,
+            validation_signals,
+            encoded_labels[1],
+            validation_labels,
+            self._metadata,
+        )
+        self._test = KnownData(
+            test_md5s, test_signals, encoded_labels[2], test_labels, self._metadata
+        )
+
+        print(f&#34;training size {len(train_labels)}&#34;)
+        print(f&#34;validation size {len(validation_labels)}&#34;)
+        print(f&#34;test size {len(test_labels)}&#34;)
+
+    @staticmethod
+    def oversample_data(X, y):
+        &#34;&#34;&#34;Return oversampled data with sampled indexes. X=signals, y=targets.&#34;&#34;&#34;
+        ros = RandomOverSampler(random_state=42)
+        X_resampled, y_resampled = ros.fit_resample(X, y)  # type: ignore
+        return X_resampled, y_resampled, ros.sample_indices_
+
+
+def create_torch_datasets(
+    data: DataSet, bs: int
+) -&gt; Dict[str, Tuple[TensorDataset, DataLoader]]:
+    &#34;&#34;&#34;Return (dataset, DataLoader) pairs for non empty sets.&#34;&#34;&#34;
+    torch_dsets = []
+    for data_split in [data.train, data.validation, data.test]:
+        try:
+            dset = TensorDataset(
+                torch.from_numpy(data_split.signals).float(),
+                torch.from_numpy(data_split.encoded_labels),
+            )
+            torch_dsets.append(dset)
+        except AttributeError:
+            torch_dsets.append(None)
+
+    datasets_pairs = {}
+    train_dset = torch_dsets[0]
+    if (train_dset is not None) and (len(train_dset) &gt; 0):
+        train_dataloader = DataLoader(
+            train_dset, batch_size=bs, shuffle=True, pin_memory=True, drop_last=True
+        )
+        datasets_pairs[&#34;training&#34;] = (train_dset, train_dataloader)
+
+    for name, torch_dset in zip([&#34;validation&#34;, &#34;test&#34;], torch_dsets[1:]):
+        if (torch_dset is not None) and (len(torch_dset) &gt; 0):
+            dataloader = DataLoader(
+                torch_dset, batch_size=len(torch_dset), pin_memory=True
+            )
+            datasets_pairs[name] = (torch_dset, dataloader)
+
+    return datasets_pairs</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="epi_ml.core.data.create_torch_datasets"><code class="name flex">
+<span>def <span class="ident">create_torch_datasets</span></span>(<span>data: <a title="epi_ml.core.data.DataSet" href="#epi_ml.core.data.DataSet">DataSet</a>, bs: int) ‑> Dict[str, Tuple[torch.utils.data.dataset.TensorDataset, torch.utils.data.dataloader.DataLoader]]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return (dataset, DataLoader) pairs for non empty sets.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def create_torch_datasets(
+    data: DataSet, bs: int
+) -&gt; Dict[str, Tuple[TensorDataset, DataLoader]]:
+    &#34;&#34;&#34;Return (dataset, DataLoader) pairs for non empty sets.&#34;&#34;&#34;
+    torch_dsets = []
+    for data_split in [data.train, data.validation, data.test]:
+        try:
+            dset = TensorDataset(
+                torch.from_numpy(data_split.signals).float(),
+                torch.from_numpy(data_split.encoded_labels),
+            )
+            torch_dsets.append(dset)
+        except AttributeError:
+            torch_dsets.append(None)
+
+    datasets_pairs = {}
+    train_dset = torch_dsets[0]
+    if (train_dset is not None) and (len(train_dset) &gt; 0):
+        train_dataloader = DataLoader(
+            train_dset, batch_size=bs, shuffle=True, pin_memory=True, drop_last=True
+        )
+        datasets_pairs[&#34;training&#34;] = (train_dset, train_dataloader)
+
+    for name, torch_dset in zip([&#34;validation&#34;, &#34;test&#34;], torch_dsets[1:]):
+        if (torch_dset is not None) and (len(torch_dset) &gt; 0):
+            dataloader = DataLoader(
+                torch_dset, batch_size=len(torch_dset), pin_memory=True
+            )
+            datasets_pairs[name] = (torch_dset, dataloader)
+
+    return datasets_pairs</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="epi_ml.core.data.Data"><code class="flex name class">
+<span>class <span class="ident">Data</span></span>
+<span>(</span><span>ids, x, y, y_str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Generalized object to deal with numerical data.</p>
+<p>Does not have metadata.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Data(abc.ABC):
+    &#34;&#34;&#34;Generalized object to deal with numerical data.
+
+    Does not have metadata.
+    &#34;&#34;&#34;
+
+    # TODO: actually make a data class without any true labels which is supported within analysis.
+    def __init__(self, ids, x, y, y_str):
+        self._ids = ids
+        self._num_examples = len(x)
+        self._signals = np.array(x, dtype=np.float32)
+        self._labels = np.array(y)
+        self._labels_str = y_str
+        self._shuffle_order = np.arange(
+            self._num_examples
+        )  # To be able to find back ids correctly
+        self._index = 0
+
+    def __len__(self):
+        return self._num_examples
+
+    @property
+    def ids(self) -&gt; np.ndarray:
+        &#34;&#34;&#34;Return md5s in current signals order.&#34;&#34;&#34;
+        return np.take(self._ids, list(self._shuffle_order), axis=0)
+
+    def get_id(self, index: int):
+        &#34;&#34;&#34;Return unique identifier associated with signal position.&#34;&#34;&#34;
+        return self._ids[self._shuffle_order[index]]  # type: ignore
+
+    @property
+    def signals(self) -&gt; np.ndarray:
+        &#34;&#34;&#34;Return signals in current order.&#34;&#34;&#34;
+        return self._signals
+
+    def get_signal(self, index: int):
+        &#34;&#34;&#34;Return current signal at given position. (signals can be shuffled)&#34;&#34;&#34;
+        return self._signals[index]  # type: ignore
+
+    @property
+    def encoded_labels(self) -&gt; np.ndarray:
+        &#34;&#34;&#34;Return encoded labels of examples in current signal order.&#34;&#34;&#34;
+        return self._labels
+
+    def get_encoded_label(self, index: int):
+        &#34;&#34;&#34;Return encoded label at given signal position.&#34;&#34;&#34;
+        return self._labels[index]
+
+    @property
+    def original_labels(self) -&gt; np.ndarray:
+        &#34;&#34;&#34;Return string labels of examples in current signal order.&#34;&#34;&#34;
+        return np.take(self._labels_str, list(self._shuffle_order), axis=0)
+
+    def get_original_label(self, index: int):
+        &#34;&#34;&#34;Return original label at given signal position.&#34;&#34;&#34;
+        return self._labels_str[self._shuffle_order[index]]
+
+    @property
+    def num_examples(self) -&gt; int:
+        &#34;&#34;&#34;Return the number of examples contained in the set.
+
+        Repeated/oversampled signals are part of that count.
+        &#34;&#34;&#34;
+        return self._num_examples
+
+    def __eq__(self, other):
+        if type(other) is type(self):
+            bools = []
+            bools.append(np.array_equal(self.ids, other.ids))
+            bools.append(np.array_equal(self.signals, other.signals))
+            bools.append(np.array_equal(self.encoded_labels, other.encoded_labels))
+            bools.append(np.array_equal(self.original_labels, other.original_labels))
+            bools.append(self.num_examples == other.num_examples)
+            return all(bools)
+        return False
+
+    def preprocess(self, f):
+        &#34;&#34;&#34;Apply a preprocessing function on signals.&#34;&#34;&#34;
+        self._signals = np.apply_along_axis(f, 1, self._signals)
+
+    def next_batch(self, batch_size, shuffle=True):
+        &#34;&#34;&#34;Return next (signals, targets) batch&#34;&#34;&#34;
+        # if index exceeded num examples, start over
+        if self._index &gt;= self._num_examples:
+            self._index = 0
+        if self._index == 0:
+            if shuffle:
+                self._shuffle()
+        start = self._index
+        self._index += batch_size
+        end = self._index
+        return self._signals[start:end], self._labels[start:end]
+
+    def _shuffle(self, seed=False):
+        &#34;&#34;&#34;Shuffle signals and labels together&#34;&#34;&#34;
+        if seed:
+            np.random.seed(42)
+
+        rng_state = np.random.get_state()
+        for array in [self._shuffle_order, self._signals, self._labels]:
+            np.random.shuffle(array)
+            np.random.set_state(rng_state)
+
+    def shuffle(self, seed=False):
+        &#34;&#34;&#34;Shuffle signals and labels together&#34;&#34;&#34;
+        self._shuffle(seed)
+
+    @abc.abstractmethod
+    def subsample(self, idxs: List[int]):
+        raise NotImplementedError(&#34;This is an abstract method. Use child class.&#34;)
+
+    @classmethod
+    @abc.abstractmethod
+    def empty_collection(cls):
+        raise NotImplementedError(&#34;This is an abstract class method. Use child class.&#34;)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>abc.ABC</li>
+</ul>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="epi_ml.core.data.KnownData" href="#epi_ml.core.data.KnownData">KnownData</a></li>
+<li><a title="epi_ml.core.data.UnknownData" href="#epi_ml.core.data.UnknownData">UnknownData</a></li>
+</ul>
+<h3>Static methods</h3>
+<dl>
+<dt id="epi_ml.core.data.Data.empty_collection"><code class="name flex">
+<span>def <span class="ident">empty_collection</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@classmethod
+@abc.abstractmethod
+def empty_collection(cls):
+    raise NotImplementedError(&#34;This is an abstract class method. Use child class.&#34;)</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Instance variables</h3>
+<dl>
+<dt id="epi_ml.core.data.Data.encoded_labels"><code class="name">var <span class="ident">encoded_labels</span> : numpy.ndarray</code></dt>
+<dd>
+<div class="desc"><p>Return encoded labels of examples in current signal order.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def encoded_labels(self) -&gt; np.ndarray:
+    &#34;&#34;&#34;Return encoded labels of examples in current signal order.&#34;&#34;&#34;
+    return self._labels</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.Data.ids"><code class="name">var <span class="ident">ids</span> : numpy.ndarray</code></dt>
+<dd>
+<div class="desc"><p>Return md5s in current signals order.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def ids(self) -&gt; np.ndarray:
+    &#34;&#34;&#34;Return md5s in current signals order.&#34;&#34;&#34;
+    return np.take(self._ids, list(self._shuffle_order), axis=0)</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.Data.num_examples"><code class="name">var <span class="ident">num_examples</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Return the number of examples contained in the set.</p>
+<p>Repeated/oversampled signals are part of that count.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def num_examples(self) -&gt; int:
+    &#34;&#34;&#34;Return the number of examples contained in the set.
+
+    Repeated/oversampled signals are part of that count.
+    &#34;&#34;&#34;
+    return self._num_examples</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.Data.original_labels"><code class="name">var <span class="ident">original_labels</span> : numpy.ndarray</code></dt>
+<dd>
+<div class="desc"><p>Return string labels of examples in current signal order.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def original_labels(self) -&gt; np.ndarray:
+    &#34;&#34;&#34;Return string labels of examples in current signal order.&#34;&#34;&#34;
+    return np.take(self._labels_str, list(self._shuffle_order), axis=0)</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.Data.signals"><code class="name">var <span class="ident">signals</span> : numpy.ndarray</code></dt>
+<dd>
+<div class="desc"><p>Return signals in current order.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def signals(self) -&gt; np.ndarray:
+    &#34;&#34;&#34;Return signals in current order.&#34;&#34;&#34;
+    return self._signals</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="epi_ml.core.data.Data.get_encoded_label"><code class="name flex">
+<span>def <span class="ident">get_encoded_label</span></span>(<span>self, index: int)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return encoded label at given signal position.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_encoded_label(self, index: int):
+    &#34;&#34;&#34;Return encoded label at given signal position.&#34;&#34;&#34;
+    return self._labels[index]</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.Data.get_id"><code class="name flex">
+<span>def <span class="ident">get_id</span></span>(<span>self, index: int)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return unique identifier associated with signal position.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_id(self, index: int):
+    &#34;&#34;&#34;Return unique identifier associated with signal position.&#34;&#34;&#34;
+    return self._ids[self._shuffle_order[index]]  # type: ignore</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.Data.get_original_label"><code class="name flex">
+<span>def <span class="ident">get_original_label</span></span>(<span>self, index: int)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return original label at given signal position.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_original_label(self, index: int):
+    &#34;&#34;&#34;Return original label at given signal position.&#34;&#34;&#34;
+    return self._labels_str[self._shuffle_order[index]]</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.Data.get_signal"><code class="name flex">
+<span>def <span class="ident">get_signal</span></span>(<span>self, index: int)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return current signal at given position. (signals can be shuffled)</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_signal(self, index: int):
+    &#34;&#34;&#34;Return current signal at given position. (signals can be shuffled)&#34;&#34;&#34;
+    return self._signals[index]  # type: ignore</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.Data.next_batch"><code class="name flex">
+<span>def <span class="ident">next_batch</span></span>(<span>self, batch_size, shuffle=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return next (signals, targets) batch</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def next_batch(self, batch_size, shuffle=True):
+    &#34;&#34;&#34;Return next (signals, targets) batch&#34;&#34;&#34;
+    # if index exceeded num examples, start over
+    if self._index &gt;= self._num_examples:
+        self._index = 0
+    if self._index == 0:
+        if shuffle:
+            self._shuffle()
+    start = self._index
+    self._index += batch_size
+    end = self._index
+    return self._signals[start:end], self._labels[start:end]</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.Data.preprocess"><code class="name flex">
+<span>def <span class="ident">preprocess</span></span>(<span>self, f)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Apply a preprocessing function on signals.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def preprocess(self, f):
+    &#34;&#34;&#34;Apply a preprocessing function on signals.&#34;&#34;&#34;
+    self._signals = np.apply_along_axis(f, 1, self._signals)</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.Data.shuffle"><code class="name flex">
+<span>def <span class="ident">shuffle</span></span>(<span>self, seed=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Shuffle signals and labels together</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def shuffle(self, seed=False):
+    &#34;&#34;&#34;Shuffle signals and labels together&#34;&#34;&#34;
+    self._shuffle(seed)</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.Data.subsample"><code class="name flex">
+<span>def <span class="ident">subsample</span></span>(<span>self, idxs: List[int])</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@abc.abstractmethod
+def subsample(self, idxs: List[int]):
+    raise NotImplementedError(&#34;This is an abstract method. Use child class.&#34;)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="epi_ml.core.data.DataSet"><code class="flex name class">
+<span>class <span class="ident">DataSet</span></span>
+<span>(</span><span>training: <a title="epi_ml.core.data.KnownData" href="#epi_ml.core.data.KnownData">KnownData</a> | <a title="epi_ml.core.data.UnknownData" href="#epi_ml.core.data.UnknownData">UnknownData</a>, validation: <a title="epi_ml.core.data.KnownData" href="#epi_ml.core.data.KnownData">KnownData</a> | <a title="epi_ml.core.data.UnknownData" href="#epi_ml.core.data.UnknownData">UnknownData</a>, test: <a title="epi_ml.core.data.KnownData" href="#epi_ml.core.data.KnownData">KnownData</a> | <a title="epi_ml.core.data.UnknownData" href="#epi_ml.core.data.UnknownData">UnknownData</a>, sorted_classes: List[str])</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Contains training/valid/test Data objects.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class DataSet(abc.ABC):
+    &#34;&#34;&#34;Contains training/valid/test Data objects.&#34;&#34;&#34;
+
+    def __init__(
+        self,
+        training: KnownData | UnknownData,
+        validation: KnownData | UnknownData,
+        test: KnownData | UnknownData,
+        sorted_classes: List[str],
+    ):
+        self._train = training
+        self._validation = validation
+        self._test = test
+        self._sorted_classes = sorted_classes
+
+    @property
+    def train(self) -&gt; KnownData | UnknownData:
+        &#34;&#34;&#34;Training set&#34;&#34;&#34;
+        return self._train
+
+    @property
+    def validation(self) -&gt; KnownData | UnknownData:
+        &#34;&#34;&#34;Validation set&#34;&#34;&#34;
+        return self._validation
+
+    @property
+    def test(self) -&gt; KnownData | UnknownData:
+        &#34;&#34;&#34;Test set&#34;&#34;&#34;
+        return self._test
+
+    @property
+    def classes(self) -&gt; List[str]:
+        &#34;&#34;&#34;Return sorted classes present through datasets&#34;&#34;&#34;
+        return self._sorted_classes
+
+    @classmethod
+    def empty_collection(cls):
+        &#34;&#34;&#34;Returns an empty object&#34;&#34;&#34;
+        obj = cls.__new__(cls)
+        obj._train = KnownData.empty_collection()
+        obj._validation = KnownData.empty_collection()
+        obj._test = KnownData.empty_collection()
+        obj._sorted_classes = []
+        return obj
+
+    def set_train(self, dset: KnownData | UnknownData):
+        &#34;&#34;&#34;Set training set.&#34;&#34;&#34;
+        self._train = dset
+        self._reset_classes()
+
+    def set_validation(self, dset: KnownData | UnknownData):
+        &#34;&#34;&#34;Set validation set.&#34;&#34;&#34;
+        self._validation = dset
+        self._reset_classes()
+
+    def set_test(self, dset: KnownData | UnknownData):
+        &#34;&#34;&#34;Set testing set.&#34;&#34;&#34;
+        self._test = dset
+        self._reset_classes()
+
+    def _reset_classes(self):
+        &#34;&#34;&#34;Reset classes property.&#34;&#34;&#34;
+        new_classes = []
+        for dset in [self._train, self._validation, self._test]:
+            if dset.num_examples:
+                new_classes.extend(dset.original_labels)
+        self._sorted_classes = sorted(list(set(new_classes)))
+
+    def preprocess(self, f):
+        &#34;&#34;&#34;Apply preprocessing function to all datasets.&#34;&#34;&#34;
+        for dset in [self._train, self._validation, self._test]:
+            if dset.num_examples:
+                dset.preprocess(f)
+
+    def save_mapping(self, path):
+        &#34;&#34;&#34;Write the &#39;output position --&gt; label&#39; mapping to path.&#34;&#34;&#34;
+        with open(path, &#34;w&#34;, encoding=&#34;utf-8&#34;) as map_file:
+            for i, label in enumerate(self._sorted_classes):
+                map_file.write(f&#34;{i}\t{label}\n&#34;)
+
+    def load_mapping(self, path):
+        &#34;&#34;&#34;Return dict object representation &#39;output position --&gt; label&#39; mapping from path.&#34;&#34;&#34;
+        with open(path, &#34;r&#34;, encoding=&#34;utf-8&#34;) as map_file:
+            mapping = {}
+            for line in map_file:
+                i, label = line.rstrip().split(&#34;\t&#34;)
+                mapping[int(i)] = label
+        return mapping
+
+    def get_encoder(self, mapping, using_file=False) -&gt; preprocessing.LabelEncoder:
+        &#34;&#34;&#34;Load and return int label encoder.
+
+        Requires the model mapping file itself, or its path (with using_file=True)
+        &#34;&#34;&#34;
+        if using_file:
+            mapping = self.load_mapping(mapping)
+
+        labels = sorted(list(mapping.values()))
+        return preprocessing.LabelEncoder().fit(labels)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>abc.ABC</li>
+</ul>
+<h3>Static methods</h3>
+<dl>
+<dt id="epi_ml.core.data.DataSet.empty_collection"><code class="name flex">
+<span>def <span class="ident">empty_collection</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns an empty object</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@classmethod
+def empty_collection(cls):
+    &#34;&#34;&#34;Returns an empty object&#34;&#34;&#34;
+    obj = cls.__new__(cls)
+    obj._train = KnownData.empty_collection()
+    obj._validation = KnownData.empty_collection()
+    obj._test = KnownData.empty_collection()
+    obj._sorted_classes = []
+    return obj</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Instance variables</h3>
+<dl>
+<dt id="epi_ml.core.data.DataSet.classes"><code class="name">var <span class="ident">classes</span> : List[str]</code></dt>
+<dd>
+<div class="desc"><p>Return sorted classes present through datasets</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def classes(self) -&gt; List[str]:
+    &#34;&#34;&#34;Return sorted classes present through datasets&#34;&#34;&#34;
+    return self._sorted_classes</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.DataSet.test"><code class="name">var <span class="ident">test</span> : <a title="epi_ml.core.data.KnownData" href="#epi_ml.core.data.KnownData">KnownData</a> | <a title="epi_ml.core.data.UnknownData" href="#epi_ml.core.data.UnknownData">UnknownData</a></code></dt>
+<dd>
+<div class="desc"><p>Test set</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def test(self) -&gt; KnownData | UnknownData:
+    &#34;&#34;&#34;Test set&#34;&#34;&#34;
+    return self._test</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.DataSet.train"><code class="name">var <span class="ident">train</span> : <a title="epi_ml.core.data.KnownData" href="#epi_ml.core.data.KnownData">KnownData</a> | <a title="epi_ml.core.data.UnknownData" href="#epi_ml.core.data.UnknownData">UnknownData</a></code></dt>
+<dd>
+<div class="desc"><p>Training set</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def train(self) -&gt; KnownData | UnknownData:
+    &#34;&#34;&#34;Training set&#34;&#34;&#34;
+    return self._train</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.DataSet.validation"><code class="name">var <span class="ident">validation</span> : <a title="epi_ml.core.data.KnownData" href="#epi_ml.core.data.KnownData">KnownData</a> | <a title="epi_ml.core.data.UnknownData" href="#epi_ml.core.data.UnknownData">UnknownData</a></code></dt>
+<dd>
+<div class="desc"><p>Validation set</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def validation(self) -&gt; KnownData | UnknownData:
+    &#34;&#34;&#34;Validation set&#34;&#34;&#34;
+    return self._validation</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="epi_ml.core.data.DataSet.get_encoder"><code class="name flex">
+<span>def <span class="ident">get_encoder</span></span>(<span>self, mapping, using_file=False) ‑> sklearn.preprocessing._label.LabelEncoder</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load and return int label encoder.</p>
+<p>Requires the model mapping file itself, or its path (with using_file=True)</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_encoder(self, mapping, using_file=False) -&gt; preprocessing.LabelEncoder:
+    &#34;&#34;&#34;Load and return int label encoder.
+
+    Requires the model mapping file itself, or its path (with using_file=True)
+    &#34;&#34;&#34;
+    if using_file:
+        mapping = self.load_mapping(mapping)
+
+    labels = sorted(list(mapping.values()))
+    return preprocessing.LabelEncoder().fit(labels)</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.DataSet.load_mapping"><code class="name flex">
+<span>def <span class="ident">load_mapping</span></span>(<span>self, path)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return dict object representation 'output position &ndash;&gt; label' mapping from path.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def load_mapping(self, path):
+    &#34;&#34;&#34;Return dict object representation &#39;output position --&gt; label&#39; mapping from path.&#34;&#34;&#34;
+    with open(path, &#34;r&#34;, encoding=&#34;utf-8&#34;) as map_file:
+        mapping = {}
+        for line in map_file:
+            i, label = line.rstrip().split(&#34;\t&#34;)
+            mapping[int(i)] = label
+    return mapping</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.DataSet.preprocess"><code class="name flex">
+<span>def <span class="ident">preprocess</span></span>(<span>self, f)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Apply preprocessing function to all datasets.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def preprocess(self, f):
+    &#34;&#34;&#34;Apply preprocessing function to all datasets.&#34;&#34;&#34;
+    for dset in [self._train, self._validation, self._test]:
+        if dset.num_examples:
+            dset.preprocess(f)</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.DataSet.save_mapping"><code class="name flex">
+<span>def <span class="ident">save_mapping</span></span>(<span>self, path)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Write the 'output position &ndash;&gt; label' mapping to path.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def save_mapping(self, path):
+    &#34;&#34;&#34;Write the &#39;output position --&gt; label&#39; mapping to path.&#34;&#34;&#34;
+    with open(path, &#34;w&#34;, encoding=&#34;utf-8&#34;) as map_file:
+        for i, label in enumerate(self._sorted_classes):
+            map_file.write(f&#34;{i}\t{label}\n&#34;)</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.DataSet.set_test"><code class="name flex">
+<span>def <span class="ident">set_test</span></span>(<span>self, dset: <a title="epi_ml.core.data.KnownData" href="#epi_ml.core.data.KnownData">KnownData</a> | <a title="epi_ml.core.data.UnknownData" href="#epi_ml.core.data.UnknownData">UnknownData</a>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Set testing set.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def set_test(self, dset: KnownData | UnknownData):
+    &#34;&#34;&#34;Set testing set.&#34;&#34;&#34;
+    self._test = dset
+    self._reset_classes()</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.DataSet.set_train"><code class="name flex">
+<span>def <span class="ident">set_train</span></span>(<span>self, dset: <a title="epi_ml.core.data.KnownData" href="#epi_ml.core.data.KnownData">KnownData</a> | <a title="epi_ml.core.data.UnknownData" href="#epi_ml.core.data.UnknownData">UnknownData</a>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Set training set.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def set_train(self, dset: KnownData | UnknownData):
+    &#34;&#34;&#34;Set training set.&#34;&#34;&#34;
+    self._train = dset
+    self._reset_classes()</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.DataSet.set_validation"><code class="name flex">
+<span>def <span class="ident">set_validation</span></span>(<span>self, dset: <a title="epi_ml.core.data.KnownData" href="#epi_ml.core.data.KnownData">KnownData</a> | <a title="epi_ml.core.data.UnknownData" href="#epi_ml.core.data.UnknownData">UnknownData</a>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Set validation set.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def set_validation(self, dset: KnownData | UnknownData):
+    &#34;&#34;&#34;Set validation set.&#34;&#34;&#34;
+    self._validation = dset
+    self._reset_classes()</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="epi_ml.core.data.DataSetFactory"><code class="flex name class">
+<span>class <span class="ident">DataSetFactory</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Creation of DataSet from different sources.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class DataSetFactory(object):
+    &#34;&#34;&#34;Creation of DataSet from different sources.&#34;&#34;&#34;
+
+    @classmethod
+    def from_epidata(
+        cls,
+        datasource: EpiDataSource,
+        metadata: Metadata,
+        label_category: str,
+        onehot=False,
+        oversample=False,
+        normalization=True,
+        min_class_size=3,
+        validation_ratio=0.1,
+        test_ratio=0.1,
+    ) -&gt; DataSet:
+        &#34;&#34;&#34;Return DataSet created from EpiData.&#34;&#34;&#34;
+        return EpiData(
+            datasource,
+            metadata,
+            label_category,
+            onehot,
+            oversample,
+            normalization,
+            min_class_size,
+            validation_ratio,
+            test_ratio,
+        ).dataset</code></pre>
+</details>
+<h3>Static methods</h3>
+<dl>
+<dt id="epi_ml.core.data.DataSetFactory.from_epidata"><code class="name flex">
+<span>def <span class="ident">from_epidata</span></span>(<span>datasource: EpiDataSource, metadata: Metadata, label_category: str, onehot=False, oversample=False, normalization=True, min_class_size=3, validation_ratio=0.1, test_ratio=0.1) ‑> <a title="epi_ml.core.data.DataSet" href="#epi_ml.core.data.DataSet">DataSet</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return DataSet created from EpiData.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@classmethod
+def from_epidata(
+    cls,
+    datasource: EpiDataSource,
+    metadata: Metadata,
+    label_category: str,
+    onehot=False,
+    oversample=False,
+    normalization=True,
+    min_class_size=3,
+    validation_ratio=0.1,
+    test_ratio=0.1,
+) -&gt; DataSet:
+    &#34;&#34;&#34;Return DataSet created from EpiData.&#34;&#34;&#34;
+    return EpiData(
+        datasource,
+        metadata,
+        label_category,
+        onehot,
+        oversample,
+        normalization,
+        min_class_size,
+        validation_ratio,
+        test_ratio,
+    ).dataset</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="epi_ml.core.data.EpiData"><code class="flex name class">
+<span>class <span class="ident">EpiData</span></span>
+<span>(</span><span>datasource: EpiDataSource, metadata: Metadata, label_category: str, onehot=False, oversample=False, normalization=True, min_class_size=3, validation_ratio=0.1, test_ratio=0.1)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Used to load and preprocess epigenomic data. Data factory.</p>
+<p>Test ratio computed from validation ratio and test ratio. Be sure to set both correctly.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class EpiData(object):
+    &#34;&#34;&#34;Used to load and preprocess epigenomic data. Data factory.
+
+    Test ratio computed from validation ratio and test ratio. Be sure to set both correctly.
+    &#34;&#34;&#34;
+
+    def __init__(
+        self,
+        datasource: EpiDataSource,
+        metadata: Metadata,
+        label_category: str,
+        onehot=False,
+        oversample=False,
+        normalization=True,
+        min_class_size=3,
+        validation_ratio=0.1,
+        test_ratio=0.1,
+    ):
+
+        self._label_category = label_category
+        self._oversample = oversample
+        self._assert_ratios(
+            val_ratio=validation_ratio, test_ratio=test_ratio, verbose=True
+        )
+
+        # load
+        self._metadata = self._load_metadata(metadata)
+        self._files = Hdf5Loader.read_list(datasource.hdf5_file)
+
+        # preprocess
+        self._keep_meta_overlap()
+        self._metadata.remove_small_classes(min_class_size, self._label_category)
+
+        self._hdf5s = (
+            Hdf5Loader(datasource.chromsize_file, normalization)
+            .load_hdf5s(datasource.hdf5_file, md5s=self._files.keys(), strict=True)
+            .signals
+        )
+
+        self._sorted_classes = self._metadata.unique_classes(label_category)
+
+        # TODO : Create encoder class separate from EpiData
+        encoder = EpiData._make_encoder(self._sorted_classes, onehot=onehot)
+
+        self._split_data(validation_ratio, test_ratio, encoder)
+
+    @property
+    def dataset(self) -&gt; DataSet:
+        &#34;&#34;&#34;Return data/metadata processed into separate sets.&#34;&#34;&#34;
+        return DataSet(self._train, self._validation, self._test, self._sorted_classes)
+
+    def _assert_ratios(self, val_ratio, test_ratio, verbose):
+        &#34;&#34;&#34;Verify that splitting ratios make sense.&#34;&#34;&#34;
+        train_ratio = 1 - val_ratio - test_ratio
+        if val_ratio + test_ratio &gt; 1:
+            raise ValueError(
+                f&#34;Validation and test ratios are bigger than 100%: {val_ratio} and {test_ratio}&#34;
+            )
+        elif verbose:
+            print(
+                f&#34;training/validation/test split: {train_ratio*100}%/{val_ratio*100}%/{test_ratio*100}%&#34;
+            )
+        if np.isclose(train_ratio, 0.0):
+            self._oversample = False
+            print(&#34;Forcing oversampling off, training set is empty.&#34;)
+
+    def _load_metadata(self, metadata: Metadata) -&gt; Metadata:
+        metadata.remove_missing_labels(self._label_category)
+        return metadata
+
+    def _keep_meta_overlap(self):
+        self._remove_md5_without_hdf5()
+        self._remove_hdf5_without_md5()
+
+    def _remove_md5_without_hdf5(self):
+        self._metadata.apply_filter(lambda item: item[0] in self._files)  # type: ignore
+
+    def _remove_hdf5_without_md5(self):
+        self._files = {md5: self._files[md5] for md5 in self._metadata.md5s}
+
+    @staticmethod
+    def _create_onehot_dict(classes: List[str]) -&gt; dict:
+        &#34;&#34;&#34;Returns {label:onehot vector} dict corresponding given classes.
+        TODO : put into an encoder class
+        Onehot vectors defined with given classes, no sorting done.
+        &#34;&#34;&#34;
+        onehot_dict = {}
+        for i, label in enumerate(classes):
+            onehot = np.zeros(len(classes))
+            onehot[i] = 1
+            onehot_dict[label] = onehot
+        return onehot_dict
+
+    @staticmethod
+    def _make_encoder(classes, onehot=False):
+        &#34;&#34;&#34;Return an int (default) or onehot vector encoder that takes label sets as entry.
+        TODO : put into an encoder class
+        Classes are sorted beforehand.
+        &#34;&#34;&#34;
+        labels = sorted(classes)
+        if onehot:
+            encoding = EpiData._create_onehot_dict(labels)
+
+            def to_onehot(labels):
+                return [encoding[label] for label in labels]  # type: ignore
+
+            return to_onehot
+        else:
+            encoding = preprocessing.LabelEncoder().fit(labels)  # int mapping
+
+            def to_int(labels):
+                if labels:
+                    return encoding.transform(labels)
+                else:
+                    return []
+
+            return to_int
+
+    def _split_md5s(self, validation_ratio, test_ratio):
+        &#34;&#34;&#34;Return md5s for each set, according to given ratios.&#34;&#34;&#34;
+        size_all_dict = self._metadata.label_counter(self._label_category)
+        data = self._metadata.md5_per_class(self._label_category)
+
+        # A minimum of 3 examples are needed for each label (1 for each set), when splitting into three sets
+        for label, size in size_all_dict.items():
+            if size &lt; 3:
+                print(f&#34;The label `{label}` countains only {size} datasets.&#34;)
+
+        # The point is to try to create indexes for the slices of each different class
+        # the indexes would split this way [valid, test, training]
+        size_validation_dict = collections.Counter(
+            {
+                label: math.ceil(size * validation_ratio)
+                for label, size in size_all_dict.items()
+            }
+        )
+        size_test_dict = collections.Counter(
+            {label: math.ceil(size * test_ratio) for label, size in size_all_dict.items()}
+        )
+
+        # sum(size_validation_dict, size_test_dict) ignores zeros, giving counter without labels, which breaks following lambda
+        split_index_dict = collections.Counter(size_validation_dict)
+        split_index_dict.update(size_test_dict)
+
+        # Will grab the indexes from the dicts and return md5 slices
+        # no end means : [i:None]=[i:]=slice from i to end
+        slice_data = lambda begin={}, end={}: sum(
+            [
+                data[label][begin.get(label, 0) : end.get(label, None)]
+                for label in size_all_dict.keys()
+            ],
+            [],
+        )
+
+        validation_md5s = slice_data(end=size_validation_dict)
+        test_md5s = slice_data(begin=size_validation_dict, end=split_index_dict)
+        train_md5s = slice_data(begin=split_index_dict)
+
+        assert len(self._metadata.md5s) == len(
+            set(sum([train_md5s, validation_md5s, test_md5s], []))
+        )
+
+        return [train_md5s, validation_md5s, test_md5s]
+
+    def _split_data(self, validation_ratio, test_ratio, encoder):
+        &#34;&#34;&#34;Split loaded data into three sets : Training/Validation/Test.
+
+        The encoder/encoding function for a label list needs to be provided.
+        &#34;&#34;&#34;
+        train_md5s, validation_md5s, test_md5s = self._split_md5s(
+            validation_ratio, test_ratio
+        )
+
+        # separate hdf5 files
+        train_signals = [self._hdf5s[md5] for md5 in train_md5s]
+        validation_signals = [self._hdf5s[md5] for md5 in validation_md5s]
+        test_signals = [self._hdf5s[md5] for md5 in test_md5s]
+
+        # separate label values
+        train_labels = [self._metadata[md5][self._label_category] for md5 in train_md5s]
+        validation_labels = [
+            self._metadata[md5][self._label_category] for md5 in validation_md5s
+        ]
+        test_labels = [self._metadata[md5][self._label_category] for md5 in test_md5s]
+
+        if self._oversample:
+            train_signals, train_labels, idxs = EpiData.oversample_data(
+                train_signals, train_labels
+            )
+            train_md5s = np.take(train_md5s, idxs, axis=0)
+
+        encoded_labels = [
+            encoder(labels) for labels in [train_labels, validation_labels, test_labels]
+        ]
+
+        self._train = KnownData(
+            train_md5s, train_signals, encoded_labels[0], train_labels, self._metadata
+        )
+        self._validation = KnownData(
+            validation_md5s,
+            validation_signals,
+            encoded_labels[1],
+            validation_labels,
+            self._metadata,
+        )
+        self._test = KnownData(
+            test_md5s, test_signals, encoded_labels[2], test_labels, self._metadata
+        )
+
+        print(f&#34;training size {len(train_labels)}&#34;)
+        print(f&#34;validation size {len(validation_labels)}&#34;)
+        print(f&#34;test size {len(test_labels)}&#34;)
+
+    @staticmethod
+    def oversample_data(X, y):
+        &#34;&#34;&#34;Return oversampled data with sampled indexes. X=signals, y=targets.&#34;&#34;&#34;
+        ros = RandomOverSampler(random_state=42)
+        X_resampled, y_resampled = ros.fit_resample(X, y)  # type: ignore
+        return X_resampled, y_resampled, ros.sample_indices_</code></pre>
+</details>
+<h3>Static methods</h3>
+<dl>
+<dt id="epi_ml.core.data.EpiData.oversample_data"><code class="name flex">
+<span>def <span class="ident">oversample_data</span></span>(<span>X, y)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return oversampled data with sampled indexes. X=signals, y=targets.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@staticmethod
+def oversample_data(X, y):
+    &#34;&#34;&#34;Return oversampled data with sampled indexes. X=signals, y=targets.&#34;&#34;&#34;
+    ros = RandomOverSampler(random_state=42)
+    X_resampled, y_resampled = ros.fit_resample(X, y)  # type: ignore
+    return X_resampled, y_resampled, ros.sample_indices_</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Instance variables</h3>
+<dl>
+<dt id="epi_ml.core.data.EpiData.dataset"><code class="name">var <span class="ident">dataset</span> : <a title="epi_ml.core.data.DataSet" href="#epi_ml.core.data.DataSet">DataSet</a></code></dt>
+<dd>
+<div class="desc"><p>Return data/metadata processed into separate sets.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def dataset(self) -&gt; DataSet:
+    &#34;&#34;&#34;Return data/metadata processed into separate sets.&#34;&#34;&#34;
+    return DataSet(self._train, self._validation, self._test, self._sorted_classes)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="epi_ml.core.data.KnownData"><code class="flex name class">
+<span>class <span class="ident">KnownData</span></span>
+<span>(</span><span>ids, x, y, y_str, metadata: Metadata)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Generalised object to deal with numerical data.</p>
+<p>ids : Signal identifier
+x : features
+y : targets (int)
+y_str : targets (str)
+metadata : Metadata object containing signal metadata.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class KnownData(Data):
+    &#34;&#34;&#34;Generalised object to deal with numerical data.
+
+    ids : Signal identifier
+    x : features
+    y : targets (int)
+    y_str : targets (str)
+    metadata : Metadata object containing signal metadata.
+    &#34;&#34;&#34;
+
+    def __init__(self, ids, x, y, y_str, metadata: Metadata):
+        super().__init__(ids, x, y, y_str)
+        self._metadata = metadata
+
+    @property
+    def metadata(self) -&gt; Metadata:
+        &#34;&#34;&#34;Return the metadata of the dataset. Careful, modifications to it will affect this object.&#34;&#34;&#34;
+        return self._metadata
+
+    def get_metadata(self, index: int) -&gt; dict:
+        &#34;&#34;&#34;Get the metadata from the signal at the given position in the set.&#34;&#34;&#34;
+        return self._metadata[self.get_id(index)]
+
+    @classmethod
+    def empty_collection(cls) -&gt; KnownData:
+        &#34;&#34;&#34;Returns an empty object.&#34;&#34;&#34;
+        obj = cls.__new__(cls)
+        obj._ids = []
+        obj._num_examples = 0
+        obj._signals = np.array([], dtype=np.float32)
+        obj._labels = np.array([])
+        obj._labels_str = []
+        obj._shuffle_order = []  # To be able to find back ids correctly
+        obj._index = 0
+        obj._metadata = {}
+        return obj
+
+    def subsample(self, idxs: List[int]) -&gt; KnownData:
+        &#34;&#34;&#34;Return Data object with subsample of current Data.
+
+        Indexed along current order, not original order.
+        &#34;&#34;&#34;
+        try:
+            new_ids = np.take(self.ids, idxs, axis=0)
+            new_signals = np.take(self.signals, idxs, axis=0)
+            new_targets = np.take(self.encoded_labels, idxs, axis=0)
+            new_str_targets = np.take(self.original_labels, idxs, axis=0)
+
+            new_meta = copy.deepcopy(self.metadata)
+            ok_md5 = set(new_ids)
+            for md5 in list(new_meta.md5s):
+                if md5 not in ok_md5:
+                    del new_meta[md5]
+        except IndexError as e:
+            if len(self) == 0:
+                print(&#34;Empty Data object, cannot subsample.&#34;)
+                return self
+            else:
+                raise e
+
+        return KnownData(new_ids, new_signals, new_targets, new_str_targets, new_meta)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="epi_ml.core.data.Data" href="#epi_ml.core.data.Data">Data</a></li>
+<li>abc.ABC</li>
+</ul>
+<h3>Static methods</h3>
+<dl>
+<dt id="epi_ml.core.data.KnownData.empty_collection"><code class="name flex">
+<span>def <span class="ident">empty_collection</span></span>(<span>) ‑> <a title="epi_ml.core.data.KnownData" href="#epi_ml.core.data.KnownData">KnownData</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns an empty object.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@classmethod
+def empty_collection(cls) -&gt; KnownData:
+    &#34;&#34;&#34;Returns an empty object.&#34;&#34;&#34;
+    obj = cls.__new__(cls)
+    obj._ids = []
+    obj._num_examples = 0
+    obj._signals = np.array([], dtype=np.float32)
+    obj._labels = np.array([])
+    obj._labels_str = []
+    obj._shuffle_order = []  # To be able to find back ids correctly
+    obj._index = 0
+    obj._metadata = {}
+    return obj</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Instance variables</h3>
+<dl>
+<dt id="epi_ml.core.data.KnownData.metadata"><code class="name">var <span class="ident">metadata</span> : <a title="epi_ml.core.metadata.Metadata" href="metadata.html#epi_ml.core.metadata.Metadata">Metadata</a></code></dt>
+<dd>
+<div class="desc"><p>Return the metadata of the dataset. Careful, modifications to it will affect this object.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def metadata(self) -&gt; Metadata:
+    &#34;&#34;&#34;Return the metadata of the dataset. Careful, modifications to it will affect this object.&#34;&#34;&#34;
+    return self._metadata</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="epi_ml.core.data.KnownData.get_metadata"><code class="name flex">
+<span>def <span class="ident">get_metadata</span></span>(<span>self, index: int) ‑> dict</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the metadata from the signal at the given position in the set.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_metadata(self, index: int) -&gt; dict:
+    &#34;&#34;&#34;Get the metadata from the signal at the given position in the set.&#34;&#34;&#34;
+    return self._metadata[self.get_id(index)]</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.core.data.KnownData.subsample"><code class="name flex">
+<span>def <span class="ident">subsample</span></span>(<span>self, idxs: List[int]) ‑> <a title="epi_ml.core.data.KnownData" href="#epi_ml.core.data.KnownData">KnownData</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return Data object with subsample of current Data.</p>
+<p>Indexed along current order, not original order.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def subsample(self, idxs: List[int]) -&gt; KnownData:
+    &#34;&#34;&#34;Return Data object with subsample of current Data.
+
+    Indexed along current order, not original order.
+    &#34;&#34;&#34;
+    try:
+        new_ids = np.take(self.ids, idxs, axis=0)
+        new_signals = np.take(self.signals, idxs, axis=0)
+        new_targets = np.take(self.encoded_labels, idxs, axis=0)
+        new_str_targets = np.take(self.original_labels, idxs, axis=0)
+
+        new_meta = copy.deepcopy(self.metadata)
+        ok_md5 = set(new_ids)
+        for md5 in list(new_meta.md5s):
+            if md5 not in ok_md5:
+                del new_meta[md5]
+    except IndexError as e:
+        if len(self) == 0:
+            print(&#34;Empty Data object, cannot subsample.&#34;)
+            return self
+        else:
+            raise e
+
+    return KnownData(new_ids, new_signals, new_targets, new_str_targets, new_meta)</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="epi_ml.core.data.Data" href="#epi_ml.core.data.Data">Data</a></b></code>:
+<ul class="hlist">
+<li><code><a title="epi_ml.core.data.Data.encoded_labels" href="#epi_ml.core.data.Data.encoded_labels">encoded_labels</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.get_encoded_label" href="#epi_ml.core.data.Data.get_encoded_label">get_encoded_label</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.get_id" href="#epi_ml.core.data.Data.get_id">get_id</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.get_original_label" href="#epi_ml.core.data.Data.get_original_label">get_original_label</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.get_signal" href="#epi_ml.core.data.Data.get_signal">get_signal</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.ids" href="#epi_ml.core.data.Data.ids">ids</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.next_batch" href="#epi_ml.core.data.Data.next_batch">next_batch</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.num_examples" href="#epi_ml.core.data.Data.num_examples">num_examples</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.original_labels" href="#epi_ml.core.data.Data.original_labels">original_labels</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.preprocess" href="#epi_ml.core.data.Data.preprocess">preprocess</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.shuffle" href="#epi_ml.core.data.Data.shuffle">shuffle</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.signals" href="#epi_ml.core.data.Data.signals">signals</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="epi_ml.core.data.UnknownData"><code class="flex name class">
+<span>class <span class="ident">UnknownData</span></span>
+<span>(</span><span>ids, x, y, y_str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Generalised object to deal with numerical data without any labels/metadata.</p>
+<p>ids : Signal identifier
+x : features
+y : targets (int)
+y_str : targets (str)</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class UnknownData(Data):
+    &#34;&#34;&#34;Generalised object to deal with numerical data without any labels/metadata.
+
+    ids : Signal identifier
+    x : features
+    y : targets (int)
+    y_str : targets (str)
+    &#34;&#34;&#34;
+
+    @classmethod
+    def empty_collection(cls) -&gt; UnknownData:
+        &#34;&#34;&#34;Returns an empty object.&#34;&#34;&#34;
+        obj = cls.__new__(cls)
+        obj._ids = []
+        obj._num_examples = 0
+        obj._signals = np.array([], dtype=np.float32)
+        obj._labels = np.array([])
+        obj._labels_str = []
+        obj._shuffle_order = []  # To be able to find back ids correctly
+        obj._index = 0
+        return obj
+
+    def subsample(self, idxs: List[int]) -&gt; UnknownData:
+        &#34;&#34;&#34;Return Data object with subsample of current Data.
+
+        Indexed along current order, not original order.
+        &#34;&#34;&#34;
+        try:
+            new_ids = np.take(self.ids, idxs, axis=0)
+            new_signals = np.take(self.signals, idxs, axis=0)
+            new_targets = np.take(self.encoded_labels, idxs, axis=0)
+            new_str_targets = np.take(self.original_labels, idxs, axis=0)
+        except IndexError as e:
+            if len(self) == 0:
+                print(&#34;Empty Data object, cannot subsample.&#34;)
+                return self
+            else:
+                raise e
+
+        return UnknownData(new_ids, new_signals, new_targets, new_str_targets)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="epi_ml.core.data.Data" href="#epi_ml.core.data.Data">Data</a></li>
+<li>abc.ABC</li>
+</ul>
+<h3>Static methods</h3>
+<dl>
+<dt id="epi_ml.core.data.UnknownData.empty_collection"><code class="name flex">
+<span>def <span class="ident">empty_collection</span></span>(<span>) ‑> <a title="epi_ml.core.data.UnknownData" href="#epi_ml.core.data.UnknownData">UnknownData</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns an empty object.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@classmethod
+def empty_collection(cls) -&gt; UnknownData:
+    &#34;&#34;&#34;Returns an empty object.&#34;&#34;&#34;
+    obj = cls.__new__(cls)
+    obj._ids = []
+    obj._num_examples = 0
+    obj._signals = np.array([], dtype=np.float32)
+    obj._labels = np.array([])
+    obj._labels_str = []
+    obj._shuffle_order = []  # To be able to find back ids correctly
+    obj._index = 0
+    return obj</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="epi_ml.core.data.UnknownData.subsample"><code class="name flex">
+<span>def <span class="ident">subsample</span></span>(<span>self, idxs: List[int]) ‑> <a title="epi_ml.core.data.UnknownData" href="#epi_ml.core.data.UnknownData">UnknownData</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return Data object with subsample of current Data.</p>
+<p>Indexed along current order, not original order.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def subsample(self, idxs: List[int]) -&gt; UnknownData:
+    &#34;&#34;&#34;Return Data object with subsample of current Data.
+
+    Indexed along current order, not original order.
+    &#34;&#34;&#34;
+    try:
+        new_ids = np.take(self.ids, idxs, axis=0)
+        new_signals = np.take(self.signals, idxs, axis=0)
+        new_targets = np.take(self.encoded_labels, idxs, axis=0)
+        new_str_targets = np.take(self.original_labels, idxs, axis=0)
+    except IndexError as e:
+        if len(self) == 0:
+            print(&#34;Empty Data object, cannot subsample.&#34;)
+            return self
+        else:
+            raise e
+
+    return UnknownData(new_ids, new_signals, new_targets, new_str_targets)</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="epi_ml.core.data.Data" href="#epi_ml.core.data.Data">Data</a></b></code>:
+<ul class="hlist">
+<li><code><a title="epi_ml.core.data.Data.encoded_labels" href="#epi_ml.core.data.Data.encoded_labels">encoded_labels</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.get_encoded_label" href="#epi_ml.core.data.Data.get_encoded_label">get_encoded_label</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.get_id" href="#epi_ml.core.data.Data.get_id">get_id</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.get_original_label" href="#epi_ml.core.data.Data.get_original_label">get_original_label</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.get_signal" href="#epi_ml.core.data.Data.get_signal">get_signal</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.ids" href="#epi_ml.core.data.Data.ids">ids</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.next_batch" href="#epi_ml.core.data.Data.next_batch">next_batch</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.num_examples" href="#epi_ml.core.data.Data.num_examples">num_examples</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.original_labels" href="#epi_ml.core.data.Data.original_labels">original_labels</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.preprocess" href="#epi_ml.core.data.Data.preprocess">preprocess</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.shuffle" href="#epi_ml.core.data.Data.shuffle">shuffle</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.signals" href="#epi_ml.core.data.Data.signals">signals</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="epi_ml.core" href="index.html">epi_ml.core</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="epi_ml.core.data.create_torch_datasets" href="#epi_ml.core.data.create_torch_datasets">create_torch_datasets</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="epi_ml.core.data.Data" href="#epi_ml.core.data.Data">Data</a></code></h4>
+<ul class="two-column">
+<li><code><a title="epi_ml.core.data.Data.empty_collection" href="#epi_ml.core.data.Data.empty_collection">empty_collection</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.encoded_labels" href="#epi_ml.core.data.Data.encoded_labels">encoded_labels</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.get_encoded_label" href="#epi_ml.core.data.Data.get_encoded_label">get_encoded_label</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.get_id" href="#epi_ml.core.data.Data.get_id">get_id</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.get_original_label" href="#epi_ml.core.data.Data.get_original_label">get_original_label</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.get_signal" href="#epi_ml.core.data.Data.get_signal">get_signal</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.ids" href="#epi_ml.core.data.Data.ids">ids</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.next_batch" href="#epi_ml.core.data.Data.next_batch">next_batch</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.num_examples" href="#epi_ml.core.data.Data.num_examples">num_examples</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.original_labels" href="#epi_ml.core.data.Data.original_labels">original_labels</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.preprocess" href="#epi_ml.core.data.Data.preprocess">preprocess</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.shuffle" href="#epi_ml.core.data.Data.shuffle">shuffle</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.signals" href="#epi_ml.core.data.Data.signals">signals</a></code></li>
+<li><code><a title="epi_ml.core.data.Data.subsample" href="#epi_ml.core.data.Data.subsample">subsample</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="epi_ml.core.data.DataSet" href="#epi_ml.core.data.DataSet">DataSet</a></code></h4>
+<ul class="two-column">
+<li><code><a title="epi_ml.core.data.DataSet.classes" href="#epi_ml.core.data.DataSet.classes">classes</a></code></li>
+<li><code><a title="epi_ml.core.data.DataSet.empty_collection" href="#epi_ml.core.data.DataSet.empty_collection">empty_collection</a></code></li>
+<li><code><a title="epi_ml.core.data.DataSet.get_encoder" href="#epi_ml.core.data.DataSet.get_encoder">get_encoder</a></code></li>
+<li><code><a title="epi_ml.core.data.DataSet.load_mapping" href="#epi_ml.core.data.DataSet.load_mapping">load_mapping</a></code></li>
+<li><code><a title="epi_ml.core.data.DataSet.preprocess" href="#epi_ml.core.data.DataSet.preprocess">preprocess</a></code></li>
+<li><code><a title="epi_ml.core.data.DataSet.save_mapping" href="#epi_ml.core.data.DataSet.save_mapping">save_mapping</a></code></li>
+<li><code><a title="epi_ml.core.data.DataSet.set_test" href="#epi_ml.core.data.DataSet.set_test">set_test</a></code></li>
+<li><code><a title="epi_ml.core.data.DataSet.set_train" href="#epi_ml.core.data.DataSet.set_train">set_train</a></code></li>
+<li><code><a title="epi_ml.core.data.DataSet.set_validation" href="#epi_ml.core.data.DataSet.set_validation">set_validation</a></code></li>
+<li><code><a title="epi_ml.core.data.DataSet.test" href="#epi_ml.core.data.DataSet.test">test</a></code></li>
+<li><code><a title="epi_ml.core.data.DataSet.train" href="#epi_ml.core.data.DataSet.train">train</a></code></li>
+<li><code><a title="epi_ml.core.data.DataSet.validation" href="#epi_ml.core.data.DataSet.validation">validation</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="epi_ml.core.data.DataSetFactory" href="#epi_ml.core.data.DataSetFactory">DataSetFactory</a></code></h4>
+<ul class="">
+<li><code><a title="epi_ml.core.data.DataSetFactory.from_epidata" href="#epi_ml.core.data.DataSetFactory.from_epidata">from_epidata</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="epi_ml.core.data.EpiData" href="#epi_ml.core.data.EpiData">EpiData</a></code></h4>
+<ul class="">
+<li><code><a title="epi_ml.core.data.EpiData.dataset" href="#epi_ml.core.data.EpiData.dataset">dataset</a></code></li>
+<li><code><a title="epi_ml.core.data.EpiData.oversample_data" href="#epi_ml.core.data.EpiData.oversample_data">oversample_data</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="epi_ml.core.data.KnownData" href="#epi_ml.core.data.KnownData">KnownData</a></code></h4>
+<ul class="">
+<li><code><a title="epi_ml.core.data.KnownData.empty_collection" href="#epi_ml.core.data.KnownData.empty_collection">empty_collection</a></code></li>
+<li><code><a title="epi_ml.core.data.KnownData.get_metadata" href="#epi_ml.core.data.KnownData.get_metadata">get_metadata</a></code></li>
+<li><code><a title="epi_ml.core.data.KnownData.metadata" href="#epi_ml.core.data.KnownData.metadata">metadata</a></code></li>
+<li><code><a title="epi_ml.core.data.KnownData.subsample" href="#epi_ml.core.data.KnownData.subsample">subsample</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="epi_ml.core.data.UnknownData" href="#epi_ml.core.data.UnknownData">UnknownData</a></code></h4>
+<ul class="">
+<li><code><a title="epi_ml.core.data.UnknownData.empty_collection" href="#epi_ml.core.data.UnknownData.empty_collection">empty_collection</a></code></li>
+<li><code><a title="epi_ml.core.data.UnknownData.subsample" href="#epi_ml.core.data.UnknownData.subsample">subsample</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>

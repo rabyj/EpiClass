@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
-<title>epi_ml API documentation</title>
+<title>epi_ml.core.types API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
@@ -19,50 +19,25 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Package <code>epi_ml</code></h1>
+<h1 class="title">Module <code>epi_ml.core.types</code></h1>
 </header>
 <section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">from typing import TypeVar
+
+from torch import Tensor
+from torch.utils.data import TensorDataset
+
+from .data import Data
+
+TensorData = TypeVar(&#34;TensorData&#34;, TensorDataset, Tensor)
+SomeData = TypeVar(&#34;SomeData&#34;, bound=Data)</code></pre>
+</details>
 </section>
 <section>
-<h2 class="section-title" id="header-submodules">Sub-modules</h2>
-<dl>
-<dt><code class="name"><a title="epi_ml.argparseutils" href="argparseutils/index.html">epi_ml.argparseutils</a></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.compute_shaps" href="compute_shaps.html">epi_ml.compute_shaps</a></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.core" href="core/index.html">epi_ml.core</a></code></dt>
-<dd>
-<div class="desc"><p>The <em>core</em> module contains all crucial code files to the project …</p></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.epiatlas_training" href="epiatlas_training.html">epi_ml.epiatlas_training</a></code></dt>
-<dd>
-<div class="desc"><p>Main</p></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.epiatlas_training_no_valid" href="epiatlas_training_no_valid.html">epi_ml.epiatlas_training_no_valid</a></code></dt>
-<dd>
-<div class="desc"><p>Main</p></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.main" href="main.html">epi_ml.main</a></code></dt>
-<dd>
-<div class="desc"><p>Main</p></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.other_estimators" href="other_estimators.html">epi_ml.other_estimators</a></code></dt>
-<dd>
-<div class="desc"><p>Main</p></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.predict" href="predict.html">epi_ml.predict</a></code></dt>
-<dd>
-<div class="desc"><p>Like "main &ndash;predict mode", but for when no true label is available (cannot do certain analyses).</p></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.utils" href="utils/index.html">epi_ml.utils</a></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
 </section>
 <section>
 </section>
@@ -77,17 +52,9 @@
 <ul></ul>
 </div>
 <ul id="index">
-<li><h3><a href="#header-submodules">Sub-modules</a></h3>
+<li><h3>Super-module</h3>
 <ul>
-<li><code><a title="epi_ml.argparseutils" href="argparseutils/index.html">epi_ml.argparseutils</a></code></li>
-<li><code><a title="epi_ml.compute_shaps" href="compute_shaps.html">epi_ml.compute_shaps</a></code></li>
-<li><code><a title="epi_ml.core" href="core/index.html">epi_ml.core</a></code></li>
-<li><code><a title="epi_ml.epiatlas_training" href="epiatlas_training.html">epi_ml.epiatlas_training</a></code></li>
-<li><code><a title="epi_ml.epiatlas_training_no_valid" href="epiatlas_training_no_valid.html">epi_ml.epiatlas_training_no_valid</a></code></li>
-<li><code><a title="epi_ml.main" href="main.html">epi_ml.main</a></code></li>
-<li><code><a title="epi_ml.other_estimators" href="other_estimators.html">epi_ml.other_estimators</a></code></li>
-<li><code><a title="epi_ml.predict" href="predict.html">epi_ml.predict</a></code></li>
-<li><code><a title="epi_ml.utils" href="utils/index.html">epi_ml.utils</a></code></li>
+<li><code><a title="epi_ml.core" href="index.html">epi_ml.core</a></code></li>
 </ul>
 </li>
 </ul>

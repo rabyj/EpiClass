@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
-<title>epi_ml API documentation</title>
-<meta name="description" content="" />
+<title>epi_ml.argparseutils.directorychecker API documentation</title>
+<meta name="description" content="New type for argparser, and an associated error." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -19,56 +19,95 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Package <code>epi_ml</code></h1>
+<h1 class="title">Module <code>epi_ml.argparseutils.directorychecker</code></h1>
 </header>
 <section id="section-intro">
+<p>New type for argparser, and an associated error.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">&#34;&#34;&#34;New type for argparser, and an associated error.&#34;&#34;&#34;
+from pathlib import Path
+
+
+class DirectoryCheckerError(Exception):
+    &#34;&#34;&#34;An error from trying to convert a command line string to a directory.&#34;&#34;&#34;
+    def __init__(self, message, path, *args: object) -&gt; None:
+        super().__init__(message, *args)
+        self.path = path
+
+
+class DirectoryChecker(object):
+    &#34;&#34;&#34;Type to check directory status as soon as parsed by command line&#34;&#34;&#34;
+    def __init__(self, exists=True) -&gt; None:
+        self.exists = exists
+
+    def __call__(self, string):
+        string = Path(string)
+        if self.exists and not string.is_dir():
+            msg = f&#34;Not a directory : {string}&#34;
+            raise DirectoryCheckerError(message=msg, path=string)
+        else:
+            return string</code></pre>
+</details>
 </section>
 <section>
-<h2 class="section-title" id="header-submodules">Sub-modules</h2>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt><code class="name"><a title="epi_ml.argparseutils" href="argparseutils/index.html">epi_ml.argparseutils</a></code></dt>
+<dt id="epi_ml.argparseutils.directorychecker.DirectoryChecker"><code class="flex name class">
+<span>class <span class="ident">DirectoryChecker</span></span>
+<span>(</span><span>exists=True)</span>
+</code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Type to check directory status as soon as parsed by command line</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class DirectoryChecker(object):
+    &#34;&#34;&#34;Type to check directory status as soon as parsed by command line&#34;&#34;&#34;
+    def __init__(self, exists=True) -&gt; None:
+        self.exists = exists
+
+    def __call__(self, string):
+        string = Path(string)
+        if self.exists and not string.is_dir():
+            msg = f&#34;Not a directory : {string}&#34;
+            raise DirectoryCheckerError(message=msg, path=string)
+        else:
+            return string</code></pre>
+</details>
 </dd>
-<dt><code class="name"><a title="epi_ml.compute_shaps" href="compute_shaps.html">epi_ml.compute_shaps</a></code></dt>
+<dt id="epi_ml.argparseutils.directorychecker.DirectoryCheckerError"><code class="flex name class">
+<span>class <span class="ident">DirectoryCheckerError</span></span>
+<span>(</span><span>message, path, *args: object)</span>
+</code></dt>
 <dd>
-<div class="desc"></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.core" href="core/index.html">epi_ml.core</a></code></dt>
-<dd>
-<div class="desc"><p>The <em>core</em> module contains all crucial code files to the project …</p></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.epiatlas_training" href="epiatlas_training.html">epi_ml.epiatlas_training</a></code></dt>
-<dd>
-<div class="desc"><p>Main</p></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.epiatlas_training_no_valid" href="epiatlas_training_no_valid.html">epi_ml.epiatlas_training_no_valid</a></code></dt>
-<dd>
-<div class="desc"><p>Main</p></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.main" href="main.html">epi_ml.main</a></code></dt>
-<dd>
-<div class="desc"><p>Main</p></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.other_estimators" href="other_estimators.html">epi_ml.other_estimators</a></code></dt>
-<dd>
-<div class="desc"><p>Main</p></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.predict" href="predict.html">epi_ml.predict</a></code></dt>
-<dd>
-<div class="desc"><p>Like "main &ndash;predict mode", but for when no true label is available (cannot do certain analyses).</p></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.utils" href="utils/index.html">epi_ml.utils</a></code></dt>
-<dd>
-<div class="desc"></div>
+<div class="desc"><p>An error from trying to convert a command line string to a directory.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class DirectoryCheckerError(Exception):
+    &#34;&#34;&#34;An error from trying to convert a command line string to a directory.&#34;&#34;&#34;
+    def __init__(self, message, path, *args: object) -&gt; None:
+        super().__init__(message, *args)
+        self.path = path</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>builtins.Exception</li>
+<li>builtins.BaseException</li>
+</ul>
 </dd>
 </dl>
-</section>
-<section>
-</section>
-<section>
-</section>
-<section>
 </section>
 </article>
 <nav id="sidebar">
@@ -77,17 +116,19 @@
 <ul></ul>
 </div>
 <ul id="index">
-<li><h3><a href="#header-submodules">Sub-modules</a></h3>
+<li><h3>Super-module</h3>
 <ul>
-<li><code><a title="epi_ml.argparseutils" href="argparseutils/index.html">epi_ml.argparseutils</a></code></li>
-<li><code><a title="epi_ml.compute_shaps" href="compute_shaps.html">epi_ml.compute_shaps</a></code></li>
-<li><code><a title="epi_ml.core" href="core/index.html">epi_ml.core</a></code></li>
-<li><code><a title="epi_ml.epiatlas_training" href="epiatlas_training.html">epi_ml.epiatlas_training</a></code></li>
-<li><code><a title="epi_ml.epiatlas_training_no_valid" href="epiatlas_training_no_valid.html">epi_ml.epiatlas_training_no_valid</a></code></li>
-<li><code><a title="epi_ml.main" href="main.html">epi_ml.main</a></code></li>
-<li><code><a title="epi_ml.other_estimators" href="other_estimators.html">epi_ml.other_estimators</a></code></li>
-<li><code><a title="epi_ml.predict" href="predict.html">epi_ml.predict</a></code></li>
-<li><code><a title="epi_ml.utils" href="utils/index.html">epi_ml.utils</a></code></li>
+<li><code><a title="epi_ml.argparseutils" href="index.html">epi_ml.argparseutils</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="epi_ml.argparseutils.directorychecker.DirectoryChecker" href="#epi_ml.argparseutils.directorychecker.DirectoryChecker">DirectoryChecker</a></code></h4>
+</li>
+<li>
+<h4><code><a title="epi_ml.argparseutils.directorychecker.DirectoryCheckerError" href="#epi_ml.argparseutils.directorychecker.DirectoryCheckerError">DirectoryCheckerError</a></code></h4>
+</li>
 </ul>
 </li>
 </ul>

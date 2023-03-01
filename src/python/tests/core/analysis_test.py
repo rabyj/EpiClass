@@ -10,8 +10,8 @@ warnings.filterwarnings("ignore", message=".*IPython display.*")
 import numpy as np
 import pytest
 
-from src.python.core.analysis import SHAP_Handler
-from src.python.core.data import DataSet
+from epi_ml.core.analysis import SHAP_Handler
+from epi_ml.core.data import DataSet
 
 
 class Test_SHAP_Handler:

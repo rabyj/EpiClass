@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
-<title>epi_ml API documentation</title>
-<meta name="description" content="" />
+<title>epi_ml.utils.check_dir API documentation</title>
+<meta name="description" content="Utility script to check a directory and create it if needed …" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -19,54 +19,161 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Package <code>epi_ml</code></h1>
+<h1 class="title">Module <code>epi_ml.utils.check_dir</code></h1>
 </header>
 <section id="section-intro">
+<p>Utility script to check a directory and create it if needed.</p>
+<p>Intended to be used before launching any main training/prediction scripts
+to verify that the logging directory is present, and create it if not.
+This permits proper redirection of stdout and stderr to files in bash to said directory,
+in the following scripts.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">&#34;&#34;&#34;Utility script to check a directory and create it if needed.
+
+Intended to be used before launching any main training/prediction scripts
+to verify that the logging directory is present, and create it if not.
+This permits proper redirection of stdout and stderr to files in bash to said directory,
+in the following scripts.
+&#34;&#34;&#34;
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+from epi_ml.argparseutils.directorychecker import (
+    DirectoryChecker,
+    DirectoryCheckerError,
+)
+
+
+def parse_arguments() -&gt; argparse.Namespace:
+    &#34;&#34;&#34;argument parser for command line&#34;&#34;&#34;
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument(&#34;dir&#34;, type=str, help=&#34;A directory.&#34;)
+    arg_parser.add_argument(
+        &#34;--exists&#34;,
+        action=&#34;store_true&#34;,
+        help=&#34;Specifies that the directory should already exist.&#34;,
+    )
+    return arg_parser.parse_args()
+
+
+def create_dirs(dir_path: str | Path):
+    &#34;&#34;&#34;Create recursively needed directories to directory.&#34;&#34;&#34;
+    path = Path(dir_path)
+    for parent in reversed(path.parents):
+        parent.mkdir(mode=0o2750, exist_ok=True)
+    path.mkdir(mode=0o2750, exist_ok=True)
+
+
+def main():
+    &#34;&#34;&#34;main called from command line, edit to change behavior&#34;&#34;&#34;
+
+    cli = parse_arguments()
+    dir_checker = DirectoryChecker()
+
+    try:
+        dir_checker(cli.dir)
+    except DirectoryCheckerError as dir_err:
+
+        faulty_path = dir_err.path
+        if cli.exists:
+            raise dir_err from None
+        else:
+            # Create missing dir
+            create_dirs(faulty_path)
+
+            print(f&#34;Created missing logdir and needed parents : {faulty_path}&#34;)
+
+            # Reverify everything was done properly
+            dir_checker(cli.dir)
+
+
+if __name__ == &#34;__main__&#34;:
+    main()</code></pre>
+</details>
 </section>
 <section>
-<h2 class="section-title" id="header-submodules">Sub-modules</h2>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt><code class="name"><a title="epi_ml.argparseutils" href="argparseutils/index.html">epi_ml.argparseutils</a></code></dt>
+<dt id="epi_ml.utils.check_dir.create_dirs"><code class="name flex">
+<span>def <span class="ident">create_dirs</span></span>(<span>dir_path: str | Path)</span>
+</code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Create recursively needed directories to directory.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def create_dirs(dir_path: str | Path):
+    &#34;&#34;&#34;Create recursively needed directories to directory.&#34;&#34;&#34;
+    path = Path(dir_path)
+    for parent in reversed(path.parents):
+        parent.mkdir(mode=0o2750, exist_ok=True)
+    path.mkdir(mode=0o2750, exist_ok=True)</code></pre>
+</details>
 </dd>
-<dt><code class="name"><a title="epi_ml.compute_shaps" href="compute_shaps.html">epi_ml.compute_shaps</a></code></dt>
+<dt id="epi_ml.utils.check_dir.main"><code class="name flex">
+<span>def <span class="ident">main</span></span>(<span>)</span>
+</code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>main called from command line, edit to change behavior</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def main():
+    &#34;&#34;&#34;main called from command line, edit to change behavior&#34;&#34;&#34;
+
+    cli = parse_arguments()
+    dir_checker = DirectoryChecker()
+
+    try:
+        dir_checker(cli.dir)
+    except DirectoryCheckerError as dir_err:
+
+        faulty_path = dir_err.path
+        if cli.exists:
+            raise dir_err from None
+        else:
+            # Create missing dir
+            create_dirs(faulty_path)
+
+            print(f&#34;Created missing logdir and needed parents : {faulty_path}&#34;)
+
+            # Reverify everything was done properly
+            dir_checker(cli.dir)</code></pre>
+</details>
 </dd>
-<dt><code class="name"><a title="epi_ml.core" href="core/index.html">epi_ml.core</a></code></dt>
+<dt id="epi_ml.utils.check_dir.parse_arguments"><code class="name flex">
+<span>def <span class="ident">parse_arguments</span></span>(<span>) ‑> argparse.Namespace</span>
+</code></dt>
 <dd>
-<div class="desc"><p>The <em>core</em> module contains all crucial code files to the project …</p></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.epiatlas_training" href="epiatlas_training.html">epi_ml.epiatlas_training</a></code></dt>
-<dd>
-<div class="desc"><p>Main</p></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.epiatlas_training_no_valid" href="epiatlas_training_no_valid.html">epi_ml.epiatlas_training_no_valid</a></code></dt>
-<dd>
-<div class="desc"><p>Main</p></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.main" href="main.html">epi_ml.main</a></code></dt>
-<dd>
-<div class="desc"><p>Main</p></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.other_estimators" href="other_estimators.html">epi_ml.other_estimators</a></code></dt>
-<dd>
-<div class="desc"><p>Main</p></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.predict" href="predict.html">epi_ml.predict</a></code></dt>
-<dd>
-<div class="desc"><p>Like "main &ndash;predict mode", but for when no true label is available (cannot do certain analyses).</p></div>
-</dd>
-<dt><code class="name"><a title="epi_ml.utils" href="utils/index.html">epi_ml.utils</a></code></dt>
-<dd>
-<div class="desc"></div>
+<div class="desc"><p>argument parser for command line</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def parse_arguments() -&gt; argparse.Namespace:
+    &#34;&#34;&#34;argument parser for command line&#34;&#34;&#34;
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument(&#34;dir&#34;, type=str, help=&#34;A directory.&#34;)
+    arg_parser.add_argument(
+        &#34;--exists&#34;,
+        action=&#34;store_true&#34;,
+        help=&#34;Specifies that the directory should already exist.&#34;,
+    )
+    return arg_parser.parse_args()</code></pre>
+</details>
 </dd>
 </dl>
-</section>
-<section>
-</section>
-<section>
 </section>
 <section>
 </section>
@@ -77,17 +184,16 @@
 <ul></ul>
 </div>
 <ul id="index">
-<li><h3><a href="#header-submodules">Sub-modules</a></h3>
+<li><h3>Super-module</h3>
 <ul>
-<li><code><a title="epi_ml.argparseutils" href="argparseutils/index.html">epi_ml.argparseutils</a></code></li>
-<li><code><a title="epi_ml.compute_shaps" href="compute_shaps.html">epi_ml.compute_shaps</a></code></li>
-<li><code><a title="epi_ml.core" href="core/index.html">epi_ml.core</a></code></li>
-<li><code><a title="epi_ml.epiatlas_training" href="epiatlas_training.html">epi_ml.epiatlas_training</a></code></li>
-<li><code><a title="epi_ml.epiatlas_training_no_valid" href="epiatlas_training_no_valid.html">epi_ml.epiatlas_training_no_valid</a></code></li>
-<li><code><a title="epi_ml.main" href="main.html">epi_ml.main</a></code></li>
-<li><code><a title="epi_ml.other_estimators" href="other_estimators.html">epi_ml.other_estimators</a></code></li>
-<li><code><a title="epi_ml.predict" href="predict.html">epi_ml.predict</a></code></li>
-<li><code><a title="epi_ml.utils" href="utils/index.html">epi_ml.utils</a></code></li>
+<li><code><a title="epi_ml.utils" href="index.html">epi_ml.utils</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="epi_ml.utils.check_dir.create_dirs" href="#epi_ml.utils.check_dir.create_dirs">create_dirs</a></code></li>
+<li><code><a title="epi_ml.utils.check_dir.main" href="#epi_ml.utils.check_dir.main">main</a></code></li>
+<li><code><a title="epi_ml.utils.check_dir.parse_arguments" href="#epi_ml.utils.check_dir.parse_arguments">parse_arguments</a></code></li>
 </ul>
 </li>
 </ul>

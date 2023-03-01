@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from lightgbm import LGBMClassifier
 
-from src.python.tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
+from tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
 
 
 @pytest.fixture
@@ -25,7 +25,7 @@ def logdir(make_specific_logdir) -> Path:
 def test_lgbm_save_load(logdir):
     """Test LGBM tuning + subsequent fit pipeline."""
 
-    from src.python.core import estimators, lgbm as lgbm_funcs
+    from epi_ml.core import estimators, lgbm as lgbm_funcs
 
     ea_handler = EpiAtlasTreatmentTestData.default_test_data()
 
@@ -52,7 +52,7 @@ def minimal_bug_example():
     from sklearn.datasets import load_iris
     from sklearn.model_selection import StratifiedKFold
 
-    from src.python.core import estimators
+    from epi_ml.core import estimators
 
     print(estimators.lgbm_allowed_params)
 

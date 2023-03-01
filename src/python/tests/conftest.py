@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 
-from src.python.core.data import DataSet
-from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
-from src.python.core.model_pytorch import LightningDenseClassifier
-from src.python.tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
+from epi_ml.core.data import DataSet
+from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory
+from epi_ml.core.model_pytorch import LightningDenseClassifier
+from tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
 
 # def pytest_collection_modifyitems(session, config, items):
 #     """Ignore certain names from collection."""

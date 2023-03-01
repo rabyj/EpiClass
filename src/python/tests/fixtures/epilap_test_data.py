@@ -6,10 +6,10 @@ from typing import List
 
 import h5py
 
-from src.python.core.data_source import EpiDataSource
-from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
-from src.python.core.hdf5_loader import Hdf5Loader
-from src.python.core.metadata import Metadata
+from epi_ml.core.data_source import EpiDataSource
+from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory
+from epi_ml.core.hdf5_loader import Hdf5Loader
+from epi_ml.core.metadata import Metadata
 
 DEFAULT_TEST_LOGDIR = Path("/tmp/pytest")
 DEFAULT_TEST_LOGDIR.mkdir(exist_ok=True, parents=True)
@@ -24,8 +24,8 @@ class EpiAtlasTreatmentTestData:
 
         self.dir = Path(__file__).parent.resolve()
         self.chroms_file = (
-            self.dir.parents[2] / "input-format/hg38.noy.chrom.sizes"
-        )  # src/input_format/
+            self.dir.parents[3] / "input-format/hg38.noy.chrom.sizes"
+        )  # /epi_ml/input_format/
         self.chroms = Hdf5Loader.load_chroms(self.chroms_file)
 
         tmp_hdf5 = self.create_temp_hdf5s(md5_list_path.resolve())

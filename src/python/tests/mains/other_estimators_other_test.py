@@ -7,12 +7,12 @@ import optuna
 import pandas as pd
 from tabulate import tabulate
 
-import src.python.core.estimators as estimators
-import src.python.other_estimators as estimators_main
-from src.python.core import lgbm, metadata
-from src.python.core.data_source import EpiDataSource
-from src.python.core.epiatlas_treatment import EpiAtlasFoldFactory
-from src.python.utils.time import time_now
+import epi_ml.core.estimators as estimators
+import epi_ml.other_estimators as estimators_main
+from epi_ml.core import lgbm, metadata
+from epi_ml.core.data_source import EpiDataSource
+from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory
+from epi_ml.utils.time import time_now
 
 
 def optimize_svm(ea_handler, logdir: Path):

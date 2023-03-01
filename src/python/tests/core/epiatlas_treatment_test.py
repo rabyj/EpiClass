@@ -9,13 +9,13 @@ import numpy as np
 import pytest
 from sklearn.model_selection import StratifiedKFold
 
-from src.python.core.epiatlas_treatment import (
+from epi_ml.core.epiatlas_treatment import (
     ACCEPTED_TRACKS,
     EpiAtlasDataset,
     EpiAtlasFoldFactory,
 )
-from src.python.core.metadata import Metadata
-from src.python.tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
+from epi_ml.core.metadata import Metadata
+from tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
 
 
 class TestEpiAtlasFoldFactory:

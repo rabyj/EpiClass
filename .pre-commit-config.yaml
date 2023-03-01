@@ -27,6 +27,7 @@ repos:
     - id: forbid-submodules
     - id: mixed-line-ending
     - id: name-tests-test
+      exclude: fixtures
     - id: pretty-format-json
       args: [--autofix]
     - id: requirements-txt-fixer
@@ -40,14 +41,14 @@ repos:
   hooks:
     - id: nbqa-isort
       name: isort
-      args: ["--settings-path=./pyproject.toml"]
+      args: ["--settings-path=src/python/pyproject.toml"]
       additional_dependencies: [isort==5.12.0]
     - id: nbqa-black
       name: black
-      args: ["--config=./pyproject.toml"]
+      args: ["--config=src/python/pyproject.toml"]
       additional_dependencies: [black==22.6.0]
     - id: nbqa-pylint
       name: pylint
-      args: ["--rcfile=./pyproject.toml", "--recursive=y"]
+      args: ["--rcfile=src/python/pyproject.toml", "--recursive=y"]
       additional_dependencies: [pylint==2.14.5]
       verbose: true
