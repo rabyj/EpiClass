@@ -18,6 +18,7 @@ import pytorch_lightning.callbacks as pl_callbacks
 import torch
 from pytorch_lightning import loggers as pl_loggers
 
+import epi_ml.utils.modify_metadata as modify_metadata
 from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from epi_ml.argparseutils.directorychecker import DirectoryChecker
 from epi_ml.core import analysis, metadata
@@ -27,11 +28,6 @@ from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory
 from epi_ml.core.model_pytorch import LightningDenseClassifier
 from epi_ml.core.trainer import MyTrainer, define_callbacks
 from epi_ml.utils.check_dir import create_dirs
-from epi_ml.utils.modify_metadata import (
-    filter_by_pairs,
-    fix_roadmap,
-    merge_pair_end_info,
-)
 from epi_ml.utils.my_logging import log_pre_training
 from epi_ml.utils.time import time_now
 
@@ -109,9 +105,11 @@ def main():
 
     if category in {"paired", "paired_end_mode"}:
         category = "paired_end_mode"
-        merge_pair_end_info(my_metadata)
-
-    fix_roadmap(my_metadata)
+        modify_metadata.merge_pair_end_info(my_metadata)
+    elif category == "data_generating_centre":
+        modify_metadata.fix_roadmap(my_metadata)
+    elif category == "upload_date_2":
+        modify_metadata.create_formated_date(my_metadata)
 
     label_list = metadata.env_filtering(my_metadata, category)
 
@@ -134,7 +132,9 @@ def main():
             assay_cat = "assay"
         else:
             raise ValueError("Cannot find assay category for class pairs.")
-        my_metadata = filter_by_pairs(my_metadata, assay_cat=assay_cat, cat2=category)
+        my_metadata = modify_metadata.filter_by_pairs(
+            my_metadata, assay_cat=assay_cat, cat2=category
+        )
 
     # --- Load signals and train ---
     loading_begin = time_now()

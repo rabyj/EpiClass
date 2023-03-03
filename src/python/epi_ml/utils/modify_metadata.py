@@ -1,6 +1,7 @@
 """Functions to perform more complex operations on the metadata."""
 import collections
 import copy
+import datetime
 
 from epi_ml.core.epiatlas_treatment import TRACKS_MAPPING
 from epi_ml.core.metadata import Metadata
@@ -396,3 +397,16 @@ def add_fake_epiatlas_metadata(metadata: Metadata) -> None:
             metadata[md5]["uuid"] = md5
         if "track_type" not in dset:
             metadata[md5]["track_type"] = "raw"
+
+
+def create_formated_date(metadata: Metadata) -> None:
+    """Add 'upload_date_2' category to dsets with YYYY-MM format."""
+    for md5, dset in metadata.items:
+        upload_date = dset.get("upload_date")
+        try:
+            date = str(datetime.datetime.strptime(upload_date, "%m-%d-%Y").date())
+        except TypeError:
+            continue
+
+        date = date.rsplit("-", 1)[0]
+        metadata[md5]["upload_date_2"] = date
