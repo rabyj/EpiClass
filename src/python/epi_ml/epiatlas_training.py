@@ -109,7 +109,9 @@ def main():
     elif category == "data_generating_centre":
         modify_metadata.fix_roadmap(my_metadata)
     elif category == "upload_date_2":
-        modify_metadata.create_formated_date(my_metadata)
+        modify_metadata.add_formated_date(my_metadata)
+    elif category == "random":
+        category = modify_metadata.add_random_group(my_metadata)
 
     label_list = metadata.env_filtering(my_metadata, category)
 

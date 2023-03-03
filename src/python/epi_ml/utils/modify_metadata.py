@@ -2,6 +2,9 @@
 import collections
 import copy
 import datetime
+import random
+
+import numpy as np
 
 from epi_ml.core.epiatlas_treatment import TRACKS_MAPPING
 from epi_ml.core.metadata import Metadata
@@ -399,7 +402,7 @@ def add_fake_epiatlas_metadata(metadata: Metadata) -> None:
             metadata[md5]["track_type"] = "raw"
 
 
-def create_formated_date(metadata: Metadata) -> None:
+def add_formated_date(metadata: Metadata) -> None:
     """Add 'upload_date_2' category to dsets with YYYY-MM format."""
     for md5, dset in metadata.items:
         upload_date = dset.get("upload_date")
@@ -410,3 +413,25 @@ def create_formated_date(metadata: Metadata) -> None:
 
         date = date.rsplit("-", 1)[0]
         metadata[md5]["upload_date_2"] = date
+
+
+def add_random_group(metadata: Metadata, seed=42, n_split=23) -> str:
+    """Add a 'random_seed{seed}_{n_split}splits' category made out of
+    n_splits random separations withing uuids (different tracks have same val).
+
+    Return the name of the new category.
+    """
+    uuids = list(metadata.label_counter("uuid", verbose=False).keys())
+    new_category = f"random_seed{seed}_{n_split}splits"
+
+    random.seed(a=seed)
+    random.shuffle(uuids)
+
+    splits = np.array_split(np.array(uuids), n_split)
+    mapping = {uuid: i for i, a_list in enumerate(splits) for uuid in a_list}
+
+    for dset in metadata.datasets:
+        group_id = mapping[dset["uuid"]]
+        dset[new_category] = group_id
+
+    return new_category
