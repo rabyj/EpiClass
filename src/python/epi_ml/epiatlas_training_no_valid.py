@@ -28,11 +28,7 @@ from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory
 from epi_ml.core.model_pytorch import LightningDenseClassifier
 from epi_ml.core.trainer import MyTrainer, define_callbacks
 from epi_ml.utils.check_dir import create_dirs
-from epi_ml.utils.modify_metadata import (
-    filter_by_pairs,
-    fix_roadmap,
-    merge_pair_end_info,
-)
+from epi_ml.utils.modify_metadata import filter_by_pairs, fix_roadmap, merge_pair_end_info
 from epi_ml.utils.my_logging import log_pre_training
 from epi_ml.utils.time import time_now
 

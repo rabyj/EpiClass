@@ -23,12 +23,9 @@ def import_test():
     from pytorch_lightning import loggers as pl_loggers
     from torch.utils.data import DataLoader, TensorDataset
 
-    import epi_mlcore.estimators as estimators
-    from epi_ml.argparseutils.DefaultHelpParser import (
-        DefaultHelpParser as ArgumentParser,
-    )
+    from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
     from epi_ml.argparseutils.directorychecker import DirectoryChecker
-    from epi_ml.core import analysis, data, metadata
+    from epi_ml.core import analysis, data, estimators, metadata
     from epi_ml.core.data import DataSet, UnknownData
     from epi_ml.core.data_source import EpiDataSource
     from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory

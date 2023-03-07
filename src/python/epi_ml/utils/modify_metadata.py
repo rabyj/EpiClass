@@ -96,7 +96,6 @@ def keep_major_cell_types(my_metadata: Metadata):
     md5s_per_assay = my_metadata.md5_per_class("assay")
     cell_types_in_assay = {}
     for assay, md5s in md5s_per_assay.items():
-
         # count cell_type occurence in assay
         cell_types_count = collections.Counter(
             my_metadata[md5]["cell_type"] for md5 in md5s

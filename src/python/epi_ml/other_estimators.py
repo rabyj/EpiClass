@@ -207,7 +207,6 @@ def main():
         print(f"Initial hdf5 loading time: {loading_time}")
 
         for model_name in selected_models:
-
             model_hparams = loaded_hparams[model_name]
 
             if model_name == "LGBM":
@@ -225,7 +224,6 @@ def main():
 
     # Giving predictions with chosen models, for all files in hdf5 list.
     if cli.predict_new:
-
         pattern = "{log}/**{name}*.pickle"
         to_load = []
         for model in models:
@@ -233,7 +231,6 @@ def main():
             to_load += glob.glob(pattern.format(log=cli.logdir, name=save_name))
 
         if to_load:
-
             my_data = data.DataSetFactory.from_epidata(
                 my_datasource,
                 my_metadata,

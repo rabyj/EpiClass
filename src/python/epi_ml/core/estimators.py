@@ -27,7 +27,7 @@ from skopt.callbacks import DeadlineStopper
 from skopt.space import Categorical, Integer, Real
 from tabulate import tabulate
 
-from .analysis import write_pred_table
+from epi_ml.core.analysis import write_pred_table
 from epi_ml.core.data import DataSet
 from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory
 from epi_ml.utils.check_dir import create_dirs

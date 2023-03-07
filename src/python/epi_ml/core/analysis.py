@@ -4,7 +4,7 @@ from __future__ import annotations
 import itertools
 import pickle
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple
 
 import matplotlib
 
@@ -18,10 +18,10 @@ import torchmetrics
 from torch import Tensor
 from torch.utils.data import TensorDataset
 
-from .confusion_matrix import ConfusionMatrixWriter
-from .data import Data, DataSet
-from .model_pytorch import LightningDenseClassifier
-from .types import SomeData, TensorData
+from epi_ml.core.confusion_matrix import ConfusionMatrixWriter
+from epi_ml.core.data import DataSet
+from epi_ml.core.model_pytorch import LightningDenseClassifier
+from epi_ml.core.types import SomeData, TensorData
 from epi_ml.utils.time import time_now_str
 
 
@@ -342,11 +342,9 @@ def values_to_bedgraph(values, chroms, resolution, bedgraph_path):
     i = 0
     with open(bedgraph_path, "w", encoding="utf-8") as my_bedgraph:
         for name, size in chroms:
-
             positions = itertools.chain(range(0, size, resolution), [size - 1])
 
             for pos1, pos2 in pairwise(positions):
-
                 line = [name, pos1, pos2, values[i]]
                 my_bedgraph.write("{}\t{}\t{}\t{}\n".format(*line))
                 i += 1

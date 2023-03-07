@@ -26,10 +26,21 @@ class EpiMLOutputReader:
     EXAMPLES_TOKEN = "Examples"
     TRAINING_TOKEN = "epoch"
     METRICS_TOKENS = frozenset(["Training", "Validation", "Test"])
-    HYPERPARAMS_TOKENS = frozenset([
-        "Nb", "Layers", "batch_size:", "early_stop_limit:", "is_training:", "keep_prob:",
-        "l1_scale:", "l2_scale:", "learning_rate:", "measure_frequency:", "training_epochs:"
-    ])
+    HYPERPARAMS_TOKENS = frozenset(
+        [
+            "Nb",
+            "Layers",
+            "batch_size:",
+            "early_stop_limit:",
+            "is_training:",
+            "keep_prob:",
+            "l1_scale:",
+            "l2_scale:",
+            "learning_rate:",
+            "measure_frequency:",
+            "training_epochs:",
+        ]
+    )
     METRICS = frozenset(["Accuracy", "Precision", "Recall", "f1_score", "MCC"])
 
     def __init__(self):
@@ -104,10 +115,8 @@ class EpiMLOutputReader:
     def _read_hyperparams(self):
         """Extract hyperparameters from multiple lines"""
         while True:
-
             first_word = self._get_current_first_word()
             if first_word in self._hyperparams_fields:
-
                 field_name = self._hyperparams_fields[first_word]
                 field_info = self._current_line.strip("\n").split(" ")[-1]
                 self._info[field_name] = field_info
@@ -171,13 +180,11 @@ class EpiMLOutputReader:
         """Extract metrics from multiple lines."""
         dataset = self._get_current_first_word()
         while True:
-
             self._next_line()
             line = self._current_line.strip("\n").split(":")
             first_word = line[0]
 
             if first_word in self.METRICS:
-
                 field_name = f"{dataset}_{first_word}".lower()
                 self._info[field_name] = line[1].strip(" ")
 
@@ -193,11 +200,27 @@ def main():
 
     options = parse_arguments()
 
-    wanted_infos = ["resolution", "nb_layers", "layers_size", "assembly", "nb_examples",
-                    "nb_classes", "training_size", "batch_size", "learning_rate",
-                    "l2_scale", "last_epoch", "training_time", "training_accuracy",
-                    "validation_accuracy", "validation_precision", "validation_recall",
-                    "validation_f1_score", "validation_mcc", "date"]
+    wanted_infos = [
+        "resolution",
+        "nb_layers",
+        "layers_size",
+        "assembly",
+        "nb_examples",
+        "nb_classes",
+        "training_size",
+        "batch_size",
+        "learning_rate",
+        "l2_scale",
+        "last_epoch",
+        "training_time",
+        "training_accuracy",
+        "validation_accuracy",
+        "validation_precision",
+        "validation_recall",
+        "validation_f1_score",
+        "validation_mcc",
+        "date",
+    ]
 
     reader = EpiMLOutputReader()
     reader.read_file(options.epiML_output)

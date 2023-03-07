@@ -10,10 +10,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from epi_ml.argparseutils.directorychecker import (
-    DirectoryChecker,
-    DirectoryCheckerError,
-)
+from epi_ml.argparseutils.directorychecker import DirectoryChecker, DirectoryCheckerError
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -45,7 +42,6 @@ def main():
     try:
         dir_checker(cli.dir)
     except DirectoryCheckerError as dir_err:
-
         faulty_path = dir_err.path
         if cli.exists:
             raise dir_err from None

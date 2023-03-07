@@ -186,7 +186,6 @@ def main():
 
     # if tuning, all training labels need to be present
     if is_training or is_tuning:
-
         if my_data.train.num_examples == 0 or my_data.validation.num_examples == 0:
             raise DatasetError("Trying to train without any training or validation data.")
 
@@ -221,7 +220,6 @@ def main():
 
     # --- CREATE a brand new MODEL ---
     if is_training and not is_tuning:
-
         # Create mapping (i --> class string) file
         my_data.save_mapping(mapping_file)
         mapping = my_data.load_mapping(mapping_file)
@@ -258,7 +256,6 @@ def main():
         my_model = LightningDenseClassifier.restore_model(model_dir)
 
     if cli.predict:
-
         if my_data.test.num_examples == 0:
             raise DatasetError("Trying to test without any test data.")
 
@@ -274,7 +271,6 @@ def main():
 
     # --- TRAIN the model ---
     if is_training:
-
         callbacks = define_callbacks(early_stop_limit=hparams.get("early_stop_limit", 20))
 
         before_train = time_now()

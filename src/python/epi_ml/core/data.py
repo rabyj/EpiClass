@@ -390,7 +390,6 @@ class EpiData(object):
         validation_ratio=0.1,
         test_ratio=0.1,
     ):
-
         self._label_category = label_category
         self._oversample = oversample
         self._assert_ratios(

@@ -166,10 +166,8 @@ class EpiAtlasDataset:
 
         raw_to_others = {}
         for tracks_to_md5 in uuid_to_md5s.values():
-
             for lead_track in LEADER_TRACKS:
                 if lead_track in tracks_to_md5:
-
                     non_lead_tracks = set(TRACKS_MAPPING[lead_track]) & set(
                         tracks_to_md5.keys()
                     )
@@ -233,9 +231,7 @@ class EpiAtlasDataset:
 
             # oversampling specific to each "leader" signal
             for _ in range(idxs[selected_index]):
-
                 if track_type in LEADER_TRACKS:
-
                     other_md5s = list(self._raw_to_others[chosen_md5].values())
 
                     other_signals = [self._other_tracks[md5] for md5 in other_md5s]
@@ -417,7 +413,6 @@ class EpiAtlasFoldFactory:
 
             # add each group of indexes the required number of times (oversampling)
             if track_type in TRACKS_MAPPING:
-
                 pos1 = md5_mapping[chosen_md5]
                 all_match_indexes = list(range(pos1, pos1 + other_nb + 1))
 
@@ -458,7 +453,6 @@ class EpiAtlasFoldFactory:
             np.zeros((raw_dset.train.num_examples, len(self.classes))),
             list(raw_dset.train.encoded_labels),
         ):
-
             # The "complete" refers to the fact that the indexes are sampling over total data.
             complete_train_idxs = self._find_other_tracks(
                 train_idxs, self._raw_dset.train, resample=True, md5_mapping=md5_mapping  # type: ignore

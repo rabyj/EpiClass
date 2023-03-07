@@ -91,7 +91,6 @@ class Hdf5Loader(object):
         # Load hdf5s and concatenate chroms into signals
         signals = {}
         for md5, file in files.items():
-
             # Trying to open hdf5 file.
             with h5py.File(file, "r") as f:
                 try:

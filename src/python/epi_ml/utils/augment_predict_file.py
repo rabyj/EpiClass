@@ -139,7 +139,6 @@ def add_matrices(logdir: str):
 
     mat = ConfusionMatrix.from_csv(csv_path=gen.format(i=0), relative=False)
     for i in range(1, 10):
-
         csv_path = Path(gen.format(i=i))
         if csv_path.exists():
             mat2 = ConfusionMatrix.from_csv(csv_path=csv_path, relative=False)
@@ -183,6 +182,7 @@ def add_coherence(df: pd.DataFrame, category: str):
     # return category to initial form
     df[category] = col_copy
 
+
 def add_track_type_coherence(df):
     """Add a more complex coherence metric.
     Tells us how much tracks types agree on predicted class for a unique experiment
@@ -215,7 +215,8 @@ def correct_true(path: Path, category: str, metadata: Metadata):
 def main():
     """Augment a label prediction file with new metadata categories.
 
-    File header format important. Expects [md5sum, true class, predicted class, labels] lines."""
+    File header format important. Expects [md5sum, true class, predicted class, labels] lines.
+    """
     if os.getenv("LOG") is not None:
         logdir = os.environ["LOG"]
         add_matrices(logdir)

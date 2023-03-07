@@ -165,7 +165,6 @@ def main():
 
     time_before_split = time_now()
     for i, my_data in enumerate(ea_handler.yield_split()):
-
         if i < min_split:
             continue
 

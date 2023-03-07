@@ -1,6 +1,6 @@
 default_stages: [commit, push]
 default_language_version:
-  python: python3
+  python: python3.8.10
 repos:
 - repo: meta
   hooks:
@@ -37,18 +37,41 @@ repos:
     - id: trailing-whitespace
       args: [--markdown-linebreak-ext=md]
 - repo: https://github.com/nbQA-dev/nbQA
-  rev: 1.6.1
+  rev: 1.6.3
   hooks:
     - id: nbqa-isort
-      name: isort
+      name: nbqa-isort
       args: ["--settings-path=src/python/pyproject.toml"]
       additional_dependencies: [isort==5.12.0]
     - id: nbqa-black
-      name: black
+      name: nbqa-black
       args: ["--config=src/python/pyproject.toml"]
-      additional_dependencies: [black==22.6.0]
+      additional_dependencies: [black==23.1.0]
     - id: nbqa-pylint
-      name: pylint
-      args: ["--rcfile=src/python/pyproject.toml", "--recursive=y"]
-      additional_dependencies: [pylint==2.14.5]
+      name: nbqa-pylint
+      args: ["--rcfile=src/python/pyproject.toml", "--recursive=y", "-sn"]
+      additional_dependencies: [pylint==2.16.4]
       verbose: true
+- repo: https://github.com/PyCQA/pylint
+  rev: v2.16.4
+  hooks:
+    - id: pylint
+      name: pylint
+      args:
+        [
+          "-rn", # Only display messages
+          "-sn", # Don't display the score
+          "--rcfile=src/python/pyproject.toml",
+          "--recursive=y"
+        ]
+- repo: https://github.com/PyCQA/isort
+  rev: 5.12.0
+  hooks:
+    - id: isort
+      name: isort
+      args: ["--settings-path=src/python/pyproject.toml"]
+- repo: https://github.com/psf/black
+  rev: 23.1.0
+  hooks:
+    - id: black
+      args: ["--config=src/python/pyproject.toml"]
