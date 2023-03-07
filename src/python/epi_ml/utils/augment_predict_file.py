@@ -170,7 +170,7 @@ def add_coherence(df: pd.DataFrame, category: str):
         df["files/epiRR"] = groups["md5sum"].transform("size")
 
     # compute coherence count/ratio, make category column countable beforehand
-    cat_dtype = df[category].dtype
+    col_copy = df[category].copy(deep=True)
     df[category] = df[category].astype(str)
 
     groups = df.groupby(["EpiRR", category])
@@ -180,9 +180,8 @@ def add_coherence(df: pd.DataFrame, category: str):
         1.0 * df["files/epiRR"]
     )
 
-    # return category to initial dtype
-    df[category] = df[category].astype(cat_dtype)
-
+    # return category to initial form
+    df[category] = col_copy
 
 def add_track_type_coherence(df):
     """Add a more complex coherence metric.
