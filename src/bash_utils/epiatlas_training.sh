@@ -11,12 +11,10 @@
 
 # ----> TEMPLATE PATHS TO MODIFY FOR SURE ARE IN []. Use regex to find, e.g. \[.*\]<----
 
-# Path of current file, for input logging purposes
-SCRIPTPATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 
 export PYTHONUNBUFFERED=TRUE
 
-if [ X"$SLURM_STEP_ID" = "X" ] && [ X"$SLURM_PROCID" = "X"0 ]
+if [[ -n "$SLURM_JOB_ID" ]];
 then
   echo "print =========================================="
   echo "print SLURM_JOB_ID = $SLURM_JOB_ID"
@@ -85,19 +83,23 @@ program_path="${gen_path}/[path-to-program-python-scripts]"
 cd ${program_path}
 
 printf '\n%s\n' "Launching following command"
-printf '%s\n' "python ${program_path}/python/utils/check_dir.py ${log}"
-python ${program_path}/python/utils/check_dir.py ${log}
+printf '%s\n' "python ${program_path}/utils/check_dir.py ${log}"
+python ${program_path}/utils/check_dir.py ${log}
 
 printf '\n%s\n' "Launching following command"
-printf '%s\n' "python ${program_path}/python/utils/preconditions.py -m ${arg5}"
-python ${program_path}/python/utils/preconditions.py -m ${arg5}
+printf '%s\n' "python ${program_path}/utils/preconditions.py -m ${arg5}"
+python ${program_path}/utils/preconditions.py -m ${arg5}
 
-cp -v "$SCRIPTPATH" "$log/launch_script_${SLURM_JOB_NAME}-job${SLURM_JOB_ID}.sh"
+# Preconditions passed, copy launch script to log dir.
+if [[ -n "$SLURM_JOB_ID" ]];
+then
+scontrol write batch_script ${SLURM_JOB_ID} ${log}/launch_script_${SLURM_JOB_NAME}-job${SLURM_JOB_ID}.sh
+fi
 
 
 # --- Transfer files to node scratch ---
 
-# if [ X"$SLURM_STEP_ID" = "X" ] && [ X"$SLURM_PROCID" = "X"0 ]
+# if [[ -n "$SLURM_JOB_ID" ]];
 # then
 #   newdir="$SLURM_TMPDIR/hdf5s/"
 #   mkdir $newdir
@@ -109,7 +111,7 @@ cp -v "$SCRIPTPATH" "$log/launch_script_${SLURM_JOB_NAME}-job${SLURM_JOB_ID}.sh"
 # fi
 
 
-if [ X"$SLURM_STEP_ID" = "X" ] && [ X"$SLURM_PROCID" = "X"0 ]
+if [[ -n "$SLURM_JOB_ID" ]];
 then
   project="[/path/to/project]"
   tar_file="${project}/input/hdf5/epiatlas_dfreeze_${resolution}_all_none.tar"  # IMPORTANT
@@ -117,41 +119,41 @@ then
   cd $SLURM_TMPDIR
 
   echo "Untaring $tar_file in $SLURM_TMPDIR"
-  time tar -xf $tar_file
+  tar -xf $tar_file
 
   export HDF5_PARENT="epiatlas_dfreeze_${resolution}_all_none" # IMPORTANT
 fi
 
 
-# --- no valid launch ---
+# --- MAIN PROGRAM ---
 
-if [[ -n "$NO_VALID" ]] #if variable exists
+echo "Time before launch: $(date +%F_%T)"
+printf '\n%s\n' "Launching following command"
+if [[ -n "$NO_VALID" ]]; #if variable exists
 then
+  # --- no valid launch ---
   if [[ "$log" == *"10fold"* ]]; then
-    log="$log/notactually10fold"
+    log="$log/notactually10foldbaka"
     printf '\n%s\n' "Incoherent log path, changing log to $log"
   fi
-  echo "Time before launch: $(date +%F_%T)"
-  printf '\n%s\n' "Launching following command"
-  printf '%s\n' "python ${program_path}/python/epiatlas_training_no_valid.py $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} > ${out1} 2> ${out2}"
-  python ${program_path}/python/epiatlas_training_no_valid.py $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} > "${out1}" 2> "${out2}"
+
+  printf '%s\n' "python ${program_path}/epiatlas_training_no_valid.py $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} > ${out1} 2> ${out2}"
+  python ${program_path}/epiatlas_training_no_valid.py $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} > "${out1}" 2> "${out2}"
   echo "Time after launch: $(date +%F_%T)"
   exit
+
+elif [[ -n "$RESTORE" ]]; then
+  # --- kfold launch ---
+  printf '%s\n' "python ${program_path}/epiatlas_training.py $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} --restore > ${out1} 2> ${out2}"
+  python ${program_path}/epiatlas_training.py $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} --restore > "${out1}" 2> "${out2}"
+  exit
+
 else
   # --- kfold launch ---
-  echo "Time before launch: $(date +%F_%T)"
-  printf '\n%s\n' "Launching following command"
-  if [[ -n "$RESTORE" ]]
-  then
-    printf '%s\n' "python ${program_path}/python/epiatlas_training.py $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} --restore > ${out1} 2> ${out2}"
-    python ${program_path}/python/epiatlas_training.py $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} --restore > "${out1}" 2> "${out2}"
-    exit
-  else
-    printf '%s\n' "python ${program_path}/python/epiatlas_training.py $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} > ${out1} 2> ${out2}"
-    python ${program_path}/python/epiatlas_training.py $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} > "${out1}" 2> "${out2}"
-  fi
-  echo "Time after launch: $(date +%F_%T)"
+  printf '%s\n' "python ${program_path}/epiatlas_training.py $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} > ${out1} 2> ${out2}"
+  python ${program_path}/epiatlas_training.py $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} > "${out1}" 2> "${out2}"
 fi
+echo "Time after launch: $(date +%F_%T)"
 
 
 # --- More logging ---
@@ -169,12 +171,12 @@ to_augment="${log}/full-10fold-validation_prediction.csv"
 metadata="${arg5}"
 
 printf '\n%s\n' "Launching following command"
-printf '%s\n' "python ${program_path}/python/utils/augment_predict_file.py ${to_augment} ${metadata} --all-categories"
-python ${program_path}/python/utils/augment_predict_file.py ${to_augment} ${metadata} --all-categories
+printf '%s\n' "python ${program_path}/utils/augment_predict_file.py ${to_augment} ${metadata} --all-categories"
+python ${program_path}/utils/augment_predict_file.py ${to_augment} ${metadata} --all-categories
 
 
 # Copy slurm output file to log dir
-if [ X"$SLURM_STEP_ID" = "X" ] && [ X"$SLURM_PROCID" = "X"0 ]
+if [[ -n "$SLURM_JOB_ID" ]];
 then
   slurm_out_folder="${gen_path}/[path-to-slurm-output]"
   slurm_out_file="${SLURM_JOB_NAME}-*${SLURM_JOB_ID}.out"

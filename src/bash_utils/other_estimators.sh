@@ -14,9 +14,7 @@
 
 export PYTHONUNBUFFERED=TRUE
 
-SCRIPTPATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
-
-if [ X"$SLURM_STEP_ID" = "X" ] && [ X"$SLURM_PROCID" = "X"0 ]
+if [[ -n "$SLURM_JOB_ID" ]];
 then
   echo "print =========================================="
   echo "print SLURM_JOB_ID = $SLURM_JOB_ID"
@@ -87,19 +85,23 @@ program_path="${gen_path}/[path-to-program-python-scripts]"
 cd ${program_path}
 
 printf '\n%s\n' "Launching following command"
-printf '%s\n' "python ${program_path}/python/utils/check_dir.py ${log}"
-python ${program_path}/python/utils/check_dir.py ${log}
+printf '%s\n' "python ${program_path}/utils/check_dir.py ${log}"
+python ${program_path}/utils/check_dir.py ${log}
 
 printf '\n%s\n' "Launching following command"
-printf '%s\n' "python ${program_path}/python/utils/preconditions.py -m ${meta}"
-python ${program_path}/python/utils/preconditions.py -m ${meta}
+printf '%s\n' "python ${program_path}/utils/preconditions.py -m ${meta}"
+python ${program_path}/utils/preconditions.py -m ${meta}
 
-cp -v "$SCRIPTPATH" "$log/launch_script_${SLURM_JOB_NAME}-job${SLURM_JOB_ID}.sh"
+# Preconditions passed, copy launch script to log dir.
+if [[ -n "$SLURM_JOB_ID" ]];
+then
+scontrol write batch_script ${SLURM_JOB_ID} ${log}/launch_script_${SLURM_JOB_NAME}-job${SLURM_JOB_ID}.sh
+fi
 
 
 # --- Transfer files to node scratch ---
 
-# if [ X"$SLURM_STEP_ID" = "X" ] && [ X"$SLURM_PROCID" = "X"0 ]
+# if [[ -n "$SLURM_JOB_ID" ]];
 # then
 #   newdir="$SLURM_TMPDIR/hdf5s/"
 #   mkdir $newdir
@@ -111,7 +113,7 @@ cp -v "$SCRIPTPATH" "$log/launch_script_${SLURM_JOB_NAME}-job${SLURM_JOB_ID}.sh"
 # fi
 
 
-# if [ X"$SLURM_STEP_ID" = "X" ] && [ X"$SLURM_PROCID" = "X"0 ]
+# if [[ -n "$SLURM_JOB_ID" ]];
 # then
 #   project="[/path/to/project]"
 #   tar_file="${project}/input/hdf5/epiatlas_dfreeze_${resolution}_all_none.tar"  # IMPORTANT
@@ -119,7 +121,7 @@ cp -v "$SCRIPTPATH" "$log/launch_script_${SLURM_JOB_NAME}-job${SLURM_JOB_ID}.sh"
 #   cd $SLURM_TMPDIR
 
 #   echo "Untaring $tar_file in $SLURM_TMPDIR"
-#   time tar -xf $tar_file
+#   tar -xf $tar_file
 
 #   export HDF5_PARENT="epiatlas_dfreeze_${resolution}_all_none" # IMPORTANT
 # fi
@@ -132,16 +134,16 @@ then
   export CONCURRENT_CV="1" # IMPORTANT
   n_iter="15" # IMPORTANT
   printf '\n%s\n' "Launching following command"
-  printf '%s\n' "python ${program_path}/python/other_estimators.py ${category} ${list} ${chrom} ${meta} ${log} --tune --models ${models} -n ${n_iter} > ${out1} 2> ${out2}"
-  python ${program_path}/python/other_estimators.py ${category} ${list} ${chrom} ${meta} ${log} --tune --models ${models} -n ${n_iter} > ${out1} 2> ${out2}
+  printf '%s\n' "python ${program_path}/other_estimators.py ${category} ${list} ${chrom} ${meta} ${log} --tune --models ${models} -n ${n_iter} > ${out1} 2> ${out2}"
+  python ${program_path}/other_estimators.py ${category} ${list} ${chrom} ${meta} ${log} --tune --models ${models} -n ${n_iter} > ${out1} 2> ${out2}
 fi
 
 
 if [ "${mode}" = "predict" ]
 then
   printf '\n%s\n' "Launching following command"
-  printf '%s\n' "python ${program_path}/python/other_estimators.py ${category} ${list} ${chrom} ${meta} ${log} --predict --models ${models} --hyperparams ${hparams} > ${out1} 2> ${out2}"
-  python ${program_path}/python/other_estimators.py ${category} ${list} ${chrom} ${meta} ${log} --predict --models ${models} --hyperparams ${hparams} > ${out1} 2> ${out2}
+  printf '%s\n' "python ${program_path}/other_estimators.py ${category} ${list} ${chrom} ${meta} ${log} --predict --models ${models} --hyperparams ${hparams} > ${out1} 2> ${out2}"
+  python ${program_path}/other_estimators.py ${category} ${list} ${chrom} ${meta} ${log} --predict --models ${models} --hyperparams ${hparams} > ${out1} 2> ${out2}
 fi
 
 
@@ -150,15 +152,15 @@ then
   export CONCURRENT_CV="2" # IMPORTANT
   n_iter="20" # IMPORTANT
   printf '\n%s\n' "Launching following command"
-  printf '%s\n' "python ${program_path}/python/other_estimators.py ${category} ${list} ${chrom} ${meta} ${log} --full-run -n ${n_iter} > ${out1} 2> ${out2}"
-  python ${program_path}/python/other_estimators.py ${category} ${list} ${chrom} ${meta} ${log} --full-run -n ${n_iter} > ${out1} 2> ${out2}
+  printf '%s\n' "python ${program_path}/other_estimators.py ${category} ${list} ${chrom} ${meta} ${log} --full-run -n ${n_iter} > ${out1} 2> ${out2}"
+  python ${program_path}/other_estimators.py ${category} ${list} ${chrom} ${meta} ${log} --full-run -n ${n_iter} > ${out1} 2> ${out2}
 fi
 
 if [ "${mode}" = "predict-new" ]
 then
   printf '\n%s\n' "Launching following command"
-  printf '%s\n' "python ${program_path}/python/other_estimators.py ${category} ${list} ${chrom} ${meta} ${log} --predict-new --models ${models} > ${out1} 2> ${out2}"
-  python ${program_path}/python/other_estimators.py ${category} ${list} ${chrom} ${meta} ${log} --predict-new --models ${models} > ${out1} 2> ${out2}
+  printf '%s\n' "python ${program_path}/other_estimators.py ${category} ${list} ${chrom} ${meta} ${log} --predict-new --models ${models} > ${out1} 2> ${out2}"
+  python ${program_path}/other_estimators.py ${category} ${list} ${chrom} ${meta} ${log} --predict-new --models ${models} > ${out1} 2> ${out2}
   wait
   exit
 fi
@@ -175,17 +177,17 @@ echo "Time after launch: $(date +%F_%T)"
 #   output="${model}_full-10fold-validation_prediction.csv"
 #   cat ${log}/${model}/${model}_split*_validation_prediction.csv | sort -ru > ${output}
 
-#   printf '%s\n' "python ${program_path}/python/utils/augment_predict_file.py ${output} ${meta} --all-categories"
-#   python ${program_path}/python/utils/augment_predict_file.py ${output} ${meta} --all-categories
+#   printf '%s\n' "python ${program_path}/utils/augment_predict_file.py ${output} ${meta} --all-categories"
+#   python ${program_path}/utils/augment_predict_file.py ${output} ${meta} --all-categories
 # done
 # wait
 
-# printf '%s\n' "python ${program_path}/python/utils/merge_all_predictions.py ${log_base}_1l_3000n/10fold/full-10fold-validation_prediction_augmented-all.csv ${log}/*full*validation_prediction_augmented-all.csv"
-# python ${program_path}/python/utils/merge_all_predictions.py ${log_base}_1l_3000n/10fold/full-10fold-validation_prediction_augmented-all.csv ${log}/*full*validation_prediction_augmented-all.csv
+# printf '%s\n' "python ${program_path}/utils/merge_all_predictions.py ${log_base}_1l_3000n/10fold/full-10fold-validation_prediction_augmented-all.csv ${log}/*full*validation_prediction_augmented-all.csv"
+# python ${program_path}/utils/merge_all_predictions.py ${log_base}_1l_3000n/10fold/full-10fold-validation_prediction_augmented-all.csv ${log}/*full*validation_prediction_augmented-all.csv
 
 
 # Copy slurm output file to log dir
-if [ X"$SLURM_STEP_ID" = "X" ] && [ X"$SLURM_PROCID" = "X"0 ]
+if [[ -n "$SLURM_JOB_ID" ]];
 then
   slurm_out_folder="${gen_path}/[path-to-slurm-output]"
   slurm_out_file="${SLURM_JOB_NAME}-*${SLURM_JOB_ID}.out"
