@@ -1,26 +1,33 @@
+"""Compute SHAP values of a model."""
 import argparse
 from pathlib import Path
 
 from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from epi_ml.argparseutils.directorychecker import DirectoryChecker
-from epi_ml.core import metadata
 from epi_ml.core.analysis import SHAP_Handler
 from epi_ml.core.data import DataSetFactory, KnownData
 from epi_ml.core.data_source import EpiDataSource
+from epi_ml.core.hdf5_loader import Hdf5Loader
+from epi_ml.core.metadata import Metadata
 from epi_ml.core.model_pytorch import LightningDenseClassifier
 from epi_ml.utils.time import time_now
 
 
 def parse_arguments() -> argparse.Namespace:
-    """argument parser for command line"""
+    """
+    Parse command-line arguments for the script.
+
+    Returns:
+        argparse.Namespace: Namespace object with parsed arguments.
+    """
     arg_parser = ArgumentParser()
 
     # fmt: off
     arg_parser.add_argument(
-        "category", type=str, help="The metatada category to analyse.",
+        "background-hdf5", type=Path, help="A file with hdf5 filenames for the explainer background. Use absolute path!", # pylint: disable=line-too-long
     )
     arg_parser.add_argument(
-        "hdf5", type=Path, help="A file with hdf5 filenames. Use absolute path!",
+        "explain-hdf5", type=Path, help="A file with hdf5 filenames on which to compute SHAP values. Use absolute path!", # pylint: disable=line-too-long
     )
     arg_parser.add_argument(
         "chromsize", type=Path, help="A file with chrom sizes.",
@@ -32,14 +39,21 @@ def parse_arguments() -> argparse.Namespace:
         "logdir", type=DirectoryChecker(), help="Directory for the output logs.",
     )
     arg_parser.add_argument(
-        "model", type=DirectoryChecker(), help="Directory where to load the classifier.",
+        "model", type=DirectoryChecker(), help="Directory where to load the classifier to explain.",
     )
     # fmt: on
     return arg_parser.parse_args()
 
 
-def benchmark(metadata: metadata.Metadata, datasource: EpiDataSource, model):
-    """Benchmark how much time shap values computations take according to size of background dataset."""
+def benchmark(metadata: Metadata, datasource: EpiDataSource, model):
+    """
+    Benchmark the time taken for computing SHAP values based on the size of the background dataset.
+
+    Args:
+        metadata (Metadata): A Metadata object containing dataset metadata.
+        datasource (EpiDataSource): An EpiDataSource object for accessing the data.
+        model: The model used for computing SHAP values.
+    """
     full_data = DataSetFactory.from_epidata(
         datasource=datasource,
         label_category="assay",
@@ -65,7 +79,18 @@ def benchmark(metadata: metadata.Metadata, datasource: EpiDataSource, model):
         print(f"Time taken with n={n}: {time_now() - t_a}")
 
 
-def test_background_effect(my_metadata, my_datasource, my_model, logdir):
+def test_background_effect(
+    my_metadata: Metadata, my_datasource: EpiDataSource, my_model, logdir: Path
+):
+    """
+    Test the effect of different background datasets on SHAP value computation.
+
+    Args:
+        my_metadata (Metadata): A Metadata object containing dataset metadata.
+        my_datasource (EpiDataSource): An EpiDataSource object for accessing the data.
+        my_model: The model used for computing SHAP values.
+        logdir (Path): The path to the output log directory.
+    """
     # --- Prefilter metadata ---
     my_metadata.display_labels("assay")
     my_metadata.select_category_subsets("track_type", ["pval", "Unique_plusRaw"])
@@ -130,13 +155,8 @@ def test_background_effect(my_metadata, my_datasource, my_model, logdir):
 
 
 def main():
+    """main"""
     cli = parse_arguments()
-
-    category = cli.category
-
-    my_datasource = EpiDataSource(cli.hdf5, cli.chromsize, cli.metadata)
-
-    my_metadata = metadata.Metadata(my_datasource.metadata_file)
 
     logdir = cli.logdir
     model_dir = logdir
@@ -144,7 +164,22 @@ def main():
         model_dir = cli.model
     my_model = LightningDenseClassifier.restore_model(model_dir)
 
-    benchmark(my_metadata, my_datasource, my_model)
+    signals = {}
+    hdf5_loader = Hdf5Loader(chrom_file=cli.chromsize, normalization=True)
+
+    hdf5_loader.load_hdf5s(cli.background_hdf5)
+    signals["background"] = hdf5_loader.signals
+
+    hdf5_loader.load_hdf5s(cli.explain_hdf5)
+    signals["explain"] = hdf5_loader.signals
+
+    shap_computer = SHAP_Handler(model=my_model, logdir=logdir)
+    shap_computer.compute_NN(
+        background_dset=signals["background"],
+        evaluation_dset=signals["explain"],
+        save=True,
+        name="assay_explain",
+    )
 
 
 if __name__ == "__main__":
