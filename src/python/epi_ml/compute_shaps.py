@@ -1,4 +1,5 @@
 """Compute SHAP values of a model."""
+# pylint: disable=import-error
 import argparse
 from pathlib import Path
 
@@ -24,10 +25,10 @@ def parse_arguments() -> argparse.Namespace:
 
     # fmt: off
     arg_parser.add_argument(
-        "background-hdf5", type=Path, help="A file with hdf5 filenames for the explainer background. Use absolute path!", # pylint: disable=line-too-long
+        "background_hdf5", metavar="background-hdf5", type=Path, help="A file with hdf5 filenames for the explainer background. Use absolute path!", # pylint: disable=line-too-long
     )
     arg_parser.add_argument(
-        "explain-hdf5", type=Path, help="A file with hdf5 filenames on which to compute SHAP values. Use absolute path!", # pylint: disable=line-too-long
+        "explain_hdf5", metavar="explain-hdf5", type=Path, help="A file with hdf5 filenames on which to compute SHAP values. Use absolute path!", # pylint: disable=line-too-long
     )
     arg_parser.add_argument(
         "chromsize", type=Path, help="A file with chrom sizes.",
@@ -40,6 +41,9 @@ def parse_arguments() -> argparse.Namespace:
     )
     arg_parser.add_argument(
         "model", type=DirectoryChecker(), help="Directory where to load the classifier to explain.",
+    )
+    arg_parser.add_argument(
+        "-o", "--output_name", metavar="--output-name", type=str, help="Name (not path) of outputed pickle file containing computed SHAP values", # pylint: disable=line-too-long
     )
     # fmt: on
     return arg_parser.parse_args()
@@ -158,6 +162,11 @@ def main():
     """main"""
     cli = parse_arguments()
 
+    name = cli.output_name
+    if name is None:
+        name = "shap_values"
+
+    metadata = cli.metadata
     logdir = cli.logdir
     model_dir = logdir
     if cli.model is not None:
@@ -167,18 +176,33 @@ def main():
     signals = {}
     hdf5_loader = Hdf5Loader(chrom_file=cli.chromsize, normalization=True)
 
-    hdf5_loader.load_hdf5s(cli.background_hdf5)
+    hdf5_loader.load_hdf5s(cli.background_hdf5, strict=True)
     signals["background"] = hdf5_loader.signals
 
-    hdf5_loader.load_hdf5s(cli.explain_hdf5)
+    hdf5_loader.load_hdf5s(cli.explain_hdf5, strict=True)
     signals["explain"] = hdf5_loader.signals
+
+    background_set = KnownData(
+        list(signals["background"].keys()),
+        list(signals["background"].values()),
+        None,
+        None,
+        metadata,
+    )
+    explain_set = KnownData(
+        list(signals["explain"].keys()),
+        list(signals["explain"].values()),
+        None,
+        None,
+        metadata,
+    )
 
     shap_computer = SHAP_Handler(model=my_model, logdir=logdir)
     shap_computer.compute_NN(
-        background_dset=signals["background"],
-        evaluation_dset=signals["explain"],
+        background_dset=background_set,
+        evaluation_dset=explain_set,
         save=True,
-        name="assay_explain",
+        name=name,
     )
 
 
