@@ -1,6 +1,7 @@
-"""Test functions from the analysis module."""
+"""Test SHAP related modules."""
 from __future__ import annotations
 
+import os
 import warnings
 from pathlib import Path
 from typing import List
@@ -10,8 +11,8 @@ warnings.filterwarnings("ignore", message=".*IPython display.*")
 import numpy as np
 import pytest
 
-from epi_ml.core.analysis import SHAP_Handler
 from epi_ml.core.data import DataSet
+from epi_ml.core.shap_values import SHAP_Handler
 
 
 class Test_SHAP_Handler:
@@ -22,8 +23,16 @@ class Test_SHAP_Handler:
         """Test logdir"""
         return make_specific_logdir("shap")
 
+    @pytest.fixture(autouse=True)
+    def clean_up(self, logdir: Path):
+        """Clean up log directories after test."""
+        yield
+        for file in os.listdir(logdir):
+            os.remove(os.path.join(logdir, file))
+        os.rmdir(logdir)
+
     @pytest.fixture
-    def handler(self, logdir, test_NN_model) -> SHAP_Handler:
+    def handler(self, logdir: Path, test_NN_model) -> SHAP_Handler:
         """SHAP_Handler instance"""
         return SHAP_Handler(test_NN_model, logdir)
 
@@ -54,7 +63,9 @@ class Test_SHAP_Handler:
         n_signals, n_dims = dset.validation.signals.shape[:]
         assert shap_values[0].shape == (n_signals, n_dims)
 
-    def test_save_load_pickle(self, handler: SHAP_Handler, mock_shap_values, fake_ids):
+    def test_save_load_pickle(
+        self, handler: SHAP_Handler, mock_shap_values: List, fake_ids: List
+    ):
         """Test pickle save/load methods."""
         path = handler.save_to_pickle(mock_shap_values, fake_ids)
         data = handler.load_from_pickle(path)
@@ -75,3 +86,23 @@ class Test_SHAP_Handler:
         data = handler.load_from_csv(path)
         assert list(data.index) == fake_ids
         assert np.array_equal(shaps, data.values)
+
+    def test_save_to_csv_list_input(
+        self, handler: SHAP_Handler, mock_shap_values, fake_ids
+    ):
+        """Test effect of list input."""
+        shap_values_matrix = [mock_shap_values[0]]
+        name = "test_csv"
+
+        with pytest.raises(ValueError):
+            handler.save_to_csv(shap_values_matrix, fake_ids, name)
+
+    def test_create_filename(self, handler: SHAP_Handler):
+        """Test filename creation method. Created by GPT4 lol."""
+        ext = "pickle"
+        name = "test_name"
+
+        filename = handler._create_filename(ext, name)  # pylint: disable=protected-access
+        assert filename.name.startswith(f"shap_{name}_")
+        assert filename.name.endswith(f".{ext}")
+        assert filename.parent == Path(handler.logdir)

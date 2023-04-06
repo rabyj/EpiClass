@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 import itertools
-import pickle
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Optional
 
 import matplotlib
 
@@ -12,7 +11,6 @@ matplotlib.use("Agg")
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
-import shap
 import torch
 import torchmetrics
 from torch import Tensor
@@ -21,11 +19,10 @@ from torch.utils.data import TensorDataset
 from epi_ml.core.confusion_matrix import ConfusionMatrixWriter
 from epi_ml.core.data import DataSet
 from epi_ml.core.model_pytorch import LightningDenseClassifier
-from epi_ml.core.types import SomeData, TensorData
-from epi_ml.utils.time import time_now_str
+from epi_ml.core.types import TensorData
 
 
-class Analysis(object):
+class Analysis:
     """Class containing main analysis methods desired."""
 
     def __init__(
@@ -152,7 +149,7 @@ class Analysis(object):
             raise ValueError(
                 f"Cannot compute {name} confusion matrix : No {name} dataset given"
             )
-        elif isinstance(dataset, Tensor):
+        if isinstance(dataset, Tensor):
             raise ValueError(
                 f"Cannot compute {name} confusion matrix : No targets in given dataset."
             )
@@ -199,91 +196,6 @@ class Analysis(object):
         mat = self._generic_confusion_matrix(self._test, name=set_name)
         mat = ConfusionMatrixWriter(labels=self._classes, confusion_matrix=mat)
         self._save_matrix(mat, set_name, path)
-
-
-class SHAP_Handler:
-    """Handle shap computations and data saving/loading."""
-
-    def __init__(self, model, logdir):
-        self.model = model
-        self.logdir = logdir
-        self.filename_template = "shap_values{name}_{time}.{ext}"
-
-    def _create_filename(self, ext: str, name="") -> Path:
-        if name:
-            name = "_" + name
-        filename = self.filename_template.format(name=name, ext=ext, time=time_now_str())
-
-        return Path(self.logdir) / filename
-
-    def compute_NN(
-        self, background_dset: SomeData, evaluation_dset: SomeData, save=True, name=""
-    ) -> Tuple[shap.DeepExplainer, List[np.ndarray]]:
-        """Compute shap values of deep learning model on evaluation dataset
-        by creating an explainer with background dataset.
-
-        Returns explainer and shap values (as a list of matrix per class)
-        """
-        explainer = shap.DeepExplainer(
-            model=self.model, data=Tensor(background_dset.signals)
-        )
-
-        shap_values = explainer.shap_values(Tensor(evaluation_dset.signals))
-
-        if save:
-            self.save_to_pickle(shap_values, evaluation_dset.ids, name)
-
-        return explainer, shap_values  # type: ignore
-
-    def save_to_pickle(self, shap_values, ids, name="") -> Path:
-        """Save shap values with assigned signals ids to a pickle file.
-
-        Returns path of saved file."""
-
-        filename = self._create_filename(name=name, ext="pickle")
-
-        print(f"Saving SHAP values to: {filename}")
-        with open(filename, "wb") as f:
-            pickle.dump({"shap": shap_values, "ids": ids}, f)
-
-        return filename
-
-    @staticmethod
-    def load_from_pickle(path) -> Dict[str, Any]:
-        """Load pickle file with shap values and ids.
-
-        Returns {"shap": shap_values, "ids": ids} dict.
-        """
-        with open(path, "rb") as f:
-            data = pickle.load(f)
-
-        return data
-
-    def save_to_csv(self, shap_values_matrix: np.ndarray, ids, name) -> Path:
-        """Save a single shap value matrix (shape (n_samples, #features)) to csv.
-        Giving a name is mandatory contrary to pickle.
-
-        Returns path of saved file.
-        """
-        if isinstance(shap_values_matrix, list):
-            raise ValueError(
-                "{shap_values_matrix} is a list, not an array. Need one matrix of shape (n_samples, #features)"
-            )
-
-        filename = self._create_filename(name=name, ext="csv")
-
-        n_dims = shap_values_matrix.shape[1]
-        df = pd.DataFrame(data=shap_values_matrix, index=ids, columns=range(n_dims))
-
-        print(f"Saving SHAP values to: {filename}")
-        df.to_csv(filename)
-
-        return filename
-
-    @staticmethod
-    def load_from_csv(path) -> pd.DataFrame:
-        """Return pandas dataframe of shap values for loaded file."""
-        return pd.read_csv(path, index_col=0)
 
 
 # TODO: Insert "ID" in header, and make sure subsequent script use that (e.g. the bash one liner, for sorting)

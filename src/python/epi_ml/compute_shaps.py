@@ -5,12 +5,12 @@ from pathlib import Path
 
 from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from epi_ml.argparseutils.directorychecker import DirectoryChecker
-from epi_ml.core.analysis import SHAP_Handler
 from epi_ml.core.data import DataSetFactory, KnownData
 from epi_ml.core.data_source import EpiDataSource
 from epi_ml.core.hdf5_loader import Hdf5Loader
 from epi_ml.core.metadata import Metadata
 from epi_ml.core.model_pytorch import LightningDenseClassifier
+from epi_ml.core.shap_values import SHAP_Handler
 from epi_ml.utils.time import time_now
 
 
