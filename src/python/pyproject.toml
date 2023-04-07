@@ -50,22 +50,23 @@ extension-pkg-allow-list = [
 
 [tool.pylint.messages_control]
 disable = [
-    "bad-inline-option",
-    "locally-disabled",
-    "file-ignored",
-    "suppressed-message",
-    "useless-suppression",
-    "deprecated-pragma",
-    "use-symbolic-message-instead",
     "abstract-method",
+    "bad-inline-option",
+    "deprecated-pragma",
+    "file-ignored",
+    "fixme",
     "invalid-name",
-    "wrong-import-position",
+    "locally-disabled",
+    "suppressed-message",
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-instance-attributes",
     "too-many-locals",
     "too-many-statements",
-    "too-many-arguments",
-    "too-few-public-methods",
-    "too-many-instance-attributes",
-    "fixme",
+    "use-symbolic-message-instead",
+    "useless-suppression",
+    "wrong-import-order",
+    "wrong-import-position",
 ]
 
 [tool.pylint.typecheck]
