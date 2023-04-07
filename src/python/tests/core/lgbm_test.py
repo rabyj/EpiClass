@@ -15,10 +15,10 @@ from lightgbm import LGBMClassifier
 from tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
 
 
-@pytest.fixture
-def logdir(make_specific_logdir) -> Path:
+@pytest.fixture(name="logdir")
+def tmp_logdir(mk_logdir) -> Path:
     """Test logdir"""
-    return make_specific_logdir("lgbm")
+    return mk_logdir("lgbm")
 
 
 @pytest.mark.filterwarnings("ignore:IPython")

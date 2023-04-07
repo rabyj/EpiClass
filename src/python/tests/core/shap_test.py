@@ -1,7 +1,6 @@
 """Test SHAP related modules."""
 from __future__ import annotations
 
-import os
 import warnings
 from pathlib import Path
 from typing import List
@@ -19,17 +18,9 @@ class Test_SHAP_Handler:
     """Class to test SHAP_Handler class."""
 
     @pytest.fixture
-    def logdir(self, make_specific_logdir) -> Path:
+    def logdir(self, mk_logdir) -> Path:
         """Test logdir"""
-        return make_specific_logdir("shap")
-
-    @pytest.fixture(autouse=True)
-    def clean_up(self, logdir: Path):
-        """Clean up log directories after test."""
-        yield
-        for file in os.listdir(logdir):
-            os.remove(os.path.join(logdir, file))
-        os.rmdir(logdir)
+        return mk_logdir("shap")
 
     @pytest.fixture
     def handler(self, logdir: Path, test_NN_model) -> SHAP_Handler:

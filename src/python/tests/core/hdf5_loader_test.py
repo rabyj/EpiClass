@@ -17,9 +17,9 @@ class Test_Hdf5Loader:
     """Test class Test_Hdf5Loader"""
 
     @pytest.fixture(scope="class", autouse=True)
-    def test_folder(self, make_specific_logdir) -> Path:
+    def test_folder(self, mk_logdir) -> Path:
         """Return temp hdf5 storage folder."""
-        return make_specific_logdir("temp_hdf5s")
+        return mk_logdir("temp_hdf5s")
 
     @pytest.fixture(scope="function")
     def test_data(self) -> EpiAtlasDataset:

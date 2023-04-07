@@ -16,26 +16,12 @@ from tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
 #     items[:] = [item for item in items if item.name != "test_logdir"]
 
 
-def general_test_logdir():
-    """Return logdir for tests. (in /tmp)."""
-    logdir = Path("/tmp/pytest")
-    logdir.mkdir(exist_ok=True, parents=True)
-    return logdir
-
-
-@pytest.fixture(scope="session", name="tmp_logdir")
-def fixture_logdir() -> Path:
-    """General test logdir"""
-    return general_test_logdir()
-
-
-@pytest.fixture(scope="session", autouse=True)
-def make_specific_logdir(tmp_logdir):
+@pytest.fixture(scope="session", autouse=True, name="mk_logdir")
+def make_specific_logdir(tmp_path_factory):
     """Return fct to create test subdirectory."""
 
     def _make_specific_logdir(name: str) -> Path:
-        logdir = tmp_logdir / name
-        logdir.mkdir(exist_ok=True, parents=True)
+        logdir = tmp_path_factory.mktemp(name)
         return logdir
 
     return _make_specific_logdir
@@ -48,17 +34,19 @@ def fixture_epiatlas_data_handler() -> EpiAtlasFoldFactory:
 
 
 @pytest.fixture(scope="session", name="test_epiatlas_dataset")
-def fixture_epiatlas_dataset(test_epiatlas_data_handler: EpiAtlasFoldFactory) -> DataSet:
+def fixture_epiatlas_dataset(
+    test_epiatlas_data_handler: EpiAtlasFoldFactory,
+) -> DataSet:
     """Return mock dataset."""
     return next(test_epiatlas_data_handler.yield_split())
 
 
 @pytest.fixture(scope="session", name="test_NN_model")
 def fixture_NN_model(
-    test_epiatlas_dataset: DataSet, tmp_logdir: Path
+    test_epiatlas_dataset: DataSet, mk_logdir
 ) -> LightningDenseClassifier:
     """Return small test neural network"""
-    test_mapping = tmp_logdir / "test_mapping.tsv"
+    test_mapping = mk_logdir("model") / "test_mapping.tsv"
     test_epiatlas_dataset.save_mapping(test_mapping)
     test_mapping = test_epiatlas_dataset.load_mapping(test_mapping)
 

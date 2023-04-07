@@ -11,9 +11,9 @@ from tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
 
 
 @pytest.fixture(name="test_dir")
-def fixture_test_dir(make_specific_logdir) -> Path:
+def fixture_test_dir(mk_logdir) -> Path:
     """Make temp logdir for tests."""
-    return make_specific_logdir("other_estimators")
+    return mk_logdir("other_estimators")
 
 
 def test_hyperparams(test_dir: Path):
