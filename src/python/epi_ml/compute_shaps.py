@@ -43,7 +43,7 @@ def parse_arguments() -> argparse.Namespace:
         "model", type=DirectoryChecker(), help="Directory where to load the classifier to explain.",
     )
     arg_parser.add_argument(
-        "-o", "--output_name", metavar="--output-name", type=str, help="Name (not path) of outputed pickle file containing computed SHAP values", # pylint: disable=line-too-long
+        "-o", "--output_name", metavar="--output-name", help="Name (not path) of outputed pickle file containing computed SHAP values", # pylint: disable=line-too-long
     )
     # fmt: on
     return arg_parser.parse_args()
@@ -70,7 +70,7 @@ def benchmark(metadata: Metadata, datasource: EpiDataSource, model):
 
     for n in [250]:
         train_data = full_data.train.subsample(list(range(n)))
-        shap_computer = SHAP_Handler(model=model, logdir=None)
+        shap_computer = SHAP_Handler(model=model, logdir="")
 
         eval_size = 25
         evaluation_data = full_data.train.subsample(list(range(n, n + eval_size)))

@@ -1,5 +1,5 @@
 # project specific
-saccer3/model
+**/saccer3/model/**
 
 # cluster files
 slurm_files/

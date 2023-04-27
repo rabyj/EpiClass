@@ -1,4 +1,5 @@
 """Model creation module"""
+# pylint: disable=unused-argument, arguments-differ
 # pyright: reportPrivateImportUsage=false
 from __future__ import annotations
 
@@ -8,6 +9,7 @@ from typing import Dict
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
+from numpy.typing import ArrayLike
 from torch import Tensor, nn
 from torch.utils.data import TensorDataset
 from torchinfo import summary
@@ -93,7 +95,8 @@ class LightningDenseClassifier(pl.LightningModule):  # pylint: disable=too-many-
         for _ in range(0, self._nb_layer - 1):
             layer_list.append(nn.Linear(self._hl_size, self._hl_size))
             layer_list.append(nn.ReLU())
-            # in case of ReLU, dropout should be applied before for computational efficiency, swapping them gives same result
+            # in case of ReLU, dropout should be applied before for computational efficiency,
+            # swapping them gives same result
             # https://sebastianraschka.com/faq/docs/dropout-activation.html
 
         # output layer
@@ -113,20 +116,32 @@ class LightningDenseClassifier(pl.LightningModule):  # pylint: disable=too-many-
 
     # --- Define format of output ---
     def forward(self, x: torch.Tensor):
-        """Return probabilities."""
-        return F.softmax(self.forward_train(x), dim=1)
-
-    def forward_train(self, x):
         """Return logits."""
         return self._pt_model(x)
+
+    def predict_proba(self, x: torch.Tensor) -> ArrayLike:
+        """Return probabilities"""
+        self.eval()
+        with torch.no_grad():
+            logits = self(x)
+            probs = F.softmax(logits, dim=1).numpy()
+        return probs
+
+    def predict_class(self, x: torch.Tensor) -> ArrayLike:
+        """Return class"""
+        self.eval()
+        with torch.no_grad():
+            logits = self(x)
+            preds = torch.argmax(logits, dim=1).numpy()
+        return preds
 
     # --- Define how training and validation is done, what loss is used ---
     def training_step(self, train_batch, batch_idx):
         """Return training loss and co."""
         x, y = train_batch
-        logits = self.forward_train(x)
+        logits = self(x)
         loss = F.cross_entropy(logits, y)
-        preds = F.softmax(logits, dim=1)
+        preds = torch.argmax(logits, dim=1)
         return {"loss": loss, "preds": preds.detach(), "target": y}
 
     def training_step_end(self, outputs):
@@ -144,10 +159,10 @@ class LightningDenseClassifier(pl.LightningModule):  # pylint: disable=too-many-
     def validation_step(self, val_batch, batch_idx):
         """Return validation loss and co."""
         x, y = val_batch
-        logits = self.forward_train(x)
+        logits = self(x)
         loss = F.cross_entropy(logits, y)
-        preds = F.softmax(logits, dim=1)
-        return {"loss": loss, "preds": preds, "target": y}
+        preds = torch.argmax(logits, dim=1)
+        return {"loss": loss, "preds": preds.detach(), "target": y}
 
     def validation_step_end(self, outputs):
         """Update and log validation metrics."""
@@ -179,20 +194,20 @@ class LightningDenseClassifier(pl.LightningModule):  # pylint: disable=too-many-
             preds = self(features)
         return self.metrics(preds, targets)
 
-    def compute_predictions_from_dataset(self, dataset: TensorDataset):
-        """Return predictions and targets from dataset."""
+    def compute_predictions_from_dataset(self, dataset: TensorDataset) -> ArrayLike:
+        """Return probability predictions and targets from dataset."""
         self.eval()
         with torch.no_grad():
             features, targets = dataset[:]
-            preds = self(features)
-        return preds, targets
+            probs = self.predict_proba(features)
+        return probs, targets
 
-    def compute_predictions_from_features(self, features: Tensor):
-        """Return predictions from features."""
+    def compute_predictions_from_features(self, features: Tensor) -> ArrayLike:
+        """Return probability predictions from features."""
         self.eval()
         with torch.no_grad():
-            preds = self(features)
-        return preds
+            probs = self.predict_proba(features)
+        return probs
 
     @classmethod
     def restore_model(cls, model_dir):
