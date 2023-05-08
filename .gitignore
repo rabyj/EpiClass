@@ -1,5 +1,10 @@
 # project specific
-**/saccer3/model/**
+**/tests/**/*.tsv
+**/tests/**/*.png
+**/tests/**/*.csv
+**/tests/**/*.list
+**/tests/**/*.zip
+**/tests/**/*.ckpt
 
 # cluster files
 slurm_files/
