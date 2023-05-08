@@ -47,6 +47,7 @@ class LightningDenseClassifier(pl.LightningModule):  # pylint: disable=too-many-
         self._mapping = mapping
 
         # -- hyperparameters --
+        self.l1_scale = hparams.get("l1_scale", 0)
         self.l2_scale = hparams.get("l2_scale", 0.01)
         self.dropout_rate = 1 - hparams.get("keep_prob", 0.5)
         self.learning_rate = hparams.get("learning_rate", 1e-5)
@@ -141,6 +142,11 @@ class LightningDenseClassifier(pl.LightningModule):  # pylint: disable=too-many-
         x, y = train_batch
         logits = self(x)
         loss = F.cross_entropy(logits, y)
+
+        if self.l1_scale > 0:
+            l1_norm = sum(torch.linalg.norm(p, 1) for p in self.parameters())
+            loss += self.l1_scale * l1_norm
+
         preds = torch.argmax(logits, dim=1)
         return {"loss": loss, "preds": preds.detach(), "target": y}
 
