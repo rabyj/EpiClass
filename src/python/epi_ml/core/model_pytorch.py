@@ -4,12 +4,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Tuple
 
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
-from numpy.typing import ArrayLike
 from torch import Tensor, nn
 from torch.utils.data import TensorDataset
 from torchinfo import summary
@@ -23,7 +22,8 @@ from torchmetrics import (
 )
 
 
-class LightningDenseClassifier(pl.LightningModule):  # pylint: disable=too-many-ancestors
+# pylint: disable=too-many-ancestors
+class LightningDenseClassifier(pl.LightningModule):
     """Simple dense network handler"""
 
     def __init__(
@@ -116,24 +116,24 @@ class LightningDenseClassifier(pl.LightningModule):  # pylint: disable=too-many-
         return optimizer
 
     # --- Define format of output ---
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: Tensor):
         """Return logits."""
         return self._pt_model(x)
 
-    def predict_proba(self, x: torch.Tensor) -> ArrayLike:
+    def predict_proba(self, x: Tensor) -> Tensor:
         """Return probabilities"""
         self.eval()
         with torch.no_grad():
             logits = self(x)
-            probs = F.softmax(logits, dim=1).numpy()
+            probs = F.softmax(logits, dim=1)
         return probs
 
-    def predict_class(self, x: torch.Tensor) -> ArrayLike:
+    def predict_class(self, x: Tensor) -> Tensor:
         """Return class"""
         self.eval()
         with torch.no_grad():
             logits = self(x)
-            preds = torch.argmax(logits, dim=1).numpy()
+            preds = torch.argmax(logits, dim=1)
         return preds
 
     # --- Define how training and validation is done, what loss is used ---
@@ -150,7 +150,7 @@ class LightningDenseClassifier(pl.LightningModule):  # pylint: disable=too-many-
         preds = torch.argmax(logits, dim=1)
         return {"loss": loss, "preds": preds.detach(), "target": y}
 
-    def training_step_end(self, outputs):
+    def training_step_end(self, outputs):  # pylint: disable=arguments-renamed
         """Update and log training metrics."""
         self.train_acc(outputs["preds"], outputs["target"])
 
@@ -200,7 +200,9 @@ class LightningDenseClassifier(pl.LightningModule):  # pylint: disable=too-many-
             preds = self(features)
         return self.metrics(preds, targets)
 
-    def compute_predictions_from_dataset(self, dataset: TensorDataset) -> ArrayLike:
+    def compute_predictions_from_dataset(
+        self, dataset: TensorDataset
+    ) -> Tuple[Tensor, Tensor]:
         """Return probability predictions and targets from dataset."""
         self.eval()
         with torch.no_grad():
@@ -208,7 +210,7 @@ class LightningDenseClassifier(pl.LightningModule):  # pylint: disable=too-many-
             probs = self.predict_proba(features)
         return probs, targets
 
-    def compute_predictions_from_features(self, features: Tensor) -> ArrayLike:
+    def compute_predictions_from_features(self, features: Tensor) -> Tensor:
         """Return probability predictions from features."""
         self.eval()
         with torch.no_grad():
