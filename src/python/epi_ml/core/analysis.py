@@ -262,7 +262,7 @@ def values_to_bedgraph(values, chroms, resolution, bedgraph_path):
                 i += 1
 
 
-def write_to_bed(bed_ranges: List[Tuple[str, int, int]], bed_path: str) -> None:
+def write_to_bed(bed_ranges: List[Tuple[str, int, int]], bed_path: str | Path) -> None:
     """Writes the given bed ranges to a .bed file.
 
     Args:
