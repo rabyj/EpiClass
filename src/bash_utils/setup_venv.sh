@@ -1,10 +1,11 @@
 #!/bin/bash
+# shellcheck disable=SC1091  # Don't warn about sourcing unreachable files
 
 # Define your environment name and requirements file
 # Default values
 ENV_NAME="epiclass_env"
-REQUIREMENTS_FILE="/lustre06/project/6007017/rabyj/sources/epi_ml/requirements/minimal_requirements.txt"
-LOCAL_MODULE_PATH="/lustre06/project/6007017/rabyj/sources/epi_ml/src/python"
+REQUIREMENTS_FILE="requirements/minimal_requirements.txt"
+LOCAL_MODULE_PATH="src/python"
 
 # Parse command line arguments
 while [[ "$#" -gt 0 ]]; do
@@ -44,7 +45,7 @@ source $ENV_NAME/bin/activate
 
 # Check if requirements file exists
 if [ ! -f $REQUIREMENTS_FILE ]; then
-    echo "requirements.txt does not exist. Please ensure it exists in the same directory as this script."
+    echo "requirements.txt does not exist. Please check the path."
     exit 1
 fi
 

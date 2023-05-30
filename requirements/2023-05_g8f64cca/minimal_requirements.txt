@@ -5,8 +5,9 @@ jupyter==1.0.0
 lightgbm>=3.3,<3.4
 matplotlib>=3.5,<3.6
 nbdime==3.1
+numpy>=1.22,<1.23
 optuna>=3.0,<3.1
-pandas
+pandas>=1.4.0,<1.5
 plotly==5.11
 pytorch-lightning>=1.6,<1.7
 rich==11.2.0
@@ -19,5 +20,4 @@ torch>=1.10,<1.11
 torchinfo==1.6.3
 torchmetrics==0.7.2
 typing_extensions==4.4.0
-umap==0.1.1
 wheel
