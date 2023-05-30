@@ -1,6 +1,7 @@
 black==23.1.0
 doc2dash==2.4.1
 isort==5.12.0
+kaleido>=0.2.1,<0.3
 nbclassic==0.5.3
 nbclient==0.7.2
 nbconvert==7.2.9
