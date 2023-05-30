@@ -69,6 +69,11 @@ class LightningDenseClassifier(pl.LightningModule):
         self.valid_acc = Accuracy(num_classes=self._y_size, average="micro")
 
     @property
+    def model(self) -> nn.Module:
+        """Return the pytorch model."""
+        return self._pt_model
+
+    @property
     def mapping(self) -> Dict[int, str]:
         """Return {output index:label} mapping."""
         return self._mapping
