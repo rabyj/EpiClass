@@ -1,5 +1,5 @@
 """
-Module: h5py_utils
+Module: clean_hdf5
 
 This module provides utility functions for working with h5py files and performing operations such as loading bed files,
 preprocessing bed intervals, checking positions against a blacklist, and modifying datasets.
@@ -25,7 +25,7 @@ It expects the following arguments:
 By running the module as a script, it will execute the main function.
 
 Example:
-$ python h5py_utils.py hdf5_list.txt blacklist.bed output_directory
+$ python clean_hdf5.py hdf5_list.txt blacklist.bed output_directory
 
 Author:
 Joanny Raby
@@ -190,7 +190,7 @@ def main() -> None:
     blacklist_path = cli.bed_filter
 
     with open(hdf5_list_path, "r", encoding="utf8") as f:
-        hdf5_files = [Path(line.strip()) for line in f]
+        hdf5_files = [Path(line.strip()) for line in f if line.strip()]
 
     blacklist_bed = load_bed(blacklist_path)
     blacklist_chromosome_intervals = preprocess_bed(blacklist_bed)
