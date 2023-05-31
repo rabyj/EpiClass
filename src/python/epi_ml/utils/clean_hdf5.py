@@ -1,31 +1,41 @@
 """
 Module: clean_hdf5
 
-This module provides utility functions for working with h5py files and performing operations such as loading bed files,
-preprocessing bed intervals, checking positions against a blacklist, and modifying datasets.
+This module provides functionality for working with HDF5 files, particularly for genomic data processing.
+It offers a set of utility functions that allow loading of BED (Browser Extensible Data) files,
+preprocessing of BED intervals, filtering positions based on a provided blacklist,
+and modifying HDF5 datasets accordingly.
 
-Functions:
+It primarily consists of the following functions:
+
 - is_position_in_blacklist(start, end, chromosome_intervals, chromosome, verbose=False) -> bool:
-    Checks if a position is in the blacklist.
+    Checks if a given genomic position falls within a predefined blacklist.
+
+- process_file(og_hdf5_path, blacklist_chromosome_intervals, output_dir):
+    Processes an individual HDF5 file. Copies the file to an output directory, applies the blacklist filter,
+    and writes the changes back into the file.
+
 - main() -> None:
-    The main function that orchestrates the processing of HDF5 files.
+    The main driver function that organizes the entire process of reading, filtering and writing the HDF5 files.
 
-Classes:
-- BEDIntervals: Alias for List[Tuple[str, int, int]]
+It defines the following type alias:
 
-Note:
-This module requires the h5py library and the epi_ml package for additional utilities.
+- BEDIntervals: Alias for List[Tuple[str, int, int]]. Represents genomic intervals from a BED file.
+
+Dependencies:
+This module requires the h5py library for HDF5 file operations and
+the epi_ml package for argument parsing and directory checking utilities.
 
 Usage:
-The main function is used for processing HDF5 files based on the provided command line arguments.
+The main function is invoked to process a list of HDF5 files according to command line arguments.
 It expects the following arguments:
-- hdf5_list (a file with HDF5 filenames)
-- bed_filter (a path to the bed file for position filtering)
-- output_dir (the directory where the modified HDF5 files will be created).
-By running the module as a script, it will execute the main function.
+- hdf5_list (a file containing a list of HDF5 filenames)
+- bed_filter (a path to a BED file containing the blacklist positions)
+- output_dir (the directory where the modified HDF5 files will be saved)
+- n_jobs (optional; the number of parallel jobs to run)
 
 Example:
-$ python clean_hdf5.py hdf5_list.txt blacklist.bed output_directory
+$ python clean_hdf5.py hdf5_list.txt blacklist.bed output_directory -n 4
 
 Author:
 Joanny Raby
@@ -35,15 +45,17 @@ from __future__ import annotations
 import argparse
 import bisect
 import shutil
+from multiprocessing import Pool
 from pathlib import Path
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import h5py
 
 from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from epi_ml.argparseutils.directorychecker import DirectoryChecker
 
-BEDIntervals = List[Tuple[str, int, int]]
+BEDInterval = Tuple[str, int, int]
+BEDIntervals = List[BEDInterval]
 
 
 def print_h5py_structure(file: str) -> None:
@@ -62,7 +74,6 @@ def print_h5py_structure(file: str) -> None:
 
     with h5py.File(file, "r") as f:
         f.visititems(print_structure)
-        f.close()
 
 
 def load_bed(path: Path | str) -> BEDIntervals:
@@ -85,7 +96,7 @@ def load_bed(path: Path | str) -> BEDIntervals:
     return data
 
 
-def preprocess_bed(bed: BEDIntervals) -> dict[str, BEDIntervals]:
+def preprocess_bed(bed: BEDIntervals) -> Dict[str, BEDIntervals]:
     """Preprocesses the BED intervals.
 
     Args:
@@ -113,7 +124,7 @@ def preprocess_bed(bed: BEDIntervals) -> dict[str, BEDIntervals]:
 def is_position_in_blacklist(
     start: int,
     end: int,
-    chromosome_intervals: dict[str, BEDIntervals],
+    chromosome_intervals: Dict[str, BEDIntervals],
     chromosome: str,
     verbose: bool = False,
 ) -> bool:
@@ -162,6 +173,34 @@ def is_position_in_blacklist(
     return False
 
 
+def process_file(
+    og_hdf5_path: Path,
+    blacklist_chromosome_intervals: Dict[str, BEDIntervals],
+    output_dir: Path,
+):
+    """Clean one hdf5 file. Save copy with regions that touch blacklisted regions to 0."""
+    hdf5_path = output_dir / (og_hdf5_path.stem + "_0blklst.hdf5")
+    shutil.copy(og_hdf5_path, hdf5_path)
+
+    with h5py.File(hdf5_path, "r+") as file:
+        bin_resolution = file.attrs["bin"][0]  # type: ignore # pylint: disable=unsubscriptable-object
+
+        header = list(file.keys())[0]
+        hdf5_data = file[header]
+        for chromosome, dataset in hdf5_data.items():  # type: ignore
+            if chromosome in blacklist_chromosome_intervals:
+                for i, _ in enumerate(dataset):
+                    position = i * bin_resolution
+                    if is_position_in_blacklist(
+                        position,
+                        position + bin_resolution,
+                        blacklist_chromosome_intervals,
+                        chromosome,
+                        verbose=False,
+                    ):
+                        dataset[i] = 0
+
+
 def parse_arguments() -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = ArgumentParser()
@@ -178,6 +217,13 @@ def parse_arguments() -> argparse.Namespace:
         type=DirectoryChecker(),
         help="Directory where to create the new hdf5 files.",
     )
+    arg_parser.add_argument(
+        "-n",
+        "--n_jobs",
+        type=int,
+        default=1,
+        help="Number of jobs to run in parallel.",
+    )
     return arg_parser.parse_args()
 
 
@@ -188,6 +234,10 @@ def main() -> None:
     hdf5_list_path = cli.hdf5_list
     output_dir = cli.output_dir
     blacklist_path = cli.bed_filter
+    n_cores = cli.n_jobs
+
+    if n_cores < 1:
+        raise ValueError("n_jobs must be >= 1")
 
     with open(hdf5_list_path, "r", encoding="utf8") as f:
         hdf5_files = [Path(line.strip()) for line in f if line.strip()]
@@ -195,28 +245,11 @@ def main() -> None:
     blacklist_bed = load_bed(blacklist_path)
     blacklist_chromosome_intervals = preprocess_bed(blacklist_bed)
 
-    for og_hdf5_path in hdf5_files:
-        hdf5_path = output_dir / (og_hdf5_path.stem + "_0blklst.hdf5")
-        shutil.copy(og_hdf5_path, hdf5_path)
-
-        with h5py.File(hdf5_path, "r+") as file:
-            bin_resolution = file.attrs["bin"][0]  # type: ignore # pylint: disable=unsubscriptable-object
-
-            header = list(file.keys())[0]
-            hdf5_data = file[header]
-            for chromosome, dataset in hdf5_data.items():  # type: ignore
-                if chromosome in blacklist_chromosome_intervals:
-                    for i, _ in enumerate(dataset):
-                        position = i * bin_resolution
-                        if is_position_in_blacklist(
-                            position,
-                            position + bin_resolution,
-                            blacklist_chromosome_intervals,
-                            chromosome,
-                            verbose=False,
-                        ):
-                            dataset[i] = 0
-            file.close()
+    with Pool(n_cores) as pool:
+        pool.starmap(
+            process_file,
+            [(file, blacklist_chromosome_intervals, output_dir) for file in hdf5_files],
+        )
 
 
 if __name__ == "__main__":
