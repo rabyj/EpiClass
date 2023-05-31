@@ -45,6 +45,7 @@ from __future__ import annotations
 import argparse
 import bisect
 import shutil
+import warnings
 from multiprocessing import Pool
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -180,6 +181,11 @@ def process_file(
 ):
     """Clean one hdf5 file. Save copy with regions that touch blacklisted regions to 0."""
     hdf5_path = output_dir / (og_hdf5_path.stem + "_0blklst.hdf5")
+
+    if hdf5_path.is_file():
+        warnings.warn(f"{hdf5_path} already exists. Skipping.")
+        return
+
     shutil.copy(og_hdf5_path, hdf5_path)
 
     with h5py.File(hdf5_path, "r+") as file:
