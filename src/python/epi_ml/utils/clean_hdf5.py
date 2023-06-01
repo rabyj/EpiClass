@@ -44,9 +44,9 @@ from __future__ import annotations
 
 import argparse
 import bisect
+import concurrent.futures
 import shutil
 import warnings
-from multiprocessing import Pool
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -251,11 +251,18 @@ def main() -> None:
     blacklist_bed = load_bed(blacklist_path)
     blacklist_chromosome_intervals = preprocess_bed(blacklist_bed)
 
-    with Pool(n_cores) as pool:
-        pool.starmap(
-            process_file,
-            [(file, blacklist_chromosome_intervals, output_dir) for file in hdf5_files],
-        )
+    with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
+        futures = [
+            executor.submit(
+                process_file, file, blacklist_chromosome_intervals, output_dir
+            )
+            for file in hdf5_files
+        ]
+
+        # Wait for all futures to complete
+        for future in concurrent.futures.as_completed(futures):
+            # Any exceptions will be re-raised when calling result
+            _ = future.result()
 
 
 if __name__ == "__main__":
