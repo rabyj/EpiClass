@@ -1,38 +1,40 @@
 """
 Module: clean_hdf5
 
-This module provides functionality for working with HDF5 files, particularly for genomic data processing.
-It offers a set of utility functions that allow loading of BED (Browser Extensible Data) files,
-preprocessing of BED intervals, filtering positions based on a provided blacklist,
-and modifying HDF5 datasets accordingly.
+This module provides functionality for cleaning and processing genomic data stored in HDF5 files. Specifically, it allows for applying blacklist filters onto HDF5 datasets to modify certain genomic intervals. It reads BED (Browser Extensible Data) files containing these intervals, preprocesses them, determines the positions that are subject to treatment based on the blacklist, and applies changes to HDF5 datasets.
 
-It primarily consists of the following functions:
+The module primarily consists of the following functions:
 
-- is_position_in_blacklist(start, end, chromosome_intervals, chromosome, verbose=False) -> bool:
-    Checks if a given genomic position falls within a predefined blacklist.
+    load_bed(path: Path | str) -> BEDIntervals:
+    Loads the contents of a BED file.
 
-- process_file(og_hdf5_path, blacklist_chromosome_intervals, output_dir):
-    Processes an individual HDF5 file. Copies the file to an output directory, applies the blacklist filter,
-    and writes the changes back into the file.
+    preprocess_bed(bed: BEDIntervals) -> Dict[str, BEDIntervals]:
+    Preprocesses the BED intervals.
 
-- main() -> None:
-    The main driver function that organizes the entire process of reading, filtering and writing the HDF5 files.
+    get_positions_to_treat(blacklist_chrom_intervals: Dict[str, BEDIntervals], bin_resolution: int) -> Dict[str, List[int]]:
+    Generates the positions to treat based on the bin resolution and blacklist intervals.
 
-It defines the following type alias:
+    process_file(og_hdf5_path: Path, positions_to_treat: Dict[str, List[int]], output_dir: Path):
+    Cleans one HDF5 file and saves a copy with blacklisted regions set to zero. This function assumes the positions to treat contain chromosome vector indices for the right resolution.
 
-- BEDIntervals: Alias for List[Tuple[str, int, int]]. Represents genomic intervals from a BED file.
+main() -> None:
+The main driver function that organizes the entire process of reading, filtering and writing the HDF5 files.
+
+This module also defines the following type aliases:
+
+    BEDInterval = Tuple[str, int, int]: Represents a single genomic interval from a BED file.
+    BEDIntervals = List[BEDInterval]: Represents a list of genomic intervals from a BED file.
 
 Dependencies:
-This module requires the h5py library for HDF5 file operations and
-the epi_ml package for argument parsing and directory checking utilities.
+This module requires the h5py library for HDF5 file operations, and the epi_ml package for argument parsing and directory checking utilities.
 
 Usage:
-The main function is invoked to process a list of HDF5 files according to command line arguments.
-It expects the following arguments:
-- hdf5_list (a file containing a list of HDF5 filenames)
-- bed_filter (a path to a BED file containing the blacklist positions)
-- output_dir (the directory where the modified HDF5 files will be saved)
-- n_jobs (optional; the number of parallel jobs to run)
+Invoke the main function to process a list of HDF5 files according to command-line arguments:
+
+    hdf5_list: A file containing a list of HDF5 filenames.
+    bed_filter: A path to a BED file containing the blacklist positions.
+    output_dir: The directory where the modified HDF5 files will be saved.
+    n_jobs (optional): The number of parallel jobs to run.
 
 Example:
 $ python clean_hdf5.py hdf5_list.txt blacklist.bed output_directory -n 4
@@ -43,10 +45,10 @@ Joanny Raby
 from __future__ import annotations
 
 import argparse
-import bisect
 import concurrent.futures
 import shutil
 import warnings
+from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -90,10 +92,10 @@ def load_bed(path: Path | str) -> BEDIntervals:
     with open(path, "r", encoding="utf8") as file:
         for line in file:
             parts = line.strip().split("\t")
-            chromosome = parts[0]
+            chrom = parts[0]
             start = int(parts[1])
             end = int(parts[2])
-            data.append((chromosome, start, end))
+            data.append((chrom, start, end))
     return data
 
 
@@ -106,80 +108,56 @@ def preprocess_bed(bed: BEDIntervals) -> Dict[str, BEDIntervals]:
     Returns:
         A dictionary mapping chromosomes to sorted intervals.
     """
-    chromosome_intervals = {}
+    chrom_intervals = {}
 
     for interval in bed:
-        chromosome = interval[0]
+        chrom = interval[0]
 
-        if chromosome not in chromosome_intervals:
-            chromosome_intervals[chromosome] = []
+        if chrom not in chrom_intervals:
+            chrom_intervals[chrom] = []
 
-        chromosome_intervals[chromosome].append(interval)
+        chrom_intervals[chrom].append(interval)
 
-    for intervals in chromosome_intervals.values():
+    for intervals in chrom_intervals.values():
         intervals.sort(key=lambda interval: interval[1])
 
-    return chromosome_intervals
+    return chrom_intervals
 
 
-def is_position_in_blacklist(
-    start: int,
-    end: int,
-    chromosome_intervals: Dict[str, BEDIntervals],
-    chromosome: str,
-    verbose: bool = False,
-) -> bool:
-    """Checks if a position is in the blacklist.
+def get_positions_to_treat(
+    blacklist_chrom_intervals: Dict[str, BEDIntervals], bin_resolution: int
+) -> Dict[str, List[int]]:
+    """Generate the positions to treat based on the bin resolution and blacklist intervals.
 
     Args:
-        start: The start position of the region.
-        end: The end position of the region.
-        chromosome_intervals: A dictionary mapping chromosomes to sorted intervals.
-        chromosome: The chromosome to check.
-        verbose: Flag indicating whether to print verbose output. Default is False.
+        blacklist_chrom_intervals: A dictionary mapping chromosomes to sorted intervals.
+        bin_resolution: The bin resolution.
 
     Returns:
-        True if the position is in the blacklist, False otherwise.
+        A dictionary mapping chromosomes to a list of positions to be treated.
     """
-    if chromosome not in chromosome_intervals:
-        return False
+    positions = defaultdict(list)
 
-    intervals = chromosome_intervals[chromosome]
-    start_positions = [interval[1] for interval in intervals]
-    end_positions = [interval[2] - 1 for interval in intervals]  # 1 to 0 based
-
-    start_index = bisect.bisect_right(start_positions, start)
-
-    if start_index > 0:
-        end_index = start_index - 1
-        interval_start = start_positions[end_index]
-        interval_end = end_positions[end_index]
-        if interval_start <= end and start <= interval_end:
-            if verbose:
-                print(
-                    f"{chromosome}:{start}-{end} is overlapping {interval_start}-{interval_end}"
-                )
-            return True
-
-    if start_index < len(start_positions):
-        interval_start = start_positions[start_index]
-        interval_end = end_positions[start_index]
-        if interval_start <= end and start <= interval_end:
-            if verbose:
-                print(
-                    f"{chromosome}:{start}-{end} is overlapping {interval_start}-{interval_end}"
-                )
-            return True
-
-    return False
+    for chr_name, intervals in blacklist_chrom_intervals.items():
+        for _, start, end in intervals:
+            # convert from base pairs to data resolution
+            # adjust end_index if `end` is exactly on a bin boundary
+            start_index = start // bin_resolution
+            end_index = (end - 1) // bin_resolution
+            positions[chr_name].extend(range(start_index, end_index + 1))
+        positions[chr_name] = list(set(positions[chr_name]))
+    return positions
 
 
 def process_file(
     og_hdf5_path: Path,
-    blacklist_chromosome_intervals: Dict[str, BEDIntervals],
+    positions_to_treat: Dict[str, List[int]],
     output_dir: Path,
 ):
-    """Clean one hdf5 file. Save copy with regions that touch blacklisted regions to 0."""
+    """Clean one hdf5 file. Save copy with regions that touch blacklisted regions to 0.
+
+    Supposes the positions to treat contain chromosome vector indices for the right resolution.
+    """
     hdf5_path = output_dir / (og_hdf5_path.stem + "_0blklst.hdf5")
 
     if hdf5_path.is_file():
@@ -189,22 +167,14 @@ def process_file(
     shutil.copy(og_hdf5_path, hdf5_path)
 
     with h5py.File(hdf5_path, "r+") as file:
-        bin_resolution = file.attrs["bin"][0]  # type: ignore # pylint: disable=unsubscriptable-object
-
         header = list(file.keys())[0]
-        hdf5_data = file[header]
-        for chromosome, dataset in hdf5_data.items():  # type: ignore
-            if chromosome in blacklist_chromosome_intervals:
-                for i, _ in enumerate(dataset):
-                    position = i * bin_resolution
-                    if is_position_in_blacklist(
-                        position,
-                        position + bin_resolution,
-                        blacklist_chromosome_intervals,
-                        chromosome,
-                        verbose=False,
-                    ):
-                        dataset[i] = 0
+        hdf5_data: h5py.Group = file[header]  # type: ignore
+        for chrom, dataset in hdf5_data.items():
+            if chrom in positions_to_treat:
+                for position in positions_to_treat[chrom]:
+                    dataset[position] = 0
+
+        file.close()
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -249,15 +219,26 @@ def main() -> None:
         hdf5_files = [Path(line.strip()) for line in f if line.strip()]
 
     blacklist_bed = load_bed(blacklist_path)
-    blacklist_chromosome_intervals = preprocess_bed(blacklist_bed)
+    blacklist_chrom_intervals = preprocess_bed(blacklist_bed)
+    positions_to_treat = {}
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
-        futures = [
-            executor.submit(
-                process_file, file, blacklist_chromosome_intervals, output_dir
-            )
-            for file in hdf5_files
-        ]
+        futures = []
+
+        for file in hdf5_files:
+            with h5py.File(file, "r") as hdf5_file:
+                bin_resolution: int = hdf5_file.attrs["bin"][0]  # type: ignore # pylint: disable=unsubscriptable-object
+                # If the positions to treat for this bin resolution have not been generated yet, generate them
+                if bin_resolution not in positions_to_treat:
+                    positions_to_treat[bin_resolution] = get_positions_to_treat(
+                        blacklist_chrom_intervals, bin_resolution
+                    )
+                futures.append(
+                    executor.submit(
+                        process_file, file, positions_to_treat[bin_resolution], output_dir
+                    )
+                )
+            hdf5_file.close()
 
         # Wait for all futures to complete
         for future in concurrent.futures.as_completed(futures):
