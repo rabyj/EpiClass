@@ -53,6 +53,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 import h5py
+import numpy as np
 
 from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from epi_ml.argparseutils.directorychecker import DirectoryChecker
@@ -149,6 +150,29 @@ def get_positions_to_treat(
     return positions
 
 
+def check_file(
+    og_hdf5_path: Path,
+    positions_to_treat: Dict[str, List[int]],
+) -> bool:
+    """Checks one hdf5 file to ensure all designated positions are zero.
+
+    Supposes the positions to treat contain chromosome vector indices for the right resolution.
+
+    Returns: True if all positions are zero, False otherwise.
+    """
+    with h5py.File(og_hdf5_path, "r") as file:
+        header = list(file.keys())[0]
+        hdf5_data: h5py.Group = file[header]  # type: ignore
+        for chrom, dataset in hdf5_data.items():
+            if chrom in positions_to_treat:
+                for position in positions_to_treat[chrom]:
+                    if not np.isclose(dataset[position], 0):
+                        return False
+
+        file.close()
+    return True
+
+
 def process_file(
     og_hdf5_path: Path,
     positions_to_treat: Dict[str, List[int]],
@@ -200,6 +224,12 @@ def parse_arguments() -> argparse.Namespace:
         default=1,
         help="Number of jobs to run in parallel.",
     )
+    arg_parser.add_argument(
+        "-c",
+        "--check_only",
+        action="store_true",
+        help="Only check if hdf5 files are already treated, without processing.",
+    )
     return arg_parser.parse_args()
 
 
@@ -211,6 +241,7 @@ def main() -> None:
     output_dir = cli.output_dir
     blacklist_path = cli.bed_filter
     n_cores = cli.n_jobs
+    check_only = cli.check_only
 
     if n_cores < 1:
         raise ValueError("n_jobs must be >= 1")
@@ -228,22 +259,41 @@ def main() -> None:
         for file in hdf5_files:
             with h5py.File(file, "r") as hdf5_file:
                 bin_resolution: int = hdf5_file.attrs["bin"][0]  # type: ignore # pylint: disable=unsubscriptable-object
+
                 # If the positions to treat for this bin resolution have not been generated yet, generate them
-                if bin_resolution not in positions_to_treat:
-                    positions_to_treat[bin_resolution] = get_positions_to_treat(
+                try:
+                    pos_to_treat = positions_to_treat[bin_resolution]
+                except KeyError:
+                    pos_to_treat = get_positions_to_treat(
                         blacklist_chrom_intervals, bin_resolution
                     )
-                futures.append(
-                    executor.submit(
-                        process_file, file, positions_to_treat[bin_resolution], output_dir
+                    positions_to_treat[bin_resolution] = pos_to_treat
+
+                if check_only:
+                    futures.append(executor.submit(check_file, file, pos_to_treat))
+                else:
+                    futures.append(
+                        executor.submit(
+                            process_file,
+                            file,
+                            pos_to_treat,
+                            output_dir,
+                        )
                     )
-                )
+
             hdf5_file.close()
 
         # Wait for all futures to complete
-        for future in concurrent.futures.as_completed(futures):
-            # Any exceptions will be re-raised when calling result
-            _ = future.result()
+        # Any exceptions will be re-raised when calling result
+        if check_only:
+            for future, file in zip(futures, hdf5_files):
+                if not future.result():
+                    print(f"{file} has not been treated.")
+                else:
+                    print(f"{file} has been treated.")
+        else:
+            for future in concurrent.futures.as_completed(futures):
+                _ = future.result()
 
 
 if __name__ == "__main__":

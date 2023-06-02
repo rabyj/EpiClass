@@ -161,6 +161,7 @@ def test_main(tmpdir, mock_test_bed, test_hdf5, mocker):
             bed_filter = mock_test_bed
             output_dir = tmpdir
             n_jobs = 1
+            check_only = False
 
         return Args()
 
