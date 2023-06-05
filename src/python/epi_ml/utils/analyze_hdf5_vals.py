@@ -88,11 +88,24 @@ def main():
 
     datasource = EpiDataSource(hdf5_list_path, chromsize_path, metadata_path)
     my_meta = Metadata(datasource.metadata_file)
-    my_meta.select_category_subsets(TRACK_TYPE, ACCEPTED_TRACKS)
+
+    # exclude samples that are not in ACCEPTED_TRACKS
+    md5_per_track_type = my_meta.md5_per_class("track_type")
+    md5_to_exclude = []
+    for track_type, md5_list in md5_per_track_type.items():
+        if track_type not in ACCEPTED_TRACKS:
+            print(f"Excluding samples for track type: {track_type}")
+            md5_to_exclude.extend(md5_list)
 
     md5s_to_analyze = set(Hdf5Loader.read_list(hdf5_list_path).keys())
+    for md5 in md5_to_exclude:
+        try:
+            md5s_to_analyze.remove(md5)
+            del my_meta[md5]
+        except KeyError:
+            continue
 
-    # Check that we have metadata on all samples.
+    # Check that we have metadata on all left samples.
     for md5 in md5s_to_analyze:
         if md5 not in my_meta:
             raise IndexError(f"Missing metadata for {md5}")
@@ -106,7 +119,7 @@ def main():
 
     # Load the hdf5 files into a datafram
     hdf5_loader = Hdf5Loader(chrom_file=chromsize_path, normalization=True)
-    signals = hdf5_loader.load_hdf5s(hdf5_list_path, strict=True).signals
+    signals = hdf5_loader.load_hdf5s(hdf5_list_path, md5s_to_analyze, strict=True).signals
     df = pd.DataFrame.from_dict(signals, orient="index")
 
     # Compute descriptive statistics
