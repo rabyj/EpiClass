@@ -1,4 +1,6 @@
 """Main"""
+# pylint: disable=too-many-locals, too-many-arguments, too-many-branches, too-many-statements
+# pyright: reportUnboundVariable=false
 import argparse
 import json
 import os
@@ -24,8 +26,6 @@ from epi_ml.core.model_pytorch import LightningDenseClassifier
 from epi_ml.core.trainer import MyTrainer, define_callbacks
 from epi_ml.utils.time import time_now
 
-# pyright: reportUnboundVariable=false
-
 
 class DatasetError(Exception):
     """Custom error"""
@@ -40,6 +40,7 @@ class DatasetError(Exception):
 
 def parse_arguments() -> argparse.Namespace:
     """argument parser for command line"""
+    # fmt: off
     arg_parser = ArgumentParser()
     arg_parser.add_argument(
         "category", type=str, help="The metatada category to analyse."
@@ -52,8 +53,12 @@ def parse_arguments() -> argparse.Namespace:
     arg_parser.add_argument(
         "hdf5", type=Path, help="A file with hdf5 filenames. Use absolute path!"
     )
-    arg_parser.add_argument("chromsize", type=Path, help="A file with chrom sizes.")
-    arg_parser.add_argument("metadata", type=Path, help="A metadata JSON file.")
+    arg_parser.add_argument(
+        "chromsize", type=Path, help="A file with chrom sizes."
+        )
+    arg_parser.add_argument(
+        "metadata", type=Path, help="A metadata JSON file."
+        )
     arg_parser.add_argument(
         "logdir", type=DirectoryChecker(), help="Directory for the output logs."
     )
@@ -73,7 +78,7 @@ def parse_arguments() -> argparse.Namespace:
         type=DirectoryChecker(),
         help="Directory from which to load the desired model. Default is logdir.",
     )
-
+    # fmt: on
     return arg_parser.parse_args()
 
 
@@ -338,10 +343,10 @@ def main():
 
     # --- Print metrics ---
     if is_training or is_tuning:
-        train_metrics = my_analyzer.get_training_metrics(verbose=True)
-        val_metrics = my_analyzer.get_validation_metrics(verbose=True)
+        _ = my_analyzer.get_training_metrics(verbose=True)
+        _ = my_analyzer.get_validation_metrics(verbose=True)
     if cli.predict:
-        test_metrics = my_analyzer.get_test_metrics()
+        _ = my_analyzer.get_test_metrics()
 
     # --- Create prediction file ---
     if is_training or is_tuning:
