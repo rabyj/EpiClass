@@ -2,6 +2,7 @@ comet-ml==3.21.0
 h5py==3.6.0
 imbalanced-learn==0.8.0
 jupyter==1.0.0
+kaleido>=0.2.1,<0.3
 lightgbm>=3.3,<3.4
 matplotlib>=3.5,<3.6
 nbdime==3.1
