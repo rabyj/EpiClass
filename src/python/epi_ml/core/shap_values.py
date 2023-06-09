@@ -39,7 +39,12 @@ class SHAP_Handler:
         return filename
 
     def compute_NN(
-        self, background_dset: SomeData, evaluation_dset: SomeData, save=True, name=""
+        self,
+        background_dset: SomeData,
+        evaluation_dset: SomeData,
+        save=True,
+        name="",
+        num_workers: int = 4,
     ) -> Tuple[shap.DeepExplainer, List[np.ndarray]]:
         """Compute shap values of deep learning model on evaluation dataset
         by creating an explainer with background dataset.
@@ -60,7 +65,7 @@ class SHAP_Handler:
             )
 
         signals = torch.from_numpy(evaluation_dset.signals).float()
-        shap_values = self.compute_shap_values_parallel(explainer, signals)
+        shap_values = self.compute_shap_values_parallel(explainer, signals, num_workers)
 
         if save:
             np.savez_compressed(
@@ -76,7 +81,7 @@ class SHAP_Handler:
     def compute_shap_values_parallel(
         explainer: shap.DeepExplainer,
         signals: torch.Tensor,
-        num_workers: int = 4,
+        num_workers,
     ) -> List[np.ndarray]:
         """Compute SHAP values in parallel using a ThreadPoolExecutor.
 

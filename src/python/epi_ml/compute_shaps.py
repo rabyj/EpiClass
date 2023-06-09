@@ -1,6 +1,7 @@
 """Compute SHAP values of a model."""
 # pylint: disable=import-error
 import argparse
+import os
 from pathlib import Path
 
 from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
@@ -203,6 +204,7 @@ def main():
         evaluation_dset=explain_set,
         save=True,
         name=name,
+        num_workers=int(os.getenv("SLURM_CPUS_PER_TASK", "1")),
     )
 
 
