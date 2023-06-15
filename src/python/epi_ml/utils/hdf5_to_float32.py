@@ -82,7 +82,9 @@ def cast_datasets_to_float32(file_path: Path) -> bool:
                     diff = np.abs(casted_dataset - og_dataset)
                     max_diff = np.max(diff)
                     if max_diff > 1e-5:
-                        raise ValueError("Recasting failed, max(diff) > 1e-5")
+                        raise ValueError(
+                            f"Recasting failed, max(diff) > 1e-5: {file_path}"
+                        )
 
                     del group[dataset_name]
 
@@ -132,7 +134,12 @@ def main():
             continue
 
         if new_filepath:
-            modified = cast_datasets_to_float32(new_filepath)
+            try:
+                modified = cast_datasets_to_float32(new_filepath)
+            except ValueError as e:
+                warnings.warn(f"Error: {e}.\n Skipping file {new_filepath}")
+                new_filepath.unlink(missing_ok=True)
+                continue
             if modified:
                 print(
                     f"Casting and verification successful. Repacking file {new_filepath}"
