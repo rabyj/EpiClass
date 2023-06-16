@@ -15,6 +15,7 @@ import numpy as np
 
 from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from epi_ml.argparseutils.directorychecker import DirectoryChecker
+from epi_ml.core.hdf5_loader import Hdf5Loader
 
 # Setting up logging configuration
 logging.basicConfig(
@@ -111,8 +112,7 @@ def main():
     hdf5_list_path = cli.hdf5_list
     logdir = cli.output_dir.resolve()
 
-    with open(hdf5_list_path, "r", encoding="utf8") as f:
-        hdf5_files = [Path(line.strip()) for line in f if line.strip()]
+    hdf5_files = list(Hdf5Loader.read_list(hdf5_list_path, adapt=True).values())
 
     for hdf5_file in hdf5_files:
         try:

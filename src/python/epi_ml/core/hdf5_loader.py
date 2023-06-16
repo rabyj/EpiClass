@@ -12,7 +12,7 @@ import h5py
 import numpy as np
 
 
-class Hdf5Loader(object):
+class Hdf5Loader:
     """Handles loading/creating signals from hdf5 files"""
 
     def __init__(self, chrom_file, normalization: bool):
@@ -46,13 +46,15 @@ class Hdf5Loader(object):
         return chroms
 
     @staticmethod
-    def read_list(data_file: Path) -> Dict[str, Path]:
+    def read_list(data_file: Path, adapt: bool = False) -> Dict[str, Path]:
         """Return {md5:file} dict from file of paths list."""
         with open(data_file, "r", encoding="utf-8") as file_of_paths:
             files = {}
             for path in file_of_paths:
                 path = Path(path.rstrip())
                 files[Hdf5Loader.extract_md5(path)] = path
+        if adapt:
+            files = Hdf5Loader.adapt_to_environment(files)
         return files
 
     def load_hdf5s(
@@ -103,8 +105,7 @@ class Hdf5Loader(object):
                             file=sys.stderr,
                         )
                         raise err from None
-                    else:
-                        continue
+                    continue
 
         self._signals = signals
 
@@ -127,8 +128,7 @@ class Hdf5Loader(object):
     def _normalize(self, array: np.ndarray) -> np.ndarray:
         if self._normalization:
             return (array - array.mean()) / array.std()
-        else:
-            return array
+        return array
 
     @staticmethod
     def extract_md5(file_name: Path):
