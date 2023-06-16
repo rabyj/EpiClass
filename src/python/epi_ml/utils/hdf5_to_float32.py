@@ -7,6 +7,7 @@ import argparse
 import logging
 import shutil
 import subprocess
+import sys
 import traceback
 from pathlib import Path
 
@@ -19,7 +20,7 @@ from epi_ml.core.hdf5_loader import Hdf5Loader
 
 # Setting up logging configuration
 logging.basicConfig(
-    level=logging.WARNING, format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
 
@@ -111,6 +112,12 @@ def main():
 
     hdf5_list_path = cli.hdf5_list
     logdir = cli.output_dir.resolve()
+
+    try:
+        subprocess.run(["h5repack"], stdout=subprocess.DEVNULL, check=True)
+    except FileNotFoundError:
+        logging.error("'h5repack' command not found.")
+        sys.exit(1)
 
     hdf5_files = list(Hdf5Loader.read_list(hdf5_list_path, adapt=True).values())
 
