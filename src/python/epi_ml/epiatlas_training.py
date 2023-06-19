@@ -18,7 +18,6 @@ import pytorch_lightning.callbacks as pl_callbacks
 import torch
 from pytorch_lightning import loggers as pl_loggers
 
-import epi_ml.utils.modify_metadata as modify_metadata
 from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from epi_ml.argparseutils.directorychecker import DirectoryChecker
 from epi_ml.core import analysis, metadata
@@ -27,6 +26,7 @@ from epi_ml.core.data_source import EpiDataSource
 from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory
 from epi_ml.core.model_pytorch import LightningDenseClassifier
 from epi_ml.core.trainer import MyTrainer, define_callbacks
+from epi_ml.utils import modify_metadata
 from epi_ml.utils.check_dir import create_dirs
 from epi_ml.utils.my_logging import log_pre_training
 from epi_ml.utils.time import time_now
@@ -162,10 +162,12 @@ def main():
     }
 
     min_split = int(os.getenv("MIN_SPLIT", "0"))
+    max_split = int(os.getenv("MAX_SPLIT", "42"))
 
     time_before_split = time_now()
     for i, my_data in enumerate(ea_handler.yield_split()):
-        if i < min_split:
+        # Skip if not in range
+        if not (min_split <= i <= max_split):  # pylint: disable=superfluous-parens
             continue
 
         split_time = time_now() - time_before_split
@@ -317,10 +319,7 @@ def do_one_experiment(
         print(f"training time: {training_time}")
 
         # reload comet logger for further logging, will create new experience in offline mode
-        if type(logger.experiment).__name__ == "OfflineExperiment":
-            IsOffline = True
-        else:
-            IsOffline = False
+        IsOffline = bool(type(logger.experiment).__name__ == "OfflineExperiment")
 
         logger = pl_loggers.CometLogger(
             project_name="EpiLaP",
