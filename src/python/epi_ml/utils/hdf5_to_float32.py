@@ -7,7 +7,6 @@ import argparse
 import logging
 import shutil
 import subprocess
-import sys
 import traceback
 from pathlib import Path
 
@@ -113,11 +112,8 @@ def main():
     hdf5_list_path = cli.hdf5_list
     logdir = cli.output_dir.resolve()
 
-    try:
-        subprocess.run(["h5repack"], stdout=subprocess.DEVNULL, check=True)
-    except FileNotFoundError:
-        logging.error("'h5repack' command not found.")
-        sys.exit(1)
+    if shutil.which("h5repack") is None:
+        raise FileNotFoundError("'h5repack' command not found.")
 
     hdf5_files = list(Hdf5Loader.read_list(hdf5_list_path, adapt=True).values())
 
