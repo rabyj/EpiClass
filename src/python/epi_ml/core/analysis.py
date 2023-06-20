@@ -262,7 +262,9 @@ def values_to_bedgraph(values, chroms, resolution, bedgraph_path):
                 i += 1
 
 
-def write_to_bed(bed_ranges: List[Tuple[str, int, int]], bed_path: str | Path) -> None:
+def write_to_bed(
+    bed_ranges: List[Tuple[str, int, int]], bed_path: str | Path, verbose: bool = False
+) -> None:
     """Writes the given bed ranges to a .bed file.
 
     Args:
@@ -276,6 +278,8 @@ def write_to_bed(bed_ranges: List[Tuple[str, int, int]], bed_path: str | Path) -
     with open(bed_path, "w", encoding="utf8") as file:
         for bed_range in bed_ranges:
             file.write(f"{bed_range[0]}\t{bed_range[1]}\t{bed_range[2]}\n")
+    if verbose:
+        print(f"Bed file written to {bed_path}")
 
 
 def bins_to_bed_ranges(
