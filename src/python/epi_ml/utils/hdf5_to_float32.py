@@ -5,9 +5,11 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import shutil
 import subprocess
 import traceback
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import h5py
@@ -103,6 +105,45 @@ def repack_hdf5_file(file_path: Path) -> None:
         logging.error("'h5repack' command not found.")
 
 
+def process_file(hdf5_file: Path, logdir: Path) -> None:
+    """
+    Processes an HDF5 file by copying it to a new location, casting its datasets to float32 data type, and repacking it.
+
+    The function first attempts to copy the input file to a new location by appending "_float32.hdf5" to the filename.
+    If the new file already exists, the function logs a warning and returns.
+
+    If the new file is successfully created, the function casts all the datasets in the file to float32 data type,
+    and logs any big difference between the original and casted datasets. The function then repacks the file to reduce its size.
+
+    If any error occurs during the process, the function logs the error message and traceback, and skips the current file.
+
+    Args:
+        hdf5_file (Path): The absolute path to the input HDF5 file.
+        logdir (Path): The directory where the new file will be created.
+
+    Returns:
+        None
+    """
+    try:
+        new_filepath = copy_hdf5_file(hdf5_file, logdir)
+    except Exception as e:  # pylint: disable=broad-except
+        logging.error(
+            "Error: %s. Skipping file %s\n%s", e, hdf5_file, traceback.format_exc()
+        )
+        return
+
+    if new_filepath:
+        modified = cast_datasets_to_float32(new_filepath)
+        if modified:
+            logging.info(
+                "Casting and verification successful. Repacking file %s", new_filepath
+            )
+            repack_hdf5_file(new_filepath)
+        else:
+            logging.info("File already existing or no casting needed. Skipping.")
+            new_filepath.unlink(missing_ok=True)
+
+
 def main():
     """
     Main function that parses command-line arguments and performs the operations to copy and cast HDF5 files.
@@ -111,31 +152,15 @@ def main():
 
     hdf5_list_path = cli.hdf5_list
     logdir = cli.output_dir.resolve()
+    max_workers = int(os.getenv("SLURM_CPUS_PER_TASK", "4"))
 
     if shutil.which("h5repack") is None:
         raise FileNotFoundError("'h5repack' command not found.")
 
     hdf5_files = list(Hdf5Loader.read_list(hdf5_list_path, adapt=True).values())
 
-    for hdf5_file in hdf5_files:
-        try:
-            new_filepath = copy_hdf5_file(hdf5_file, logdir)
-        except Exception as e:  # pylint: disable=broad-except
-            logging.error(
-                "Error: %s. Skipping file %s\n%s", e, hdf5_file, traceback.format_exc()
-            )
-            continue
-
-        if new_filepath:
-            modified = cast_datasets_to_float32(new_filepath)
-            if modified:
-                logging.info(
-                    "Casting and verification successful. Repacking file %s", new_filepath
-                )
-                repack_hdf5_file(new_filepath)
-            else:
-                logging.info("File already existing or no casting needed. Skipping.")
-                new_filepath.unlink(missing_ok=True)
+    with ThreadPoolExecutor(max_workers) as executor:
+        executor.map(process_file, hdf5_files, [logdir] * len(hdf5_files))
 
 
 if __name__ == "__main__":
