@@ -1,10 +1,40 @@
+"""
+This module provides a command-line interface for computing the variance of signal bins
+for a given set of genomic data.
+
+The script reads genomic data from hdf5 files, which are provided as input through the
+command line. Additional inputs include chromosome sizes and metadata files.
+
+The command line interface requires four arguments:
+    1) A file containing hdf5 filenames.
+    2) A file containing the sizes of chromosomes.
+    3) A metadata JSON file.
+    4) A directory for log outputs.
+
+The hdf5 files are used to create a dict of signal data, from which the variance for
+each signal bin is computed. The variance is then written to a bedgraph file in the log
+directory.
+
+The script utilizes functions from the `argparseutils`, `core.data`, and `utils.bed_utils`
+modules of the `epi_ml` package.
+
+Functions:
+- parse_arguments(): Parses command-line arguments.
+- compute_variance(hdf5s: Dict[str, np.ndarray]): Computes and returns the variance of each signal bin.
+- main(): Main script execution. It parses the arguments, loads the data, computes the variance,
+  and writes the variance to a bedgraph file.
+
+Typical usage example:
+    $ python compute_variance.py hdf5s.txt chrom_sizes.txt metadata.json logs/
+"""
 import argparse
 from pathlib import Path
 
 import numpy as np
 
 from epi_ml.argparseutils.directorychecker import DirectoryChecker
-from epi_ml.core import analysis, data
+from epi_ml.core import data
+from epi_ml.utils import bed_utils
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -49,7 +79,7 @@ def main():
 
     variance = compute_variance(signals)
     bedgraph_path = epiml_options.logdir / "variance.bedgraph"
-    analysis.values_to_bedgraph(variance, chroms, hdf5_resolution, bedgraph_path)
+    bed_utils.values_to_bedgraph(variance, chroms, hdf5_resolution, bedgraph_path)
 
 
 if __name__ == "__main__":

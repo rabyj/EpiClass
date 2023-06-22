@@ -29,7 +29,7 @@ def make_specific_logdir(tmp_path_factory):
 
 @pytest.fixture(scope="session", name="test_epiatlas_data_handler")
 def fixture_epiatlas_data_handler() -> EpiAtlasFoldFactory:
-    """Return logdir for tests. (in /tmp)."""
+    """Return mcok data handler. (in /tmp)."""
     return EpiAtlasTreatmentTestData.default_test_data()
 
 
