@@ -7,11 +7,12 @@ import json
 import os
 from collections import Counter, defaultdict
 from collections.abc import Iterable
+from difflib import SequenceMatcher as SM
 from pathlib import Path
 from typing import Dict, List
 
 
-class Metadata(object):
+class Metadata:
     """
     Wrapper around metadata md5:dataset dict.
 
@@ -21,13 +22,14 @@ class Metadata(object):
     def __init__(self, path: Path):
         self._metadata = self._load_metadata(path)
         self._rest = {}
+        self._initial_categories = set(self.get_categories())
 
     @classmethod
     def from_dict(cls, metadata: Dict[str, dict]) -> Metadata:
         """Creates an object from a dict conforming to {md5sum:dset} format."""
         first_key = list(metadata.keys())[0]
         if len(first_key) != 32:
-            raise Exception(
+            raise ValueError(
                 f"Incorrect format of metadata. Key need to be md5sum (len=32). Is: {first_key}"
             )
 
@@ -146,17 +148,38 @@ class Metadata(object):
                 f"after removing classes with less than {min_class_size} signals."
             )
 
+    def _check_label_category(self, label_category: str):
+        if label_category not in self._initial_categories:
+            cats = sorted(self._initial_categories)
+            ratios = []
+            s1 = label_category
+            for s2 in cats:
+                ratios.append(SM(None, s1, s2).ratio())
+
+            top5 = sorted(zip(cats, ratios), key=lambda x: x[1], reverse=True)[:5]
+            top5 = [(label, f"{ratio:0.4f}") for label, ratio in top5]
+            raise ValueError(
+                f"Label category '{label_category}' not in initial categories. "
+                f"Did you mean: {top5}"
+            )
+
     def select_category_subsets(self, label_category: str, labels: Iterable[str]):
         """Select only datasets which possess the given labels
         for the given label category.
+
+        Raises ValueError if label_category does not exist
         """
+        self._check_label_category(label_category)
         filt = lambda item: item[1].get(label_category) in set(labels)
         self.apply_filter(filt)  # type: ignore
 
     def remove_category_subsets(self, label_category: str, labels: Iterable[str]):
         """Remove datasets which possess the given labels
         for the given label category.
+
+        Raises ValueError if label_category does not exist
         """
+        self._check_label_category(label_category)
         filt = lambda item: item[1].get(label_category) not in set(labels)
         self.apply_filter(filt)  # type: ignore
 
@@ -244,7 +267,7 @@ def env_filtering(metadata: Metadata, category: str) -> List[str]:
     return label_list
 
 
-class HealthyCategory(object):
+class HealthyCategory:
     """Create/Represent/manipulate the "healthy" metadata category"""
 
     def __init__(self):
