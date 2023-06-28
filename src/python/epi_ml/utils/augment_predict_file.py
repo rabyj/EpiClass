@@ -15,7 +15,6 @@ import numpy as np
 import pandas as pd
 
 from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
-from epi_ml.core.confusion_matrix import ConfusionMatrixWriter as ConfusionMatrix
 from epi_ml.core.metadata import Metadata
 
 TARGET = "assay_epiclass"
@@ -101,10 +100,12 @@ def augment_line(line, metadata: Metadata, categories, classes):
 
 def augment_predict(
     metadata: Metadata, predict_path: Path, categories, append_name: str | None = None
-):
+) -> str:
     """Read -> augment -> write, row by row.
 
     Expects [md5sum, true class, predicted class, labels] lines.
+
+    Returns path of new file.
     """
     root, ext = os.path.splitext(predict_path)
 
@@ -131,22 +132,6 @@ def augment_predict(
             writer.writerow(new_line)
 
     return new_path
-
-
-def add_matrices(logdir: str):
-    """Add several matrices from 10fold together."""
-    gen = logdir + "/split{i}/validation_confusion_matrix.csv"
-
-    mat = ConfusionMatrix.from_csv(csv_path=gen.format(i=0), relative=False)
-    for i in range(1, 10):
-        csv_path = Path(gen.format(i=i))
-        if csv_path.exists():
-            mat2 = ConfusionMatrix.from_csv(csv_path=csv_path, relative=False)
-            mat = mat + mat2
-        else:
-            print(f"File does not exist: {csv_path}")
-
-    mat.to_all_formats(logdir=logdir, name="full-10fold-validation")
 
 
 def write_coherence(path, category: str):
@@ -217,10 +202,6 @@ def main():
 
     File header format important. Expects [md5sum, true class, predicted class, labels] lines.
     """
-    if os.getenv("LOG") is not None:
-        logdir = os.environ["LOG"]
-        add_matrices(logdir)
-
     args = parse_arguments()
 
     metadata = Metadata(args.metadata)
