@@ -13,11 +13,11 @@ import pytest
 from epi_ml.core.data import DataSet, UnknownData
 from epi_ml.core.hdf5_loader import Hdf5Loader
 from epi_ml.core.model_pytorch import LightningDenseClassifier
-from epi_ml.core.shap_values import SHAP_Analyzer, SHAP_Handler
+from epi_ml.core.shap_values import NN_SHAP_Handler, SHAP_Analyzer
 
 
-class Test_SHAP_Handler:
-    """Class to test SHAP_Handler class."""
+class Test_NN_SHAP_Handler:
+    """Class to test NN_SHAP_Handler class."""
 
     @pytest.fixture
     def logdir(self, mk_logdir) -> Path:
@@ -25,9 +25,9 @@ class Test_SHAP_Handler:
         return mk_logdir("shap")
 
     @pytest.fixture
-    def handler(self, logdir: Path, test_NN_model) -> SHAP_Handler:
-        """SHAP_Handler instance"""
-        return SHAP_Handler(test_NN_model, logdir)
+    def handler(self, logdir: Path, test_NN_model) -> NN_SHAP_Handler:
+        """NN_SHAP_Handler instance"""
+        return NN_SHAP_Handler(test_NN_model, logdir)
 
     @pytest.fixture
     def mock_shap_values(self, test_epiatlas_dataset: DataSet) -> List[np.ndarray]:
@@ -44,10 +44,12 @@ class Test_SHAP_Handler:
         num_signals = test_epiatlas_dataset.validation.num_examples
         return [f"id{i}" for i in range(num_signals)]
 
-    def test_compute_NN(self, handler: SHAP_Handler, test_epiatlas_dataset: DataSet):
-        """Test shapes of return of compute_NN method."""
+    def test_compute_shaps(
+        self, handler: NN_SHAP_Handler, test_epiatlas_dataset: DataSet
+    ):
+        """Test shapes of return of compute_shaps method."""
         dset = test_epiatlas_dataset
-        _, shap_values = handler.compute_NN(
+        _, shap_values = handler.compute_shaps(
             background_dset=dset.train, evaluation_dset=dset.validation, save=False  # type: ignore
         )
         print(f"len(shap_values) = {len(shap_values)}")
@@ -56,31 +58,33 @@ class Test_SHAP_Handler:
         n_signals, n_dims = dset.validation.signals.shape[:]
         assert shap_values[0].shape == (n_signals, n_dims)
 
-    def test_save_load_csv(self, handler: SHAP_Handler, mock_shap_values, fake_ids):
+    def test_save_load_csv(self, handler: NN_SHAP_Handler, mock_shap_values, fake_ids):
         """Test pickle save/load methods."""
         shaps = mock_shap_values[0]
-        path = handler.save_to_csv(shaps, fake_ids, name="test")
+        path = handler.saver.save_to_csv(shaps, fake_ids, name="test")
 
-        data = handler.load_from_csv(path)
+        data = handler.saver.load_from_csv(path)
         assert list(data.index) == fake_ids
         assert np.array_equal(shaps, data.values)
 
     def test_save_to_csv_list_input(
-        self, handler: SHAP_Handler, mock_shap_values, fake_ids
+        self, handler: NN_SHAP_Handler, mock_shap_values, fake_ids
     ):
         """Test effect of list input."""
         shap_values_matrix = [mock_shap_values[0]]
         name = "test_csv"
 
         with pytest.raises(ValueError):
-            handler.save_to_csv(shap_values_matrix, fake_ids, name)  # type: ignore
+            handler.saver.save_to_csv(shap_values_matrix, fake_ids, name)  # type: ignore
 
-    def test_create_filename(self, handler: SHAP_Handler):
+    def test_create_filename(self, handler: NN_SHAP_Handler):
         """Test filename creation method. Created by GPT4 lol."""
         ext = "pickle"
         name = "test_name"
 
-        filename = handler._create_filename(ext, name)  # pylint: disable=protected-access
+        filename = handler.saver._create_filename(  # pylint: disable=protected-access
+            ext, name
+        )
         assert filename.name.startswith(f"shap_{name}_")
         assert filename.name.endswith(f".{ext}")
         assert filename.parent == Path(handler.logdir)
@@ -143,9 +147,9 @@ class Test_SHAP_Analyzer:
         test_dsets: Tuple[UnknownData, UnknownData],
     ):
         """Test compute_shap_values method."""
-        shap_handler = SHAP_Handler(model=saccer3_model, logdir=test_folder)
+        NN_shap_handler = NN_SHAP_Handler(model=saccer3_model, logdir=test_folder)
 
-        explainer, shap_values = shap_handler.compute_NN(
+        explainer, shap_values = NN_shap_handler.compute_shaps(
             background_dset=test_dsets[0],
             evaluation_dset=test_dsets[1],
             save=True,

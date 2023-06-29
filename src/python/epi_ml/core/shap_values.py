@@ -22,13 +22,10 @@ from epi_ml.utils.time import time_now_str
 # from numpy.typing import ArrayLike
 
 
-class SHAP_Handler:
-    """Handle shap computations and data saving/loading."""
+class SHAP_Saver:
+    """Handle shap data saving/loading."""
 
-    def __init__(self, model: LightningDenseClassifier, logdir: Path | str):
-        self.model = model
-        self.model.eval()
-        self.model_classes = list(self.model.mapping.items())
+    def __init__(self, logdir: Path | str):
         self.logdir = logdir
         self.filename_template = "shap_{name}_{time}.{ext}"
 
@@ -37,77 +34,6 @@ class SHAP_Handler:
         filename = self.filename_template.format(name=name, ext=ext, time=time_now_str())
         filename = Path(self.logdir) / filename
         return filename
-
-    def compute_NN(
-        self,
-        background_dset: SomeData,
-        evaluation_dset: SomeData,
-        save=True,
-        name="",
-        num_workers: int = 4,
-    ) -> Tuple[shap.DeepExplainer, List[np.ndarray]]:
-        """Compute shap values of deep learning model on evaluation dataset
-        by creating an explainer with background dataset.
-
-        Returns explainer and shap values (as a list of matrix per class)
-        """
-        explainer = shap.DeepExplainer(
-            model=self.model, data=torch.from_numpy(background_dset.signals).float()
-        )
-        if save:
-            np.savez_compressed(
-                file=self._create_filename(
-                    name=name + "_explainer_background", ext="npz"
-                ),
-                background_md5s=background_dset.ids,
-                background_expectation=explainer.expected_value,  # type: ignore
-                classes=self.model_classes,
-            )
-
-        signals = torch.from_numpy(evaluation_dset.signals).float()
-        shap_values = self.compute_shap_values_parallel(explainer, signals, num_workers)
-
-        if save:
-            np.savez_compressed(
-                file=self._create_filename(name=name + "_evaluation", ext="npz"),
-                evaluation_md5s=evaluation_dset.ids,
-                shap_values=shap_values,
-                classes=self.model_classes,
-            )
-
-        return explainer, shap_values  # type: ignore
-
-    @staticmethod
-    def compute_shap_values_parallel(
-        explainer: shap.DeepExplainer,
-        signals: torch.Tensor,
-        num_workers,
-    ) -> List[np.ndarray]:
-        """Compute SHAP values in parallel using a ThreadPoolExecutor.
-
-        Args:
-            explainer (shap.DeepExplainer): The SHAP explainer object used for computing SHAP values.
-            signals (torch.Tensor): The evaluation dataset samples as a torch Tensor of shape (#samples, #features).
-            num_workers (int, optional): The number of parallel threads to use for computation. Defaults to 4.
-
-        Returns:
-            List[np.ndarray]: A list of SHAP values matrices (one per output class) of shape (#samples, #features).
-        """
-        signal_chunks = torch.tensor_split(signals, num_workers)
-
-        def worker(chunk: torch.Tensor) -> np.ndarray:
-            explainer_copy = copy.deepcopy(explainer)
-            return explainer_copy.shap_values(chunk)
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
-            shap_values_chunks = list(executor.map(worker, signal_chunks))
-
-        shap_values = [
-            np.concatenate([chunk[i] for chunk in shap_values_chunks], axis=0)
-            for i in range(len(shap_values_chunks[0]))
-        ]
-
-        return shap_values
 
     def save_to_csv(
         self, shap_values_matrix: np.ndarray, ids: List[str], name: str
@@ -131,10 +57,99 @@ class SHAP_Handler:
 
         return filename
 
+    def save_to_npz(self, name: str, **kwargs):
+        """Save kwargs to numpy compressed npz file. Transforms everything into numpy arrays."""
+        np.savez_compressed(
+            file=self._create_filename(name=name, ext="npz"),
+            kwargs=kwargs,  # type: ignore
+        )
+
     @staticmethod
     def load_from_csv(path: Path | str) -> pd.DataFrame:
         """Return pandas dataframe of shap values for loaded file."""
         return pd.read_csv(path, index_col=0)
+
+
+class NN_SHAP_Handler:
+    """Handle shap computations and data saving/loading."""
+
+    def __init__(self, model: LightningDenseClassifier, logdir: Path | str):
+        self.model = model
+        self.model.eval()
+        self.model_classes = list(self.model.mapping.items())
+        self.logdir = logdir
+        self.saver = SHAP_Saver(logdir=logdir)
+
+    def compute_shaps(
+        self,
+        background_dset: SomeData,
+        evaluation_dset: SomeData,
+        save=True,
+        name="",
+        num_workers: int = 4,
+    ) -> Tuple[shap.DeepExplainer, List[np.ndarray]]:
+        """Compute shap values of deep learning model on evaluation dataset
+        by creating an explainer with background dataset.
+
+        Returns explainer and shap values (as a list of matrix per class)
+        """
+        explainer = shap.DeepExplainer(
+            model=self.model, data=torch.from_numpy(background_dset.signals).float()
+        )
+        if save:
+            self.saver.save_to_npz(
+                name=name + "_explainer_background",
+                background_md5s=background_dset.ids,
+                background_expectation=explainer.expected_value,  # type: ignore
+                classes=self.model_classes,
+            )
+
+        signals = torch.from_numpy(evaluation_dset.signals).float()
+        shap_values = NN_SHAP_Handler._compute_shap_values_parallel(
+            explainer, signals, num_workers
+        )
+
+        if save:
+            self.saver.save_to_npz(
+                name=name + "_evaluation",
+                evaluation_md5s=evaluation_dset.ids,
+                shap_values=shap_values,
+                classes=self.model_classes,
+            )
+
+        return explainer, shap_values  # type: ignore
+
+    @staticmethod
+    def _compute_shap_values_parallel(
+        explainer: shap.DeepExplainer,
+        signals: torch.Tensor,
+        num_workers,
+    ) -> List[np.ndarray]:
+        """Compute SHAP values in parallel using a ThreadPoolExecutor.
+
+        Args:
+            explainer (shap.DeepExplainer): The SHAP explainer object used for computing SHAP values.
+            signals (torch.Tensor): The evaluation dataset samples as a torch Tensor of shape (#samples, #features).
+            num_workers (int, optional): The number of parallel threads to use for computation. Defaults to 4.
+
+        Returns:
+            List[np.ndarray]: A list of SHAP values matrices (one per output class) of shape (#samples, #features).
+        """
+        signal_chunks = torch.tensor_split(signals, num_workers)
+
+        def worker(chunk: torch.Tensor) -> np.ndarray:
+            explainer_copy = copy.deepcopy(explainer)
+            return explainer_copy.shap_values(chunk)  # type: ignore
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
+            shap_values_chunks = list(executor.map(worker, signal_chunks))
+
+        shap_values = [
+            np.concatenate([chunk[i] for chunk in shap_values_chunks], axis=0)
+            for i in range(len(shap_values_chunks[0]))
+        ]
+
+        return shap_values
 
 
 class SHAP_Analyzer:
@@ -174,7 +189,7 @@ class SHAP_Analyzer:
         for i, shap_values_class in enumerate(shap_values):
             # shap_values_class.sum(axis=1).shape = (n_samples,)
             shap_sum[:, i] = (
-                shap_values_class.sum(axis=1) + self.explainer.expected_value[i]
+                shap_values_class.sum(axis=1) + self.explainer.expected_value[i]  # type: ignore
             )
 
         # Compute the model's output probabilities for the samples

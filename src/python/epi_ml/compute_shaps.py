@@ -11,7 +11,7 @@ from epi_ml.core.data_source import EpiDataSource
 from epi_ml.core.hdf5_loader import Hdf5Loader
 from epi_ml.core.metadata import Metadata
 from epi_ml.core.model_pytorch import LightningDenseClassifier
-from epi_ml.core.shap_values import SHAP_Handler
+from epi_ml.core.shap_values import NN_SHAP_Handler
 from epi_ml.utils.time import time_now
 
 
@@ -71,12 +71,12 @@ def benchmark(metadata: Metadata, datasource: EpiDataSource, model):
 
     for n in [250]:
         train_data = full_data.train.subsample(list(range(n)))
-        shap_computer = SHAP_Handler(model=model, logdir="")
+        shap_computer = NN_SHAP_Handler(model=model, logdir="")
 
         eval_size = 25
         evaluation_data = full_data.train.subsample(list(range(n, n + eval_size)))
         t_a = time_now()
-        shap_computer.compute_NN(
+        shap_computer.compute_shaps(
             background_dset=train_data,
             evaluation_dset=evaluation_data,
             save=False,
@@ -150,8 +150,8 @@ def test_background_effect(
     evaluation_data = full_data.train.subsample(evaluation_idxs)
 
     for background_data in [background_1_data, background_2_data]:
-        shap_computer = SHAP_Handler(model=my_model, logdir=logdir)
-        shap_computer.compute_NN(
+        shap_computer = NN_SHAP_Handler(model=my_model, logdir=logdir)
+        shap_computer.compute_shaps(
             background_dset=background_data,
             evaluation_dset=evaluation_data,
             save=True,
@@ -198,8 +198,8 @@ def main():
         metadata,
     )
 
-    shap_computer = SHAP_Handler(model=my_model, logdir=logdir)
-    shap_computer.compute_NN(
+    shap_computer = NN_SHAP_Handler(model=my_model, logdir=logdir)
+    shap_computer.compute_shaps(
         background_dset=background_set,
         evaluation_dset=explain_set,
         save=True,
