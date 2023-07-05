@@ -16,6 +16,12 @@ from tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
 #     items[:] = [item for item in items if item.name != "test_logdir"]
 
 
+def nottest(obj):
+    """Decorator to mark a function or method as not a test"""
+    obj.__test__ = False
+    return obj
+
+
 @pytest.fixture(scope="session", autouse=True, name="mk_logdir")
 def make_specific_logdir(tmp_path_factory):
     """Return fct to create test subdirectory."""
