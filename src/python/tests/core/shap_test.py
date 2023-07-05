@@ -1,19 +1,21 @@
 """Test SHAP related modules."""
 from __future__ import annotations
 
-import warnings
+import itertools
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-warnings.filterwarnings("ignore", message=".*IPython display.*")
-
 import numpy as np
 import pytest
+from lightgbm import LGBMClassifier
+from shap import TreeExplainer
+from sklearn.datasets import make_blobs
 
 from epi_ml.core.data import DataSet, UnknownData
+from epi_ml.core.estimators import EstimatorAnalyzer
 from epi_ml.core.hdf5_loader import Hdf5Loader
 from epi_ml.core.model_pytorch import LightningDenseClassifier
-from epi_ml.core.shap_values import NN_SHAP_Handler, SHAP_Analyzer
+from epi_ml.core.shap_values import LGBM_SHAP_Handler, NN_SHAP_Handler, SHAP_Analyzer
 
 
 class Test_NN_SHAP_Handler:
@@ -90,15 +92,134 @@ class Test_NN_SHAP_Handler:
         assert filename.parent == Path(handler.logdir)
 
 
+@pytest.mark.skip(reason="One time thing")
+def test_tree_explainer():
+    """Minimal test to check if TreeExplainer works with LGBMClassifier."""
+    X, y = make_blobs(n_samples=100, centers=3, n_features=3, random_state=42)  # type: ignore # pylint: disable=unbalanced-tuple-unpacking
+
+    for boosting_method, model_output in itertools.product(
+        ["gbdt", "dart"],
+        ["raw", "probability", "log_loss", "predict", "predict_proba"],
+    ):
+        test_model = LGBMClassifier(boosting_type=boosting_method, objective="multiclass")
+        test_model.fit(X, y)
+        try:
+            explainer = TreeExplainer(
+                model=test_model,
+                data=X,
+                model_output=model_output,
+                feature_perturbation="interventional",
+            )
+        except AttributeError:
+            print(
+                f"({boosting_method})(err2) TreeExplainer does not support multiclass + model_output={model_output}"
+            )
+            continue
+        except Exception as e:
+            if "Model does not have a known objective or output type" in e.args[0]:
+                print(
+                    f"({boosting_method})(err1) TreeExplainer does not support multiclass + model_output={model_output}"
+                )
+                continue
+            raise e
+        shap_values = explainer.shap_values(X)
+        print(
+            f"({boosting_method}) TreeExplainer supports multiclass + model_output={model_output}"
+        )
+        print(np.array(shap_values).shape)
+
+
+class Test_LGBM_SHAP_Handler:
+    """Class to test LGBM_SHAP_Handler class."""
+
+    N = 100
+
+    @staticmethod
+    def create_test_model(
+        nb_class: int, nb_features: int, nb_samples: int
+    ) -> Tuple[EstimatorAnalyzer, UnknownData]:
+        """Create a test LGBMClassifier model for testing."""
+        X, y = make_blobs(n_samples=nb_samples, centers=nb_class, n_features=nb_features, random_state=42)  # type: ignore # pylint: disable=unbalanced-tuple-unpacking
+        test_model = LGBMClassifier(
+            boosting_type="dart",
+        )
+        test_model.fit(X, y)
+
+        dataset = UnknownData(range(nb_samples), X, y, [str(val) for val in y])
+
+        model_analyzer = EstimatorAnalyzer(
+            classes=[str(i) for i in range(nb_class)],
+            estimator=test_model,
+        )
+
+        return model_analyzer, dataset
+
+    @pytest.fixture(name="model2c")
+    def test_model_2classes(self) -> Tuple[EstimatorAnalyzer, UnknownData]:
+        """Test model with 2 classes."""
+        model_analyzer, dataset = Test_LGBM_SHAP_Handler.create_test_model(
+            2, 4, Test_LGBM_SHAP_Handler.N
+        )
+
+        return model_analyzer, dataset
+
+    @pytest.fixture(name="model3c")
+    def test_model_3classes(self) -> Tuple[EstimatorAnalyzer, UnknownData]:
+        """Test model with 3 classes."""
+        model_analyzer, dataset = Test_LGBM_SHAP_Handler.create_test_model(
+            3, 4, Test_LGBM_SHAP_Handler.N
+        )
+
+        return model_analyzer, dataset
+
+    @pytest.mark.parametrize(
+        "test_data,num_workers",
+        [("model2c", 1), ("model3c", 1), ("model2c", 2), ("model3c", 2)],
+    )
+    def test_compute_shaps(self, test_data, num_workers, tmp_path, request):
+        """
+        Tests the compute_shaps method of the LGBM_SHAP_Handler class. It checks if the SHAP values and expected values
+        are computed correctly and if they are saved correctly with the correct parameters.
+        """
+        model_analyzer, evaluation_dset = request.getfixturevalue(test_data)
+        handler = LGBM_SHAP_Handler(model_analyzer, tmp_path)
+
+        # Test compute_shaps
+        shap_values, explainer = handler.compute_shaps(
+            background_dset=evaluation_dset,
+            evaluation_dset=evaluation_dset,
+            save=True,
+            name="test",
+            num_workers=num_workers,
+        )
+
+        # Test output types
+        expected_value = explainer.expected_value
+        assert isinstance(shap_values, list)
+        assert isinstance(shap_values[0], np.ndarray)
+        assert isinstance(expected_value, (float, np.ndarray))
+
+        # # Test output shapes
+        nb_samples = Test_LGBM_SHAP_Handler.N
+        nb_classes = len(model_analyzer.classes)
+        nb_features = evaluation_dset.signals.shape[1]
+        if isinstance(expected_value, np.ndarray):  # multiclass case
+            assert expected_value.shape == (nb_classes,)
+            assert shap_values[0].shape == (nb_samples, nb_features)
+        else:  # binary case
+            assert len(shap_values) == nb_samples
+            assert shap_values[0].shape == (nb_features,)
+
+
 class Test_SHAP_Analyzer:
     """Class to test SHAP_Analyzer class."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def test_folder(self, mk_logdir) -> Path:
         """Return temp shap test folder."""
         return mk_logdir("shap_test")
 
-    @pytest.fixture()
+    @pytest.fixture
     def saccer3_dir(self) -> Path:
         """saccer3 params dir"""
         return Path(__file__).parent.parent / "fixtures" / "saccer3"

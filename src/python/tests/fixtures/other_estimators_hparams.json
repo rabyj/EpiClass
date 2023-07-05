@@ -1,4 +1,17 @@
 {
+  "LGBM": {
+    "model__bagging_fraction": 0.7551152101654888,
+    "model__bagging_freq": 5,
+    "model__boosting_type": "dart",
+    "model__feature_fraction": 0.4,
+    "model__feature_pre_filter": false,
+    "model__force_col_wise": true,
+    "model__lambda_l1": 0,
+    "model__lambda_l2": 0,
+    "model__min_child_samples": 20,
+    "model__num_leaves": 31,
+    "model__num_threads": 2
+  },
   "LinearSVC": {
     "model__C": 643.1854566491933,
     "model__intercept_scaling": 5,

@@ -29,8 +29,46 @@ def test_hyperparams(test_dir: Path):
 
     sys.argv = [
         "other_estimators.py",
+        "--models",
+        "LinearSVC",
         "--predict",
         "biomaterial_type",
+        f"{datasource.hdf5_file}",
+        f"{datasource.chromsize_file}",
+        f"{datasource.metadata_file}",
+        str(test_dir),
+        "--hyperparams",
+        f"{hparams_file}",
+    ]
+
+    main_module()
+
+
+@pytest.mark.timeout(45)
+def test_binary_classifier(test_dir: Path):
+    """Test if binary models are properly supported."""
+    # Setting up environment variables
+    import multiprocessing as mp  # pylint: disable=import-outside-toplevel
+
+    mp.set_start_method("spawn", force=True)
+
+    os.environ["MIN_CLASS_SIZE"] = "1"
+    os.environ["LABEL_LIST"] = '["female", "male"]'
+    epi_ml.core.estimators.NFOLD_PREDICT = 2
+
+    # Loading paths
+    datasource = EpiAtlasTreatmentTestData.default_test_data(
+        label_category="sex"
+    ).epiatlas_dataset.datasource
+
+    current_dir = Path(__file__).parent.resolve()
+
+    hparams_file = current_dir.parent / "fixtures" / "other_estimators_hparams.json"
+
+    sys.argv = [
+        "other_estimators.py",
+        "--predict",
+        "sex",
         f"{datasource.hdf5_file}",
         f"{datasource.chromsize_file}",
         f"{datasource.metadata_file}",

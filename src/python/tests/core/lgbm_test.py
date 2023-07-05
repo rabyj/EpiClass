@@ -41,6 +41,7 @@ def test_lgbm_save_load(logdir):
     # filter hparams
     hparams = {k: v for k, v in hparams.items() if k in estimators.lgbm_allowed_params}
 
+    assert "model__boosting_type" in hparams
     assert "model__metric" not in hparams
     for param_name in hparams.keys():
         assert "model__" in param_name
