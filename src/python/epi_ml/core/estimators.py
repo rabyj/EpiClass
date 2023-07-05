@@ -96,7 +96,7 @@ def get_model_name(filepath: str) -> str:
     return Path(filepath).stem.split(sep="_", maxsplit=1)[0]
 
 
-class EstimatorAnalyzer(object):
+class EstimatorAnalyzer:
     """Generic class to analyze results given by an estimator."""
 
     def __init__(self, classes, estimator):
@@ -119,6 +119,11 @@ class EstimatorAnalyzer(object):
     def name(self) -> str:
         """Return classifier name."""
         return self._get_name(self._clf)
+
+    @property
+    def classifier(self):
+        """Return classifier instance."""
+        return self._clf
 
     def predict(self, X):
         """Return class predictions."""

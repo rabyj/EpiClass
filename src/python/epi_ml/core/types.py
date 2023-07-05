@@ -1,9 +1,10 @@
-from typing import TypeVar
+"""Define types useful for the project."""
+from typing import TypeVar, Union
 
 from torch import Tensor
 from torch.utils.data import TensorDataset
 
-from .data import Data
+from .data import KnownData, UnknownData
 
 TensorData = TypeVar("TensorData", TensorDataset, Tensor)
-SomeData = TypeVar("SomeData", bound=Data)
+SomeData = Union[KnownData, UnknownData]

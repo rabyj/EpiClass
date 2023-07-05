@@ -14,12 +14,14 @@ import pandas as pd
 import shap
 import torch
 import torch.nn.functional as F
+from lightgbm import LGBMClassifier
+from numpy.typing import ArrayLike
+from sklearn.pipeline import Pipeline
 
+from epi_ml.core.estimators import EstimatorAnalyzer
 from epi_ml.core.model_pytorch import LightningDenseClassifier
 from epi_ml.core.types import SomeData
 from epi_ml.utils.time import time_now_str
-
-# from numpy.typing import ArrayLike
 
 
 class SHAP_Saver:
@@ -57,11 +59,14 @@ class SHAP_Saver:
 
         return filename
 
-    def save_to_npz(self, name: str, **kwargs):
+    def save_to_npz(self, name: str, verbose=True, **kwargs):
         """Save kwargs to numpy compressed npz file. Transforms everything into numpy arrays."""
+        filename = self._create_filename(name=name, ext="npz")
+        if verbose:
+            print(f"Saving SHAP values to: {filename}")
         np.savez_compressed(
-            file=self._create_filename(name=name, ext="npz"),
-            kwargs=kwargs,  # type: ignore
+            file=filename,
+            **kwargs,  # type: ignore
         )
 
     @staticmethod
@@ -123,14 +128,14 @@ class NN_SHAP_Handler:
     def _compute_shap_values_parallel(
         explainer: shap.DeepExplainer,
         signals: torch.Tensor,
-        num_workers,
+        num_workers: int,
     ) -> List[np.ndarray]:
         """Compute SHAP values in parallel using a ThreadPoolExecutor.
 
         Args:
             explainer (shap.DeepExplainer): The SHAP explainer object used for computing SHAP values.
             signals (torch.Tensor): The evaluation dataset samples as a torch Tensor of shape (#samples, #features).
-            num_workers (int, optional): The number of parallel threads to use for computation. Defaults to 4.
+            num_workers (int): The number of parallel threads to use for computation.
 
         Returns:
             List[np.ndarray]: A list of SHAP values matrices (one per output class) of shape (#samples, #features).
@@ -148,6 +153,103 @@ class NN_SHAP_Handler:
             np.concatenate([chunk[i] for chunk in shap_values_chunks], axis=0)
             for i in range(len(shap_values_chunks[0]))
         ]
+
+        return shap_values
+
+
+class LGBM_SHAP_Handler:
+    """Handle shap computations and data saving/loading."""
+
+    def __init__(self, model_analyzer: EstimatorAnalyzer, logdir: Path | str):
+        self.logdir = logdir
+        self.saver = SHAP_Saver(logdir=logdir)
+        self.model_classes = list(model_analyzer.mapping.items())
+        self.model: LGBMClassifier = LGBM_SHAP_Handler._check_model_is_lgbm(
+            model_analyzer
+        )
+
+    @staticmethod
+    def _check_model_is_lgbm(model_analyzer: EstimatorAnalyzer) -> LGBMClassifier:
+        """Return lightgbm classifier if found, else raise ValueError."""
+        model = model_analyzer.classifier
+        if isinstance(model, Pipeline):
+            model = model.steps[-1][1]
+        if not isinstance(model, LGBMClassifier):
+            raise ValueError(
+                f"Expected model to be a lightgbm classifier, but got {model} instead."
+            )
+        return model
+
+    def compute_shaps(
+        self,
+        background_dset: SomeData,
+        evaluation_dset: SomeData,
+        save=True,
+        name="",
+        num_workers: int = 4,
+    ) -> Tuple[List[np.ndarray], shap.TreeExplainer]:
+        """Compute shap values of lgbm model on evaluation dataset.
+
+        Returns shap values and explainer
+        """
+        explainer = shap.TreeExplainer(
+            model=self.model,
+            data=background_dset.signals,
+            model_output="raw",
+            feature_perturbation="interventional",
+        )
+
+        if save:
+            self.saver.save_to_npz(
+                name=name + "_explainer_background",
+                background_md5s=background_dset.ids,
+                background_expectation=explainer.expected_value,  # type: ignore
+                classes=self.model_classes,
+            )
+
+        shap_values = LGBM_SHAP_Handler._compute_shap_values_parallel(
+            explainer=explainer,
+            signals=evaluation_dset.signals,
+            num_workers=num_workers,
+        )
+
+        if save:
+            self.saver.save_to_npz(
+                name=name + "_evaluation",
+                evaluation_ids=evaluation_dset.ids,
+                shap_values=shap_values,
+                expected_value=explainer.expected_value,
+                classes=self.model_classes,
+            )
+
+        return shap_values, explainer
+
+    @staticmethod
+    def _compute_shap_values_parallel(
+        explainer: shap.TreeExplainer,
+        signals: ArrayLike,
+        num_workers: int,
+    ) -> List[np.ndarray]:
+        # Split the signals into chunks for parallel processing
+        signal_chunks = np.array_split(signals, num_workers)
+
+        # Worker function
+        def worker(chunk):
+            explainer_copy = copy.deepcopy(explainer)
+            return explainer_copy.shap_values(X=chunk)
+
+        # Use ThreadPoolExecutor to compute shap_values in parallel
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
+            shap_values_chunks = list(executor.map(worker, signal_chunks))
+
+        # Concatenate the chunks
+        if isinstance(shap_values_chunks[0], np.ndarray):  # binary case
+            shap_values = list(np.concatenate(shap_values_chunks, axis=0))
+        else:  # multiclass case
+            shap_values = [
+                np.concatenate([chunk[i] for chunk in shap_values_chunks], axis=0)
+                for i in range(len(shap_values_chunks[0]))
+            ]
 
         return shap_values
 
