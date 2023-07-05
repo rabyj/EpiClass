@@ -11,6 +11,7 @@ import sys
 from functools import partial
 from inspect import signature
 from pathlib import Path
+from typing import Collection
 
 import numpy as np
 import pandas as pd
@@ -99,7 +100,7 @@ def get_model_name(filepath: str) -> str:
 class EstimatorAnalyzer:
     """Generic class to analyze results given by an estimator."""
 
-    def __init__(self, classes, estimator):
+    def __init__(self, classes: Collection[str], estimator):
         self.classes = sorted(classes)
         self.mapping = dict(enumerate(self.classes))
         self.encoder = LabelBinarizer().fit(list(self.mapping.keys()))
@@ -315,7 +316,7 @@ def tune_estimator(
         callback=[best_params_cb, deadline_cb],
     )
     print(f"Current model params: {model.get_params()}")
-    print(f"best params: {opt.best_params_}")
+    print(f"best params: {opt.best_params_}")  # type: ignore
     return opt
 
 
@@ -363,7 +364,7 @@ def log_tune_results(logdir: Path, name: str, opt: BayesSearchCV):
       name (str): The name of the model.
       opt (BayesSearchCV): Optimizer after tuning.
     """
-    df = pd.DataFrame(opt.cv_results_)
+    df = pd.DataFrame(opt.cv_results_)  # type: ignore
     print(tabulate(df, headers="keys", tablefmt="psql"))  # type: ignore
 
     file = tune_results_file_format.format(name=name)
@@ -371,7 +372,7 @@ def log_tune_results(logdir: Path, name: str, opt: BayesSearchCV):
 
     file = best_params_file_format.format(name=name)
     with open(logdir / file, "w", encoding="utf-8") as f:
-        json.dump(obj=opt.best_params_, fp=f, sort_keys=True, indent=4)
+        json.dump(obj=opt.best_params_, fp=f, sort_keys=True, indent=4)  # type: ignore
 
 
 def run_predictions(

@@ -1,4 +1,5 @@
 """Main"""
+# pylint: disable=too-many-branches
 from __future__ import annotations
 
 import argparse
@@ -218,8 +219,11 @@ def main():
 
             estimator = estimators.model_mapping[model_name]
             estimator.set_params(**model_hparams)
+            print("Parameters set:")
+            for param, value in estimator.get_params(deep=True).items():
+                print(f"{param}: {value}")
 
-            print("Using {model_name}.")
+            print(f"Using {model_name}.")
             estimators.run_predictions(ea_handler, estimator, model_name, cli.logdir)
 
     # Giving predictions with chosen models, for all files in hdf5 list.

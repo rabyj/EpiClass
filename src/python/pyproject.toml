@@ -80,3 +80,16 @@ generated-members = [
 
 [tool.pylint.format]
 max-line-length = 120
+
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+filterwarnings = [
+    "ignore::DeprecationWarning:jupyter_client.*",
+    "ignore::DeprecationWarning:comet_ml.monkey_patching",
+    "ignore:.*declarative_base.*",
+    "ignore:.*nopython.*",
+    "ignore:.*Using a non-full backward hook.*",
+    "ignore:.*`np.bool` is a deprecated alias.*",
+]
+# action:message:category:module:line
