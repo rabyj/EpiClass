@@ -195,6 +195,7 @@ def main():
             print("No parameters found for selected models {models}, finishing now.")
             sys.exit()
 
+        # Load hdf5s
         ea_handler = EpiAtlasFoldFactory.from_datasource(
             my_datasource,
             category,
@@ -207,6 +208,7 @@ def main():
         loading_time = time_now() - loading_begin
         print(f"Initial hdf5 loading time: {loading_time}")
 
+        # Create model with loaded hyperparameters and run predictions.
         for model_name in selected_models:
             model_hparams = loaded_hparams[model_name]
 
@@ -217,13 +219,13 @@ def main():
                     if k in estimators.lgbm_allowed_params
                 }
 
+            print(f"Using {model_name}.")
             estimator = estimators.model_mapping[model_name]
             estimator.set_params(**model_hparams)
             print("Parameters set:")
             for param, value in estimator.get_params(deep=True).items():
                 print(f"{param}: {value}")
 
-            print(f"Using {model_name}.")
             estimators.run_predictions(ea_handler, estimator, model_name, cli.logdir)
 
     # Giving predictions with chosen models, for all files in hdf5 list.
