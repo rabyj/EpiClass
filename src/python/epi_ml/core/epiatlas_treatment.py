@@ -2,19 +2,19 @@
 # TODO: Proper Data vs TestData typing
 from __future__ import annotations
 
-import collections
 import copy
 import itertools
-import warnings
-from typing import Dict, Generator, Iterable, List
+from typing import Any, Dict, Generator, List, Tuple
 
 import numpy as np
-from sklearn.model_selection import StratifiedKFold
+import numpy.typing as npt
+from imblearn.over_sampling import RandomOverSampler
+from sklearn.model_selection import StratifiedGroupKFold
 
 from epi_ml.core import data
 from epi_ml.core.data_source import EpiDataSource
 from epi_ml.core.hdf5_loader import Hdf5Loader
-from epi_ml.core.metadata import Metadata
+from epi_ml.core.metadata import Metadata, UUIDMetadata
 
 TRACKS_MAPPING = {
     "raw": ["pval", "fc"],
@@ -29,6 +29,9 @@ ACCEPTED_TRACKS = list(TRACKS_MAPPING.keys()) + list(
 
 LEADER_TRACKS = frozenset(["raw", "Unique_plusRaw", "gembs_pos"])
 
+NDArray = npt.NDArray[Any]
+NDArrayInt = npt.NDArray[np.int_]
+
 
 class EpiAtlasDataset:
     """Class that handles how epiatlas data signals are linked together.
@@ -41,8 +44,6 @@ class EpiAtlasDataset:
         The target category of labels to use.
     label_list : List[str], optional
         List of labels/classes to include from given category
-    test_ratio : float, optional
-        Ratio of data kept for test (not used for training or validation)
     min_class_size : int, optional
         Minimum number of samples per class.
     my_metadata : Metadata, optional
@@ -55,27 +56,42 @@ class EpiAtlasDataset:
         label_category: str,
         label_list: List[str] | None = None,
         min_class_size: int = 10,
-        test_ratio: float = 0,
         metadata: Metadata | None = None,
     ):
         self._datasource = datasource
         self._label_category = label_category
         self._label_list = label_list
 
+        meta = None
         if metadata is not None:
-            self._metadata = metadata
+            meta = metadata
         else:
-            self._metadata = Metadata(self.datasource.metadata_file)
+            meta = Metadata(self._datasource.metadata_file)
 
+        self._metadata = UUIDMetadata.from_metadata(meta)  # type: ignore
+
+        # Filter metadata
         self._filter_metadata(min_class_size, verbose=True)
+        self._classes = self._metadata.unique_classes(self._label_category)
+        self._classes_mapping = {label: i for i, label in enumerate(self._classes)}
 
-        self._raw_to_others = EpiAtlasDataset.epiatlas_prepare_split(self._metadata)
+        # UUID info
+        self._metadata.display_uuid_per_class(self._label_category)
+        self._uuid_mapping = self._metadata.uuid_to_md5()
 
-        # Load files
-        self._raw_dset = self._create_raw_dataset(test_ratio, min_class_size)
-        self._other_tracks = self._load_other_tracks()
+        # Load signals and create proper dataset
+        self._signals = self._load_signals()
 
-        self._classes = self._raw_dset.classes
+        md5s = self._signals.keys()
+        labels = [self._metadata[md5][self._label_category] for md5 in md5s]
+
+        self._dataset: data.KnownData = data.KnownData(
+            ids=md5s,
+            x=self._signals.values(),
+            y_str=labels,
+            y=[self._classes_mapping[label] for label in labels],
+            metadata=self._metadata,
+        )
 
     @property
     def datasource(self) -> EpiDataSource:
@@ -98,177 +114,53 @@ class EpiAtlasDataset:
         return self._classes
 
     @property
-    def raw_dataset(self) -> data.DataSet:
-        """Return dataset of unmatched signals created during init."""
-        return self._raw_dset
-
-    @property
-    def group_mapper(self) -> Dict[str, Dict[str, str]]:
-        """Return md5sum track_type mapping dict.
-
-        e.g. 1 entry { raw_md5sum : {"pval":md5sum, "fc":md5sum} }
-        """
-        return self._raw_to_others
-
-    @property
-    def metadata(self) -> Metadata:
+    def metadata(self) -> UUIDMetadata:
         """Return a copy of current metadata held"""
         return copy.deepcopy(self._metadata)
 
+    @property
+    def signals(self) -> Dict[str, np.ndarray]:
+        """Return loaded signals."""
+        return self._signals
+
+    @property
+    def dataset(self) -> data.KnownData:
+        """Return dataset."""
+        return self._dataset
+
+    def _load_signals(self) -> Dict[str, np.ndarray]:
+        """Load signals from given datasource."""
+        loader = Hdf5Loader(chrom_file=self.datasource.chromsize_file, normalization=True)
+        loader = loader.load_hdf5s(
+            data_file=self.datasource.hdf5_file,
+            md5s=self.metadata.md5s,
+            strict=True,
+            verbose=True,
+        )
+        return loader.signals
+
     def _filter_metadata(self, min_class_size, verbose: bool) -> None:
-        """Filter entry metadata for assay list and label_category."""
+        """Filter entry metadata for given files, assay list and label_category."""
+
+        # Given files need to all exist in metadata
+        files = Hdf5Loader.read_list(self.datasource.hdf5_file)
+        for md5 in files:
+            if md5 not in self._metadata:
+                raise ValueError(
+                    f"md5sum {md5} not found in metadata. (from {files[md5]})"
+                )
+
+        # Remove metadata not associated with files
+        self._metadata.apply_filter(lambda item: item[0] in files)
+
+        self._metadata.remove_missing_labels(self.target_category)
         if self.label_list is not None:
             self._metadata.select_category_subsets(self.target_category, self.label_list)
         self._metadata.remove_small_classes(min_class_size, self.target_category, verbose)
 
-    def _create_raw_dataset(self, test_ratio: float, min_class_size: int) -> data.DataSet:
-        """Create a dataset with raw+ctl_raw signals, all in the training set."""
-        print("Creating epiatlas 'raw' signal training dataset")
-        meta = self.metadata
-
-        print("Theoretical maximum with complete dataset:")
-        meta.display_labels(self.target_category)
-        meta.display_labels("track_type")
-
-        print("raw dataset: Selected signals in accordance with metadata:")
-        meta.select_category_subsets("track_type", list(TRACKS_MAPPING.keys()))
-        meta.display_labels("track_type")
-
-        # important to not oversample now, because the train would bleed into valid during kfold.
-        print("'Raw' dataset before oversampling and adding associated signals:")
-        my_data = data.DataSetFactory.from_epidata(
-            self.datasource,
-            meta,
-            self.target_category,
-            min_class_size=min_class_size,
-            validation_ratio=0,
-            test_ratio=test_ratio,
-            onehot=False,
-            oversample=False,
-        )
-        meta.display_labels(self.target_category)
-
-        return my_data
-
-    @staticmethod
-    def epiatlas_prepare_split(metadata: Metadata) -> Dict[str, Dict[str, str]]:
-        """Return track_type mapping dict assuming the datasource is complete.
-
-        Assumption/Condition: Only one file per track type, for a given uuid.
-
-        e.g. { raw_md5sum : {"pval":md5sum, "fc":md5sum} }
-        """
-        # { uuid : {track_type1:md5sum, track_type2:md5sum, ...} }
-        uuid_to_md5s = collections.defaultdict(dict)
-        for dset in metadata.datasets:
-            uuid = dset["uuid"]
-            uuid_to_md5s[uuid].update({dset["track_type"]: dset["md5sum"]})
-
-        raw_to_others = {}
-        for tracks_to_md5 in uuid_to_md5s.values():
-            for lead_track in LEADER_TRACKS:
-                if lead_track in tracks_to_md5:
-                    non_lead_tracks = set(TRACKS_MAPPING[lead_track]) & set(
-                        tracks_to_md5.keys()
-                    )
-                    lead_md5 = tracks_to_md5[lead_track]
-
-                    raw_to_others[lead_md5] = {
-                        track: tracks_to_md5[track] for track in non_lead_tracks
-                    }
-
-        return raw_to_others
-
-    def _load_other_tracks(self) -> Dict[str, np.ndarray]:
-        """Return Hdf5Loader.signals for md5s of other (e.g. fc and pval) signals"""
-        hdf5_loader = Hdf5Loader(self.datasource.chromsize_file, normalization=True)
-
-        md5s = itertools.chain.from_iterable(
-            [other_dict.values() for _, other_dict in self._raw_to_others.items()]
-        )
-
-        hdf5_loader.load_hdf5s(
-            self.datasource.hdf5_file, md5s=md5s, verbose=False, strict=True
-        )
-        return hdf5_loader.signals
-
-    def add_other_tracks(
-        self, selected_positions: Iterable[int], dset: data.KnownData, resample: bool
-    ) -> data.KnownData:
-        """Return a modified dset object with added tracks (e.g. pval + fc) for selected signals.
-        The matching tracks will be put right after the selected tracks.
-
-        dset needs to be composed only of "leader" tracks, otherwise it will fail.
-        """
-        new_signals, new_str_labels, new_encoded_labels, new_md5s = [], [], [], []
-
-        raw_dset = dset
-        idxs = collections.Counter(i for i in np.arange(raw_dset.num_examples))
-        if resample:
-            resampled_X, resampled_y, idxs = data.EpiData.oversample_data(
-                dset.signals, dset.encoded_labels
-            )
-            raw_dset = data.KnownData(
-                ids=np.take(dset.ids, idxs),
-                x=resampled_X,
-                y=resampled_y,
-                y_str=np.take(dset.original_labels, idxs),
-                metadata=dset.metadata,
-            )
-            idxs = collections.Counter(i for i in idxs)
-
-        for selected_index in selected_positions:
-            og_dset_metadata = raw_dset.get_metadata(selected_index)
-            chosen_md5 = raw_dset.get_id(selected_index)
-            label = raw_dset.get_original_label(selected_index)
-            encoded_label = raw_dset.get_encoded_label(selected_index)
-            signal = raw_dset.get_signal(selected_index)
-
-            track_type = og_dset_metadata["track_type"]
-
-            if chosen_md5 != og_dset_metadata["md5sum"]:
-                raise Exception("You dun fucked up")
-
-            # oversampling specific to each "leader" signal
-            for _ in range(idxs[selected_index]):
-                if track_type in LEADER_TRACKS:
-                    other_md5s = list(self._raw_to_others[chosen_md5].values())
-
-                    other_signals = [self._other_tracks[md5] for md5 in other_md5s]
-
-                    # order important, leader track first, order used for find_other_tracks.
-                    new_md5s.extend([chosen_md5] + other_md5s)
-                    new_signals.extend([signal] + other_signals)
-                    new_str_labels.extend([label for _ in range(len(other_md5s) + 1)])
-                    new_encoded_labels.extend(
-                        [encoded_label for _ in range(len(other_md5s) + 1)]
-                    )
-
-                elif track_type == "ctl_raw":
-                    new_md5s.append(chosen_md5)
-                    new_signals.append(signal)
-                    new_encoded_labels.append(encoded_label)
-                    new_str_labels.append(label)
-                else:
-                    raise Exception("You dun fucked up")
-
-        new_dset = data.KnownData(
-            new_md5s, new_signals, new_encoded_labels, new_str_labels, dset.metadata
-        )
-
-        return new_dset
-
-    def create_total_data(self, oversampling=False) -> data.KnownData:
-        """Return a data set with all signals."""
-        return self.add_other_tracks(
-            range(self._raw_dset.train.num_examples),
-            self._raw_dset.train,  # type: ignore
-            resample=oversampling,
-        )
-
 
 class EpiAtlasFoldFactory:
-    """Class that handles how epiatlas data is split into training and testing sets.
+    """Class that handles how epiatlas data is split into training, validation, and testing sets.
 
     Parameters
     ----------
@@ -276,23 +168,29 @@ class EpiAtlasFoldFactory:
         Source container for epiatlas data.
     n_fold : int, optional
         Number of folds for cross-validation.
+    test_ratio : float, optional
+        Ratio of data kept for test (not used for training or validation)
     """
 
     def __init__(
         self,
         epiatlas_dataset: EpiAtlasDataset,
         n_fold: int = 10,
+        test_ratio: float = 0,
     ):
         self.k = n_fold
         if n_fold < 2:
             raise ValueError(
                 f"Need at least two folds for cross-validation. Got {n_fold}."
             )
+        self.test_ratio = test_ratio
+        if test_ratio < 0 or test_ratio > 1:
+            raise ValueError(f"test_ratio must be between 0 and 1. Got {test_ratio}.")
 
         self._epiatlas_dataset = epiatlas_dataset
-        self.classes = self._epiatlas_dataset.classes
+        self._classes = self._epiatlas_dataset.classes
 
-        self._add_other_tracks = epiatlas_dataset.add_other_tracks
+        self._train_val, self._test = self._reserve_test()
 
     @classmethod
     def from_datasource(
@@ -305,15 +203,17 @@ class EpiAtlasFoldFactory:
         metadata: Metadata | None = None,
         n_fold: int = 10,
     ):
+        """Create EpiAtlasFoldFactory from a given EpiDataSource,
+        directly create the intermediary EpiAtlasDataset.
+        """
         epiatlas_dataset = EpiAtlasDataset(
             datasource,
             label_category,
             label_list,
             min_class_size,
-            test_ratio,
             metadata,
         )
-        return cls(epiatlas_dataset, n_fold)
+        return cls(epiatlas_dataset, n_fold, test_ratio)
 
     @property
     def n_fold(self) -> int:
@@ -325,183 +225,167 @@ class EpiAtlasFoldFactory:
         """Returns source EpiAtlasDataset."""
         return self._epiatlas_dataset
 
+    @property
+    def classes(self) -> List[str]:
+        """Returns classes."""
+        return self._classes
+
+    @staticmethod
+    def _label_uuid(dset: data.KnownData) -> Tuple[List[str], NDArray, NDArrayInt]:
+        """Return uuids, unique uuids and uuid to int mapping (for stratified group k-fold)"""
+        uuids = [dset.metadata[md5]["uuid"] for md5 in dset.ids]
+        unique_uuids, uuid_to_int = np.unique(uuids, return_inverse=True)  # type: ignore
+        return uuids, unique_uuids, uuid_to_int
+
+    def _reserve_test(self) -> Tuple[data.KnownData, data.KnownData]:
+        """Return training data from cross-validation and test data for final evaluation."""
+        dset = self._epiatlas_dataset.dataset
+        n_splits = int(1 / self.test_ratio)
+        if self.epiatlas_dataset.target_category == "track_type":
+            train_val, test = next(self._split_by_track_type(dset, n_splits))
+        else:
+            train_val, test = next(self._split_dataset(dset, n_splits, oversample=False))
+        return train_val, test
+
+    def _split_by_track_type(
+        self, dset: data.KnownData, n_splits: int
+    ) -> Generator[Tuple[data.KnownData, data.KnownData], None, None]:
+        """Split dataset by track_type. Oversampling not implemented."""
+        _, _, uuids_inverse = self._label_uuid(dset)
+
+        # forcing track type as the class label
+        labels = [dset.metadata[md5]["track_type"] for md5 in dset.ids]
+
+        skf = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=42)
+        for train_idxs, valid_idxs in skf.split(
+            X=dset.signals, y=labels, groups=uuids_inverse
+        ):
+            train_set = dset.subsample(list(train_idxs))
+            valid_set = dset.subsample(list(valid_idxs))
+
+            yield train_set, valid_set
+
+    def _split_dataset(
+        self, dset: data.KnownData, n_splits: int, oversample: bool = False
+    ) -> Generator[Tuple[data.KnownData, data.KnownData], None, None]:
+        # Convert the labels and groups (uuids) into numpy arrays
+        uuids, uuids_unique, uuids_inverse = self._label_uuid(dset)
+        labels_unique = [
+            dset.encoded_labels[uuids == uuid][0] for uuid in uuids_unique
+        ]  # assuming all samples from the same UUID share the same label --> not true for track_type
+
+        skf = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=42)
+        for train_idxs_unique, valid_idxs_unique in skf.split(
+            X=uuids_unique, y=labels_unique, groups=uuids_inverse
+        ):
+            train_idxs = np.isin(uuids_inverse, train_idxs_unique)
+            valid_idxs = np.isin(uuids_inverse, valid_idxs_unique)
+
+            if oversample:
+                # Oversample in the UUID space, not the sample space
+                ros = RandomOverSampler(random_state=42)
+                train_uuids_resampled, _ = ros.fit_resample(  # type: ignore
+                    np.array(uuids_unique[train_idxs_unique]).reshape(-1, 1),
+                    np.array(labels_unique)[train_idxs_unique],
+                )
+                # map back to the sample space
+                train_idxs = np.isin(uuids, train_uuids_resampled.flatten())  # type: ignore
+
+            train_set = dset.subsample(list(np.where(train_idxs)[0]))
+            valid_set = dset.subsample(list(np.where(valid_idxs)[0]))
+
+            yield train_set, valid_set
+
     def yield_split(self) -> Generator[data.DataSet, None, None]:
         """Yield train and valid tensor datasets for one split.
 
         Depends on given init parameters.
         """
-        skf = StratifiedKFold(n_splits=self.k, shuffle=False)
+        dset = self._train_val
 
-        raw_dset = self.epiatlas_dataset.raw_dataset
-        for train_idxs, valid_idxs in skf.split(
-            np.zeros((raw_dset.train.num_examples, len(self.classes))),
-            list(raw_dset.train.encoded_labels),
-        ):
-            new_datasets = data.DataSet.empty_collection()
-
-            new_train = copy.deepcopy(raw_dset.train)
-            new_train = self._add_other_tracks(train_idxs, new_train, resample=True)  # type: ignore
-
-            new_valid = copy.deepcopy(raw_dset.train)
-            new_valid = self._add_other_tracks(valid_idxs, new_valid, resample=False)  # type: ignore
-
-            new_datasets.set_train(new_train)
-            new_datasets.set_validation(new_valid)
-
-            yield new_datasets
-
-    def _correct_signal_group(self, md5s: List, verbose=True):
-        """Return md5s corresponding to signal having the same EpiRR and assay (same group, like a pair or trio).
-        as the first md5 (expected to be leader track), if they are contiguous with first signal.
-        """
-        info = [
-            (
-                self.epiatlas_dataset.metadata[md5]["EpiRR"],
-                self.epiatlas_dataset.metadata[md5]["assay"],
-            )
-            for md5 in md5s
-        ]
-        if len(set(info)) != 1:
-            if verbose:
-                warnings.warn(
-                    "Signals not from the same group in function _correct_signal_group. md5s: {md5s}. Returning subset."
-                )
-
-            if info[0] == info[1]:
-                return md5s[0:2]
-
-            if verbose:
-                warnings.warn("No matching signals. Returning first md5.")
-            return md5s[0]
-
-        return md5s[:]
-
-    def _find_other_tracks(
-        self, selected_positions, dset: data.KnownData, resample: bool, md5_mapping: dict
-    ) -> list[int]:
-        """Return indexes that sample from complete data, i.e. all signals with their match next to them.
-        Uses logic from create_total_data and add_other_tracks.
-
-        md5_mapping : total data signal position dict of format {md5sum:i}
-        """
-        raw_dset = dset
-        idxs = collections.Counter(i for i in np.arange(raw_dset.num_examples))
-        index_mapping = {v: k for k, v in md5_mapping.items()}
-
-        if resample:
-            _, _, idxs = data.EpiData.oversample_data(
-                np.zeros(shape=dset.signals.shape), dset.encoded_labels
-            )
-            repetitions = collections.Counter(i for i in idxs)
+        if self.epiatlas_dataset.target_category == "track_type":
+            generator = self._split_by_track_type(dset, self.k)
         else:
-            repetitions = idxs
+            generator = self._split_dataset(dset, self.k, oversample=True)
 
-        new_selected_positions = []
-        for selected_index in selected_positions:
-            og_dset_metadata = raw_dset.get_metadata(selected_index)
-            chosen_md5 = raw_dset.get_id(selected_index)
-            track_type = og_dset_metadata["track_type"]
-
-            if chosen_md5 != og_dset_metadata["md5sum"]:
-                raise Exception("You dun fucked up")
-
-            # oversampling specific to each "leader" signal
-            rep = repetitions[selected_index]
-
-            # number of matching signals (is it alone (ctl_raw), a pair, or a "fc,pval,raw" trio)
-            other_nb = len(TRACKS_MAPPING[track_type])
-
-            # add each group of indexes the required number of times (oversampling)
-            if track_type in TRACKS_MAPPING:
-                pos1 = md5_mapping[chosen_md5]
-                all_match_indexes = list(range(pos1, pos1 + other_nb + 1))
-
-                # check if all expected md5s have same epiRR and assay. correct if needed.
-                if other_nb != 0:
-                    md5s = [index_mapping[i] for i in all_match_indexes]
-                    md5s = self._correct_signal_group(md5s)
-                    if len(md5s) - 1 != other_nb:
-                        other_nb = len(md5s) - 1
-                        all_match_indexes = list(range(pos1, pos1 + other_nb + 1))
-
-                new_selected_positions.extend(all_match_indexes * rep)
-
-            else:
-                raise Exception("You dun fucked up")
-
-        return new_selected_positions
-
-    # pylint: disable=unused-argument
-    def split(
-        self,
-        total_data: data.KnownData,
-        X=None,
-        y=None,
-        groups=None,
-    ) -> Generator[tuple[List, List], None, None]:
-        """Generate indices to split total data into training and validation set.
-
-        Indexes match positions in output of create_total_data()
-        X, y and groups :
-            Always ignored, exist for compatibility.
-        """
-        md5_mapping = {md5: i for i, md5 in enumerate(total_data.ids)}
-
-        raw_dset = self.epiatlas_dataset.raw_dataset
-        skf = StratifiedKFold(n_splits=self.k, shuffle=False)
-        for train_idxs, valid_idxs in skf.split(
-            np.zeros((raw_dset.train.num_examples, len(self.classes))),
-            list(raw_dset.train.encoded_labels),
-        ):
-            # The "complete" refers to the fact that the indexes are sampling over total data.
-            complete_train_idxs = self._find_other_tracks(
-                train_idxs, self._raw_dset.train, resample=True, md5_mapping=md5_mapping  # type: ignore
+        for train_set, valid_set in generator:
+            yield data.DataSet(
+                training=train_set,
+                validation=valid_set,
+                test=data.KnownData.empty_collection(),
+                sorted_classes=self.classes,
             )
 
-            complete_valid_idxs = self._find_other_tracks(
-                valid_idxs, self._raw_dset.train, resample=False, md5_mapping=md5_mapping  # type: ignore
-            )
+    # def split(
+    #     self,
+    #     total_data: data.KnownData,
+    #     X=None,
+    #     y=None,
+    #     groups=None,
+    # ) -> Generator[tuple[List, List], None, None]:
+    #     """Generate indices to split total data into training and validation set.
 
-            yield complete_train_idxs, complete_valid_idxs
+    #     Indexes match positions in output of create_total_data()
+    #     X, y and groups :
+    #         Always ignored, exist for compatibility.
+    #     """
+    #     md5_mapping = {md5: i for i, md5 in enumerate(total_data.ids)}
 
-    def yield_subsample_validation(self, chosen_split: int, nb_split: int):
-        """Will use StratifiedKFold to further subsample one of the validation
-        splits normally generated into a training (no oversampling) and validation set.
+    #     raw_dset = self.epiatlas_dataset.raw_dataset
+    #     skf = StratifiedKFold(n_splits=self.k, shuffle=False)
+    #     for train_idxs, valid_idxs in skf.split(
+    #         np.zeros((raw_dset.train.num_examples, len(self.classes))),
+    #         list(raw_dset.train.encoded_labels),
+    #     ):
+    #         # The "complete" refers to the fact that the indexes are sampling over total data.
+    #         complete_train_idxs = self._find_other_tracks(
+    #             train_idxs, self._raw_dset.train, resample=True, md5_mapping=md5_mapping  # type: ignore
+    #         )
 
-        chosen_split (int): Split to subsample, as generated by yield_split.
-        nb_split (int): How many splits to make into the chosen split.
+    #         complete_valid_idxs = self._find_other_tracks(
+    #             valid_idxs, self._raw_dset.train, resample=False, md5_mapping=md5_mapping  # type: ignore
+    #         )
 
-        Created for SHAP values calculation sampling.
-        """
-        raw_dset = self.epiatlas_dataset.raw_dataset
-        assert isinstance(raw_dset.train, data.KnownData)
+    #         yield complete_train_idxs, complete_valid_idxs
 
-        skf1 = StratifiedKFold(n_splits=self.k, shuffle=False)
-        skf2 = StratifiedKFold(n_splits=nb_split, shuffle=False)
-        idxs_gen = skf1.split(
-            np.zeros((raw_dset.train.num_examples, len(self.classes))),
-            list(raw_dset.train.encoded_labels),
-        )
+    # def yield_subsample_validation(self, chosen_split: int, nb_split: int):
+    #     """Will use StratifiedKFold to further subsample one of the validation
+    #     splits normally generated into a training (no oversampling) and validation set.
 
-        try:
-            _, valid_idxs = list(idxs_gen)[chosen_split]
-        except IndexError as e:
-            raise IndexError(
-                f"Chosen split {chosen_split} out of range of initial {self.k} folds."
-            ) from e
+    #     chosen_split (int): Split to subsample, as generated by yield_split.
+    #     nb_split (int): How many splits to make into the chosen split.
 
-        chosen_total_dataset = raw_dset.train.subsample(list(valid_idxs))
+    #     Created for SHAP values calculation sampling.
+    #     """
+    #     raw_dset = self.epiatlas_dataset.raw_dataset
+    #     assert isinstance(raw_dset.train, data.KnownData)
 
-        for train_subsplit_idxs, valid_subsplit_idxs in skf2.split(
-            np.zeros((chosen_total_dataset.num_examples, len(self.classes))),
-            list(chosen_total_dataset.encoded_labels),
-        ):
-            new_datasets = data.DataSet.empty_collection()
+    #     skf1 = StratifiedKFold(n_splits=self.k, shuffle=False)
+    #     skf2 = StratifiedKFold(n_splits=nb_split, shuffle=False)
+    #     idxs_gen = skf1.split(
+    #         np.zeros((raw_dset.train.num_examples, len(self.classes))),
+    #         list(raw_dset.train.encoded_labels),
+    #     )
 
-            new_train = self._add_other_tracks(train_subsplit_idxs, chosen_total_dataset, resample=False)  # type: ignore
-            new_valid = self._add_other_tracks(valid_subsplit_idxs, chosen_total_dataset, resample=False)  # type: ignore
+    #     try:
+    #         _, valid_idxs = list(idxs_gen)[chosen_split]
+    #     except IndexError as e:
+    #         raise IndexError(
+    #             f"Chosen split {chosen_split} out of range of initial {self.k} folds."
+    #         ) from e
 
-            new_datasets.set_train(new_train)
-            new_datasets.set_validation(new_valid)
+    #     chosen_total_dataset = raw_dset.train.subsample(list(valid_idxs))
 
-            yield new_datasets
+    #     for train_subsplit_idxs, valid_subsplit_idxs in skf2.split(
+    #         np.zeros((chosen_total_dataset.num_examples, len(self.classes))),
+    #         list(chosen_total_dataset.encoded_labels),
+    #     ):
+    #         new_datasets = data.DataSet.empty_collection()
+
+    #         new_train = self._add_other_tracks(train_subsplit_idxs, chosen_total_dataset, resample=False)  # type: ignore
+    #         new_valid = self._add_other_tracks(valid_subsplit_idxs, chosen_total_dataset, resample=False)  # type: ignore
+
+    #         new_datasets.set_train(new_train)
+    #         new_datasets.set_validation(new_valid)
+
+    #         yield new_datasets

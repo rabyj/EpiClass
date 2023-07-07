@@ -35,6 +35,8 @@ class Metadata:
 
         obj = cls.__new__(cls)
         obj._metadata = copy.deepcopy(metadata)
+        obj._rest = {}
+        obj._initial_categories = set(obj.get_categories())
         return obj
 
     def empty(self):
@@ -226,6 +228,64 @@ class Metadata:
             label = dataset.get(category, None)
             if label in converter:
                 dataset[category] = converter[label]
+
+
+class UUIDMetadata(Metadata):
+    """Metadata class for UUID datasets, e.g. epiatlas."""
+
+    @classmethod
+    def from_dict(cls, metadata: Dict[str, dict]) -> UUIDMetadata:
+        """Creates an object from a dict conforming to {md5sum:dset} format."""
+        first_key = list(metadata.keys())[0]
+        if len(first_key) != 32:
+            raise ValueError(
+                f"Incorrect format of metadata. Key need to be md5sum (len=32). Is: {first_key}"
+            )
+
+        obj = cls.__new__(cls)
+        obj._metadata = copy.deepcopy(metadata)
+        obj._rest = {}
+        obj._initial_categories = set(obj.get_categories())
+        return obj
+
+    @classmethod
+    def from_metadata(cls, metadata: Metadata) -> UUIDMetadata:
+        """Create UUIDMetadata from Metadata."""
+        meta = dict(metadata.items)
+        return cls.from_dict(meta)
+
+    def uuid_per_class(self, label_category: str) -> Dict[str, set[str]]:
+        """Return {label/class:uuid list} dict for a given metadata category.
+
+        Can fail if remove_missing_labels has not been ran before.
+        """
+        uuid_dict = defaultdict(set)
+        for md5 in self._metadata:
+            label = self._metadata[md5][label_category]
+            uuid = self._metadata[md5]["uuid"]
+            uuid_dict[label].add(uuid)
+        return uuid_dict
+
+    def display_uuid_per_class(self, label_category: str) -> None:
+        """Display uuid_per_class for a given metadata category."""
+        uuid_dict = self.uuid_per_class(label_category)
+        print(f"{label_category} label breakdown for unique experiments (uuid):")
+
+        c = 0
+        for label in uuid_dict:
+            len_class = len(uuid_dict[label])
+            c += len_class
+            print(f"{label}: {len_class}")
+
+        print(f"For {c} unique experiments in {len(uuid_dict)} classes")
+
+    def uuid_to_md5(self) -> Dict[str, Dict[str, str]]:
+        """Retuirn uuid to {track_type:md5} mapping { uuid : {track_type1:md5sum, track_type2:md5sum, ...} }"""
+        uuid_to_md5s = defaultdict(dict)
+        for dset in self.datasets:
+            uuid = dset["uuid"]
+            uuid_to_md5s[uuid].update({dset["track_type"]: dset["md5sum"]})
+        return uuid_to_md5s
 
 
 def env_filtering(metadata: Metadata, category: str) -> List[str]:
