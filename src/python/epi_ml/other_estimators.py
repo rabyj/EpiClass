@@ -117,7 +117,7 @@ def main():
     my_datasource = EpiDataSource(cli.hdf5, cli.chromsize, cli.metadata)
 
     # --- Prefilter metadata, must put in EpiAtlasDataset to actually use it ---
-    my_metadata = metadata.Metadata(my_datasource.metadata_file)
+    my_metadata = metadata.UUIDMetadata(my_datasource.metadata_file)
     my_metadata.remove_category_subsets(
         label_category="track_type", labels=["Unique.raw"]
     )
@@ -156,7 +156,8 @@ def main():
             n_fold=estimators.NFOLD_TUNE,
             test_ratio=0.1,
             min_class_size=min_class_size,
-            metadata=my_metadata,
+            md5_list=list(my_metadata.md5s),
+            force_filter=True,
         )
         loading_time = time_now() - loading_begin
         print(f"Initial hdf5 loading time: {loading_time}")
@@ -203,7 +204,8 @@ def main():
             n_fold=estimators.NFOLD_PREDICT,
             test_ratio=0,
             min_class_size=min_class_size,
-            metadata=my_metadata,
+            md5_list=list(my_metadata.md5s),
+            force_filter=True,
         )
         loading_time = time_now() - loading_begin
         print(f"Initial hdf5 loading time: {loading_time}")

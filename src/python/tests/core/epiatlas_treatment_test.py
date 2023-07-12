@@ -109,9 +109,9 @@ class TestEpiAtlasFoldFactory:
     #     with pytest.raises(ValueError):
     #         next(test_data.yield_subsample_validation(chosen_split=0, nb_split=nb_split))
 
-    @pytest.mark.parametrize("del_track,", ["pval", "fc", "Unique_minusRaw"])
+    @pytest.mark.parametrize("del_track,", ["raw", "pval", "fc", "Unique_minusRaw"])
     def test_yield_missing_tracks(self, test_datasource, test_metadata, del_track: str):
-        """Make sure splitter can handle missing non-leading tracks."""
+        """Make sure splitter can handle missing tracks."""
         meta = TestEpiAtlasFoldFactory.modified_metadata(test_metadata, [del_track])
         ea_handler = EpiAtlasFoldFactory.from_datasource(
             test_datasource,
@@ -119,12 +119,13 @@ class TestEpiAtlasFoldFactory:
             min_class_size=2,
             n_fold=3,
             md5_list=list(meta.md5s),
+            force_filter=True,
         )
         for _ in ea_handler.yield_split():
             pass
 
     def test_yield_only_lead(self, test_datasource, test_metadata):
-        """Make sure splitter can handle missing non-leading tracks."""
+        """Make sure splitter can handle multiple missing tracks."""
         meta = TestEpiAtlasFoldFactory.modified_metadata(test_metadata, ["fc", "pval"])
         labels_count = meta.label_counter("track_type")
 
@@ -137,6 +138,7 @@ class TestEpiAtlasFoldFactory:
             min_class_size=2,
             n_fold=3,
             md5_list=list(meta.md5s),
+            force_filter=True,
             test_ratio=0,
         )
         ref_dset = ea_handler.train_val_dset

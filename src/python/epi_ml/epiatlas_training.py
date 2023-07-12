@@ -96,7 +96,7 @@ def main():
     with open(cli.hyperparameters, "r", encoding="utf-8") as file:
         hparams = json.load(file)
 
-    my_metadata = metadata.Metadata(my_datasource.metadata_file)
+    my_metadata = metadata.UUIDMetadata(my_datasource.metadata_file)
 
     # --- Prefilter metadata ---
     my_metadata.remove_category_subsets(
@@ -151,7 +151,8 @@ def main():
         n_fold=n_fold,
         test_ratio=0,
         min_class_size=min_class_size,
-        metadata=my_metadata,
+        md5_list=list(my_metadata.md5s),
+        force_filter=True,
     )
     loading_time = time_now() - loading_begin
 

@@ -33,8 +33,6 @@ OTHER_TRACKS = frozenset(ACCEPTED_TRACKS) - LEADER_TRACKS
 NDArray = npt.NDArray[Any]
 NDArrayInt = npt.NDArray[np.int_]
 
-# TODO: Fix all EpiAtlasDataset/EpiAtlasFoldFactory calls so md5_list is used instead of metadata.
-
 
 class EpiAtlasDataset:
     """Class that handles how epiatlas data signals are linked together.
@@ -52,6 +50,8 @@ class EpiAtlasDataset:
     md5_list : List[str], optional
         List of datasource md5s to include in the dataset. If None, everything is used and usual filter methods are used.
         (using min_class_size and label_list)
+    force_filter : bool, optional
+        If True, will filter the metadata even if md5_list is given. If False, will not filter the metadata if md5_list.
     """
 
     def __init__(
@@ -61,6 +61,7 @@ class EpiAtlasDataset:
         label_list: List[str] | None = None,
         min_class_size: int = 10,
         md5_list: List[str] | None = None,
+        force_filter: bool = True,
     ):
         self._datasource = datasource
         self._label_category = label_category
@@ -70,14 +71,16 @@ class EpiAtlasDataset:
         meta = UUIDMetadata(self._datasource.metadata_file)
         if md5_list:
             try:
-                self._metadata = UUIDMetadata.from_dict(
-                    {md5: meta[md5] for md5 in md5_list}
-                )
+                meta = UUIDMetadata.from_dict({md5: meta[md5] for md5 in md5_list})
             except KeyError as e:
                 raise KeyError(f"md5 {e} from md5 list not found in metadata") from e
-        else:
-            self._metadata = self._filter_metadata(min_class_size, meta, verbose=True)
 
+        if force_filter or not md5_list:
+            meta = self._filter_metadata(min_class_size, meta, verbose=True)
+
+        self._metadata = meta
+
+        # Classes info
         self._classes = self._metadata.unique_classes(self._label_category)
         self._classes_mapping = {label: i for i, label in enumerate(self._classes)}
 
@@ -163,6 +166,7 @@ class EpiAtlasDataset:
         return metadata
 
 
+# TODO: Reimplement create_total_data for no_valid training
 class EpiAtlasFoldFactory:
     """Class that handles how epiatlas data is split into training, validation, and testing sets.
 
@@ -206,16 +210,14 @@ class EpiAtlasFoldFactory:
         test_ratio: float = 0,
         n_fold: int = 10,
         md5_list: List[str] | None = None,
+        force_filter: bool = True,
     ):
         """Create EpiAtlasFoldFactory from a given EpiDataSource,
-        directly create the intermediary EpiAtlasDataset.
+        directly create the intermediary EpiAtlasDataset. See
+        EpiAtlasDataset init parameters for more details.
         """
         epiatlas_dataset = EpiAtlasDataset(
-            datasource,
-            label_category,
-            label_list,
-            min_class_size,
-            md5_list,
+            datasource, label_category, label_list, min_class_size, md5_list, force_filter
         )
         return cls(epiatlas_dataset, n_fold, test_ratio)
 
@@ -334,6 +336,14 @@ class EpiAtlasFoldFactory:
                 sorted_classes=self.classes,
             )
 
+    def create_total_data(self) -> data.KnownData:
+        """Create a single dataset from the training and validation data.
+
+        Used for final training.
+        """
+        raise NotImplementedError
+
+    # TODO: needed for tune_estimator
     # def split(
     #     self,
     #     total_data: data.KnownData,
