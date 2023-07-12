@@ -83,6 +83,7 @@ max-line-length = 120
 
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 minversion = "6.0"
 filterwarnings = [
     "ignore::DeprecationWarning:jupyter_client.*",
@@ -92,4 +93,5 @@ filterwarnings = [
     "ignore:.*Using a non-full backward hook.*",
     "ignore:.*`np.bool` is a deprecated alias.*",
 ]
+pythonpath = ["src/python"]
 # action:message:category:module:line
