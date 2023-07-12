@@ -9,9 +9,11 @@ import numpy as np
 import pytest
 from sklearn.model_selection import StratifiedKFold
 
+from epi_ml.core.data_source import EpiDataSource
 from epi_ml.core.epiatlas_treatment import (
     ACCEPTED_TRACKS,
-    EpiAtlasDataset,
+    LEADER_TRACKS,
+    OTHER_TRACKS,
     EpiAtlasFoldFactory,
 )
 from epi_ml.core.metadata import Metadata
@@ -29,85 +31,20 @@ class TestEpiAtlasFoldFactory:
         """Mock test EpiAtlasFoldFactory."""
         return EpiAtlasTreatmentTestData.default_test_data()
 
-    def test_yield_split_size(self, test_data: EpiAtlasFoldFactory):
-        """Test that splits contain the correct number of training and validation samples."""
-        total_data = test_data.epiatlas_dataset.create_total_data(oversampling=False)
-        assert total_data.num_examples == len(set(total_data.ids))
-
-        leader_size = test_data.epiatlas_dataset.raw_dataset.train.num_examples
-        other_size = len(test_data.epiatlas_dataset._other_tracks)
-        assert total_data.num_examples == leader_size + other_size
-
-        for dset in test_data.yield_split():
-            train_unique_size = len(set(dset.train.ids))
-            valid_unique_size = len(set(dset.validation.ids))
-            assert total_data.num_examples == train_unique_size + valid_unique_size
-
-    def test_yield_subsample_validation_1(self, test_data: EpiAtlasFoldFactory):
-        """Test correct subsampling. Subsplit should partition initial validation split."""
-        ea_handler = test_data
-
-        # Is it coherent with initial split?
-        # initial usual train/valid split
-        for split_n in range(ea_handler.k):
-            total_dataset = list(ea_handler.yield_split())[split_n]
-            total_ids = set(total_dataset.validation.ids)
-
-            # focus down on further splits of validation test
-            for _ in range(2):
-                for sub_dataset in ea_handler.yield_subsample_validation(
-                    chosen_split=split_n, nb_split=2
-                ):
-                    train = sub_dataset.train.ids
-                    valid = sub_dataset.validation.ids
-
-                    ids = set(list(train) + list(valid))
-                    assert ids == total_ids
-
-    def test_yield_subsample_validation_2(self, test_data: EpiAtlasFoldFactory):
-        """Test correct subsampling. Repeated calls should lead to same outcome"""
-        dset1 = next(test_data.yield_subsample_validation(chosen_split=0, nb_split=2))
-        dset2 = next(test_data.yield_subsample_validation(chosen_split=0, nb_split=2))
-        assert list(dset1.validation.ids) == list(dset2.validation.ids)
-
-    def test_yield_subsample_validation_outofrange(self, test_data: EpiAtlasFoldFactory):
-        """Test correct subsampling range."""
-        chosen_split = test_data.k  # one off error
-
-        err_msg = f"{chosen_split}.*{test_data.k}"
-        with pytest.raises(IndexError, match=err_msg):
-            next(
-                test_data.yield_subsample_validation(
-                    chosen_split=chosen_split, nb_split=2
-                )
-            )
-
-    def test_yield_subsample_validation_toomanysplits(
-        self, test_data: EpiAtlasFoldFactory
-    ):
-        """Test that you cannot ask for too many splits."""
-        nb_split = 10
-        with pytest.raises(ValueError):
-            next(test_data.yield_subsample_validation(chosen_split=0, nb_split=nb_split))
-
-
-class TestEpiAtlasDataset:
-    """Test class EpiAtlasDataset"""
-
     @pytest.fixture(scope="class")
-    def test_metadata(self) -> Metadata:
-        """Mock test EpiAtlasFoldFactory."""
-        meta_path = (
-            EpiAtlasTreatmentTestData.default_test_data().epiatlas_dataset.datasource.metadata_file
-        )
+    def test_metadata(self, test_data) -> Metadata:
+        """Basic test metadata, using real data."""
+        meta_path = test_data.epiatlas_dataset.datasource.metadata_file
         return Metadata(meta_path)
 
     @pytest.fixture(scope="class")
-    def test_datasource(self):
-        return EpiAtlasTreatmentTestData.default_test_data().epiatlas_dataset.datasource
+    def test_datasource(self, test_data) -> EpiDataSource:
+        """Basic test datasource, using real data."""
+        return test_data.epiatlas_dataset.datasource
 
     @staticmethod
     def modified_metadata(test_metadata, del_tracks: List[str]) -> Metadata:
+        """Remove tracks from metadata."""
         meta = copy.deepcopy(test_metadata)
         for del_track in del_tracks:
             for md5, dset in list(meta.items):
@@ -115,29 +52,80 @@ class TestEpiAtlasDataset:
                     del meta[md5]
         return meta
 
-    @pytest.mark.parametrize("del_track,", ["pval", "fc", "Unique_minusRaw"])
-    def test_epiatlas_prepare_split(self, test_metadata: Metadata, del_track):
-        """Verify that having missing non-leading tracks does not cause an error."""
-        meta = self.modified_metadata(test_metadata, [del_track])
-        EpiAtlasDataset.epiatlas_prepare_split(meta)
+    def test_yield_split_size(self, test_data: EpiAtlasFoldFactory):
+        """Test that splits contain the correct number of training and validation samples."""
+        total_data = test_data.train_val_dset
+        assert total_data.num_examples == len(set(total_data.ids))
+
+        for dset in test_data.yield_split():
+            train_unique_size = len(set(dset.train.ids))
+            valid_unique_size = len(set(dset.validation.ids))
+            assert total_data.num_examples == train_unique_size + valid_unique_size
+
+    # def test_yield_subsample_validation_1(self, test_data: EpiAtlasFoldFactory):
+    #     """Test correct subsampling. Subsplit should partition initial validation split."""
+    #     ea_handler = test_data
+
+    #     # Is it coherent with initial split?
+    #     # initial usual train/valid split
+    #     for split_n in range(ea_handler.k):
+    #         total_dataset = list(ea_handler.yield_split())[split_n]
+    #         total_ids = set(total_dataset.validation.ids)
+
+    #         # focus down on further splits of validation test
+    #         for _ in range(2):
+    #             for sub_dataset in ea_handler.yield_subsample_validation(
+    #                 chosen_split=split_n, nb_split=2
+    #             ):
+    #                 train = sub_dataset.train.ids
+    #                 valid = sub_dataset.validation.ids
+
+    #                 ids = set(list(train) + list(valid))
+    #                 assert ids == total_ids
+
+    # def test_yield_subsample_validation_2(self, test_data: EpiAtlasFoldFactory):
+    #     """Test correct subsampling. Repeated calls should lead to same outcome"""
+    #     dset1 = next(test_data.yield_subsample_validation(chosen_split=0, nb_split=2))
+    #     dset2 = next(test_data.yield_subsample_validation(chosen_split=0, nb_split=2))
+    #     assert list(dset1.validation.ids) == list(dset2.validation.ids)
+
+    # def test_yield_subsample_validation_outofrange(self, test_data: EpiAtlasFoldFactory):
+    #     """Test correct subsampling range."""
+    #     chosen_split = test_data.k  # one off error
+
+    #     err_msg = f"{chosen_split}.*{test_data.k}"
+    #     with pytest.raises(IndexError, match=err_msg):
+    #         next(
+    #             test_data.yield_subsample_validation(
+    #                 chosen_split=chosen_split, nb_split=2
+    #             )
+    #         )
+
+    # def test_yield_subsample_validation_toomanysplits(
+    #     self, test_data: EpiAtlasFoldFactory
+    # ):
+    #     """Test that you cannot ask for too many splits."""
+    #     nb_split = 10
+    #     with pytest.raises(ValueError):
+    #         next(test_data.yield_subsample_validation(chosen_split=0, nb_split=nb_split))
 
     @pytest.mark.parametrize("del_track,", ["pval", "fc", "Unique_minusRaw"])
     def test_yield_missing_tracks(self, test_datasource, test_metadata, del_track: str):
         """Make sure splitter can handle missing non-leading tracks."""
-        meta = self.modified_metadata(test_metadata, [del_track])
+        meta = TestEpiAtlasFoldFactory.modified_metadata(test_metadata, [del_track])
         ea_handler = EpiAtlasFoldFactory.from_datasource(
             test_datasource,
             label_category="biomaterial_type",
             min_class_size=2,
             n_fold=3,
-            metadata=meta,
+            md5_list=list(meta.md5s),
         )
         for _ in ea_handler.yield_split():
             pass
 
     def test_yield_only_lead(self, test_datasource, test_metadata):
         """Make sure splitter can handle missing non-leading tracks."""
-        meta = TestEpiAtlasDataset.modified_metadata(test_metadata, ["fc", "pval"])
+        meta = TestEpiAtlasFoldFactory.modified_metadata(test_metadata, ["fc", "pval"])
         labels_count = meta.label_counter("track_type")
 
         total_size = sum(labels_count[track_type] for track_type in ACCEPTED_TRACKS)
@@ -148,10 +136,24 @@ class TestEpiAtlasDataset:
             label_category="biomaterial_type",
             min_class_size=2,
             n_fold=3,
-            metadata=meta,
+            md5_list=list(meta.md5s),
+            test_ratio=0,
         )
-        lead_tracks = ea_handler.epiatlas_dataset.raw_dataset.train.num_examples
-        other_tracks = len(ea_handler.epiatlas_dataset._other_tracks)
+        ref_dset = ea_handler.train_val_dset
+        lead_tracks = len(
+            [
+                sample_id
+                for sample_id in ref_dset.ids
+                if meta[sample_id]["track_type"] in LEADER_TRACKS
+            ]
+        )
+        other_tracks = len(
+            [
+                sample_id
+                for sample_id in ref_dset.ids
+                if meta[sample_id]["track_type"] in OTHER_TRACKS
+            ]
+        )
 
         assert total_size == lead_tracks + other_tracks
 
@@ -170,7 +172,12 @@ class TestEpiAtlasDataset:
 
         assert valid_raw_sum == total_raw_count
 
+    def test_split_by_track_type(self):
+        """Test that track types are distributed correctly but same uuid stay together."""
+        raise NotImplementedError
 
+
+@pytest.mark.skip(reason="One time. For sklearn code sanity check.")
 def test_StratifiedKFold_sanity():
     """Test that StratifiedKFold yields same datasets every time.
 

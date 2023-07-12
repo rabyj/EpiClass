@@ -9,12 +9,12 @@ from typing import Any, Dict, Generator, List, Tuple
 import numpy as np
 import numpy.typing as npt
 from imblearn.over_sampling import RandomOverSampler
-from sklearn.model_selection import StratifiedGroupKFold
+from sklearn.model_selection import StratifiedGroupKFold, StratifiedKFold
 
 from epi_ml.core import data
 from epi_ml.core.data_source import EpiDataSource
 from epi_ml.core.hdf5_loader import Hdf5Loader
-from epi_ml.core.metadata import Metadata, UUIDMetadata
+from epi_ml.core.metadata import UUIDMetadata
 
 TRACKS_MAPPING = {
     "raw": ["pval", "fc"],
@@ -28,9 +28,12 @@ ACCEPTED_TRACKS = list(TRACKS_MAPPING.keys()) + list(
 )
 
 LEADER_TRACKS = frozenset(["raw", "Unique_plusRaw", "gembs_pos"])
+OTHER_TRACKS = frozenset(ACCEPTED_TRACKS) - LEADER_TRACKS
 
 NDArray = npt.NDArray[Any]
 NDArrayInt = npt.NDArray[np.int_]
+
+# TODO: Fix all EpiAtlasDataset/EpiAtlasFoldFactory calls so md5_list is used instead of metadata.
 
 
 class EpiAtlasDataset:
@@ -46,8 +49,9 @@ class EpiAtlasDataset:
         List of labels/classes to include from given category
     min_class_size : int, optional
         Minimum number of samples per class.
-    my_metadata : Metadata, optional
-        Metadata to use, if the complete source should not be used. (e.g. more complex pre-filtering)
+    md5_list : List[str], optional
+        List of datasource md5s to include in the dataset. If None, everything is used and usual filter methods are used.
+        (using min_class_size and label_list)
     """
 
     def __init__(
@@ -56,22 +60,24 @@ class EpiAtlasDataset:
         label_category: str,
         label_list: List[str] | None = None,
         min_class_size: int = 10,
-        metadata: Metadata | None = None,
+        md5_list: List[str] | None = None,
     ):
         self._datasource = datasource
         self._label_category = label_category
         self._label_list = label_list
 
-        meta = None
-        if metadata is not None:
-            meta = metadata
+        # Load metadata
+        meta = UUIDMetadata(self._datasource.metadata_file)
+        if md5_list:
+            try:
+                self._metadata = UUIDMetadata.from_dict(
+                    {md5: meta[md5] for md5 in md5_list}
+                )
+            except KeyError as e:
+                raise KeyError(f"md5 {e} from md5 list not found in metadata") from e
         else:
-            meta = Metadata(self._datasource.metadata_file)
+            self._metadata = self._filter_metadata(min_class_size, meta, verbose=True)
 
-        self._metadata = UUIDMetadata.from_metadata(meta)  # type: ignore
-
-        # Filter metadata
-        self._filter_metadata(min_class_size, verbose=True)
         self._classes = self._metadata.unique_classes(self._label_category)
         self._classes_mapping = {label: i for i, label in enumerate(self._classes)}
 
@@ -82,12 +88,12 @@ class EpiAtlasDataset:
         # Load signals and create proper dataset
         self._signals = self._load_signals()
 
-        md5s = self._signals.keys()
+        md5s = list(self._signals.keys())
         labels = [self._metadata[md5][self._label_category] for md5 in md5s]
 
         self._dataset: data.KnownData = data.KnownData(
             ids=md5s,
-            x=self._signals.values(),
+            x=list(self._signals.values()),
             y_str=labels,
             y=[self._classes_mapping[label] for label in labels],
             metadata=self._metadata,
@@ -139,24 +145,22 @@ class EpiAtlasDataset:
         )
         return loader.signals
 
-    def _filter_metadata(self, min_class_size, verbose: bool) -> None:
+    def _filter_metadata(
+        self, min_class_size, metadata: UUIDMetadata, verbose: bool
+    ) -> UUIDMetadata:
         """Filter entry metadata for given files, assay list and label_category."""
-
-        # Given files need to all exist in metadata
         files = Hdf5Loader.read_list(self.datasource.hdf5_file)
-        for md5 in files:
-            if md5 not in self._metadata:
-                raise ValueError(
-                    f"md5sum {md5} not found in metadata. (from {files[md5]})"
-                )
 
         # Remove metadata not associated with files
-        self._metadata.apply_filter(lambda item: item[0] in files)
+        metadata.apply_filter(lambda item: item[0] in files)
 
-        self._metadata.remove_missing_labels(self.target_category)
+        metadata.remove_missing_labels(self.target_category)
         if self.label_list is not None:
-            self._metadata.select_category_subsets(self.target_category, self.label_list)
-        self._metadata.remove_small_classes(min_class_size, self.target_category, verbose)
+            metadata.select_category_subsets(self.target_category, self.label_list)
+        metadata.remove_small_classes(
+            min_class_size, self.target_category, verbose, using_uuid=True
+        )
+        return metadata
 
 
 class EpiAtlasFoldFactory:
@@ -200,8 +204,8 @@ class EpiAtlasFoldFactory:
         label_list: List[str] | None = None,
         min_class_size: int = 10,
         test_ratio: float = 0,
-        metadata: Metadata | None = None,
         n_fold: int = 10,
+        md5_list: List[str] | None = None,
     ):
         """Create EpiAtlasFoldFactory from a given EpiDataSource,
         directly create the intermediary EpiAtlasDataset.
@@ -211,7 +215,7 @@ class EpiAtlasFoldFactory:
             label_category,
             label_list,
             min_class_size,
-            metadata,
+            md5_list,
         )
         return cls(epiatlas_dataset, n_fold, test_ratio)
 
@@ -230,16 +234,29 @@ class EpiAtlasFoldFactory:
         """Returns classes."""
         return self._classes
 
+    @property
+    def train_val_dset(self) -> data.KnownData:
+        """Returns training dataset for cross-validation."""
+        return self._train_val
+
+    @property
+    def test_dset(self) -> data.KnownData:
+        """Returns test dataset, not used in cross-validation."""
+        return self._test
+
     @staticmethod
-    def _label_uuid(dset: data.KnownData) -> Tuple[List[str], NDArray, NDArrayInt]:
+    def _label_uuid(dset: data.KnownData) -> Tuple[NDArray, NDArray, NDArrayInt]:
         """Return uuids, unique uuids and uuid to int mapping (for stratified group k-fold)"""
         uuids = [dset.metadata[md5]["uuid"] for md5 in dset.ids]
         unique_uuids, uuid_to_int = np.unique(uuids, return_inverse=True)  # type: ignore
-        return uuids, unique_uuids, uuid_to_int
+        return np.array(uuids), unique_uuids, uuid_to_int
 
     def _reserve_test(self) -> Tuple[data.KnownData, data.KnownData]:
         """Return training data from cross-validation and test data for final evaluation."""
         dset = self._epiatlas_dataset.dataset
+        if self.test_ratio == 0:
+            return dset, data.KnownData.empty_collection()
+
         n_splits = int(1 / self.test_ratio)
         if self.epiatlas_dataset.target_category == "track_type":
             train_val, test = next(self._split_by_track_type(dset, n_splits))
@@ -268,15 +285,16 @@ class EpiAtlasFoldFactory:
     def _split_dataset(
         self, dset: data.KnownData, n_splits: int, oversample: bool = False
     ) -> Generator[Tuple[data.KnownData, data.KnownData], None, None]:
-        # Convert the labels and groups (uuids) into numpy arrays
+        # Convert the labels and groups (uuids) into numpy  rays
         uuids, uuids_unique, uuids_inverse = self._label_uuid(dset)
         labels_unique = [
             dset.encoded_labels[uuids == uuid][0] for uuid in uuids_unique
         ]  # assuming all samples from the same UUID share the same label --> not true for track_type
 
-        skf = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=42)
+        skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
         for train_idxs_unique, valid_idxs_unique in skf.split(
-            X=uuids_unique, y=labels_unique, groups=uuids_inverse
+            X=np.empty(shape=(len(uuids_unique), dset.signals.shape[1])),
+            y=labels_unique,
         ):
             train_idxs = np.isin(uuids_inverse, train_idxs_unique)
             valid_idxs = np.isin(uuids_inverse, valid_idxs_unique)

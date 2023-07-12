@@ -280,12 +280,50 @@ class UUIDMetadata(Metadata):
         print(f"For {c} unique experiments in {len(uuid_dict)} classes")
 
     def uuid_to_md5(self) -> Dict[str, Dict[str, str]]:
-        """Retuirn uuid to {track_type:md5} mapping { uuid : {track_type1:md5sum, track_type2:md5sum, ...} }"""
+        """Return uuid to {track_type:md5} mapping { uuid : {track_type1:md5sum, track_type2:md5sum, ...} }"""
         uuid_to_md5s = defaultdict(dict)
         for dset in self.datasets:
             uuid = dset["uuid"]
             uuid_to_md5s[uuid].update({dset["track_type"]: dset["md5sum"]})
         return uuid_to_md5s
+
+    def remove_small_classes(
+        self,
+        min_class_size: int,
+        label_category: str,
+        verbose=True,
+        using_uuid: bool = True,
+    ):
+        """Remove classes with less than min_class_size examples
+        for a given metatada category.
+
+        Counts unique uuids if using_uuid=True, else counts md5s.
+
+        Returns string of class ratio left if verbose.
+        """
+        nb_class_init = len(self.unique_classes(label_category))
+
+        if not using_uuid:
+            md5_per_class = self.md5_per_class(label_category)
+            for label, size in self.label_counter(label_category).most_common():
+                if size < min_class_size:
+                    for md5 in md5_per_class[label]:
+                        del self[md5]
+        else:
+            uuid_to_md5s = self.uuid_to_md5()
+            for label, uuids in self.uuid_per_class(label_category).items():
+                if len(uuids) < min_class_size:
+                    for uuid in uuids:
+                        for md5 in uuid_to_md5s[uuid].values():
+                            del self[md5]
+
+        if verbose:
+            remaining = len(self.unique_classes(label_category))
+            ratio = f"{remaining}/{nb_class_init}"
+            print(
+                f"{ratio} labels left from {label_category} "
+                f"after removing classes with less than {min_class_size} signals."
+            )
 
 
 def env_filtering(metadata: Metadata, category: str) -> List[str]:
