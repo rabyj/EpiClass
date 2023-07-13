@@ -32,6 +32,7 @@ from epi_ml.core.analysis import write_pred_table
 from epi_ml.core.data import DataSet
 from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory
 from epi_ml.utils.check_dir import create_dirs
+from epi_ml.utils.my_logging import log_dset_composition
 from epi_ml.utils.time import time_now
 
 NFOLD_TUNE = 9
@@ -421,12 +422,7 @@ def run_prediction(
       logdir (Path): The directory where the results will be saved.
       verbose: Whether to print out the metrics. Defaults to True
     """
-    if verbose:
-        print(f"Split {i} training size: {my_data.train.num_examples}")
-
-    if i == 0:
-        nb_files = len(set(my_data.train.ids.tolist() + my_data.validation.ids.tolist()))
-        print(f"Total nb of files: {nb_files}")
+    log_dset_composition(my_data, logdir=logdir, logger=None, split_nb=i)
 
     estimator.fit(X=my_data.train.signals, y=my_data.train.encoded_labels)
 

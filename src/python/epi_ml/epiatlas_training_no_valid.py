@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import gc
 import json
 import os
 import sys
@@ -29,7 +28,7 @@ from epi_ml.core.model_pytorch import LightningDenseClassifier
 from epi_ml.core.trainer import MyTrainer, define_callbacks
 from epi_ml.utils.check_dir import create_dirs
 from epi_ml.utils.modify_metadata import filter_by_pairs, fix_roadmap, merge_pair_end_info
-from epi_ml.utils.my_logging import log_pre_training
+from epi_ml.utils.my_logging import log_dset_composition, log_pre_training
 from epi_ml.utils.time import time_now
 
 
@@ -181,11 +180,8 @@ def train_without_valid(
     restore: bool,
 ) -> None:
     """Wrapper for convenience. Skip training if restore is True"""
-    logger.experiment.log_other("Training size", my_data.train.num_examples)
-    print(f"training size: {my_data.train.num_examples}")
 
-    nb_files = len(set(my_data.train.ids.tolist()))
-    logger.experiment.log_other("Total nb of files", nb_files)
+    log_dset_composition(my_data, logdir=None, logger=logger, split_nb=0)
 
     train_dataset, train_dataloader = create_torch_datasets(
         data=my_data,
@@ -269,10 +265,7 @@ def train_without_valid(
         print(f"training time: {training_time}")
 
         # reload comet logger for further logging, will create new experience in offline mode
-        if type(logger.experiment).__name__ == "OfflineExperiment":
-            IsOffline = True
-        else:
-            IsOffline = False
+        IsOffline = bool(type(logger.experiment).__name__ == "OfflineExperiment")
 
         logger = pl_loggers.CometLogger(
             project_name="EpiLaP",

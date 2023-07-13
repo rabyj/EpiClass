@@ -28,7 +28,7 @@ from epi_ml.core.model_pytorch import LightningDenseClassifier
 from epi_ml.core.trainer import MyTrainer, define_callbacks
 from epi_ml.utils import modify_metadata
 from epi_ml.utils.check_dir import create_dirs
-from epi_ml.utils.my_logging import log_pre_training
+from epi_ml.utils.my_logging import log_dset_composition, log_pre_training
 from epi_ml.utils.time import time_now
 
 
@@ -215,11 +215,7 @@ def do_one_experiment(
     """Wrapper for convenience. Skip training if restore is True"""
     begin_loop = time_now()
 
-    logger.experiment.log_other("Training size", my_data.train.num_examples)
-    print(f"Split {split_nb} training size: {my_data.train.num_examples}")
-
-    nb_files = len(set(my_data.train.ids.tolist() + my_data.validation.ids.tolist()))
-    logger.experiment.log_other("Total nb of files", nb_files)
+    log_dset_composition(my_data, logdir=None, logger=logger, split_nb=split_nb)
 
     dsets_dict = create_torch_datasets(
         data=my_data,
