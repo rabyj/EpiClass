@@ -12,9 +12,10 @@ def write_hdf5_paths_to_file(
             f.write(f"{prefix}{md5}{suffix}\n")
 
 
-def write_md5s_to_file(md5s: List[str], logdir: str, name: str) -> None:
-    """Write a list of md5s to a file."""
+def write_md5s_to_file(md5s: List[str], logdir: str, name: str) -> Path:
+    """Write a list of md5s to a file. Return filepath."""
     filename = Path(logdir) / f"{name}.md5"
     with open(filename, "w", encoding="utf8") as f:
         for md5 in md5s:
             f.write(f"{md5}\n")
+    return filename

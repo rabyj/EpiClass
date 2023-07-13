@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import copy
 from collections import Counter
+from pathlib import Path
 from typing import List
 
 import numpy as np
@@ -17,6 +18,7 @@ from epi_ml.core.epiatlas_treatment import (
     EpiAtlasFoldFactory,
 )
 from epi_ml.core.metadata import Metadata
+from epi_ml.utils.general_utility import write_md5s_to_file
 from tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
 
 
@@ -26,10 +28,35 @@ class TestEpiAtlasFoldFactory:
     Preconditions: Exact same input labels list. (raw_dset.train.encoded_labels)
     """
 
-    @pytest.fixture(scope="class", autouse=True)
+    @pytest.fixture(scope="class", name="test_data")
     def test_data(self) -> EpiAtlasFoldFactory:
         """Mock test EpiAtlasFoldFactory."""
         return EpiAtlasTreatmentTestData.default_test_data()
+
+    @pytest.fixture(name="big_test_data")
+    def big_test_data(self, tmp_path) -> EpiAtlasFoldFactory:
+        """Mock big EpiAtlasFoldFactory."""
+        tmp_path = Path(tmp_path) / "big_test"
+        tmp_path.mkdir(exist_ok=True, parents=True)
+
+        target_category = "harmonized_donor_sex"
+
+        meta_path = (
+            Path.home()
+            / "projects/epilap/input/metadata/hg38_2023_epiatlas_dfreeze_limited_categories.json"
+        )
+        # Reduce total nb of files
+        meta = Metadata(meta_path)
+        meta.select_category_subsets(target_category, ["female", "male"])
+        md5_per_class = meta.md5_per_class(target_category)
+        md5s = [md5 for md5_list in md5_per_class.values() for md5 in md5_list[:2000]]
+
+        md5_file = write_md5s_to_file(md5s=md5s, logdir=str(tmp_path), name="big_test")
+        return EpiAtlasTreatmentTestData(
+            metadata_path=meta_path,
+            logdir=tmp_path,
+            md5_list_path=md5_file,
+        ).get_ea_handler(label_category=target_category)
 
     @pytest.fixture(scope="class")
     def test_metadata(self, test_data) -> Metadata:
@@ -43,6 +70,22 @@ class TestEpiAtlasFoldFactory:
         return test_data.epiatlas_dataset.datasource
 
     @staticmethod
+    def test_data_from_datasource(
+        datasource: EpiDataSource, metadata: Metadata, target_category: str
+    ) -> EpiAtlasFoldFactory:
+        """Create EpiAtlasFoldFactory from datasource."""
+        ea_handler = EpiAtlasFoldFactory.from_datasource(
+            datasource,
+            label_category=target_category,
+            min_class_size=1,
+            n_fold=2,
+            md5_list=list(metadata.md5s),
+            force_filter=True,
+            test_ratio=0,
+        )
+        return ea_handler
+
+    @staticmethod
     def modified_metadata(test_metadata, del_tracks: List[str]) -> Metadata:
         """Remove tracks from metadata."""
         meta = copy.deepcopy(test_metadata)
@@ -52,15 +95,44 @@ class TestEpiAtlasFoldFactory:
                     del meta[md5]
         return meta
 
-    def test_yield_split_size(self, test_data: EpiAtlasFoldFactory):
-        """Test that splits contain the correct number of training and validation samples."""
-        total_data = test_data.train_val_dset
+    @staticmethod
+    def assert_splits(ea_handler: EpiAtlasFoldFactory):
+        """Assert that splits are correct."""
+        total_data = ea_handler.train_val_dset
         assert total_data.num_examples == len(set(total_data.ids))
 
-        for dset in test_data.yield_split():
-            train_unique_size = len(set(dset.train.ids))
-            valid_unique_size = len(set(dset.validation.ids))
-            assert total_data.num_examples == train_unique_size + valid_unique_size
+        for dset in ea_handler.yield_split():
+            trains_ids = set(dset.train.ids)
+            valid_ids = set(dset.validation.ids)
+            assert len(trains_ids & valid_ids) == 0, "No overlap between train and valid"
+
+            assert len(valid_ids) == len(dset.validation.ids), "No dups in validation"
+
+            assert dset.test.num_examples == 0, "No test set"
+
+            assert total_data.num_examples == len(trains_ids) + len(valid_ids)
+
+    # @pytest.mark.parametrize("splitter", ["test_data", "big_test_data"])
+    def test_yield_correct_split_1(self, test_data: EpiAtlasFoldFactory):
+        """Test that splits contain the correct number of training and validation samples."""
+        ea_handler = test_data
+
+        datasource = test_data.epiatlas_dataset.datasource
+        metadata = test_data.epiatlas_dataset.metadata
+        ea_handler2 = TestEpiAtlasFoldFactory.test_data_from_datasource(
+            datasource,
+            metadata,
+            target_category=test_data.epiatlas_dataset.target_category,
+        )
+
+        for handler in [ea_handler, ea_handler2]:
+            TestEpiAtlasFoldFactory.assert_splits(handler)
+
+    @pytest.mark.filterwarnings("ignore:.*Cannot read file directly.*")
+    @pytest.mark.skip(reason="Takes too long.")
+    def test_yield_correct_split_2(self, big_test_data: EpiAtlasFoldFactory):
+        """Test that splits contain the correct number of training and validation samples, with real metadata."""
+        TestEpiAtlasFoldFactory.assert_splits(big_test_data)
 
     # def test_yield_subsample_validation_1(self, test_data: EpiAtlasFoldFactory):
     #     """Test correct subsampling. Subsplit should partition initial validation split."""
@@ -161,9 +233,11 @@ class TestEpiAtlasFoldFactory:
 
         valid_raw_sum = 0
         for dset in ea_handler.yield_split():
-            train_unique_size = len(set(dset.train.ids))
-            valid_unique_size = len(set(dset.validation.ids))
-            assert dset.test.num_examples == 0
+            trains_ids = set(dset.train.ids)
+            valid_ids = set(dset.validation.ids)
+
+            train_unique_size = len(trains_ids)
+            valid_unique_size = len(valid_ids)
 
             assert total_size == train_unique_size + valid_unique_size
 

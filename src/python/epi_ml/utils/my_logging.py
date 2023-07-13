@@ -102,7 +102,7 @@ def log_dset_composition(
 
     ids_train = set(my_data.train.ids.tolist())
     ids_valid = set(my_data.validation.ids.tolist())
-    if not ids_train & ids_valid:
+    if ids_train & ids_valid:
         raise ValueError("Train and validation sets overlap")
 
     nb_files = len(ids_train) + len(ids_valid)

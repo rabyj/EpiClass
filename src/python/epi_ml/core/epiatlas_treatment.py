@@ -199,6 +199,8 @@ class EpiAtlasFoldFactory:
         self._classes = self._epiatlas_dataset.classes
 
         self._train_val, self._test = self._reserve_test()
+        if len(self._train_val) == 0:
+            raise ValueError("No data in training and validation.")
 
     @classmethod
     def from_datasource(
@@ -287,7 +289,7 @@ class EpiAtlasFoldFactory:
     def _split_dataset(
         self, dset: data.KnownData, n_splits: int, oversample: bool = False
     ) -> Generator[Tuple[data.KnownData, data.KnownData], None, None]:
-        # Convert the labels and groups (uuids) into numpy  rays
+        # Convert the labels and groups (uuids) into numpy arrays
         uuids, uuids_unique, uuids_inverse = self._label_uuid(dset)
         labels_unique = [
             dset.encoded_labels[uuids == uuid][0] for uuid in uuids_unique

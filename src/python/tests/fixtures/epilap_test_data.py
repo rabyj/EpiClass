@@ -1,6 +1,8 @@
 """EpiAtlas data treatment testing module."""
 from __future__ import annotations
 
+import multiprocessing
+import os
 from pathlib import Path
 from typing import List
 
@@ -43,17 +45,43 @@ class EpiAtlasTreatmentTestData:
             n_fold=n_fold,
         )
 
+    @staticmethod
+    def _create_symlink(source: Path, link_name: Path):
+        """Create a symbolic link pointing to source named link_name"""
+        try:
+            os.symlink(source, link_name)
+        except FileExistsError:
+            pass
+
     def create_temp_hdf5s(
         self, md5_list_path: Path, name="_100kb_all_none_value.hdf5"
     ) -> List[Path]:
         """Create temporary files and returns paths"""
         tmp_files = []
         with open(md5_list_path, "r", encoding="utf8") as md5_list:
-            for md5 in md5_list.readlines():
+            md5s = [md5.strip() for md5 in md5_list.readlines()]
+
+        if len(md5s) < 100:
+            for md5 in md5s:
                 md5 = md5.strip()
                 tmp_file = self.hdf5_logdir / f"{md5 + name}"
                 tmp_files.append(tmp_file)
                 self.write_mock_hdf5(tmp_file, md5)
+        else:
+            md5 = md5s[0]
+            real_tmp_file = self.hdf5_logdir / f"{md5 + name}"
+            tmp_files.append(real_tmp_file)
+            self.write_mock_hdf5(real_tmp_file, md5)
+
+            for md5 in md5s[1:]:
+                tmp_file = self.hdf5_logdir / f"{md5 + name}"
+                tmp_files.append(tmp_file)
+
+            with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
+                pool.starmap(
+                    self._create_symlink,
+                    [(real_tmp_file, fake_file) for fake_file in tmp_files[1:]],
+                )
 
         return tmp_files
 
@@ -108,7 +136,7 @@ def create_test_metadata(metadata_source_path: Path, md5_list: Path):
     my_metadata = Metadata(metadata_source_path)
 
     with open(md5_list, "r", encoding="utf8") as f:
-        md5_set = set([md5.strip() for md5 in f.readlines()])
+        md5_set = set(md5.strip() for md5 in f.readlines())
 
     for md5 in list(my_metadata.md5s):
         if md5 not in md5_set:
