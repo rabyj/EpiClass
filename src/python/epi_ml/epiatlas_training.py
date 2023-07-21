@@ -135,7 +135,7 @@ def main():
         else:
             raise ValueError("Cannot find assay category for class pairs.")
         my_metadata = modify_metadata.filter_by_pairs(
-            my_metadata, assay_cat=assay_cat, cat2=category
+            my_metadata, assay_cat=assay_cat, cat2=category, nb_pairs=9, min_per_pair=10
         )
 
     # --- Load signals and train ---

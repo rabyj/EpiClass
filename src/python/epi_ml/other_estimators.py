@@ -16,7 +16,7 @@ from epi_ml.core import data, estimators, metadata
 from epi_ml.core.data_source import EpiDataSource
 from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory
 from epi_ml.core.lgbm import tune_lgbm
-from epi_ml.utils.modify_metadata import filter_by_pairs
+from epi_ml.utils import modify_metadata
 from epi_ml.utils.time import time_now
 
 if os.getenv("CONCURRENT_CV") is not None:
@@ -143,7 +143,9 @@ def main():
             assay_cat = "assay"
         else:
             raise ValueError("Cannot find assay category for class pairs.")
-        my_metadata = filter_by_pairs(my_metadata, assay_cat=assay_cat, cat2=category)
+        my_metadata = modify_metadata.filter_by_pairs(
+            my_metadata, assay_cat=assay_cat, cat2=category, nb_pairs=9, min_per_pair=10
+        )
 
     # Tuning mode
     loading_begin = time_now()
