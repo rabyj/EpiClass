@@ -24,7 +24,6 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelBinarizer, StandardScaler
 from sklearn.svm import LinearSVC
 from skopt import BayesSearchCV
-from skopt.callbacks import DeadlineStopper
 from skopt.space import Categorical, Integer, Real
 from tabulate import tabulate
 
@@ -286,39 +285,42 @@ def tune_estimator(
     Returns:
       A BayesSearchCV object
     """
-    deadline_cb = DeadlineStopper(total_time=60 * 60 * 8)
-    if n_jobs is None:
-        n_jobs = int(NFOLD_TUNE * concurrent_cv)
-
-    if n_jobs > 48:
-        raise AssertionError("More jobs than cores asked, max 48 jobs.")
-
-    total_data = ea_handler.epiatlas_dataset.create_total_data()
-    print(f"Number of files used globally {len(total_data)}")
-
-    opt = BayesSearchCV(
-        model,
-        search_spaces=params,
-        cv=ea_handler.split(total_data),
-        random_state=RNG,
-        return_train_score=True,
-        error_score=-1,  # type: ignore
-        verbose=3,
-        scoring=SCORES,
-        refit="acc",  # type: ignore
-        n_jobs=n_jobs,
-        n_points=concurrent_cv,
-        n_iter=n_iter,
+    raise NotImplementedError(
+        "This function has not been updated to the new UUID epiatlas treatment yet."
     )
+    # deadline_cb = DeadlineStopper(total_time=60 * 60 * 8)
+    # if n_jobs is None:
+    #     n_jobs = int(NFOLD_TUNE * concurrent_cv)
 
-    opt.fit(
-        X=total_data.signals,
-        y=total_data.encoded_labels,
-        callback=[best_params_cb, deadline_cb],
-    )
-    print(f"Current model params: {model.get_params()}")
-    print(f"best params: {opt.best_params_}")  # type: ignore
-    return opt
+    # if n_jobs > 48:
+    #     raise AssertionError("More jobs than cores asked, max 48 jobs.")
+
+    # total_data = ea_handler.epiatlas_dataset.create_total_data()
+    # print(f"Number of files used globally {len(total_data)}")
+
+    # opt = BayesSearchCV(
+    #     model,
+    #     search_spaces=params,
+    #     cv=ea_handler.split(total_data),
+    #     random_state=RNG,
+    #     return_train_score=True,
+    #     error_score=-1,  # type: ignore
+    #     verbose=3,
+    #     scoring=SCORES,
+    #     refit="acc",  # type: ignore
+    #     n_jobs=n_jobs,
+    #     n_points=concurrent_cv,
+    #     n_iter=n_iter,
+    # )
+
+    # opt.fit(
+    #     X=total_data.signals,
+    #     y=total_data.encoded_labels,
+    #     callback=[best_params_cb, deadline_cb],
+    # )
+    # print(f"Current model params: {model.get_params()}")
+    # print(f"best params: {opt.best_params_}")  # type: ignore
+    # return opt
 
 
 def optimize_estimator(
@@ -376,6 +378,12 @@ def log_tune_results(logdir: Path, name: str, opt: BayesSearchCV):
         json.dump(obj=opt.best_params_, fp=f, sort_keys=True, indent=4)  # type: ignore
 
 
+def init_lock(l):
+    """Define a global lock"""
+    global lock  # pylint: disable=global-variable-undefined
+    lock = l
+
+
 def run_predictions(
     ea_handler: EpiAtlasFoldFactory, estimator: Pipeline, name: str, logdir: Path
 ):
@@ -397,7 +405,8 @@ def run_predictions(
     func = partial(run_prediction, estimator=estimator, name=name, logdir=logdir)
     items = enumerate(ea_handler.yield_split())
 
-    with mp.Pool(nb_workers) as pool:
+    l = mp.Lock()
+    with mp.Pool(initializer=init_lock, initargs=(l,), processes=nb_workers) as pool:
         pool.starmap(func, items)
 
 
@@ -434,8 +443,14 @@ def run_prediction(
     X, y = my_data.validation.signals, my_data.validation.encoded_labels
 
     if verbose:
-        print(f"Split {i} metrics:")
-        analyzer.metrics(X, y, verbose=True)
+        if "lock" in globals():
+            lock.acquire()
+            print(f"Split {i} metrics:")
+            analyzer.metrics(X, y, verbose=True)
+            lock.release()
+        else:
+            print(f"Split {i} metrics:")
+            analyzer.metrics(X, y, verbose=True)
 
     try:
         logdir = logdir / f"{name}"
