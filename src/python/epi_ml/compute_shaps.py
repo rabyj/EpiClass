@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import argparse
 import os
+import warnings
 from pathlib import Path
+
+warnings.filterwarnings("ignore", message=".*nopython.*")
 
 from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from epi_ml.argparseutils.directorychecker import DirectoryChecker

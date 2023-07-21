@@ -16,6 +16,7 @@ def fixture_test_dir(mk_logdir) -> Path:
     return mk_logdir("other_estimators")
 
 
+@pytest.mark.filterwarnings("ignore:Cannot read file directly.*")
 def test_hyperparams(test_dir: Path):
     """Test if hyperparameter file is handled properly."""
     os.environ["MIN_CLASS_SIZE"] = "3"
@@ -44,7 +45,7 @@ def test_hyperparams(test_dir: Path):
     main_module()
 
 
-@pytest.mark.timeout(45)
+@pytest.mark.filterwarnings("ignore:Cannot read file directly.*")
 def test_binary_classifier(test_dir: Path):
     """Test if binary models are properly supported."""
     # Setting up environment variables

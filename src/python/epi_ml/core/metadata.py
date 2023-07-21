@@ -210,10 +210,11 @@ class Metadata:
         """Print number of examples for each label in given category."""
         print(f"\nLabel breakdown for {label_category}")
         i = 0
-        for label, count in self.label_counter(label_category).most_common():
+        label_counter = self.label_counter(label_category)
+        for label, count in label_counter.most_common():
             print(f"{label}: {count}")
             i += count
-        print(f"For a total of {i} examples\n")
+        print(f"For a total of {i} examples in {len(label_counter)} classes\n")
 
     def get_categories(self) -> list[str]:
         """Return a list of all metadata categories sorted by lowercase."""
@@ -269,15 +270,15 @@ class UUIDMetadata(Metadata):
     def display_uuid_per_class(self, label_category: str) -> None:
         """Display uuid_per_class for a given metadata category."""
         uuid_dict = self.uuid_per_class(label_category)
+        uuid_counter = Counter({label: len(uuid_dict[label]) for label in uuid_dict})
         print(f"{label_category} label breakdown for unique experiments (uuid):")
 
-        c = 0
-        for label in uuid_dict:
-            len_class = len(uuid_dict[label])
-            c += len_class
-            print(f"{label}: {len_class}")
+        for label, c in uuid_counter.most_common():
+            print(f"{label}: {c}")
 
-        print(f"For {c} unique experiments in {len(uuid_dict)} classes")
+        print(
+            f"For {sum(uuid_counter.values())} unique experiments in {len(uuid_dict)} classes"
+        )
 
     def uuid_to_md5(self) -> Dict[str, Dict[str, str]]:
         """Return uuid to {track_type:md5} mapping { uuid : {track_type1:md5sum, track_type2:md5sum, ...} }"""

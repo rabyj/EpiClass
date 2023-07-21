@@ -1,3 +1,6 @@
+"""
+Create a custom bed filter for each chromosome, to select a fixed region on the second arm center.
+"""
 HUNDRED_KB = 100 * 1000
 
 
@@ -53,7 +56,7 @@ def print_chr14_filter():
 
 
 def main():
-    """TODO : Write docstring"""
+    """Make a bed file for each chromosome with a fixed section of the second arm region."""
 
     chrom_filepath = "./chromsizes/hg19.noy.chrom.sizes"
     centromere_filepath = "./filter/hg19.centromeres.bed"

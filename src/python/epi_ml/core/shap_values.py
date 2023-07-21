@@ -216,7 +216,7 @@ class LGBM_SHAP_Handler:
         if save:
             self.saver.save_to_npz(
                 name=name + "_evaluation",
-                evaluation_ids=evaluation_dset.ids,
+                evaluation_md5s=evaluation_dset.ids,
                 shap_values=shap_values,
                 expected_value=explainer.expected_value,
                 classes=self.model_classes,
