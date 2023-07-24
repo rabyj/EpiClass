@@ -343,7 +343,12 @@ def env_filtering(metadata: Metadata, category: str) -> List[str]:
         assay_list = json.loads(os.environ[name])
         print(f"{name}: {assay_list}")
         print(f"Filtering metadata: Only keeping examples with targets/assay {assay_list}")
-        metadata.select_category_subsets("assay", assay_list)
+
+        assay_category_label = list(set(["assay_epiclass", "assay"]) & set(metadata.get_categories()))
+        if len(assay_category_label) == 0:
+            raise ValueError(f"Assay category not found in metadata categories: {metadata.get_categories()}")
+
+        metadata.select_category_subsets(assay_category_label[0], assay_list)
 
     name = "EXCLUDE_LIST"
     if os.getenv(name) is not None:
