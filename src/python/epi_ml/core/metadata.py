@@ -335,6 +335,7 @@ def env_filtering(metadata: Metadata, category: str) -> List[str]:
     EXCLUDE_LIST
     ASSAY_LIST
     LABEL_LIST
+    REMOVE_TRACKS
     """
     print("Checking environment variables.")
     # fmt: off
@@ -370,12 +371,12 @@ def env_filtering(metadata: Metadata, category: str) -> List[str]:
 
     name = "REMOVE_TRACKS"
     if os.getenv(name) is not None:
-        label_list = json.loads(os.environ[name])
-        print(f"{name}: {label_list}")
+        track_list = json.loads(os.environ[name])
+        print(f"{name}: {track_list}")
 
-        print(f"Filtering metadata: Removing examples with track type {label_list}.")
+        print(f"Filtering metadata: Removing examples with track type {track_list}.")
         track_type_category_label = "track_type"
-        metadata.remove_category_subsets(track_type_category_label, label_list)
+        metadata.remove_category_subsets(track_type_category_label, track_list)
 
     return label_list
 
