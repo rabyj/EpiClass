@@ -361,12 +361,21 @@ def env_filtering(metadata: Metadata, category: str) -> List[str]:
     if os.getenv(name) is not None:
         label_list = json.loads(os.environ[name])
         print(f"{name}: {label_list}")
-        print(f"Filtering metadata: Only keeping examples with labels {label_list} from '{category}'")
+        print(f"Filtering metadata: Only keeping examples with labels {label_list} from category '{category}'")
         metadata.select_category_subsets(category, label_list)
     else:
         label_list = metadata.unique_classes(category)
         print(f"No label list, considering all left classes : {label_list}")
     # fmt: on
+
+    name = "REMOVE_TRACKS"
+    if os.getenv(name) is not None:
+        label_list = json.loads(os.environ[name])
+        print(f"{name}: {label_list}")
+
+        print(f"Filtering metadata: Removing examples with track type {label_list}.")
+        track_type_category_label = "track_type"
+        metadata.remove_category_subsets(track_type_category_label, label_list)
 
     return label_list
 
