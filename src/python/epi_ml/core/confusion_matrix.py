@@ -4,7 +4,7 @@ from __future__ import annotations
 import math
 import re
 from pathlib import Path
-from typing import Tuple
+from typing import List, Tuple
 
 import matplotlib
 
@@ -18,10 +18,10 @@ from matplotlib.colors import ListedColormap
 
 
 class InputMatrixError(Exception):
-    pass
+    """Raised when input matrix is not as expected."""
 
 
-class ConfusionMatrixWriter(object):
+class ConfusionMatrixWriter:
     """Class to create/handle confusion matrices.
 
     labels : list of classes string representation
@@ -29,7 +29,7 @@ class ConfusionMatrixWriter(object):
     Expects a confusion matrix input with prediction rows (row value: pred1 pred2 pred3 ...) and target columns.
     """
 
-    def __init__(self, labels, confusion_matrix: np.ndarray):
+    def __init__(self, labels: List[str], confusion_matrix: np.ndarray):
         self._labels = sorted(labels)
         self._og_confusion_mat = np.array(confusion_matrix)
         self._pd_matrix, self._pd_rel_matrix = self.init_confusion_matrices(
@@ -40,7 +40,7 @@ class ConfusionMatrixWriter(object):
         if set(self._labels) != set(other._labels):
             raise ValueError("Cannot add matrices with different labels.")
 
-        new_mat = self._og_confusion_mat + other._og_confusion_mat
+        new_mat = self._og_confusion_mat + other._og_confusion_mat  # type: ignore
         new_mat = ConfusionMatrixWriter(self._labels, new_mat)
         return new_mat
 
