@@ -8,6 +8,7 @@ import numpy as np
 
 from epi_ml.core.epiatlas_treatment import TRACKS_MAPPING
 from epi_ml.core.metadata import Metadata
+from epi_ml.utils.metadata_utils import DP_ASSAYS, EPIATLAS_ASSAYS, count_pairs
 
 merge_fetal_tissues = {
     "fetal_intestine_large": "fetal_intestine",
@@ -21,66 +22,6 @@ merge_fetal_tissues = {
     "fetal_renal_pelvis": "fetal_kidney",
 }
 merge_molecule = {"rna": "total_rna", "polyadenylated_mrna": "polya_rna"}
-
-epiatlas_assays = [
-    "h3k27ac",
-    "h3k27me3",
-    "h3k36me3",
-    "h3k4me1",
-    "h3k4me3",
-    "h3k9me3",
-    "input",
-    "rna_seq",
-    "mrna_seq",
-    "wgbs",
-    "wgbs-standard",
-    "wgbs-pbat",
-]
-
-dp_assays = [
-    "chromatin_acc",
-    "h3k27ac",
-    "h3k27me3",
-    "h3k36me3",
-    "h3k4me1",
-    "h3k4me3",
-    "h3k9me3",
-    "input",
-    "mrna_seq",
-    "rna_seq",
-    "wgb_seq",
-]
-
-epiatlas_cats = set(
-    [
-        "uuid",
-        "inputs",
-        "inputs_ctl",
-        "original_read_length",
-        "original_read_length_ctl",
-        "trimmed_read_length",
-        "trimmed_read_length_ctl",
-        "software_version",
-        "chastity_passed",
-        "paired_end_mode",
-        "antibody_nan",
-        "gembs_config",
-        "rna_seq_type",
-        "analyzed_as_stranded",
-        "paired",
-        "antibody",
-        "upload_date",
-    ]
-)
-
-
-def count_pairs(my_metadata: Metadata, cat1, cat2):
-    """Return label pairs (label_cat1, label_cat2) counter from the given metadata categories."""
-    counter = collections.Counter(
-        (dset.get(cat1, "--empty--"), dset.get(cat2, "--empty--"))
-        for dset in my_metadata.datasets
-    )
-    return counter
 
 
 def keep_major_cell_types(my_metadata: Metadata):
@@ -142,13 +83,13 @@ def keep_major_cell_types_alt(my_metadata: Metadata):
     my_meta = copy.deepcopy(my_metadata)
 
     # remove useless assays and cell_types
-    my_meta.select_category_subsets("assay", dp_assays)
+    my_meta.select_category_subsets("assay", DP_ASSAYS)
     my_meta.remove_small_classes(10, "cell_type")
     my_meta.convert_classes("tissue_type", merge_fetal_tissues)
 
     new_meta = copy.deepcopy(my_meta)
     new_meta.empty()
-    for assay in dp_assays:
+    for assay in DP_ASSAYS:
         temp_meta = copy.deepcopy(my_meta)
         temp_meta.select_category_subsets("assay", [assay])
         temp_meta.remove_small_classes(10, "cell_type")
@@ -168,7 +109,7 @@ def five_cell_types_selection(my_metadata: Metadata):
         "thyroid",
     ]
     my_metadata.select_category_subsets("cell_type", cell_types)
-    my_metadata.select_category_subsets("assay", dp_assays)
+    my_metadata.select_category_subsets("assay", DP_ASSAYS)
     return my_metadata
 
 
@@ -197,7 +138,7 @@ def filter_by_pairs(
     my_metadata.select_category_subsets("track_type", TRACKS_MAPPING.keys())
 
     # Select EpiAtlas/IHEC assays.
-    my_metadata.select_category_subsets(assay_cat, epiatlas_assays)
+    my_metadata.select_category_subsets(assay_cat, EPIATLAS_ASSAYS)
 
     # Remove (assay, cat2) pairs with less than X examples.
     counter = count_pairs(my_metadata, assay_cat, cat2)
