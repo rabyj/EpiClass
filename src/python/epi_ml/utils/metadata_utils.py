@@ -2,6 +2,7 @@
 import collections
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from epi_ml.core.metadata import Metadata
@@ -10,11 +11,20 @@ from epi_ml.core.metadata import Metadata
 def make_table(my_metadata: Metadata, cat1: str, cat2: str, filepath: str):
     """Write metadata content tsv table for given metadata categories"""
     counter = count_pairs(my_metadata, cat1, cat2)
-    triplets = [(pair[0], pair[1], count) for pair, count in sorted(counter.items())]
+    triplets = [(pair[0], pair[1], int(count)) for pair, count in sorted(counter.items())]
 
     df = pd.DataFrame(triplets, columns=[cat1, cat2, "count"])
-    table = df.pivot_table(values="count", index=cat1, columns=cat2, fill_value=0)
-    table.to_csv(Path(filepath).with_suffix(".tsv"), sep="\t")
+    table = df.pivot_table(
+        values="count",
+        index=cat1,
+        columns=cat2,
+        aggfunc=np.sum,
+        fill_value=0,
+        margins=True,
+        margins_name="Total",
+    )
+    table = table.T.sort_values(by="Total", ascending=False)
+    table.to_csv(Path(filepath).with_suffix(".csv"), sep=",")
 
 
 def count_pairs(my_metadata: Metadata, cat1: str, cat2: str):
