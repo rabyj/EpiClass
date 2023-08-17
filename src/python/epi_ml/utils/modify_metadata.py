@@ -3,12 +3,14 @@ import collections
 import copy
 import datetime
 import random
+from typing import TypeVar
 
 import numpy as np
 
-from epi_ml.core.epiatlas_treatment import TRACKS_MAPPING
-from epi_ml.core.metadata import Metadata
-from epi_ml.utils.metadata_utils import DP_ASSAYS, EPIATLAS_ASSAYS, count_pairs
+from epi_ml.core.metadata import Metadata, UUIDMetadata
+from epi_ml.utils.metadata_utils import DP_ASSAYS, count_pairs
+
+Meta = TypeVar("Meta", Metadata, UUIDMetadata)
 
 merge_fetal_tissues = {
     "fetal_intestine_large": "fetal_intestine",
@@ -114,12 +116,13 @@ def five_cell_types_selection(my_metadata: Metadata):
 
 
 def filter_by_pairs(
-    my_metadata: Metadata,
+    my_metadata: Meta,
     assay_cat: str = "assay",
     cat2: str = "cell_type",
     nb_pairs: int = 5,
     min_per_pair: int = 10,
-) -> Metadata:
+    use_uuid: bool = True,
+) -> Meta:
     """Returns filtered metadata keeping only certain classes from cat2 based on pairs conditions with assay_cat.
 
     1) Remove (assay_cat, cat2) pairs that have less than 'min_per_pair' signals.
@@ -129,19 +132,14 @@ def filter_by_pairs(
     print("Applying metadata filter function 'filter_by_pairs'.")
     to_ignore = ["other", "--", "", "na"]
     for cat in assay_cat, cat2:
-        my_metadata.remove_category_subsets(cat, to_ignore)
         my_metadata.remove_missing_labels(cat)
+        my_metadata.remove_category_subsets(cat, to_ignore)
 
     full_metadata = copy.deepcopy(my_metadata)
 
-    # Consider only "leader" tracks.
-    my_metadata.select_category_subsets("track_type", TRACKS_MAPPING.keys())
-
-    # Select EpiAtlas/IHEC assays.
-    my_metadata.select_category_subsets(assay_cat, EPIATLAS_ASSAYS)
-
-    # Remove (assay, cat2) pairs with less than X examples.
-    counter = count_pairs(my_metadata, assay_cat, cat2)
+    # Remove (assay, cat2) pairs with less than X unique examples (min_per_pair condition)
+    # Use uuid to count unique experiments
+    counter = count_pairs(my_metadata, assay_cat, cat2, use_uuid=use_uuid)
     ok_pairs = set(pair for pair, i in counter.most_common() if i >= min_per_pair)
 
     for dset in list(full_metadata.datasets):
@@ -149,22 +147,30 @@ def filter_by_pairs(
         if pair not in ok_pairs:
             del full_metadata[dset["md5sum"]]
 
-    # Remove cat2 labels that don't have enough different assays.
+    # Remove cat2 labels that don't have enough different assays (nb_pairs condition)
     # First get assays per cat2.
     cell_type_assays = collections.defaultdict(set)
-    for pair in count_pairs(full_metadata, assay_cat, cat2).keys():
-        cell_type_assays[pair[1]].add(pair[0])
-    print(f"Still {len(cell_type_assays)} {cat2} labels.")
+    for pair in count_pairs(full_metadata, assay_cat, cat2, use_uuid=use_uuid).keys():
+        assay_label, cat2_label = pair
+        cell_type_assays[cat2_label].add(assay_label)
+    print(
+        f"After min_per_pair >= {min_per_pair} condition: {len(cell_type_assays)} {cat2} labels left."
+    )
 
     # Then count assay, and filter cat2.
     ok_ct = []
     for cell_type, assays in cell_type_assays.items():
         if len(assays) >= nb_pairs:
             ok_ct.append(cell_type)
+    print(f"After nb_pairs >= {nb_pairs} condition: {len(ok_ct)} {cat2} labels left.")
 
-    print(f"Keeping {len(ok_ct)} {cat2} labels.")
     full_metadata.select_category_subsets(cat2, ok_ct)
+    full_metadata.display_labels(assay_cat)
     full_metadata.display_labels(cat2)
+    if isinstance(full_metadata, UUIDMetadata) and use_uuid:
+        full_metadata.display_uuid_per_class(assay_cat)
+        full_metadata.display_uuid_per_class(cat2)
+    print("'filter_by_pairs' finished.")
 
     return full_metadata
 
