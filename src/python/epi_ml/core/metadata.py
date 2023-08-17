@@ -262,8 +262,14 @@ class UUIDMetadata(Metadata):
         """
         uuid_dict = defaultdict(set)
         for md5 in self._metadata:
+            track_type = self._metadata[md5]["track_type"]
             label = self._metadata[md5][label_category]
             uuid = self._metadata[md5]["uuid"]
+
+            # Special case for ctl_raw, same uuid as other tracks, but counts as unique experiment
+            if track_type == "ctl_raw":
+                uuid += "_ctl"
+
             uuid_dict[label].add(uuid)
         return uuid_dict
 
@@ -277,7 +283,7 @@ class UUIDMetadata(Metadata):
             print(f"{label}: {c}")
 
         print(
-            f"For {sum(uuid_counter.values())} unique experiments in {len(uuid_dict)} classes"
+            f"For {sum(uuid_counter.values())} unique experiments in {len(uuid_dict)} classes\n"
         )
 
     def uuid_to_md5(self) -> Dict[str, Dict[str, str]]:
