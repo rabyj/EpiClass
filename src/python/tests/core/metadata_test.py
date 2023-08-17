@@ -5,10 +5,11 @@ import os
 
 import pytest
 
-pytestmark = pytest.mark.filterwarnings("ignore:.*Cannot read file directly.*")
-
 from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory
 from epi_ml.core.metadata import UUIDMetadata, env_filtering
+
+# pytestmark = pytest.mark.filterwarnings("ignore:.*Cannot read file directly.*")
+
 
 DONOR_SEX = "sex"
 ASSAY = "assay"

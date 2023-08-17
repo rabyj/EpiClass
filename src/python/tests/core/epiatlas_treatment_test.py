@@ -70,7 +70,7 @@ class TestEpiAtlasFoldFactory:
         return test_data.epiatlas_dataset.datasource
 
     @staticmethod
-    def test_data_from_datasource(
+    def create_test_data_from_datasource(
         datasource: EpiDataSource, metadata: Metadata, target_category: str
     ) -> EpiAtlasFoldFactory:
         """Create EpiAtlasFoldFactory from datasource."""
@@ -119,7 +119,7 @@ class TestEpiAtlasFoldFactory:
 
         datasource = test_data.epiatlas_dataset.datasource
         metadata = test_data.epiatlas_dataset.metadata
-        ea_handler2 = TestEpiAtlasFoldFactory.test_data_from_datasource(
+        ea_handler2 = TestEpiAtlasFoldFactory.create_test_data_from_datasource(
             datasource,
             metadata,
             target_category=test_data.epiatlas_dataset.target_category,
@@ -128,7 +128,7 @@ class TestEpiAtlasFoldFactory:
         for handler in [ea_handler, ea_handler2]:
             TestEpiAtlasFoldFactory.assert_splits(handler)
 
-    @pytest.mark.filterwarnings("ignore:.*Cannot read file directly.*")
+    # @pytest.mark.filterwarnings("ignore:.*Cannot read file directly.*")
     @pytest.mark.skip(reason="Takes too long.")
     def test_yield_correct_split_2(self, big_test_data: EpiAtlasFoldFactory):
         """Test that splits contain the correct number of training and validation samples, with real metadata."""

@@ -92,6 +92,7 @@ filterwarnings = [
     "ignore:.*nopython.*",
     "ignore:.*Using a non-full backward hook.*",
     "ignore:.*`np.bool` is a deprecated alias.*",
+    "ignore:.*Cannot read file directly.*",
 ]
 pythonpath = ["src/python"]
 # action:message:category:module:line
