@@ -152,8 +152,8 @@ def main():
         n_fold=n_fold,
         test_ratio=0,
         min_class_size=min_class_size,
-        md5_list=list(my_metadata.md5s),
         force_filter=True,
+        metadata=my_metadata,
     )
     loading_time = time_now() - loading_begin
 

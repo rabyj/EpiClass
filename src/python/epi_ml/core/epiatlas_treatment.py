@@ -52,6 +52,8 @@ class EpiAtlasDataset:
         (using min_class_size and label_list)
     force_filter : bool, optional
         If True, will filter the metadata even if md5_list is given. If False, will not filter the metadata if md5_list.
+    metadata : UUIDMetadata, optional
+        If given, will use this metadata instead of loading it from the datasource.
     """
 
     def __init__(
@@ -62,13 +64,16 @@ class EpiAtlasDataset:
         min_class_size: int = 10,
         md5_list: List[str] | None = None,
         force_filter: bool = True,
+        metadata: UUIDMetadata | None = None,
     ):
         self._datasource = datasource
         self._label_category = label_category
         self._label_list = label_list
 
         # Load metadata
-        meta = UUIDMetadata(self._datasource.metadata_file)
+        meta = metadata
+        if meta is None:
+            meta = UUIDMetadata(self._datasource.metadata_file)
         if md5_list:
             try:
                 meta = UUIDMetadata.from_dict({md5: meta[md5] for md5 in md5_list})
@@ -149,7 +154,7 @@ class EpiAtlasDataset:
         return loader.signals
 
     def _filter_metadata(
-        self, min_class_size, metadata: UUIDMetadata, verbose: bool
+        self, min_class_size: int, metadata: UUIDMetadata, verbose: bool
     ) -> UUIDMetadata:
         """Filter entry metadata for given files, assay list and label_category."""
         files = Hdf5Loader.read_list(self.datasource.hdf5_file)
@@ -213,13 +218,20 @@ class EpiAtlasFoldFactory:
         n_fold: int = 10,
         md5_list: List[str] | None = None,
         force_filter: bool = True,
+        metadata: UUIDMetadata | None = None,
     ):
         """Create EpiAtlasFoldFactory from a given EpiDataSource,
         directly create the intermediary EpiAtlasDataset. See
         EpiAtlasDataset init parameters for more details.
         """
         epiatlas_dataset = EpiAtlasDataset(
-            datasource, label_category, label_list, min_class_size, md5_list, force_filter
+            datasource,
+            label_category,
+            label_list,
+            min_class_size,
+            md5_list,
+            force_filter,
+            metadata,
         )
         return cls(epiatlas_dataset, n_fold, test_ratio)
 
