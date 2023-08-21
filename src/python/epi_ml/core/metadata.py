@@ -6,10 +6,9 @@ import copy
 import json
 import os
 from collections import Counter, defaultdict
-from collections.abc import Iterable
 from difflib import SequenceMatcher as SM
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, Iterable, List, Set, Tuple
 
 
 class Metadata:
@@ -56,7 +55,7 @@ class Metadata:
     def __len__(self):
         return len(self._metadata)
 
-    def get(self, md5, default=None):
+    def get(self, md5, default=None) -> Dict | None:
         """Dict .get"""
         return self._metadata.get(md5, default)
 
@@ -64,7 +63,7 @@ class Metadata:
         """Dict .update equivalent. Info needs to respect {md5sum:dset} format."""
         self._metadata.update(info.items)
 
-    def save(self, path):
+    def save(self, path) -> None:
         """Save the metadata to path, in original epigeec_json format."""
         self._save_metadata(path)
 
@@ -391,7 +390,7 @@ class HealthyCategory:
         self.healthy_dict = self.read_healthy_pairs()
 
     @staticmethod
-    def get_healthy_pairs(datasets):
+    def get_healthy_pairs(datasets: Iterable[Dict]) -> Set[Tuple[str, str]]:
         """Return set of (disease, donor_health_status) pairs."""
         pairs = set([])
         for dataset in datasets:
@@ -400,12 +399,12 @@ class HealthyCategory:
             pairs.add((disease, donor_health_status))
         return pairs
 
-    def list_healthy_pairs(self, datasets):
+    def list_healthy_pairs(self, datasets: Iterable[Dict]) -> None:
         """List unique (disease, donor_health_status) pairs."""
         for x1, x2 in sorted(self.get_healthy_pairs(datasets)):
             print(f"{x1}\t{x2}")
 
-    def read_healthy_pairs(self):
+    def read_healthy_pairs(self) -> Dict[Tuple[str, str], str]:
         """Return a (disease, donor_health_status):healthy dict defined in
         a tsv file with disease|donor_health_status|healthy columns.
         """
@@ -417,14 +416,14 @@ class HealthyCategory:
                 healthy_dict[(disease, donor_health_status)] = healthy
         return healthy_dict
 
-    def get_healthy_status(self, dataset):
+    def get_healthy_status(self, dataset: Dict) -> str:
         """Return "y", "n" or "?" depending of the healthy status of the dataset."""
         disease = dataset.get("disease", "--empty--")
         donor_health_status = dataset.get("donor_health_status", "--empty--")
         return self.healthy_dict[(disease, donor_health_status)]
 
     @staticmethod
-    def create_healthy_category(metadata: Metadata):
+    def create_healthy_category(metadata: Metadata) -> None:
         """Combine "disease" and "donor_health_status" to create a "healthy" category.
 
         When a dataset has pairs with unknow correspondance, it does not add
