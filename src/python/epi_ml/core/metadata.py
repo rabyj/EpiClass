@@ -22,7 +22,6 @@ class Metadata:
     def __init__(self, path: Path):
         self._metadata = self._load_metadata(path)
         self._rest = {}
-        self._initial_categories = set(self.get_categories())
 
     @classmethod
     def from_dict(cls, metadata: Dict[str, dict]) -> Metadata:
@@ -36,7 +35,6 @@ class Metadata:
         obj = cls.__new__(cls)
         obj._metadata = copy.deepcopy(metadata)
         obj._rest = {}
-        obj._initial_categories = set(obj.get_categories())
         return obj
 
     def empty(self):
@@ -151,8 +149,9 @@ class Metadata:
             )
 
     def _check_label_category(self, label_category: str):
-        if label_category not in self._initial_categories:
-            cats = sorted(self._initial_categories)
+        """Raise ValueError if label_category does not exist."""
+        cats = self.get_categories()
+        if label_category not in cats:
             ratios = []
             s1 = label_category
             for s2 in cats:
@@ -161,7 +160,7 @@ class Metadata:
             top5 = sorted(zip(cats, ratios), key=lambda x: x[1], reverse=True)[:5]
             top5 = [(label, f"{ratio:0.4f}") for label, ratio in top5]
             raise ValueError(
-                f"Label category '{label_category}' not in initial categories. "
+                f"Label category '{label_category}' not in categories. "
                 f"Did you mean: {top5}"
             )
 
@@ -218,9 +217,7 @@ class Metadata:
 
     def get_categories(self) -> list[str]:
         """Return a list of all metadata categories sorted by lowercase."""
-        categories = set()
-        for dset in self.datasets:
-            categories.update(dset.keys())
+        categories = {key for dset in self.datasets for key in dset.keys()}
         return sorted(categories, key=str.lower)
 
     def convert_classes(self, category: str, converter: Dict[str, str]):
@@ -246,7 +243,6 @@ class UUIDMetadata(Metadata):
         obj = cls.__new__(cls)
         obj._metadata = copy.deepcopy(metadata)
         obj._rest = {}
-        obj._initial_categories = set(obj.get_categories())
         return obj
 
     @classmethod
