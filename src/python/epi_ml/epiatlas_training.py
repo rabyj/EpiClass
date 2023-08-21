@@ -111,7 +111,8 @@ def main():
     elif category == "upload_date_2":
         modify_metadata.add_formated_date(my_metadata)
     elif category == "random":
-        category = modify_metadata.add_random_group(my_metadata)
+        n_splits = os.getenv("RANDOM_SPLITS", "10")
+        category = modify_metadata.add_random_group(my_metadata, n_split=int(n_splits))
 
     label_list = metadata.env_filtering(my_metadata, category)
 
