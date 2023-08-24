@@ -1,11 +1,15 @@
 """Test module for the ConfusionMatrixWriter class."""
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 from sklearn.metrics import confusion_matrix
 
 from epi_ml.core.confusion_matrix import ConfusionMatrixWriter
+
+THIS_FILE = Path(__file__).resolve()
 
 
 @pytest.fixture(params=[2, 5, 15, 25])
@@ -27,13 +31,16 @@ def sklearn_confusion_matrix(request):
     return confusion_matrix(true_labels, predicted_labels)
 
 
+@pytest.mark.parametrize("name_base", ["class", "reallylonglabelnameforrealaaaahhhh"])
 def test_to_png(
-    sklearn_confusion_matrix: np.ndarray,
+    sklearn_confusion_matrix: np.ndarray, name_base: str
 ):  # pylint: disable=redefined-outer-name
     """Tests the to_png method of the ConfusionMatrixWriter class."""
-    labels = [
-        f"reallylonglabelnameforrealaaaahhhh {i}"
-        for i in range(sklearn_confusion_matrix.shape[0])
-    ]
+    labels = [f"{name_base} {i}" for i in range(sklearn_confusion_matrix.shape[0])]
     cm = ConfusionMatrixWriter(labels, sklearn_confusion_matrix)
-    cm.to_png(f"test_c{len(labels)}.png")
+
+    output_dir = THIS_FILE.parent / "test_matrix"
+    output_dir.mkdir(exist_ok=True)
+    output = output_dir / f"test_c{len(labels)}_{name_base}.png"
+
+    cm.to_png(output)

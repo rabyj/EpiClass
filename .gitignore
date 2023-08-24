@@ -1,6 +1,6 @@
 # project specific
 **/tests/**/*.tsv
-**/tests/**/*.png
+*.png
 **/tests/**/*.csv
 **/tests/**/*.list
 **/tests/**/*.zip
