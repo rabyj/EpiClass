@@ -32,6 +32,7 @@ OTHER_TRACKS = frozenset(ACCEPTED_TRACKS) - LEADER_TRACKS
 
 NDArray = npt.NDArray[Any]
 NDArrayInt = npt.NDArray[np.int_]
+NDArrayBool = npt.NDArray[np.bool_]
 
 
 class EpiAtlasDataset:
@@ -262,7 +263,17 @@ class EpiAtlasFoldFactory:
 
     @staticmethod
     def _label_uuid(dset: data.KnownData) -> Tuple[NDArray, NDArray, NDArrayInt]:
-        """Return uuids, unique uuids and uuid to int mapping (for stratified group k-fold)"""
+        """Return uuids, unique uuids and uuid to int mapping (for stratified group k-fold)
+
+        Args:
+            dset (data.KnownData): The dataset from which the UUIDs are to be extracted.
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray, np.ndarray]:
+                - uuids (np.ndarray): All the UUIDs for the dataset's samples. Length n.
+                - unique_uuids (np.ndarray): Unique UUIDs present in the dataset.
+                - uuid_to_int (np.ndarray): The indices to reconstruct the original array from the unique array. Length n.
+        """
         uuids = [dset.metadata[md5]["uuid"] for md5 in dset.ids]
         unique_uuids, uuid_to_int = np.unique(uuids, return_inverse=True)  # type: ignore
         return np.array(uuids), unique_uuids, uuid_to_int
@@ -312,8 +323,12 @@ class EpiAtlasFoldFactory:
             X=np.empty(shape=(len(uuids_unique), dset.signals.shape[1])),
             y=labels_unique,
         ):
-            train_idxs = np.isin(uuids_inverse, train_idxs_unique)
-            valid_idxs = np.isin(uuids_inverse, valid_idxs_unique)
+            train_idxs: NDArrayInt = np.concatenate(
+                [np.where(uuids_inverse == idx)[0] for idx in train_idxs_unique]
+            )
+            valid_idxs: NDArrayInt = np.concatenate(
+                [np.where(uuids_inverse == idx)[0] for idx in valid_idxs_unique]
+            )
 
             if oversample:
                 # Oversample in the UUID space, not the sample space
@@ -323,14 +338,19 @@ class EpiAtlasFoldFactory:
                     np.array(labels_unique)[train_idxs_unique],
                 )
                 # map back to the sample space
-                train_idxs = np.isin(uuids, train_uuids_resampled.flatten())  # type: ignore
+                train_idxs: NDArrayInt = np.concatenate(
+                    [
+                        np.where(uuids == uuid)[0]
+                        for uuid in train_uuids_resampled.flatten()  # type: ignore
+                    ]
+                )
 
-            train_set = dset.subsample(list(np.where(train_idxs)[0]))
-            valid_set = dset.subsample(list(np.where(valid_idxs)[0]))
+            train_set = dset.subsample(list(train_idxs))
+            valid_set = dset.subsample(list(valid_idxs))
 
             yield train_set, valid_set
 
-    def yield_split(self) -> Generator[data.DataSet, None, None]:
+    def yield_split(self, oversample: bool = True) -> Generator[data.DataSet, None, None]:
         """Yield train and valid tensor datasets for one split.
 
         Depends on given init parameters.
@@ -340,7 +360,7 @@ class EpiAtlasFoldFactory:
         if self.epiatlas_dataset.target_category == "track_type":
             generator = self._split_by_track_type(dset, self.k)
         else:
-            generator = self._split_dataset(dset, self.k, oversample=True)
+            generator = self._split_dataset(dset, self.k, oversample=oversample)
 
         for train_set, valid_set in generator:
             yield data.DataSet(
@@ -350,12 +370,38 @@ class EpiAtlasFoldFactory:
                 sorted_classes=self.classes,
             )
 
-    def create_total_data(self) -> data.KnownData:
+    def create_total_data(self, oversample: bool = True) -> data.KnownData:
         """Create a single dataset from the training and validation data.
 
-        Used for final training.
+        Will not oversample properly if all samples from the same UUID do not share target label.
+
+        Used for final training, with no validation.
         """
-        raise NotImplementedError
+        train_set = self._train_val
+
+        # Convert the labels and groups (uuids) into numpy arrays
+        uuids, uuids_unique, uuids_inverse = self._label_uuid(train_set)
+        labels_unique = [
+            train_set.encoded_labels[uuids == uuid][0] for uuid in uuids_unique
+        ]  # assuming all samples from the same UUID share the same label --> not true for track_type
+
+        if oversample:
+            # Oversample in the UUID space, not the sample space
+            ros = RandomOverSampler(random_state=42)
+            resampled_uuid_idxs, _ = ros.fit_resample(  # type: ignore
+                np.array(range(len(uuids_unique))).reshape(-1, 1),
+                np.array(labels_unique),
+            )
+            resampled_uuid_idxs = resampled_uuid_idxs.flatten()  # type: ignore
+
+            # Map back to the sample space
+            train_idxs = np.concatenate(
+                [np.where(uuids_inverse == idx)[0] for idx in resampled_uuid_idxs]
+            )
+
+            train_set = train_set.subsample(list(train_idxs))
+
+        return train_set
 
     # TODO: needed for tune_estimator
     # def split(
@@ -389,45 +435,3 @@ class EpiAtlasFoldFactory:
     #         )
 
     #         yield complete_train_idxs, complete_valid_idxs
-
-    # def yield_subsample_validation(self, chosen_split: int, nb_split: int):
-    #     """Will use StratifiedKFold to further subsample one of the validation
-    #     splits normally generated into a training (no oversampling) and validation set.
-
-    #     chosen_split (int): Split to subsample, as generated by yield_split.
-    #     nb_split (int): How many splits to make into the chosen split.
-
-    #     Created for SHAP values calculation sampling.
-    #     """
-    #     raw_dset = self.epiatlas_dataset.raw_dataset
-    #     assert isinstance(raw_dset.train, data.KnownData)
-
-    #     skf1 = StratifiedKFold(n_splits=self.k, shuffle=False)
-    #     skf2 = StratifiedKFold(n_splits=nb_split, shuffle=False)
-    #     idxs_gen = skf1.split(
-    #         np.zeros((raw_dset.train.num_examples, len(self.classes))),
-    #         list(raw_dset.train.encoded_labels),
-    #     )
-
-    #     try:
-    #         _, valid_idxs = list(idxs_gen)[chosen_split]
-    #     except IndexError as e:
-    #         raise IndexError(
-    #             f"Chosen split {chosen_split} out of range of initial {self.k} folds."
-    #         ) from e
-
-    #     chosen_total_dataset = raw_dset.train.subsample(list(valid_idxs))
-
-    #     for train_subsplit_idxs, valid_subsplit_idxs in skf2.split(
-    #         np.zeros((chosen_total_dataset.num_examples, len(self.classes))),
-    #         list(chosen_total_dataset.encoded_labels),
-    #     ):
-    #         new_datasets = data.DataSet.empty_collection()
-
-    #         new_train = self._add_other_tracks(train_subsplit_idxs, chosen_total_dataset, resample=False)  # type: ignore
-    #         new_valid = self._add_other_tracks(valid_subsplit_idxs, chosen_total_dataset, resample=False)  # type: ignore
-
-    #         new_datasets.set_train(new_train)
-    #         new_datasets.set_validation(new_valid)
-
-    #         yield new_datasets

@@ -19,6 +19,7 @@ from epi_ml.core.epiatlas_treatment import (
 )
 from epi_ml.core.metadata import Metadata
 from epi_ml.utils.general_utility import write_md5s_to_file
+from epi_ml.utils.metadata_utils import count_labels_from_dset
 from tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
 
 
@@ -134,53 +135,6 @@ class TestEpiAtlasFoldFactory:
         """Test that splits contain the correct number of training and validation samples, with real metadata."""
         TestEpiAtlasFoldFactory.assert_splits(big_test_data)
 
-    # def test_yield_subsample_validation_1(self, test_data: EpiAtlasFoldFactory):
-    #     """Test correct subsampling. Subsplit should partition initial validation split."""
-    #     ea_handler = test_data
-
-    #     # Is it coherent with initial split?
-    #     # initial usual train/valid split
-    #     for split_n in range(ea_handler.k):
-    #         total_dataset = list(ea_handler.yield_split())[split_n]
-    #         total_ids = set(total_dataset.validation.ids)
-
-    #         # focus down on further splits of validation test
-    #         for _ in range(2):
-    #             for sub_dataset in ea_handler.yield_subsample_validation(
-    #                 chosen_split=split_n, nb_split=2
-    #             ):
-    #                 train = sub_dataset.train.ids
-    #                 valid = sub_dataset.validation.ids
-
-    #                 ids = set(list(train) + list(valid))
-    #                 assert ids == total_ids
-
-    # def test_yield_subsample_validation_2(self, test_data: EpiAtlasFoldFactory):
-    #     """Test correct subsampling. Repeated calls should lead to same outcome"""
-    #     dset1 = next(test_data.yield_subsample_validation(chosen_split=0, nb_split=2))
-    #     dset2 = next(test_data.yield_subsample_validation(chosen_split=0, nb_split=2))
-    #     assert list(dset1.validation.ids) == list(dset2.validation.ids)
-
-    # def test_yield_subsample_validation_outofrange(self, test_data: EpiAtlasFoldFactory):
-    #     """Test correct subsampling range."""
-    #     chosen_split = test_data.k  # one off error
-
-    #     err_msg = f"{chosen_split}.*{test_data.k}"
-    #     with pytest.raises(IndexError, match=err_msg):
-    #         next(
-    #             test_data.yield_subsample_validation(
-    #                 chosen_split=chosen_split, nb_split=2
-    #             )
-    #         )
-
-    # def test_yield_subsample_validation_toomanysplits(
-    #     self, test_data: EpiAtlasFoldFactory
-    # ):
-    #     """Test that you cannot ask for too many splits."""
-    #     nb_split = 10
-    #     with pytest.raises(ValueError):
-    #         next(test_data.yield_subsample_validation(chosen_split=0, nb_split=nb_split))
-
     @pytest.mark.parametrize("del_track,", ["raw", "pval", "fc", "Unique_minusRaw"])
     def test_yield_missing_tracks(self, test_datasource, test_metadata, del_track: str):
         """Make sure splitter can handle missing tracks."""
@@ -251,6 +205,38 @@ class TestEpiAtlasFoldFactory:
     def test_split_by_track_type(self):
         """Test that track types are distributed correctly but same uuid stay together."""
         raise NotImplementedError
+
+    def test_create_total_data_without_oversampling(self, test_data: EpiAtlasFoldFactory):
+        """Test create_total_data without oversampling."""
+        result = test_data.create_total_data(oversample=False)
+
+        assert np.array_equal(result.ids, test_data.train_val_dset.ids)
+        assert np.array_equal(result.signals, test_data.train_val_dset.signals)
+        assert np.array_equal(
+            result.encoded_labels, test_data.train_val_dset.encoded_labels
+        )
+        assert np.array_equal(
+            result.original_labels, test_data.train_val_dset.original_labels
+        )
+
+    def test_create_total_data_with_oversampling(self, test_data: EpiAtlasFoldFactory):
+        """Test create_total_data with oversampling."""
+        result = test_data.create_total_data(oversample=True)
+
+        assert len(result) >= len(test_data.train_val_dset)
+
+        biggest_class_count = count_labels_from_dset(
+            test_data.train_val_dset, "biomaterial_type", from_uuid=True
+        ).most_common(n=1)[0][1]
+
+        oversampled_counts = count_labels_from_dset(
+            result, "biomaterial_type", from_uuid=True
+        )
+        oversampled_ratios = (
+            np.array(list(oversampled_counts.values())) / biggest_class_count
+        )
+        for ratio in oversampled_ratios:
+            assert 0.8 <= ratio <= 1.2
 
 
 @pytest.mark.skip(reason="One time. For sklearn code sanity check.")
