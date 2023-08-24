@@ -94,5 +94,4 @@ filterwarnings = [
     "ignore:.*`np.bool` is a deprecated alias.*",
     "ignore:.*Cannot read file directly.*",
 ]
-pythonpath = ["src/python"]
 # action:message:category:module:line
