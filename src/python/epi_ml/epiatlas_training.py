@@ -7,7 +7,7 @@ import os
 import sys
 import warnings
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 
 warnings.simplefilter("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -94,7 +94,7 @@ def main():
     hdf5_resolution = my_datasource.hdf5_resolution()
 
     with open(cli.hyperparameters, "r", encoding="utf-8") as file:
-        hparams = json.load(file)
+        hparams: Dict[str, Any] = json.load(file)
 
     my_metadata = metadata.UUIDMetadata(my_datasource.metadata_file)
 
@@ -167,7 +167,8 @@ def main():
     max_split = int(os.getenv("MAX_SPLIT", "42"))
 
     time_before_split = time_now()
-    for i, my_data in enumerate(ea_handler.yield_split()):
+    oversample = hparams.get("oversample", True)
+    for i, my_data in enumerate(ea_handler.yield_split(oversample=oversample)):
         # Skip if not in range
         if not (min_split <= i <= max_split):  # pylint: disable=superfluous-parens
             continue

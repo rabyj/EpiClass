@@ -1,4 +1,4 @@
-"""Main"""
+"""Main for training on EpiAtlas data without a validation set."""
 from __future__ import annotations
 
 import argparse
@@ -96,7 +96,7 @@ def main():
     with open(cli.hyperparameters, "r", encoding="utf-8") as file:
         hparams = json.load(file)
 
-    my_metadata = metadata.Metadata(my_datasource.metadata_file)
+    my_metadata = metadata.UUIDMetadata(my_datasource.metadata_file)
 
     # --- Prefilter metadata ---
     my_metadata.remove_category_subsets(
@@ -132,7 +132,8 @@ def main():
         n_fold=n_fold,
         test_ratio=0,
         min_class_size=min_class_size,
-        metadata=my_metadata,
+        md5_list=list(my_metadata.md5s),
+        force_filter=True,
     )
     loading_time = time_now() - loading_begin
 
@@ -160,7 +161,8 @@ def main():
     comet_logger.experiment.add_tag("EpiAtlas")
     log_pre_training(logger=comet_logger, to_log=to_log, step=None)
 
-    my_data = ea_handler.epiatlas_dataset.create_total_data(oversampling=True)
+    oversample = hparams.get("oversample", True)
+    my_data = ea_handler.create_total_data(oversample=oversample)
     my_dataset = DataSet.empty_collection()
     my_dataset.set_train(my_data)
 
