@@ -23,11 +23,14 @@ from epi_ml.utils.time import time_now
 
 def parse_arguments() -> argparse.Namespace:
     """argument parser for command line"""
+    # fmt: off
     arg_parser = ArgumentParser()
     arg_parser.add_argument(
         "hdf5", type=Path, help="A file with hdf5 filenames. Use absolute path!"
     )
-    arg_parser.add_argument("chromsize", type=Path, help="A file with chrom sizes.")
+    arg_parser.add_argument(
+        "chromsize", type=Path, help="A file with chrom sizes."
+        )
     arg_parser.add_argument(
         "logdir", type=DirectoryChecker(), help="Directory for the output logs."
     )
@@ -41,7 +44,7 @@ def parse_arguments() -> argparse.Namespace:
         type=DirectoryChecker(),
         help="Directory from which to load the desired model. Default is logdir.",
     )
-
+    # fmt: on
     return arg_parser.parse_args()
 
 
@@ -89,7 +92,7 @@ def main():
     test_set = UnknownData(ids=md5s, x=signals, y=y, y_str=y_str)
 
     if test_set.num_examples == 0:
-        raise Exception("Trying to test without any test data.")
+        raise ValueError("Trying to test without any test data.")
 
     datasets = DataSet.empty_collection()
     datasets.set_test(test_set)
