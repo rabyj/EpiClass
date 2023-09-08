@@ -161,7 +161,7 @@ def main():
     comet_logger.experiment.add_tag("EpiAtlas")
     log_pre_training(logger=comet_logger, to_log=to_log, step=None)
 
-    oversample = hparams.get("oversample", True)
+    oversample = hparams.get("oversample", hparams.get("oversampling", True))
     my_data = ea_handler.create_total_data(oversample=oversample)
     my_dataset = DataSet.empty_collection()
     my_dataset.set_train(my_data)

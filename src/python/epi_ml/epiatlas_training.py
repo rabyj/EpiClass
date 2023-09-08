@@ -167,7 +167,7 @@ def main():
     max_split = int(os.getenv("MAX_SPLIT", "42"))
 
     time_before_split = time_now()
-    oversample = hparams.get("oversample", True)
+    oversample = hparams.get("oversample", hparams.get("oversampling", True))
     for i, my_data in enumerate(ea_handler.yield_split(oversample=oversample)):
         # Skip if not in range
         if not (min_split <= i <= max_split):  # pylint: disable=superfluous-parens
