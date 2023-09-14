@@ -26,6 +26,13 @@ merge_fetal_tissues = {
 merge_molecule = {"rna": "total_rna", "polyadenylated_mrna": "polya_rna"}
 
 
+merge_not_cancer = {
+    "Disease": "non-cancer",
+    "Healthy/None": "non-cancer",
+    "Cancer": "cancer",
+}
+
+
 def keep_major_cell_types(my_metadata: Metadata):
     """Remove datasets which are not part of a cell_type which has
     at least 10 signals in two assays. Those assays must also have

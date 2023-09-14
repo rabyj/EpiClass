@@ -9,7 +9,7 @@ def write_hdf5_paths_to_file(
     md5s: Iterable[str], parent: str, suffix: str, filepath: str | Path
 ) -> None:
     """Write a list of md5s to a file, with a prefix and suffix.
-    Path(prefix)/{md5}_{suffix}_value.hdf5
+    Path(prefix=parent)/{md5}_{suffix}_value.hdf5
     """
     with open(filepath, "w", encoding="utf8") as f:
         for md5 in md5s:

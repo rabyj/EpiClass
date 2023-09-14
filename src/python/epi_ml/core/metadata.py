@@ -220,7 +220,10 @@ class Metadata:
         return sorted(categories, key=str.lower)
 
     def convert_classes(self, category: str, converter: Dict[str, str]):
-        """Convert classes labels in the given category using the converter mapping."""
+        """Convert classes labels in the given category using the converter mapping.
+
+        Can be used to merge classes.
+        """
         for dataset in self.datasets:
             label = dataset.get(category, None)
             if label in converter:
