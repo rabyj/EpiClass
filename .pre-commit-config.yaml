@@ -44,6 +44,7 @@ repos:
       exclude: fixtures
     - id: pretty-format-json
       args: [--autofix]
+      exclude: \.ipynb$
     - id: requirements-txt-fixer
       exclude: .*pipdeptree.*
     - id: sort-simple-yaml
