@@ -46,6 +46,7 @@ extension-pkg-allow-list = [
     "torch",
     "pytorch_lightning",
     "optuna.integration.lightgbm",
+    "pyBigWig",
 ]
 
 [tool.pylint.messages_control]
