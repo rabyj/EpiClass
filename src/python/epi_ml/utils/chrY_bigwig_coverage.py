@@ -8,7 +8,7 @@ import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Tuple
+from typing import Generator, List, Tuple
 
 import pandas as pd
 import pyBigWig
@@ -30,6 +30,12 @@ def parse_arguments() -> argparse.Namespace:
         help="Directory where to create to output the new hdf5 files.",
     )
     return arg_parser.parse_args()
+
+
+def chunks(lst: List, n: int) -> Generator[List, None, None]:
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i : i + n]
 
 
 def compute_coverage(file_path: Path) -> Tuple[str, int, int, int]:
@@ -63,14 +69,27 @@ def main():
     hdf5_list_path = cli.hdf5_list
     logdir = cli.output_dir.resolve()
     max_workers = int(os.getenv("SLURM_CPUS_PER_TASK", "4"))
+    log_every_n_files = 1000  # Define how many bigwigs to process before logging
 
     hdf5_files = list(Hdf5Loader.read_list(hdf5_list_path, adapt=False).values())
 
-    with ThreadPoolExecutor(max_workers) as executor:
-        result = list(executor.map(compute_coverage, hdf5_files))
+    all_results = []
 
-    pd.DataFrame(result, columns=["filename", "chrY", "chrX", "chrY/chrX"]).to_csv(
-        logdir / "coverage.csv", index=False
+    # Divide hdf5_files into chunks and process them concurrently
+    for idx, chunk in enumerate(chunks(hdf5_files, log_every_n_files)):
+        with ThreadPoolExecutor(max_workers) as executor:
+            chunk_result = list(executor.map(compute_coverage, chunk))
+
+        all_results.extend(chunk_result)
+
+        # Log the results of the current chunk
+        pd.DataFrame(
+            chunk_result, columns=["filename", "chrY", "chrX", "chrY/chrX"]
+        ).to_csv(logdir / f"coverage_chunk_{idx}.csv", index=False)
+
+    # Combine all results and save if required
+    pd.DataFrame(all_results, columns=["filename", "chrY", "chrX", "chrY/chrX"]).to_csv(
+        logdir / "coverage_combined.csv", index=False
     )
 
 
