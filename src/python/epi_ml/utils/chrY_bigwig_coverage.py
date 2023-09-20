@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Tuple
@@ -37,7 +38,11 @@ def compute_coverage(file_path: Path) -> Tuple[str, int, int, int]:
     Return
         Tuple[filename, chrY_coverage, chrX_coverage, chrY_coverage/chrX_coverage]
     """
-    bw = pyBigWig.open(str(file_path), "r")
+    try:
+        bw = pyBigWig.open(str(file_path), "r")
+    except (RuntimeError, OSError) as err:
+        print(f"{err}: Could not process {file_path}.", flush=True, file=sys.stderr)
+        return (file_path.name, 0, 0, 0)
     chrY_coverage = bw.stats("chrY", exact=True)[0]
     chrX_coverage = bw.stats("chrX", exact=True)[0]
     bw.close()
