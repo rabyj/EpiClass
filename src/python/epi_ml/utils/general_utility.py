@@ -1,6 +1,7 @@
 """For lost little functions that don't fit anywhere else."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Iterable
 
@@ -24,3 +25,12 @@ def write_md5s_to_file(md5s: Iterable[str], logdir: str | Path, name: str) -> Pa
         for md5 in md5s:
             f.write(f"{md5}\n")
     return filename
+
+
+def get_valid_filename(name: str):
+    """Tranform a string into a valid filename."""
+    s = str(name).strip().replace(" ", "_")
+    s = re.sub(r"(?u)[^-\w.]", "", s)
+    if s in {"", ".", ".."}:
+        raise ValueError(f"Could not derive file name from {name}")
+    return s
