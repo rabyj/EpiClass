@@ -30,7 +30,7 @@ def write_md5s_to_file(md5s: Iterable[str], logdir: str | Path, name: str) -> Pa
 def get_valid_filename(name: str):
     """Tranform a string into a valid filename."""
     s = str(name).strip().replace(" ", "_")
-    s = re.sub(r"(?u)[^-\w.]", "", s)
-    if s in {"", ".", ".."}:
-        raise ValueError(f"Could not derive file name from {name}")
+    s = re.sub(r"(?u)[^-\w.]", "_", s)
+    s = re.sub(r"(_{2,})", "_", s)
+    s = s.replace("_-_", "-")
     return s
