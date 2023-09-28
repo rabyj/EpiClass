@@ -1,4 +1,4 @@
-comet-ml==3.21.0
+comet-ml>=3.33.11
 h5py==3.6.0
 imbalanced-learn==0.8.0
 jupyter==1.0.0
@@ -12,7 +12,7 @@ pandas>=1.4.0,<1.5
 plotly==5.11
 pyBigWig==0.3.22
 pytorch-lightning>=1.6,<1.7
-rich==11.2.0
+rich>=11.2.0
 scikit-learn==1.1.2
 scikit-optimize @ git+https://github.com/QuentinSoubeyran/scikit-optimize.git@3f92bf42d947efb4ece3d89595d67dc56591c7c3
 scipy>=1.8,<1.9
