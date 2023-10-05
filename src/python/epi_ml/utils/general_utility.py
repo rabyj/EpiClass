@@ -33,4 +33,6 @@ def get_valid_filename(name: str):
     s = re.sub(r"(?u)[^-\w.]", "_", s)
     s = re.sub(r"(_{2,})", "_", s)
     s = s.replace("_-_", "-")
+    if s[-1] == "_":
+        s = s[:-1]
     return s
