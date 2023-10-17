@@ -16,6 +16,7 @@ import pyBigWig
 from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from epi_ml.argparseutils.directorychecker import DirectoryChecker
 from epi_ml.core.hdf5_loader import Hdf5Loader
+from epi_ml.utils.time import time_now_str
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -83,13 +84,20 @@ def main():
         all_results.extend(chunk_result)
 
         # Log the results of the current chunk
+        chunk_name = logdir / f"coverage_chunk_{idx}.csv"
+        if chunk_name.exists():
+            chunk_name = logdir / f"coverage_chunk_{time_now_str()}_.csv"
+
         pd.DataFrame(
             chunk_result, columns=["filename", "chrY", "chrX", "chrY/chrX"]
-        ).to_csv(logdir / f"coverage_chunk_{idx}.csv", index=False)
+        ).to_csv(chunk_name, index=False)
 
     # Combine all results and save if required
+    final_name = logdir / "coverage_combined.csv"
+    if final_name.exists():
+        final_name = logdir / f"coverage_combined_{time_now_str()}.csv"
     pd.DataFrame(all_results, columns=["filename", "chrY", "chrX", "chrY/chrX"]).to_csv(
-        logdir / "coverage_combined.csv", index=False
+        final_name, index=False
     )
 
 
