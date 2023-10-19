@@ -30,7 +30,7 @@ def createSCPClient(ssh_client: paramiko.SSHClient):
 
 
 def run_commands_via_ssh(
-    cmds: List[str], hostname: str, port: int, username: str
+    cmds: List[str], hostname: str, port: int, username: str, verbose: bool = True
 ) -> List:
     """
     Run a command on a remote server via SSH using SSH key authentication and return the decoded result.
@@ -39,12 +39,15 @@ def run_commands_via_ssh(
         hostname (str): The hostname of the remote server.
         port (int): The port number for the SSH service.
         username (str): The username for SSH login.
+        verbose (bool): To print executed commands.
     Returns:
-        ;ist: The decoded output of the commands.
+        list: The decoded output of the commands.
     """
     client = createSSHClient(hostname, port, username)
     results = []
     for cmd in cmds:
+        if verbose:
+            print(f"Running command: {cmd}")
         _, stdout, _ = client.exec_command(cmd)
         result = stdout.read().decode("utf-8")
         results.append(result)
