@@ -10,6 +10,7 @@ import decimal
 import os
 import os.path
 from pathlib import Path
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -38,7 +39,7 @@ def parse_arguments() -> argparse.Namespace:
         default=None
     )
 
-    group = parser.add_mutually_exclusive_group(required=True)
+    group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument(
         "--categories", nargs="+", type=str, help="Specific metadata categories to add.",
     )
@@ -62,14 +63,16 @@ def augment_header(header, categories):
         "1rst/2nd prob diff",
         "1rst/2nd prob ratio",
     ]
-
-    new_header = (
-        ["md5sum"] + categories + targets_headers + second_pred_info + pred_labels
-    )
+    # fmt: off
+    if categories:
+        new_header = ["md5sum"] + categories + targets_headers + second_pred_info + pred_labels
+    else:
+        new_header = ["md5sum"] + targets_headers + second_pred_info + pred_labels
+    # fmt: on
     return new_header
 
 
-def augment_line(line, metadata: Metadata, categories, classes):
+def augment_line(line, metadata: Metadata, categories: List[str], classes):
     """Augment a non-header line with new metadata labels and additional info on 2nd highest prob."""
     md5 = line[0]
     targets = line[1:3]
@@ -90,16 +93,21 @@ def augment_line(line, metadata: Metadata, categories, classes):
     class_2 = classes[i_2]
 
     # get all labels for given categories
+    # fmt: off
     new_labels = [metadata[md5].get(category, "--empty--") for category in categories]
-
-    new_line = (
-        [md5] + new_labels + targets + [is_same, preds[i_1], class_2, diff, ratio] + preds
-    )
+    if new_labels:
+        new_line = [md5] + new_labels + targets + [is_same, preds[i_1], class_2, diff, ratio] + preds
+    else:
+        new_line = [md5] + targets + [is_same, preds[i_1], class_2, diff, ratio] + preds
+    # fmt: on
     return new_line
 
 
 def augment_predict(
-    metadata: Metadata, predict_path: Path, categories, append_name: str | None = None
+    metadata: Metadata,
+    predict_path: Path,
+    categories: List[str],
+    append_name: str | None = None,
 ) -> str:
     """Read -> augment -> write, row by row.
 
@@ -215,8 +223,10 @@ def main():
         categories = metadata.get_categories()
         new_path = augment_predict(metadata, pred_file, categories, append_name="all")
         write_coherence(new_path, "Predicted class")
-    else:
+    elif categories:
         augment_predict(metadata, pred_file, categories)
+    else:
+        augment_predict(metadata, pred_file, [])
 
 
 if __name__ == "__main__":
