@@ -54,9 +54,18 @@ def parse_arguments() -> argparse.Namespace:
 
 def augment_header(header, categories):
     """Augment the file header with new metadata categories"""
-    targets_headers = header[1:3]
-    pred_labels = header[3:]
-    second_pred_info = [
+    if header[1:3] != ["True class", "Predicted class"]:
+        raise ValueError(
+            f"Unexpected header format. Expected: ['True class', 'Predicted class'], got: {header[1:3]}"
+        )
+
+    not_pred_idx = 3
+    if header[3] == "split_nb":
+        not_pred_idx = 4
+
+    non_pred_labels = header[1:not_pred_idx]
+    pred_labels = header[not_pred_idx:]
+    extra_pred_info = [
         "Same?",
         "Max pred",
         "2nd pred class",
@@ -65,24 +74,31 @@ def augment_header(header, categories):
     ]
     # fmt: off
     if categories:
-        new_header = ["md5sum"] + categories + targets_headers + second_pred_info + pred_labels
+        new_header = ["md5sum"] + categories + non_pred_labels + extra_pred_info + pred_labels
     else:
-        new_header = ["md5sum"] + targets_headers + second_pred_info + pred_labels
+        new_header = ["md5sum"] + non_pred_labels + extra_pred_info + pred_labels
     # fmt: on
     return new_header
 
 
-def augment_line(line, metadata: Metadata, categories: List[str], classes):
+def augment_line(
+    line, metadata: Metadata, categories: List[str], classes, split_nb_col: bool = False
+):
     """Augment a non-header line with new metadata labels and additional info on 2nd highest prob."""
+
     md5 = line[0]
-    targets = line[1:3]
-    is_same = targets[0] == targets[1]
+    true_class, predicted_class = line[1:3]
+    is_same = true_class == predicted_class
+
+    not_pred_idx = 3
+    if split_nb_col:
+        not_pred_idx = 4
 
     prec4 = decimal.Decimal(".0001")
     prec2 = decimal.Decimal(".01")
     decimal.setcontext(decimal.ExtendedContext)
 
-    preds = [decimal.Decimal(val).quantize(prec4) for val in line[3:]]
+    preds = [decimal.Decimal(val).quantize(prec4) for val in line[not_pred_idx:]]
 
     order = np.argsort(preds)  # type: ignore
     i_1 = order[-1]
@@ -96,9 +112,9 @@ def augment_line(line, metadata: Metadata, categories: List[str], classes):
     # fmt: off
     new_labels = [metadata[md5].get(category, "--empty--") for category in categories]
     if new_labels:
-        new_line = [md5] + new_labels + targets + [is_same, preds[i_1], class_2, diff, ratio] + preds
+        new_line = [md5] + new_labels + line[1:not_pred_idx] + [is_same, preds[i_1], class_2, diff, ratio] + preds
     else:
-        new_line = [md5] + targets + [is_same, preds[i_1], class_2, diff, ratio] + preds
+        new_line = [md5] + line[1:not_pred_idx] + [is_same, preds[i_1], class_2, diff, ratio] + preds
     # fmt: on
     return new_line
 
@@ -130,13 +146,20 @@ def augment_predict(
         writer = csv.writer(outfile, delimiter=",")
 
         header = next(reader)
-        classes = header[3:]
+        if header[3] == "split_nb":
+            split_nb_col = True
+            classes = header[4:]
+        else:
+            split_nb_col = False
+            classes = header[3:]
 
         new_header = augment_header(header, categories)
         writer.writerow(new_header)
 
         for line in reader:
-            new_line = augment_line(line, metadata, categories, classes)
+            new_line = augment_line(
+                line, metadata, categories, classes, split_nb_col=split_nb_col
+            )
             writer.writerow(new_line)
 
     return new_path
