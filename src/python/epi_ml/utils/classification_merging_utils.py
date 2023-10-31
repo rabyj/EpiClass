@@ -69,8 +69,8 @@ def remove_pred_vector(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     """
 
     # Prediction vector should be between these columns
-    col1 = "1rst/2nd prob ratio"
-    col2 = "files/epiRR"
+    col1 = "1rst/2nd prob ratio".lower()
+    col2 = "files/epiRR".lower()
 
     # column and prediction are transfwred to lowercase to avoid weird mismatches (e.g. with boolean labels)
     column_names = df.columns.str.lower()
@@ -80,7 +80,7 @@ def remove_pred_vector(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
         cut_pos_2 = column_names.get_loc(col2)
     except KeyError:
         # Try to determine if the dataframe is already reduced
-        predict_labels = df["Predicted class"].str.lower().unique()
+        predict_labels = df["Predicted class"].astype(str).str.lower().unique()
         cut_pos_2 = None
         for predict_label in predict_labels:
             if predict_label in column_names:
@@ -98,5 +98,4 @@ def remove_pred_vector(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
             return df
 
     df = df.drop(df.columns[cut_pos_1 + 1 : cut_pos_2], axis=1)
-    df = df.drop(columns=["EpiRR", "md5sum.1"], errors="ignore")
     return df

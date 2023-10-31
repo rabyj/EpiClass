@@ -26,7 +26,7 @@ def createSCPClient(ssh_client: paramiko.SSHClient):
 
     Use this with scp.get and scp.put.
     """
-    return SCPClient(ssh_client.get_transport())  # type: ignore
+    return SCPClient(ssh_client.get_transport(), sanitize=lambda x: x)  # type: ignore
 
 
 def run_commands_via_ssh(

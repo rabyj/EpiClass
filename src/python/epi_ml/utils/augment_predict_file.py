@@ -1,6 +1,7 @@
 """Augment a label prediction file with new metadata categories.
 
 File header format important. Expects [md5sum, true class, predicted class, labels] lines.
+or [md5sum, true class, predicted class, split_nb, labels] lines.
 """
 from __future__ import annotations
 
@@ -18,7 +19,9 @@ import pandas as pd
 from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from epi_ml.core.metadata import Metadata
 
-TARGET = "assay_epiclass"
+ASSAY_LABEL = "assay_epiclass"
+EPIRR_LABEL = "EpiRR"
+COHERENCE_LABELS = [EPIRR_LABEL, ASSAY_LABEL]
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -38,6 +41,11 @@ def parse_arguments() -> argparse.Namespace:
         help="Replace 'True class' field labels with metadata values of given LABEL_CATEGORY.",
         default=None
     )
+    parser.add_argument(
+        "--compute-coherence",
+        action="store_true",
+        help="Add coherence metrics to file.",
+    )
 
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument(
@@ -48,6 +56,7 @@ def parse_arguments() -> argparse.Namespace:
         action="store_true",
         help="Add all available metadata categories.",
     )
+
     # fmt: on
     return parser.parse_args()
 
@@ -209,11 +218,11 @@ def add_track_type_coherence(df):
     cat2 = "Track type coherence count"
     cat3 = "Track type coherence ratio"
 
-    groups = df.groupby(["EpiRR", TARGET])
+    groups = df.groupby(COHERENCE_LABELS)
     if cat1 not in df.columns:
         df[cat1] = groups["md5sum"].transform("size")
 
-    groups = df.groupby(["EpiRR", TARGET, "Predicted class"])
+    groups = df.groupby(COHERENCE_LABELS + ["Predicted class"])
     df[cat2] = groups["md5sum"].transform("size")
 
     df[cat3] = df[cat2] / (1.0 * df[cat1])
@@ -241,15 +250,22 @@ def main():
     if args.correct_true:
         correct_true(path=pred_file, category=args.correct_true, metadata=metadata)
 
-    categories = args.categories
+    if args.categories:
+        categories = args.categories
+    else:
+        categories = []
+
+    if args.compute_coherence:
+        categories += COHERENCE_LABELS
+
     if args.all_categories:
         categories = metadata.get_categories()
         new_path = augment_predict(metadata, pred_file, categories, append_name="all")
-        write_coherence(new_path, "Predicted class")
-    elif categories:
-        augment_predict(metadata, pred_file, categories)
     else:
-        augment_predict(metadata, pred_file, [])
+        new_path = augment_predict(metadata, pred_file, categories)
+
+    if args.compute_coherence:
+        write_coherence(new_path, "Predicted class")
 
 
 if __name__ == "__main__":
