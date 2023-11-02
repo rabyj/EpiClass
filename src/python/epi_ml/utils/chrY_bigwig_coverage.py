@@ -50,9 +50,14 @@ def compute_coverage(file_path: Path) -> Tuple[str, int, int, int]:
     except (RuntimeError, OSError) as err:
         print(f"{err}: Could not process {file_path}.", flush=True, file=sys.stderr)
         return (file_path.name, 0, 0, 0)
-    chrY_coverage = bw.stats("chrY", exact=True)[0]
-    chrX_coverage = bw.stats("chrX", exact=True)[0]
-    bw.close()
+    try:
+        chrY_coverage = bw.stats("chrY", exact=True)[0]
+        chrX_coverage = bw.stats("chrX", exact=True)[0]
+    except RuntimeError as err:
+        print(f"{err}: Could not process {file_path}.", flush=True, file=sys.stderr)
+        bw.close()
+        return (file_path.name, 0, 0, 0)
+
     return (
         file_path.name,
         chrY_coverage,
