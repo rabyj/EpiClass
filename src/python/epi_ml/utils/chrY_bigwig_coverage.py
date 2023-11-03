@@ -1,6 +1,7 @@
 """
 This module provides functionalities compute the chrY and chrX coverage from bigwig files.
 """
+# pylint: disable=invalid-name
 from __future__ import annotations
 
 import argparse
@@ -39,7 +40,7 @@ def chunks(lst: List, n: int) -> Generator[List, None, None]:
         yield lst[i : i + n]
 
 
-def compute_coverage(file_path: Path) -> Tuple[str, int, int, int]:
+def compute_coverage(file_path: Path) -> Tuple[str, int, int]:
     """Compute mean signal value in chrY and chrX
 
     Return
@@ -49,26 +50,29 @@ def compute_coverage(file_path: Path) -> Tuple[str, int, int, int]:
         bw = pyBigWig.open(str(file_path), "r")
     except (RuntimeError, OSError) as err:
         print(f"{err}: Could not process {file_path}.", flush=True, file=sys.stderr)
-        return (file_path.name, 0, 0, 0)
+        return (file_path.name, 0, 0)
+
     try:
         chrY_coverage = bw.stats("chrY", exact=True)[0]
         chrX_coverage = bw.stats("chrX", exact=True)[0]
     except RuntimeError as err:
         print(f"{err}: Could not process {file_path}.", flush=True, file=sys.stderr)
+        chrY_coverage = 0
+        chrX_coverage = 0
+    finally:
         bw.close()
-        return (file_path.name, 0, 0, 0)
 
     return (
         file_path.name,
         chrY_coverage,
         chrX_coverage,
-        chrY_coverage / chrX_coverage,
     )
 
 
 def main():
     """
-    Main function that parses command-line arguments and performs the operations to copy and cast HDF5 files.
+    Main function that parses command-line arguments and
+    performs the operations to copy and cast HDF5 files.
     """
     cli = parse_arguments()
 
@@ -93,15 +97,15 @@ def main():
         if chunk_name.exists():
             chunk_name = logdir / f"coverage_chunk_{time_now_str()}_.csv"
 
-        pd.DataFrame(
-            chunk_result, columns=["filename", "chrY", "chrX", "chrY/chrX"]
-        ).to_csv(chunk_name, index=False)
+        pd.DataFrame(chunk_result, columns=["filename", "chrY", "chrX"]).to_csv(
+            chunk_name, index=False
+        )
 
     # Combine all results and save if required
     final_name = logdir / "coverage_combined.csv"
     if final_name.exists():
         final_name = logdir / f"coverage_combined_{time_now_str()}.csv"
-    pd.DataFrame(all_results, columns=["filename", "chrY", "chrX", "chrY/chrX"]).to_csv(
+    pd.DataFrame(all_results, columns=["filename", "chrY", "chrX"]).to_csv(
         final_name, index=False
     )
 
