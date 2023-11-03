@@ -95,7 +95,7 @@ def main():
         # Log the results of the current chunk
         chunk_name = logdir / f"coverage_chunk_{idx}.csv"
         if chunk_name.exists():
-            chunk_name = logdir / f"coverage_chunk_{time_now_str()}_.csv"
+            chunk_name = logdir / f"coverage_chunk_{idx}_{time_now_str()}.csv"
 
         pd.DataFrame(chunk_result, columns=["filename", "chrY", "chrX"]).to_csv(
             chunk_name, index=False
