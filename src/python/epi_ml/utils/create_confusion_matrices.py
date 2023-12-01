@@ -34,6 +34,7 @@ def parse_arguments() -> argparse.Namespace:
     group.add_argument(
         "--from_prediction", metavar="pred-file", type=Path, help="Prediction file to convert to a confusion matrix.",
     )
+    parser.add_argument("--confidence_threshold", type=float, default=0, help="Confidence threshold for predictions. Only applies to --from_prediction. Must be within [0, 1].")
     # fmt: on
     return parser.parse_args()
 
@@ -63,25 +64,45 @@ def main():
 
     if args.from_existing:
         add_matrices(logdir=args.from_logdir.parent)
-    else:
-        pred_file = args.from_prediction
-        logdir = pred_file.parent
+        return
 
+    pred_file = args.from_prediction
+    logdir = pred_file.parent
+
+    threshold = args.confidence_threshold
+    if 0 > threshold > 1:
+        raise ValueError("Confidence threshold must be within [0, 1].")
+
+    if threshold > 0:
+        confidence_label = "Max pred"
+        try:
+            df = pd.read_csv(
+                pred_file,
+                sep=",",
+                usecols=["True class", "Predicted class", confidence_label],
+            )
+        except KeyError as exc:
+            raise KeyError(
+                f"Prediction file must have 'True class', 'Predicted class', and '{confidence_label}' columns."
+            ) from exc
+
+        df = df[df[confidence_label] >= threshold]
+    else:
         df = pd.read_csv(
             pred_file,
             sep=",",
             usecols=["True class", "Predicted class"],
         )
 
-        true, pred = df.iloc[:, 0], df.iloc[:, 1]
-        labels = sorted(set(true.unique().tolist() + pred.unique().tolist()))
-        confusion_mat = sklearn.metrics.confusion_matrix(true, pred, labels=labels)
+    true, pred = df.iloc[:, 0], df.iloc[:, 1]
+    labels = sorted(set(true.unique().tolist() + pred.unique().tolist()))
+    confusion_mat = sklearn.metrics.confusion_matrix(true, pred, labels=labels)
 
-        writer = ConfusionMatrixWriter(labels=labels, confusion_matrix=confusion_mat)
-        writer.to_all_formats(
-            logdir=logdir,
-            name=str(pred_file.stem) + "-confusion-matrix",
-        )
+    writer = ConfusionMatrixWriter(labels=labels, confusion_matrix=confusion_mat)
+    writer.to_all_formats(
+        logdir=logdir,
+        name=str(pred_file.stem) + f"-confusion-matrix-threshold-{threshold:0.2f}",
+    )
 
 
 if __name__ == "__main__":
