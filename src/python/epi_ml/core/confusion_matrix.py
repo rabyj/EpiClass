@@ -239,9 +239,9 @@ class ConfusionMatrixWriter:
         """
         outpath = Path(logdir) / name
 
-        out1 = outpath.with_suffix(".csv")
+        out1 = outpath.with_name(f"{name}.csv")
         out1_rel = outpath.with_name(f"{name}_relative.csv")
-        out2 = outpath.with_suffix(".png")
+        out2 = outpath.with_name(f"{name}.png")
 
         self.to_csv(out1, relative=False)
         self.to_csv(out1_rel, relative=True)

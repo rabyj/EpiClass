@@ -101,7 +101,7 @@ def main():
     writer = ConfusionMatrixWriter(labels=labels, confusion_matrix=confusion_mat)
     writer.to_all_formats(
         logdir=logdir,
-        name=str(pred_file.stem) + f"-confusion-matrix-threshold-{threshold:0.2f}",
+        name=str(pred_file.stem) + f"-confusion-matrix-threshold-{threshold:.2f}",
     )
 
 
