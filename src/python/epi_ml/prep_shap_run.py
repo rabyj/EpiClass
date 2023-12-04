@@ -155,6 +155,12 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "base_logdir", type=DirectoryChecker(), help="Directory where different fold directories are present"
     )
+    parser.add_argument(
+        "--overwrite", action="store_true", help="Overwrite existing files."
+        )
+    parser.add_argument(
+        "--sampling_sizes", nargs="+", type=int, default=[3], help="Sampling sizes to evaluate (how many times [assay, cell_type, track_type] trios are sampled)."
+        )
     # fmt: on
     return parser.parse_args()
 
@@ -169,6 +175,8 @@ def main():
     category = cli.category
     metadata = Metadata(cli.metadata)
     base_logdir = cli.base_logdir
+    overwrite = cli.overwrite
+    sampling_sizes = cli.sampling_sizes
 
     try:
         job_template_path = (
@@ -210,7 +218,7 @@ def main():
             category=category,
             metadata=metadata,
             training_md5s=training_md5,
-            n_samples_list=[2, 3],
+            n_samples_list=sampling_sizes,
             verbose=True,
         )
 
@@ -221,7 +229,7 @@ def main():
         # Background
         selection_name = f"{best_n_per_trio}pertrio"
         background_filename = shap_folder / f"shap_background_{selection_name}_hdf5.list"
-        if background_filename.exists():
+        if background_filename.exists() and not overwrite:
             print(
                 f"{background_filename} already exists. Skipping {split_folder}",
                 file=sys.stderr,
@@ -237,8 +245,12 @@ def main():
 
         # Eval
         eval_filename = shap_folder / f"shap_eval_all_valid_split{split_nb}_hdf5.list"
-        if eval_filename.exists():
-            raise FileExistsError(f"{eval_filename} already exists")
+        if eval_filename.exists() and not overwrite:
+            print(
+                f"{eval_filename} already exists. Skipping {split_folder}",
+                file=sys.stderr,
+            )
+            continue
 
         write_hdf5_paths_to_file(
             md5s=sorted(valid_md5),
@@ -250,10 +262,10 @@ def main():
         # Create shap computation slurm script from template
 
         # Things to account for:
-        # :::account:::, :::email::: (use external script not saved in repo)
+        # :::account:::, :::email::: (use external script or change template without saving in repo)
         job_file = shap_folder / f"{category}_shap_split{split_nb}.sh"
 
-        if job_file.exists():
+        if job_file.exists() and not overwrite:
             raise FileExistsError(f"{job_file} already exists")
         shutil.copy(job_template_path, job_file)
 
