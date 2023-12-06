@@ -1,7 +1,12 @@
 """Pytest configuration"""
 # pylint: disable=unused-argument
+import os
 import subprocess
 from pathlib import Path
+
+os.environ["COMET_AUTO_LOG_DISABLE"] = "True"
+os.environ["COMET_DISABLE_AUTO_LOGGING"] = "True"
+os.environ["COMET_FALLBACK_STREAMER_KEEP_OFFLINE_ZIP"] = "False"
 
 
 def pytest_sessionfinish(session, exitstatus):
