@@ -1,10 +1,13 @@
 """Module for reading source data files."""
+from __future__ import annotations
+
 from pathlib import Path
+from typing import List, Tuple
 
 HDF5_RESOLUTION = {"1kb": 1000, "10kb": 10000, "100kb": 100000, "1mb": 1000000}
 
 
-class EpiDataSource(object):
+class EpiDataSource:
     """Used to contain source files."""
 
     def __init__(self, hdf5: Path, chromsize: Path, metadata: Path):
@@ -43,10 +46,15 @@ class EpiDataSource(object):
             resolution_string = first_path.name.split("_")[1]
         return HDF5_RESOLUTION[resolution_string]
 
-    def load_chrom_sizes(self):
+    @staticmethod
+    def load_external_chrom_file(chrom_file: Path | str) -> List[Tuple[str, int]]:
+        """Return sorted list with chromosome (name, size) pairs."""
+        with open(chrom_file, "r", encoding="utf-8") as my_file:
+            pairs = [line.rstrip("\n").split() for line in my_file]
+        return sorted([(name, int(size)) for name, size in pairs])
+
+    def load_chrom_sizes(self) -> List[Tuple[str, int]]:
         """Return sorted list with chromosome (name, size) pairs. This order
         is the same as the order of chroms in the concatenated signals.
         """
-        with open(self.chromsize_file, "r", encoding="utf-8") as my_file:
-            pairs = [line.rstrip("\n").split() for line in my_file]
-        return sorted([(name, int(size)) for name, size in pairs])
+        return self.load_external_chrom_file(self.chromsize_file)
