@@ -7,12 +7,15 @@ The following analyses are performed:
   counted, and features that are present in X% of the samples are written to bed.
   This is done for each class separately, using the output class SHAP matrix.
   (There are SHAP values for all features, for each class, for each sample, thus multiple matrices, one per class.)
+    - For all samples of the classifier class
+    - Subsampled by cell type and assay
 """
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements
 from __future__ import annotations
 
 import argparse
 import copy
+import itertools
 import json
 import re
 import sys
@@ -34,38 +37,39 @@ from epi_ml.utils.shap.shap_utils import (
 )
 from epi_ml.utils.time import time_now
 
+CELL_TYPE = "harmonized_sample_ontology_intermediate"
+ASSAY = "assay_epiclass"
+
 
 def analyze_shap_fold(
     shap_folder: Path,
+    output_folder: Path,
     metadata: Metadata,
     label_category: str,
     chromsizes: List[Tuple[str, int]],
     resolution: int,
     top_N_required: int = 100,
     min_percentile: float = 80,
+    overwrite: bool = False,
 ) -> Dict[str, Dict]:
     """
     Analyzes SHAP values from one fold of the training and writes BED files of most frequent important features.
 
     Args:
         shap_folder (Path): The directory of the current shap values to analyze.
+        output_folder (Path): The directory to write the results to.
         metadata (Metadata): Metadata object containing label information.
         label_category (str): The category of labels to consider.
         chromsizes (List[Tuple[str, int]]): List with chromosome names and sizes.
         resolution (int): The resolution for binning.
         top_N_required (int, optional): The number of top SHAP values/features to consider per sample. Defaults to 100.
         min_percentile (float, optional): The percentile value for feature frequency selection (0 < x < 100). Defaults to 80.
+        overwrite (bool, optional): Whether to overwrite existing files. Defaults to False.
 
     Returns:
         Dict[str, Dict]: A dictionary containing important features for each analyzed class label.
         The keys are class labels, and values are dictionaries of important features for different percentiles.
     """
-    analysis_folder = shap_folder / f"analysis_n{top_N_required}_f{min_percentile:.2f}"
-    analysis_folder.mkdir(exist_ok=True)
-    if any(analysis_folder.glob("*")):
-        print(f"Skipping {shap_folder.name} because analysis folder is not empty")
-        return {}
-
     # Extract shap values and md5s from archive
     shap_matrices, eval_md5s, classes = extract_shap_values_and_info(
         shap_folder, verbose=True
@@ -107,7 +111,7 @@ def analyze_shap_fold(
         result_bed_filename = get_valid_filename(
             f"frequent_features_f{min_percentile:.2f}_{class_label}.bed"
         )
-        if (analysis_folder / result_bed_filename).is_file():
+        if (output_folder / result_bed_filename).is_file() and not overwrite:
             print(f"Skipping {class_label} because {result_bed_filename} already exists.")
             continue
 
@@ -130,7 +134,7 @@ def analyze_shap_fold(
         important_features[class_label] = frequent_features
 
         hist_fig.write_image(
-            file=analysis_folder
+            file=output_folder
             / f"top{top_N_required}_feature_frequency_{class_label}.png",
             format="png",
         )
@@ -143,12 +147,12 @@ def analyze_shap_fold(
         )
         write_to_bed(
             bed_vals,
-            analysis_folder / result_bed_filename,
+            output_folder / result_bed_filename,
             verbose=True,
         )
 
     # Save important features for all classes as json
-    json_path = analysis_folder / "important_features.json"
+    json_path = output_folder / "important_features.json"
     with open(json_path, "w", encoding="utf8") as json_file:
         json.dump(important_features, json_file, indent=4)
 
@@ -162,7 +166,7 @@ def compare_kfold_shap_analysis(
     output_folder: Path,
     chosen_percentile: float | int = 80,
     minimum_count: int = 8,
-) -> None:
+) -> Dict[str, Counter]:
     """Compare the SHAP analysis results from multiple splits and writes the results based on frequency.
 
     Args:
@@ -172,8 +176,11 @@ def compare_kfold_shap_analysis(
         output_folder (Path): Output directory for writing BED files.
         chosen_percentile (float | int, optional): The chosen percentile for selecting important features.
         minimum_count (int, optional): The minimum count of splits that a feature must be present in.
+
+    Returns:
+        Counter: A counter containing the frequency of features for each class over all splits, for the chosen percentile.
     """
-    class_features_frequency = {}
+    class_features_frequency: Dict[str, Counter] = {}
     class_labels = list(important_features_all_splits.values())[0].keys()
 
     for class_label in class_labels:
@@ -182,7 +189,7 @@ def compare_kfold_shap_analysis(
         # Count the occurrence of each feature across all splits
         for features_dict in important_features_all_splits.values():
             current_features = features_dict.get(class_label, {}).get(
-                chosen_percentile, []
+                str(chosen_percentile), []
             )
             feature_counter.update(current_features)
 
@@ -217,6 +224,8 @@ def compare_kfold_shap_analysis(
             verbose=True,
         )
 
+    return class_features_frequency
+
 
 def parse_arguments() -> argparse.Namespace:
     """Argument parser for command line."""
@@ -239,6 +248,9 @@ def parse_arguments() -> argparse.Namespace:
         )
     parser.add_argument(
         "--min_frequency", type=float, default=0.9, help="Minimum frequency (0.9 = 90%%) of a feature over the given samples necessary for features to be selected.",
+        )
+    parser.add_argument(
+        "--overwrite", action="store_true", help="Overwrite existing files.",
         )
     # fmt: on
     return parser.parse_args()
@@ -264,6 +276,7 @@ def main():
     top_N_required: int = cli.top_N_shap
     min_frequency: float = cli.min_frequency
     min_percentile = min_frequency * 100
+    overwrite: bool = cli.overwrite
 
     # Get resolution from base_logdir
     re_pattern = "|".join(list(HDF5_RESOLUTION.keys()))
@@ -285,34 +298,98 @@ def main():
         x for x in base_logdir.iterdir() if (x.is_dir() and x.name.startswith("split"))
     ]
 
-    important_features_all_splits: Dict[str, Dict] = {}
-    split_folders = [
-        x for x in base_logdir.iterdir() if (x.is_dir() and x.name.startswith("split"))
-    ]
+    # --  Analyze SHAP values over each class (all samples of each class) for each split --
     for split_folder in split_folders:
-        print(f"Analyzing {split_folder.name}")
-
         shap_folder = split_folder / "shap"
         if not shap_folder.exists():
             print(f"Skipping {split_folder.name} because it does not have shap folder")
             continue
 
-        important_features = analyze_shap_fold(
-            shap_folder=shap_folder,
-            metadata=metadata,
-            label_category=label_category,
-            chromsizes=chromsizes,
-            resolution=resolution,
-            top_N_required=top_N_required,
-            min_percentile=min_percentile,
+        analysis_folder = (
+            shap_folder / f"analysis_n{top_N_required}_f{min_percentile:.2f}"
         )
-        important_features_all_splits[split_folder.name] = important_features
+        analysis_folder.mkdir(exist_ok=True)
 
-    # Save important features for all splits as json
-    global_analysis_folder = base_logdir / "shap_analysis"
-    json_path = global_analysis_folder / "important_features_topn{top_N_required}.json"
-    with open(json_path, "w", encoding="utf8") as json_file:
-        json.dump(important_features_all_splits, json_file, indent=4)
+        # -- Mixed samples analysis --
+
+        print(f"Analyzing {split_folder.name} with mixed samples")
+        global_analysis_folder = analysis_folder / "mixed_samples"
+        global_analysis_folder.mkdir(exist_ok=True)
+        if any(global_analysis_folder.glob("*")) and not overwrite:
+            print(
+                f"Skipping {split_folder.name} because {global_analysis_folder} is not empty"
+            )
+        else:
+            _ = analyze_shap_fold(
+                shap_folder=shap_folder,
+                output_folder=global_analysis_folder,
+                metadata=metadata,
+                label_category=label_category,
+                chromsizes=chromsizes,
+                resolution=resolution,
+                top_N_required=top_N_required,
+                min_percentile=min_percentile,
+            )
+
+        # -- Subclassed samples analysis --
+
+        ct_labels = list(metadata.label_counter(CELL_TYPE).keys())
+        assay_labels = list(metadata.label_counter(ASSAY).keys())
+        print(f"Analyzing {split_folder.name} with subclassed samples (over assay)")
+        for assay_label in assay_labels:
+            # Make correct folder, check for existence
+            subclass_analysis_folder = analysis_folder / f"{assay_label}"
+            subclass_analysis_folder.mkdir(exist_ok=True)
+            if any(subclass_analysis_folder.glob("*")) and not overwrite:
+                print(
+                    f"Skipping {split_folder.name} because {subclass_analysis_folder} is not empty"
+                )
+            else:
+                # Subclass metadata
+                meta = copy.deepcopy(metadata)
+                meta.select_category_subsets(ASSAY, [assay_label])
+
+                # Analyze SHAP values
+                _ = analyze_shap_fold(
+                    shap_folder=shap_folder,
+                    output_folder=subclass_analysis_folder,
+                    metadata=meta,
+                    label_category=label_category,
+                    chromsizes=chromsizes,
+                    resolution=resolution,
+                    top_N_required=top_N_required,
+                    min_percentile=min_percentile,
+                )
+
+        if label_category not in [CELL_TYPE, ASSAY]:
+            print(
+                f"Analyzing {split_folder.name} with subclassed samples (over cell type and assay)"
+            )
+            for ct_label, assay_label in itertools.product(ct_labels, assay_labels):
+                # Make correct folder, check for existence
+                subclass_analysis_folder = analysis_folder / f"{assay_label}_{ct_label}"
+                subclass_analysis_folder.mkdir(exist_ok=True)
+                if any(subclass_analysis_folder.glob("*")) and not overwrite:
+                    print(
+                        f"Skipping {split_folder.name} because {subclass_analysis_folder} is not empty"
+                    )
+                else:
+                    # Subclass metadata
+                    meta = copy.deepcopy(metadata)
+                    meta.select_category_subsets(CELL_TYPE, [ct_label])
+                    meta.select_category_subsets(ASSAY, [assay_label])
+
+                    # Analyze SHAP values
+                    _ = analyze_shap_fold(
+                        shap_folder=shap_folder,
+                        output_folder=subclass_analysis_folder,
+                        metadata=meta,
+                        label_category=label_category,
+                        chromsizes=chromsizes,
+                        resolution=resolution,
+                        top_N_required=top_N_required,
+                        min_percentile=min_percentile,
+                    )
 
     end = time_now()
     print(f"end {end}")
