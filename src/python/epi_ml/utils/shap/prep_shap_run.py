@@ -12,6 +12,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Iterable, List, Tuple
 
+import epi_ml
 from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from epi_ml.argparseutils.directorychecker import DirectoryChecker
 from epi_ml.core.metadata import Metadata
@@ -179,15 +180,14 @@ def main():
     sampling_sizes = cli.sampling_sizes
 
     try:
+        # Beware, sensitive to file structure
         job_template_path = (
-            Path(__file__).absolute().parents[2]
-            / "bash_utils"
-            / "compute_shaps_template.sh"
+            Path(epi_ml.__file__).parents[2] / "bash_utils" / "compute_shaps_template.sh"
         )
+        if not job_template_path.exists():
+            raise FileNotFoundError("Could not find compute_shaps_template.sh")
     except IndexError as exc:
-        raise FileNotFoundError(
-            f"Could not find compute_shaps_template.sh. Found: {list(Path(__file__).absolute().parents)}"
-        ) from exc
+        raise FileNotFoundError("Could not find compute_shaps_template.sh") from exc
 
     # Find all split folders
     split_folders = [
@@ -231,7 +231,7 @@ def main():
         background_filename = shap_folder / f"shap_background_{selection_name}_hdf5.list"
         if background_filename.exists() and not overwrite:
             print(
-                f"{background_filename} already exists. Skipping {split_folder}",
+                f"{background_filename} already exists. Skipping {split_folder.name}",
                 file=sys.stderr,
             )
             continue
@@ -287,6 +287,20 @@ def main():
 
         with open(job_file, "w", encoding="utf8") as file:
             file.write(file_contents)
+
+        print(f"Created {job_file}")
+
+    end = time_now()
+    print(f"end {end}")
+    print(f"elapsed {end - begin}")
+
+    print(
+        """
+        Don't forget to check for:
+        1) correct paths for where the scripts are run from (e.g. $HOME)
+        2) correct model paths (in best_checkpoint.list files)
+        """
+    )
 
 
 if __name__ == "__main__":
