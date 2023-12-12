@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 os.environ["COMET_AUTO_LOG_DISABLE"] = "True"
-os.environ["COMET_DISABLE_AUTO_LOGGING"] = "True"
+os.environ["COMET_DISABLE_AUTO_LOGGING"] = "1"
 os.environ["COMET_FALLBACK_STREAMER_KEEP_OFFLINE_ZIP"] = "False"
 
 
