@@ -6,6 +6,7 @@ import copy
 import json
 import os
 from collections import Counter, defaultdict
+from collections.abc import ItemsView, KeysView, ValuesView
 from difflib import SequenceMatcher as SM
 from pathlib import Path
 from typing import Dict, Iterable, List, Set, Tuple
@@ -68,18 +69,18 @@ class Metadata:
         self._save_metadata(path)
 
     @property
-    def md5s(self):
-        """Return md5s (iterator). dict.keys() equivalent."""
+    def md5s(self) -> KeysView:
+        """Return a md5s view (like dict.keys())."""
         return self._metadata.keys()
 
     @property
-    def datasets(self):
-        """Return datasets (iterator). dict.values() equivalent."""
+    def datasets(self) -> ValuesView:
+        """Return a datasets view (like dict.values())."""
         return self._metadata.values()
 
     @property
-    def items(self):
-        """Return pairs (iterator). dict.items() equivalent"""
+    def items(self) -> ItemsView:
+        """Return a (md5,datasets) view (like dict.items())."""
         return self._metadata.items()
 
     def _load_metadata(self, path):
