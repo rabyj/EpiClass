@@ -40,6 +40,7 @@ from epi_ml.utils.time import time_now
 
 CELL_TYPE = "harmonized_sample_ontology_intermediate"
 ASSAY = "assay_epiclass"
+TRACK = "track_type"
 
 
 def analyze_shap_fold(
@@ -188,7 +189,9 @@ def compare_kfold_shap_analysis(
         Dict[str, List[Tuple[str, List[int]]]]: A dict containing the frequency of features for each class over all splits, for all given percentiles.
     """
     class_features_frequency: Dict[str, List] = {}
-    class_labels = list(important_features_all_splits.values())[0].keys()
+    class_labels = set()
+    for split_dict in important_features_all_splits.values():
+        class_labels.update(list(split_dict.keys()))
 
     for class_label in class_labels:
         feature_counter = Counter()
@@ -231,6 +234,93 @@ def compare_kfold_shap_analysis(
         )
 
     return class_features_frequency
+
+
+def analyze_subsamplings(
+    shap_folder: Path,
+    output_folder: Path,
+    metadata: Metadata,
+    chromsizes: List[Tuple[str, int]],
+    label_category: str,
+    subsample_categories: List[List[str]],
+    resolution: int,
+    top_N_required: int = 100,
+    min_percentile: float = 80,
+    overwrite: bool = False,
+) -> None:
+    """
+    Analyzes SHAP values for given subsampling category combinations for an individual split.
+
+    Args:
+        shap_folder (Path): Path to the folder containing SHAP values.
+        output_folder (Path): Path to the folder where analysis results will be stored.
+        metadata (Metadata): Metadata object containing sample information.
+        chromsizes: List[Tuple[str, int]]: Chromosome sizes information.
+        label_category (str): Primary category for labels.
+        subsample_categories (List[List[str]]): List of category combinations for subsampling.
+        resolution (int): Resolution of the sample binning.
+        top_N_required (int): Number of top features required. Defaults to 100.
+        min_percentile (float): Minimum percentile for filtering over samples (0 < val < 100). Defaults to 80.
+        overwrite (bool): Flag to overwrite existing data. Defaults to False.
+    """
+    for categories in subsample_categories:
+        # No subsampling case
+        if not categories:
+            sub_output_folder = output_folder / "mixed_samples"
+            sub_output_folder.mkdir(exist_ok=True)
+
+            if any(sub_output_folder.glob("*")) and not overwrite:
+                print(f"Skipping analysis for {sub_output_folder} as it is not empty")
+                continue
+
+            meta = metadata
+
+            _ = analyze_shap_fold(
+                shap_folder=shap_folder,
+                output_folder=sub_output_folder,
+                metadata=meta,
+                label_category=label_category,
+                chromsizes=chromsizes,
+                resolution=resolution,
+                top_N_required=top_N_required,
+                min_percentile=min_percentile,
+            )
+
+            continue
+
+        # Subsampling cases
+        combo_labels = [list(metadata.label_counter(cat).keys()) for cat in categories]
+        for label_combo in itertools.product(*combo_labels):
+            combo_folder_name = "_".join(label_combo)
+            print(f"\n\nSubsampling: {combo_folder_name}")
+
+            meta = copy.deepcopy(metadata)
+            for cat, label in zip(categories, label_combo):
+                meta.select_category_subsets(cat, [label])
+
+            if len(meta) < 5:
+                print(
+                    f"Not enough samples (5) to perform analysis on '{combo_folder_name}' subsampling"
+                )
+                continue
+
+            sub_output_folder = output_folder / combo_folder_name
+            sub_output_folder.mkdir(exist_ok=True)
+
+            if any(sub_output_folder.glob("*")) and not overwrite:
+                print(f"Skipping analysis for {sub_output_folder} as it is not empty")
+                continue
+
+            _ = analyze_shap_fold(
+                shap_folder=shap_folder,
+                output_folder=sub_output_folder,
+                metadata=meta,
+                label_category=label_category,
+                chromsizes=chromsizes,
+                resolution=resolution,
+                top_N_required=top_N_required,
+                min_percentile=min_percentile,
+            )
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -304,103 +394,48 @@ def main():
         x for x in base_logdir.iterdir() if (x.is_dir() and x.name.startswith("split"))
     ]
 
-    # --  Analyze SHAP values over each class for each split --
-
+    # --- ANALYZE SHAP VALUES ---
     for split_folder in split_folders:
+        # Check if split folder has shap folder
         shap_folder = split_folder / "shap"
         if not shap_folder.exists():
             print(f"Skipping {split_folder.name} because it does not have shap folder")
             continue
 
+        # Create output folder for analysis
         analysis_folder = (
             shap_folder / f"analysis_n{top_N_required}_f{min_percentile:.2f}"
         )
         analysis_folder.mkdir(exist_ok=True)
 
-        # -- Mixed samples analysis --
-
-        print(f"\nAnalyzing {split_folder.name} with mixed samples")
-        global_analysis_folder = analysis_folder / "mixed_samples"
-        global_analysis_folder.mkdir(exist_ok=True)
-        if any(global_analysis_folder.glob("*")) and not overwrite:
-            print(
-                f"Skipping {split_folder.name} for {global_analysis_folder.name} because folder is not empty: {global_analysis_folder}"
-            )
+        # Analyze SHAP values for the whole split
+        if label_category == CELL_TYPE:
+            subsample_categories = [
+                [],
+                [ASSAY],
+                [ASSAY, TRACK],
+            ]
         else:
-            _ = analyze_shap_fold(
-                shap_folder=shap_folder,
-                output_folder=global_analysis_folder,
-                metadata=metadata,
-                label_category=label_category,
-                chromsizes=chromsizes,
-                resolution=resolution,
-                top_N_required=top_N_required,
-                min_percentile=min_percentile,
-            )
+            subsample_categories = [
+                [],
+                [ASSAY],
+                [ASSAY, TRACK],
+                [ASSAY, CELL_TYPE],
+                [ASSAY, CELL_TYPE, TRACK],
+            ]
 
-        # -- Subclassed samples analysis --
-        # Per assay
-        ct_labels = list(metadata.label_counter(CELL_TYPE).keys())
-        assay_labels = list(metadata.label_counter(ASSAY).keys())
-
-        print(f"\nAnalyzing {split_folder.name} with subclassed samples (over assay)")
-        for assay_label in assay_labels:
-            print(f"Assay: {assay_label}")
-            # Make correct folder, check for existence
-            subclass_analysis_folder = analysis_folder / f"{assay_label}"
-            subclass_analysis_folder.mkdir(exist_ok=True)
-            if any(subclass_analysis_folder.glob("*")) and not overwrite:
-                print(
-                    f"Skipping {split_folder.name} for {subclass_analysis_folder.name} because folder is not empty: {subclass_analysis_folder}"
-                )
-            else:
-                # Subclass metadata
-                meta = copy.deepcopy(metadata)
-                meta.select_category_subsets(ASSAY, [assay_label])
-
-                # Analyze SHAP values
-                _ = analyze_shap_fold(
-                    shap_folder=shap_folder,
-                    output_folder=subclass_analysis_folder,
-                    metadata=meta,
-                    label_category=label_category,
-                    chromsizes=chromsizes,
-                    resolution=resolution,
-                    top_N_required=top_N_required,
-                    min_percentile=min_percentile,
-                )
-
-        # Per assay + cell type
-        if label_category not in [CELL_TYPE, ASSAY]:
-            print(
-                f"\nAnalyzing {split_folder.name} with subclassed samples (over cell type and assay)"
-            )
-            for ct_label, assay_label in itertools.product(ct_labels, assay_labels):
-                print(f"(Assay, cell type): ({assay_label}, {ct_label})")
-                # Make correct folder, check for existence
-                subclass_analysis_folder = analysis_folder / f"{assay_label}_{ct_label}"
-                subclass_analysis_folder.mkdir(exist_ok=True)
-                if any(subclass_analysis_folder.glob("*")) and not overwrite:
-                    print(
-                        f"Skipping {split_folder.name} for {subclass_analysis_folder.name} because folder is not empty: {subclass_analysis_folder}"
-                    )
-                else:
-                    # Subclass metadata
-                    meta = copy.deepcopy(metadata)
-                    meta.select_category_subsets(ASSAY, [assay_label])
-                    meta.select_category_subsets(CELL_TYPE, [ct_label])
-
-                    # Analyze SHAP values
-                    _ = analyze_shap_fold(
-                        shap_folder=shap_folder,
-                        output_folder=subclass_analysis_folder,
-                        metadata=meta,
-                        label_category=label_category,
-                        chromsizes=chromsizes,
-                        resolution=resolution,
-                        top_N_required=top_N_required,
-                        min_percentile=min_percentile,
-                    )
+        analyze_subsamplings(
+            shap_folder=split_folder,
+            output_folder=analysis_folder,
+            metadata=metadata,
+            chromsizes=chromsizes,
+            label_category=label_category,
+            subsample_categories=subsample_categories,
+            resolution=resolution,
+            top_N_required=top_N_required,
+            min_percentile=min_percentile,
+            overwrite=overwrite,
+        )
 
     end = time_now()
     print(f"end {end}")
