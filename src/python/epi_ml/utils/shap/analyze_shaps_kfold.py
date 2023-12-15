@@ -396,6 +396,7 @@ def main():
 
     # --- ANALYZE SHAP VALUES ---
     for split_folder in split_folders:
+        print(f"\n\nSplit: {split_folder.name}")
         # Check if split folder has shap folder
         shap_folder = split_folder / "shap"
         if not shap_folder.exists():
@@ -425,7 +426,7 @@ def main():
             ]
 
         analyze_subsamplings(
-            shap_folder=split_folder,
+            shap_folder=shap_folder,
             output_folder=analysis_folder,
             metadata=metadata,
             chromsizes=chromsizes,
