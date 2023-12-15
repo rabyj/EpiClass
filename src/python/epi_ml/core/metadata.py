@@ -159,7 +159,7 @@ class Metadata:
 
             top5 = sorted(zip(cats, ratios), key=lambda x: x[1], reverse=True)[:5]
             top5 = [(label, f"{ratio:0.4f}") for label, ratio in top5]
-            raise ValueError(
+            raise KeyError(
                 f"Label category '{label_category}' not in categories. "
                 f"Did you mean: {top5}"
             )

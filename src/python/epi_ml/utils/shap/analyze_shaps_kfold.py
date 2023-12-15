@@ -296,7 +296,11 @@ def analyze_subsamplings(
 
             meta = copy.deepcopy(metadata)
             for cat, label in zip(categories, label_combo):
-                meta.select_category_subsets(cat, [label])
+                try:
+                    meta.select_category_subsets(cat, [label])
+                except KeyError as exc:
+                    if "categories" in str(exc) and "[]" in str(exc):
+                        break  # metadata empty
 
             if len(meta) < 5:
                 print(
