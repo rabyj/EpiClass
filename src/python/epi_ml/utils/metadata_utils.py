@@ -1,8 +1,8 @@
 """Metadata analysis basic utility functions. Also defines some constants."""
-import collections
 import typing
+from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Tuple
+from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -100,15 +100,46 @@ def count_pairs(
     if use_uuid:
         id_label = "uuid"
 
-    unique_examples = collections.defaultdict(set)
+    unique_examples = defaultdict(set)
     for dset in my_metadata.datasets:
         dset_id: str = dset[id_label]
         cat1_label: str = dset.get(cat1, "--empty--")
         cat2_label: str = dset.get(cat2, "--empty--")
         unique_examples[(cat1_label, cat2_label)].add(dset_id)
 
-    counter = collections.Counter(
+    counter = Counter(
         {label_pair: len(ids) for label_pair, ids in unique_examples.items()}
+    )
+    return counter
+
+
+def count_combinations(
+    my_metadata: Metadata, categories: List[str], use_uuid: bool = False
+) -> typing.Counter[Tuple[str, ...]]:
+    """
+    Return label combinations counter from the given metadata categories.
+
+    Args:
+        my_metadata (Metadata): Experiment metadata to analyze.
+        categories (List[str]): A list of categories to count.
+        use_uuid (bool): If True, count combinations by uuid; otherwise, by md5sum.
+
+    Returns:
+        Counter (Tuple[str, ...], int): A counter object that counts label combinations.
+    """
+    id_label = "uuid" if use_uuid else "md5sum"
+
+    unique_examples = defaultdict(set)
+    for dset in my_metadata.datasets:
+        dset_id: str = dset[id_label]
+        labels = tuple(dset.get(category, "--empty--") for category in categories)
+        unique_examples[labels].add(dset_id)
+
+    counter = Counter(
+        {
+            label_combination: len(ids)
+            for label_combination, ids in unique_examples.items()
+        }
     )
     return counter
 
@@ -135,7 +166,7 @@ def count_labels_from_dset(dset: KnownData, label_category: str, from_uuid):
     Returns:
         collections.Counter: A Counter object with the unique labels as keys and the counts as values.
     """
-    label_samples = collections.defaultdict(list)
+    label_samples = defaultdict(list)
     id_label = "uuid" if from_uuid else "md5sum"
     meta = dset.metadata
 
@@ -144,7 +175,5 @@ def count_labels_from_dset(dset: KnownData, label_category: str, from_uuid):
         label = sample_meta.get(label_category, "--empty--")
         label_samples[label].append(sample_meta[id_label])
 
-    counter = collections.Counter(
-        {label: len(ids) for label, ids in label_samples.items()}
-    )
+    counter = Counter({label: len(ids) for label, ids in label_samples.items()})
     return counter
