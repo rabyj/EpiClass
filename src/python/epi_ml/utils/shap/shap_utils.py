@@ -122,7 +122,11 @@ def select_random_shap_samples(
 
 
 def subsample_md5s(
-    md5s: List[str], metadata: Metadata, category_label: str, labels: List[str]
+    md5s: List[str],
+    metadata: Metadata,
+    category_label: str,
+    labels: List[str],
+    copy_metadata: bool = True,
 ) -> List[int]:
     """Subsample md5s index based on metadata filtering provided, for a given category and filtering labels.
 
@@ -135,7 +139,11 @@ def subsample_md5s(
     Returns:
         list: A list of indices corresponding to the selected md5s.
     """
-    meta = copy.deepcopy(metadata)
+    if copy_metadata:
+        meta = copy.deepcopy(metadata)
+    else:
+        meta = metadata
+
     meta.select_category_subsets(category_label, labels)
     chosen_idxs = []
     for i, md5 in enumerate(md5s):
@@ -151,6 +159,7 @@ def get_shap_matrix(
     label_category: str,
     selected_labels: List[str],
     class_idx: int,
+    copy_meta: bool = True,
 ) -> Tuple[np.ndarray, List[int]]:
     """Generates a SHAP matrix corresponding to a selected subset of samples.
 
@@ -176,13 +185,17 @@ def get_shap_matrix(
     Raises:
         IndexError: If the `class_idx` is out of bounds for the `shap_matrices`.
     """
-    my_meta = copy.deepcopy(meta)
+    if copy_meta:
+        my_meta = copy.deepcopy(meta)
+    else:
+        my_meta = meta
 
     chosen_idxs = subsample_md5s(
         md5s=eval_md5s,
         metadata=my_meta,
         category_label=label_category,
         labels=selected_labels,
+        copy_metadata=copy_meta,
     )
     if len(shap_matrices.shape) == 3:  # deepSHAP
         try:
@@ -193,7 +206,7 @@ def get_shap_matrix(
         selected_class_shap = np.array(class_shap[chosen_idxs, :])
     else:  # TreeExplainer 2D
         class_shap = shap_matrices
-        selected_class_shap = class_shap[chosen_idxs]
+        selected_class_shap = class_shap[chosen_idxs]  # type: ignore
     print(
         f"Shape of selected class ({selected_labels}) shap values: {selected_class_shap.shape}"
     )

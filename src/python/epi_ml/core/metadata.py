@@ -1,9 +1,10 @@
 """Module from Metadata class and HealthyCategory."""
-# pylint: disable=unnecessary-lambda-assignment
+# pylint: disable=unnecessary-lambda-assignment,too-many-public-methods
 from __future__ import annotations
 
 import copy
 import json
+import marshal
 import os
 from collections import Counter, defaultdict
 from collections.abc import ItemsView, KeysView, ValuesView
@@ -37,6 +38,23 @@ class Metadata:
         obj._rest = {}
         return obj
 
+    @classmethod
+    def from_marshal(cls, path: Path | str) -> Metadata:
+        """Load a metadata dict from a marshal file format."""
+        with open(path, "rb") as file:
+            metadata_dict = marshal.load(file)
+
+        first_key = list(metadata_dict.keys())[0]
+        if len(first_key) != 32:
+            raise ValueError(
+                f"Incorrect format of metadata. Key need to be md5sum (len=32). Is: {first_key}"
+            )
+
+        obj = cls.__new__(cls)
+        obj._metadata = metadata_dict
+        obj._rest = {}
+        return obj
+
     def empty(self):
         """Remove all entries."""
         self._metadata = {}
@@ -55,6 +73,11 @@ class Metadata:
 
     def __len__(self):
         return len(self._metadata)
+
+    def __eq__(self, other):
+        if isinstance(other, Metadata):
+            return self._metadata == other._metadata and self._rest == other._rest
+        return False
 
     def get(self, md5, default=None) -> Dict | None:
         """Dict .get"""
@@ -230,6 +253,11 @@ class Metadata:
             if label in converter:
                 dataset[category] = converter[label]
 
+    def save_marshal(self, path: Path | str) -> None:
+        """Save the metadata to path, in marshal format. Only saves dataset information."""
+        with open(path, "wb") as file:
+            marshal.dump(self._metadata, file)
+
 
 class UUIDMetadata(Metadata):
     """Metadata class for UUID datasets, e.g. epiatlas."""
@@ -253,6 +281,28 @@ class UUIDMetadata(Metadata):
         """Create UUIDMetadata from Metadata."""
         meta = dict(metadata.items)
         return cls.from_dict(meta)
+
+    @classmethod
+    def from_marshal(cls, path: Path | str) -> UUIDMetadata:
+        """Load a metadata dict from a marshal file format."""
+        with open(path, "rb") as file:
+            metadata_dict = marshal.load(file)
+
+        first_key = list(metadata_dict.keys())[0]
+        if len(first_key) != 32:
+            raise ValueError(
+                f"Incorrect format of metadata. Key need to be md5sum (len=32). Is: {first_key}"
+            )
+
+        obj = cls.__new__(cls)
+        obj._metadata = metadata_dict
+        obj._rest = {}
+        return obj
+
+    def __eq__(self, other):
+        if isinstance(other, UUIDMetadata):
+            return self._metadata == other._metadata and self._rest == other._rest
+        return False
 
     def uuid_per_class(self, label_category: str) -> Dict[str, set[str]]:
         """Return {label/class:uuid list} dict for a given metadata category.

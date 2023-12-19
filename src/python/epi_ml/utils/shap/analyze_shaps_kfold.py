@@ -20,6 +20,7 @@ import itertools
 import json
 import re
 import sys
+import tempfile
 from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -57,6 +58,7 @@ def analyze_shap_fold(
     top_N_required: int = 100,
     min_percentile: float = 80,
     overwrite: bool = False,
+    copy_metadata: bool = True,
 ) -> Dict[str, Dict]:
     """
     Analyzes SHAP values from one fold of the training and writes BED files of most frequent important features.
@@ -76,14 +78,28 @@ def analyze_shap_fold(
         Dict[str, Dict]: A dictionary containing important features for each analyzed class label.
         The keys are class labels, and values are dictionaries of important features for different percentiles.
     """
-    # Extract shap values and md5s from archive
     shap_matrices, eval_md5s, classes = extract_shap_values_and_info_output
 
+    if copy_metadata:
+        meta = copy.deepcopy(metadata)
+    else:
+        meta = metadata
+
     # Filter metadata to include only the samples that exist in the SHAP value archives
-    meta = copy.deepcopy(metadata)
     for md5 in list(meta.md5s):
         if md5 not in set(eval_md5s):
             del meta[md5]
+
+    # Since metadata gets modified in get_shap_matrix, instead
+    # of copying the metadata with deepcopy internally, we just reload it
+    # from the saved file beforehand, avoids many copies
+    saved_eval_meta_file = (
+        tempfile.NamedTemporaryFile(  # pylint: disable=consider-using-with
+            mode="wb", delete=False
+        )
+    )
+    meta.save_marshal(saved_eval_meta_file.name)
+    saved_eval_meta_file.close()
 
     if len(meta) < 5:
         print(f"Not enough samples (5) to perform analysis on {label_category}.")
@@ -98,6 +114,8 @@ def analyze_shap_fold(
         class_int = int(class_int)
         print(f"\n\nClass: {class_label} ({class_int})")
 
+        meta = Metadata.from_marshal(saved_eval_meta_file.name)
+
         # Get the SHAP matrix for the current class,
         # and only select samples that also correspond to that class
         shap_matrix, chosen_idxs = get_shap_matrix(
@@ -107,6 +125,7 @@ def analyze_shap_fold(
             label_category=label_category,
             selected_labels=[class_label],
             class_idx=class_int,
+            copy_meta=False,
         )
 
         # this check should only be done one time but complicated to do so
@@ -268,11 +287,18 @@ def analyze_subsamplings(
         min_percentile (float): Minimum percentile for filtering over samples (0 < val < 100). Defaults to 80.
         overwrite (bool): Flag to overwrite existing data. Defaults to False.
     """
-    # Only need to extract shap values one time per split, otherwise it is VERY redundant
+    # Only need to extract shap values from archives one time per split, otherwise it is VERY redundant
     extract_shap_values_and_info_output = extract_shap_values_and_info(
         shap_logdir=shap_folder,
         verbose=False,
     )
+
+    # Create a temporary metadata file to save the current metadata state, avoids further copies
+    saved_meta_file = tempfile.NamedTemporaryFile(  # pylint: disable=consider-using-with
+        mode="wb", delete=False
+    )
+    metadata.save_marshal(saved_meta_file.name)
+    saved_meta_file.close()
 
     for categories in subsample_categories:
         # No subsampling case
@@ -284,7 +310,7 @@ def analyze_subsamplings(
                 print(f"Skipping analysis for {sub_output_folder} as it is not empty")
                 continue
 
-            meta = metadata
+            meta = Metadata.from_marshal(saved_meta_file.name)
 
             _ = analyze_shap_fold(
                 extract_shap_values_and_info_output=extract_shap_values_and_info_output,
@@ -295,6 +321,7 @@ def analyze_subsamplings(
                 resolution=resolution,
                 top_N_required=top_N_required,
                 min_percentile=min_percentile,
+                copy_metadata=False,
             )
 
             continue
@@ -305,7 +332,7 @@ def analyze_subsamplings(
             combo_folder_name = "_".join(label_combo)
             print(f"\n\nSubsampling: {combo_folder_name}")
 
-            meta = copy.deepcopy(metadata)
+            meta = Metadata.from_marshal(saved_meta_file.name)
             for cat, label in zip(categories, label_combo):
                 try:
                     meta.select_category_subsets(cat, [label])
@@ -340,6 +367,7 @@ def analyze_subsamplings(
                 resolution=resolution,
                 top_N_required=top_N_required,
                 min_percentile=min_percentile,
+                copy_metadata=False,
             )
 
 
