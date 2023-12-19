@@ -24,6 +24,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+import numpy as np
+
 from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from epi_ml.argparseutils.directorychecker import DirectoryChecker
 from epi_ml.core.data_source import HDF5_RESOLUTION, EpiDataSource
@@ -44,7 +46,9 @@ TRACK = "track_type"
 
 
 def analyze_shap_fold(
-    shap_folder: Path,
+    extract_shap_values_and_info_output: Tuple[
+        np.ndarray, List[str], List[Tuple[str, str]]
+    ],
     output_folder: Path,
     metadata: Metadata,
     label_category: str,
@@ -58,7 +62,7 @@ def analyze_shap_fold(
     Analyzes SHAP values from one fold of the training and writes BED files of most frequent important features.
 
     Args:
-        shap_folder (Path): The directory of the current shap values to analyze.
+        extract_shap_values_and_info_output (Tuple[np.ndarray, List[str], List[Tuple[str, str]]]): Output of extract_shap_values_and_info.
         output_folder (Path): The directory to write the results to.
         metadata (Metadata): Metadata object containing label information.
         label_category (str): The category of labels to consider.
@@ -73,9 +77,7 @@ def analyze_shap_fold(
         The keys are class labels, and values are dictionaries of important features for different percentiles.
     """
     # Extract shap values and md5s from archive
-    shap_matrices, eval_md5s, classes = extract_shap_values_and_info(
-        shap_folder, verbose=True
-    )
+    shap_matrices, eval_md5s, classes = extract_shap_values_and_info_output
 
     # Filter metadata to include only the samples that exist in the SHAP value archives
     meta = copy.deepcopy(metadata)
@@ -84,6 +86,9 @@ def analyze_shap_fold(
             del meta[md5]
 
     if len(meta) < 5:
+        print(f"Not enough samples (5) to perform analysis on {label_category}.")
+        return {}
+    if all(count < 5 for count in meta.label_counter(label_category).values()):
         print(f"Not enough samples (5) to perform analysis on {label_category}.")
         return {}
 
@@ -263,6 +268,12 @@ def analyze_subsamplings(
         min_percentile (float): Minimum percentile for filtering over samples (0 < val < 100). Defaults to 80.
         overwrite (bool): Flag to overwrite existing data. Defaults to False.
     """
+    # Only need to extract shap values one time per split, otherwise it is VERY redundant
+    extract_shap_values_and_info_output = extract_shap_values_and_info(
+        shap_logdir=shap_folder,
+        verbose=False,
+    )
+
     for categories in subsample_categories:
         # No subsampling case
         if not categories:
@@ -276,7 +287,7 @@ def analyze_subsamplings(
             meta = metadata
 
             _ = analyze_shap_fold(
-                shap_folder=shap_folder,
+                extract_shap_values_and_info_output=extract_shap_values_and_info_output,
                 output_folder=sub_output_folder,
                 metadata=meta,
                 label_category=label_category,
@@ -307,6 +318,11 @@ def analyze_subsamplings(
                     f"Not enough samples (5) to perform analysis on '{combo_folder_name}' subsampling"
                 )
                 continue
+            if all(count < 5 for count in meta.label_counter(label_category).values()):
+                print(
+                    f"Not enough samples (5) to perform analysis on '{combo_folder_name}' subsampling"
+                )
+                continue
 
             sub_output_folder = output_folder / combo_folder_name
             sub_output_folder.mkdir(exist_ok=True)
@@ -316,7 +332,7 @@ def analyze_subsamplings(
                 continue
 
             _ = analyze_shap_fold(
-                shap_folder=shap_folder,
+                extract_shap_values_and_info_output=extract_shap_values_and_info_output,
                 output_folder=sub_output_folder,
                 metadata=meta,
                 label_category=label_category,
