@@ -33,6 +33,7 @@ from epi_ml.core.data_source import HDF5_RESOLUTION, EpiDataSource
 from epi_ml.core.metadata import Metadata
 from epi_ml.utils.bed_utils import bins_to_bed_ranges, write_to_bed
 from epi_ml.utils.general_utility import get_valid_filename
+from epi_ml.utils.metadata_utils import count_combinations
 from epi_ml.utils.shap.shap_analysis import feature_overlap_stats
 from epi_ml.utils.shap.shap_utils import (
     extract_shap_values_and_info,
@@ -300,6 +301,9 @@ def analyze_subsamplings(
     metadata.save_marshal(saved_meta_file.name)
     saved_meta_file.close()
 
+    # To ignore invalid subsamplings
+    valid_assay_track_combos = set(count_combinations(metadata, [ASSAY, TRACK]).keys())
+
     for categories in subsample_categories:
         # No subsampling case
         if not categories:
@@ -326,9 +330,20 @@ def analyze_subsamplings(
 
             continue
 
-        # Subsampling cases
+        # Subsampling case, since 'categories' is not empty
+        assay_index = categories.index(ASSAY) if ASSAY in categories else None
+        track_index = categories.index(TRACK) if TRACK in categories else None
         combo_labels = [list(metadata.label_counter(cat).keys()) for cat in categories]
+
         for label_combo in itertools.product(*combo_labels):
+            # Ignore invalid subsamplings
+            if assay_index is not None and track_index is not None:
+                if (
+                    label_combo[assay_index],
+                    label_combo[track_index],
+                ) not in valid_assay_track_combos:
+                    continue
+
             combo_folder_name = "_".join(label_combo)
             print(f"\n\nSubsampling: {combo_folder_name}")
 
