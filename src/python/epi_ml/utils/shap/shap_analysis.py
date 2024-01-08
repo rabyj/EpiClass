@@ -24,6 +24,7 @@ def feature_overlap_stats(
 ) -> Tuple[Set[int], Set[int], Dict[int | float, List[int]], go.Figure]:
     """
     Calculate the statistics of feature overlap between multiple feature lists.
+    The features lists are assumed to be lists of feature indices for different samples.
 
     This function takes a list of feature lists and computes feature frequency percentiles.
     It also computes the union and intersection of all features from the given feature lists.
@@ -39,15 +40,14 @@ def feature_overlap_stats(
         3) a dict containing the list of features present in each percentile.
         4) a plotly figure showing the histogram of feature frequency
     """
-    nb_files = len(feature_lists)
     if not feature_lists:
         raise ValueError("Input list must not be empty.")
 
-    for percentile in percentile_list:
-        if percentile < 0 or percentile > 100:
-            raise ValueError("Percentile values must be between 0 and 100.")
+    if not all(0 <= percentile <= 100 for percentile in percentile_list):
+        raise ValueError("Percentile values must be between 0 and 100.")
 
     # Most frequent features (per percentile)
+    nb_files = len(feature_lists)
     feature_counter = Counter()
     for feature_list in feature_lists:
         feature_counter.update(feature_list)

@@ -142,7 +142,7 @@ def analyze_shap_fold(
         result_bed_filename = get_valid_filename(
             f"frequent_features_f{min_percentile:.2f}_{class_label}.bed"
         )
-        if (output_folder / result_bed_filename).is_file() and not overwrite:
+        if not overwrite and (output_folder / result_bed_filename).is_file():
             print(f"Skipping {class_label} because {result_bed_filename} already exists.")
             continue
 
@@ -310,7 +310,7 @@ def analyze_subsamplings(
             sub_output_folder = output_folder / "mixed_samples"
             sub_output_folder.mkdir(exist_ok=True)
 
-            if any(sub_output_folder.glob("*")) and not overwrite:
+            if not overwrite and any(sub_output_folder.glob("*")):
                 print(f"Skipping analysis for {sub_output_folder} as it is not empty")
                 continue
 
@@ -369,7 +369,7 @@ def analyze_subsamplings(
             sub_output_folder = output_folder / combo_folder_name
             sub_output_folder.mkdir(exist_ok=True)
 
-            if any(sub_output_folder.glob("*")) and not overwrite:
+            if not overwrite and any(sub_output_folder.glob("*")):
                 print(f"Skipping analysis for {sub_output_folder} as it is not empty")
                 continue
 
