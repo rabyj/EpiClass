@@ -18,6 +18,7 @@ import argparse
 import copy
 import itertools
 import json
+import multiprocessing
 import re
 import sys
 import tempfile
@@ -183,6 +184,7 @@ def analyze_shap_fold(
         )
 
     # Save important features for all classes as json
+    # TODO: FIX THIS, DO NOT OVERWRITE OLD JSON
     json_path = output_folder / "important_features.json"
     with open(json_path, "w", encoding="utf8") as json_file:
         json.dump(important_features, json_file, indent=4)
@@ -397,6 +399,58 @@ def analyze_subsamplings(
             )
 
 
+def analyze_single_fold(
+    split_folder: Path,
+    metadata: Metadata,
+    chromsizes: List[Tuple[str, int]],
+    label_category: str,
+    resolution: int,
+    top_N_required: int,
+    min_percentile: float,
+    overwrite: bool,
+) -> None:
+    """Analyze SHAP values for a single fold."""
+    print(f"\n\nSplit: {split_folder.name}")
+    # Check if split folder has shap folder
+    shap_folder = split_folder / "shap"
+    if not shap_folder.exists():
+        print(f"Skipping {split_folder.name} because it does not have shap folder")
+        return
+
+    # Create output folder for analysis
+    analysis_folder = shap_folder / f"analysis_n{top_N_required}_f{min_percentile:.2f}"
+    analysis_folder.mkdir(exist_ok=True)
+
+    # Analyze SHAP values for the whole split
+    if label_category == CELL_TYPE:
+        subsample_categories = [
+            [],
+            [ASSAY],
+            [ASSAY, TRACK],
+        ]
+    else:
+        subsample_categories = [
+            [],
+            [ASSAY],
+            [ASSAY, TRACK],
+            [ASSAY, CELL_TYPE],
+            [ASSAY, CELL_TYPE, TRACK],
+        ]
+
+    analyze_subsamplings(
+        shap_folder=shap_folder,
+        output_folder=analysis_folder,
+        metadata=metadata,
+        chromsizes=chromsizes,
+        label_category=label_category,
+        subsample_categories=subsample_categories,
+        resolution=resolution,
+        top_N_required=top_N_required,
+        min_percentile=min_percentile,
+        overwrite=overwrite,
+    )
+
+
 def parse_arguments() -> argparse.Namespace:
     """Argument parser for command line."""
     # fmt: off
@@ -468,49 +522,24 @@ def main():
         x for x in base_logdir.iterdir() if (x.is_dir() and x.name.startswith("split"))
     ]
 
-    # --- ANALYZE SHAP VALUES ---
-    for split_folder in split_folders:
-        print(f"\n\nSplit: {split_folder.name}")
-        # Check if split folder has shap folder
-        shap_folder = split_folder / "shap"
-        if not shap_folder.exists():
-            print(f"Skipping {split_folder.name} because it does not have shap folder")
-            continue
-
-        # Create output folder for analysis
-        analysis_folder = (
-            shap_folder / f"analysis_n{top_N_required}_f{min_percentile:.2f}"
+    # Prepare the arguments for each worker process
+    worker_args = [
+        (
+            split_folder,
+            metadata,
+            chromsizes,
+            label_category,
+            resolution,
+            top_N_required,
+            min_percentile,
+            overwrite,
         )
-        analysis_folder.mkdir(exist_ok=True)
+        for split_folder in split_folders
+    ]
 
-        # Analyze SHAP values for the whole split
-        if label_category == CELL_TYPE:
-            subsample_categories = [
-                [],
-                [ASSAY],
-                [ASSAY, TRACK],
-            ]
-        else:
-            subsample_categories = [
-                [],
-                [ASSAY],
-                [ASSAY, TRACK],
-                [ASSAY, CELL_TYPE],
-                [ASSAY, CELL_TYPE, TRACK],
-            ]
-
-        analyze_subsamplings(
-            shap_folder=shap_folder,
-            output_folder=analysis_folder,
-            metadata=metadata,
-            chromsizes=chromsizes,
-            label_category=label_category,
-            subsample_categories=subsample_categories,
-            resolution=resolution,
-            top_N_required=top_N_required,
-            min_percentile=min_percentile,
-            overwrite=overwrite,
-        )
+    available_cpus = multiprocessing.cpu_count()
+    with multiprocessing.Pool(processes=available_cpus) as pool:
+        pool.starmap(analyze_single_fold, worker_args)
 
     end = time_now()
     print(f"end {end}")
