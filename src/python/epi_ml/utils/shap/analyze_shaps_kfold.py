@@ -218,6 +218,17 @@ def compare_kfold_shap_analysis(
     for split_dict in important_features_all_splits.values():
         class_labels.update(list(split_dict.keys()))
 
+    percentile_labels = set()
+    for split_dict in important_features_all_splits.values():
+        percentile_labels.update(
+            class_dict.keys() for class_dict in list(split_dict.values())
+        )
+
+    if str(chosen_percentile) not in percentile_labels:
+        raise ValueError(
+            f"Chosen percentile {chosen_percentile} not found in {percentile_labels}"
+        )
+
     for class_label in class_labels:
         feature_counter = Counter()
 
