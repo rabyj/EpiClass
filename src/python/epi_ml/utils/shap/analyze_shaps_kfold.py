@@ -57,9 +57,9 @@ def analyze_shap_fold(
     label_category: str,
     chromsizes: List[Tuple[str, int]],
     resolution: int,
+    overwrite: bool,
     top_N_required: int = 100,
     min_percentile: float = 80,
-    overwrite: bool = False,
     copy_metadata: bool = True,
 ) -> Dict[str, Dict]:
     """
@@ -72,9 +72,9 @@ def analyze_shap_fold(
         label_category (str): The category of labels to consider.
         chromsizes (List[Tuple[str, int]]): List with chromosome names and sizes.
         resolution (int): The resolution for binning.
+        overwrite (bool): Whether to overwrite existing files.
         top_N_required (int, optional): The number of top SHAP values/features to consider per sample. Defaults to 100.
         min_percentile (float, optional): The percentile value for feature frequency selection (0 < x < 100). Defaults to 80.
-        overwrite (bool, optional): Whether to overwrite existing files. Defaults to False.
 
     Returns:
         Dict[str, Dict]: A dictionary containing important features for each analyzed class label.
@@ -282,9 +282,9 @@ def analyze_subsamplings(
     label_category: str,
     subsample_categories: List[List[str]],
     resolution: int,
+    overwrite: bool,
     top_N_required: int = 100,
     min_percentile: float = 80,
-    overwrite: bool = False,
 ) -> None:
     """
     Analyzes SHAP values for given subsampling category combinations for an individual split.
@@ -297,9 +297,9 @@ def analyze_subsamplings(
         label_category (str): Primary category for labels.
         subsample_categories (List[List[str]]): List of category combinations for subsampling.
         resolution (int): Resolution of the sample binning.
+        overwrite (bool): Flag to overwrite existing data. Defaults to False.
         top_N_required (int): Number of top features required. Defaults to 100.
         min_percentile (float): Minimum percentile for filtering over samples (0 < val < 100). Defaults to 80.
-        overwrite (bool): Flag to overwrite existing data. Defaults to False.
     """
     # Only need to extract shap values from archives one time per split, otherwise it is VERY redundant
     extract_shap_values_and_info_output = extract_shap_values_and_info(
@@ -338,6 +338,7 @@ def analyze_subsamplings(
                 resolution=resolution,
                 top_N_required=top_N_required,
                 min_percentile=min_percentile,
+                overwrite=overwrite,
                 copy_metadata=False,
             )
 
@@ -393,6 +394,7 @@ def analyze_subsamplings(
                 label_category=label_category,
                 chromsizes=chromsizes,
                 resolution=resolution,
+                overwrite=overwrite,
                 top_N_required=top_N_required,
                 min_percentile=min_percentile,
                 copy_metadata=False,
@@ -507,7 +509,7 @@ def main():
     match = re.search(pattern=re_pattern, string=str(base_logdir))
     if match is None:
         raise ValueError(
-            f"Could not find resolution in {base_logdir}. Expected one of {HDF5_RESOLUTION.keys()}"
+            f"Could not find resolution in path name '{base_logdir}'. Expected one of {HDF5_RESOLUTION.keys()}"
         )
     resolution = HDF5_RESOLUTION[match.group(0)]
 
