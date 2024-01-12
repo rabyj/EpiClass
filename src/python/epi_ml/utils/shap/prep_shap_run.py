@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import copy
 import itertools
+import os
 import random
 import shutil
 import sys
@@ -269,6 +270,15 @@ def main():
             raise FileExistsError(f"{job_file} already exists")
         shutil.copy(job_template_path, job_file)
 
+        # Replace local HOME+mount value with $HOME, for remote execution
+        shap_folder, background_filename, eval_filename = [
+            Path(
+                str(Path(x).resolve()).replace(
+                    str(Path(os.environ["HOME"]) / "mounts/narval-mount"), "$HOME"
+                )
+            )
+            for x in [shap_folder, background_filename, eval_filename]
+        ]
         replacements = {
             ":::job_name:::": f"{category}_shap_split{split_nb}",
             ":::category:::": category,
