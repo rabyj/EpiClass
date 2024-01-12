@@ -2,7 +2,7 @@
 import typing
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import List, Tuple
+from typing import Iterable, Tuple
 
 import numpy as np
 import pandas as pd
@@ -114,7 +114,7 @@ def count_pairs(
 
 
 def count_combinations(
-    my_metadata: Metadata, categories: List[str], use_uuid: bool = False
+    my_metadata: Metadata, categories: Iterable[str], use_uuid: bool = False
 ) -> typing.Counter[Tuple[str, ...]]:
     """
     Return label combinations counter from the given metadata categories.
