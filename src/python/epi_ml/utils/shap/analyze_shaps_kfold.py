@@ -20,9 +20,7 @@ import itertools
 import json
 import multiprocessing
 import re
-import sys
 import tempfile
-from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -190,88 +188,6 @@ def analyze_shap_fold(
         json.dump(important_features, json_file, indent=4)
 
     return important_features
-
-
-def compare_kfold_shap_analysis(
-    important_features_all_splits: Dict[str, Dict],
-    resolution: int,
-    chromsizes: List[Tuple[str, int]],
-    output_folder: Path,
-    name: str,
-    chosen_percentile: float | int = 80,
-    minimum_count: int = 8,
-) -> Dict[str, List[Tuple[str, List[int]]]]:
-    """Compare the SHAP analysis results from multiple splits and writes the results based on frequency.
-
-    Args:
-        important_features_all_splits (Dict[str, Dict]): Dictionary containing important features for each split.
-        resolution (int): Resolution for binning.
-        chromsizes (List[Tuple[str, int]]): List with chromosome names and sizes.
-        output_folder (Path): Output directory for writing BED files.
-        name (str): Name of the analysis.
-        chosen_percentile (float | int, optional): The chosen percentile for selecting important features.
-        minimum_count (int, optional): The minimum count of splits that a feature must be present in.
-
-    Returns:
-        Dict[str, List[Tuple[str, List[int]]]]: A dict containing the frequency of features for each class over all splits, for all given percentiles.
-    """
-    class_features_frequency: Dict[str, List] = {}
-    class_labels = set()
-    for split_dict in important_features_all_splits.values():
-        class_labels.update(list(split_dict.keys()))
-
-    percentile_labels = set()
-    for split_dict in important_features_all_splits.values():
-        percentile_labels.update(
-            class_dict.keys() for class_dict in list(split_dict.values())
-        )
-
-    if str(chosen_percentile) not in percentile_labels:
-        raise ValueError(
-            f"Chosen percentile {chosen_percentile} not found in {percentile_labels}"
-        )
-
-    for class_label in class_labels:
-        feature_counter = Counter()
-
-        # Count the occurrence of each feature across all splits
-        for features_dict in important_features_all_splits.values():
-            current_features = features_dict.get(class_label, {}).get(
-                str(chosen_percentile), []
-            )
-            feature_counter.update(current_features)
-
-        class_features_frequency[class_label] = feature_counter.most_common()
-
-    # Select features present in at least a certain count of splits (e.g., 8 out of 10)
-    for class_label, feature_count_list in class_features_frequency.items():
-        selected_features = {
-            feature for feature, count in feature_count_list if count >= minimum_count
-        }
-
-        if not selected_features:
-            print(
-                f"No features meeting the required count for class {class_label}",
-                file=sys.stderr,
-            )
-            continue
-
-        bed_vals = bins_to_bed_ranges(
-            sorted(selected_features), chromsizes, resolution=resolution
-        )
-
-        bed_filename = get_valid_filename(
-            f"selected_features_{name}_f{chosen_percentile:.2f}_count{minimum_count}_{class_label}.bed"
-        )
-
-        output_folder.mkdir(exist_ok=True, parents=True)
-        write_to_bed(
-            bed_vals,
-            output_folder / bed_filename,
-            verbose=True,
-        )
-
-    return class_features_frequency
 
 
 def analyze_subsamplings(
