@@ -346,6 +346,12 @@ def analyze_single_fold(
             [ASSAY],
             [ASSAY, TRACK],
         ]
+    elif label_category == ASSAY:
+        subsample_categories = [
+            [],
+            [CELL_TYPE],
+            [CELL_TYPE, TRACK],
+        ]
     else:
         subsample_categories = [
             [],
