@@ -34,7 +34,7 @@ def parse_arguments() -> argparse.Namespace:
     arg_parser.add_argument(
         "output_dir",
         type=DirectoryChecker(),
-        help="Directory where to create to output the new hdf5 files.",
+        help="Directory where to write the new hdf5 files.",
     )
     return arg_parser.parse_args()
 

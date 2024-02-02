@@ -153,7 +153,9 @@ def bins_to_bed_ranges(
                 break
         else:
             # The bin index is out of range
-            raise IndexError("bin_index out of range")
+            raise IndexError(
+                f"bin_index '{int(bin_index)}' out of range. Max: {cumulative_bins[-1] - 1}"
+            )
 
     return bin_ranges
 
