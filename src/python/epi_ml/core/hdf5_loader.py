@@ -94,18 +94,18 @@ class Hdf5Loader:
         signals = {}
         for md5, file in files.items():
             # Trying to open hdf5 file.
-            with h5py.File(file, "r") as f:
-                try:
+            try:
+                with h5py.File(file, "r") as f:
                     signals[md5] = self._normalize(self._read_hdf5(f, md5))
-                except OSError as err:
-                    print(f"Error occured with {md5}: {file}. {err}", file=sys.stderr)
-                    if strict:
-                        print(
-                            "Strict hdf5 loading policy true, raising original error.",
-                            file=sys.stderr,
-                        )
-                        raise err from None
-                    continue
+            except OSError as err:
+                print(f"Error occured with {md5}: {file}. {err}", file=sys.stderr)
+                if strict:
+                    print(
+                        "Strict hdf5 loading policy true, raising original error.",
+                        file=sys.stderr,
+                    )
+                    raise err from None
+                continue
 
         self._signals = signals
 
