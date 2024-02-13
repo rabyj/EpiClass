@@ -1,4 +1,5 @@
 """Module for hdf5 loading handling."""
+
 # pylint: disable=unexpected-keyword-arg
 from __future__ import annotations
 
@@ -6,7 +7,7 @@ import os
 import sys
 import warnings
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 import h5py
 import numpy as np
@@ -34,7 +35,7 @@ class Hdf5Loader:
         return self._signals
 
     @staticmethod
-    def load_chroms(chrom_file):
+    def load_chroms(chrom_file: Path | str) -> List[str]:
         """Return sorted chromosome names list."""
         with open(chrom_file, "r", encoding="utf-8") as file:
             chroms = []

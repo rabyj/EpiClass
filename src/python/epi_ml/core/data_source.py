@@ -1,4 +1,5 @@
 """Module for reading source data files."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -18,7 +19,7 @@ class EpiDataSource:
 
     @property
     def hdf5_file(self) -> Path:
-        """Return hdf5 file path."""
+        """Return hdf5 list file path."""
         return self._hdf5
 
     @property
@@ -31,7 +32,7 @@ class EpiDataSource:
         """Return metadata file path."""
         return self._metadata
 
-    def check_paths(self):
+    def check_paths(self) -> None:
         """Make sure files exist. Raise error otherwise"""
         for path in [self._hdf5, self._chromsize, self._metadata]:
             if not path.is_file():
@@ -39,11 +40,23 @@ class EpiDataSource:
                     f"File does not exist : {path}.\n Expected file at : {path.resolve()}"
                 )
 
-    def hdf5_resolution(self):
+    @staticmethod
+    def get_file_list(hdf5_list_path: Path) -> List[Path]:
+        """Return list of hdf5 files."""
+        with open(hdf5_list_path, "r", encoding="utf-8") as my_file:
+            return [Path(line.rstrip("\n")) for line in my_file]
+
+    def hdf5_resolution(self) -> int:
         """Return resolution as an integer."""
         with open(self.hdf5_file, "r", encoding="utf-8") as my_file:
             first_path = Path(next(my_file).rstrip())
-            resolution_string = first_path.name.split("_")[1]
+            resolution = EpiDataSource.get_file_hdf5_resolution(first_path)
+        return resolution
+
+    @staticmethod
+    def get_file_hdf5_resolution(hdf5_file: Path) -> int:
+        """Return resolution as an integer."""
+        resolution_string = hdf5_file.name.split("_")[1]
         return HDF5_RESOLUTION[resolution_string]
 
     @staticmethod
