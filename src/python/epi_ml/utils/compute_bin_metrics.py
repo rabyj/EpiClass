@@ -16,7 +16,6 @@ directory.
 
 Metrics:
     - Mean: The mean of each signal bin.
-    - Variance: The variance of each signal bin.
     - Standard deviation: The standard deviation of each signal bin.
     - Median: The median of each signal bin.
     - IQR: The interquartile range of each signal bin.
@@ -64,12 +63,11 @@ def compute_metrics(hdf5s: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
         Dict[str, np.ndarray]: Dictionary of computed metrics.
     """
     hdf5_list = list(hdf5s.values())
-    var = np.var(hdf5_list, axis=0)
-    mean = np.mean(hdf5_list, axis=0)
-    std = np.std(hdf5_list, axis=0)
+    mean = np.mean(hdf5_list, axis=0, dtype=np.float64)
+    std = np.std(hdf5_list, axis=0, dtype=np.float64)
     median = np.median(hdf5_list, axis=0)
     iqr = np.percentile(hdf5_list, 75, axis=0) - np.percentile(hdf5_list, 25, axis=0)
-    return {"var": var, "mean": mean, "std": std, "median": median, "iqr": iqr}
+    return {"mean": mean, "std": std, "median": median, "iqr": iqr}
 
 
 def main():
@@ -82,15 +80,15 @@ def main():
 
     # md5:signal dict
     signals = (
-        Hdf5Loader(chromsize_path, normalization=True)
-        .load_hdf5s(hdf5_list_path, strict=True)
+        Hdf5Loader(chromsize_path, normalization=False)
+        .load_hdf5s(hdf5_list_path, strict=True, verbose=False)
         .signals
     )
 
     metrics = compute_metrics(signals)
 
     # write to log
-    log_file = logdir / "metrics.npz"
+    log_file = logdir / "metrics_raw.npz"
     np.savez(log_file, **metrics)
 
     print(f"Metrics written to {log_file}")
