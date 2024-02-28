@@ -1,4 +1,5 @@
 """Module from Metadata class and HealthyCategory."""
+
 # pylint: disable=unnecessary-lambda-assignment,too-many-public-methods
 from __future__ import annotations
 
@@ -6,6 +7,7 @@ import copy
 import json
 import marshal
 import os
+import sys
 from collections import Counter, defaultdict
 from collections.abc import ItemsView, KeysView, ValuesView
 from difflib import SequenceMatcher as SM
@@ -224,6 +226,16 @@ class Metadata:
         sorted_md5 = sorted(self.md5s)
         uniq = set()
         for md5 in sorted_md5:
+            val = self[md5].get(label_category)
+
+            # Everything should be a string, this was added because there was a bug with a nan object treated as a float
+            if not isinstance(val, str):
+                print(
+                    f"md5: {md5} has non-string label of type {type(val)}: {val}",
+                    file=sys.stderr,
+                )
+                raise ValueError("Non-string label for {label_category} at {md5}.")
+
             uniq.add(self[md5].get(label_category))
         uniq.discard(None)
         return sorted(list(uniq))
