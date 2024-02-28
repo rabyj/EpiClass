@@ -16,7 +16,7 @@ import numpy as np
 class Hdf5Loader:
     """Handles loading/creating signals from hdf5 files"""
 
-    def __init__(self, chrom_file, normalization: bool):
+    def __init__(self, chrom_file: Path | str, normalization: bool):
         self._normalization = normalization
         self._chroms = Hdf5Loader.load_chroms(chrom_file)
         self._files = {}

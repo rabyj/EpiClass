@@ -1,4 +1,5 @@
 """Main"""
+
 from __future__ import annotations
 
 import argparse
@@ -169,7 +170,7 @@ def main():
     time_before_split = time_now()
     oversample = hparams.get("oversample", hparams.get("oversampling", True))
     for i, my_data in enumerate(ea_handler.yield_split(oversample=oversample)):
-        # Skip if not in range
+        # Skip if not in inclusive range
         if not (min_split <= i <= max_split):  # pylint: disable=superfluous-parens
             continue
 
