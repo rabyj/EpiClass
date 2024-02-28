@@ -27,8 +27,11 @@ Typical usage example:
 """
 
 import argparse
+import warnings
 from pathlib import Path
 from typing import Dict
+
+warnings.filterwarnings("once", message=".*Cannot read file directly with.*")
 
 import numpy as np
 
@@ -88,7 +91,7 @@ def main():
     metrics = compute_metrics(signals)
 
     # write to log
-    log_file = logdir / "metrics_raw.npz"
+    log_file = logdir / f"{hdf5_list_path.stem}_metrics.npz"
     np.savez(log_file, **metrics)
 
     print(f"Metrics written to {log_file}")
