@@ -11,15 +11,21 @@ The module provides functions to:
 - Compute the cumulative bin positions at the start of each chromosome.
 - Convert multiple global genome bins to chromosome ranges.
 - Convert multiple chromosome ranges to global genome bins.
+- Generate new random bed files.
 
 Please note:
 The function values_to_bedgraph() is not yet implemented and will raise a NotImplementedError when invoked.
 """
+
 from __future__ import annotations
 
 import itertools
 from pathlib import Path
-from typing import List, Tuple
+from typing import Iterable, List, Tuple
+
+import numpy as np
+
+from epi_ml.core.data_source import EpiDataSource
 
 
 def predict_concat_size(chroms, resolution):
@@ -111,7 +117,7 @@ def compute_cumulative_bins(chroms: List[Tuple[str, int]], resolution: int) -> L
 
 
 def bins_to_bed_ranges(
-    bin_indexes: List[int], chroms: List[Tuple[str, int]], resolution: int
+    bin_indexes: Iterable[int], chroms: List[Tuple[str, int]], resolution: int
 ) -> List[Tuple[str, int, int]]:
     """Convert multiple global genome bins to chromosome ranges.
 
@@ -208,3 +214,42 @@ def bed_ranges_to_bins(
             raise IndexError("chromosome name not found")
 
     return bin_indexes
+
+
+def create_new_random_bed(
+    hdf5_size: int,
+    desired_size: int,
+    resolution: int,
+    n_bed: int = 1,
+    output_dir: Path = Path.cwd(),
+):
+    """
+    Create new random bed files.
+
+    Args:
+        hdf5_size (int): The total size of the HDF5 file (unique to each resolution).
+        desired_size (int): The desired size of the random bed file.
+        resolution (int): The resolution of each bed/hdf5 bins.
+
+    Returns:
+        None
+    """
+    if resolution % 10 != 0:
+        raise ValueError("Resolution must be a multiple of 10.")
+
+    chroms_path = Path.home() / "Projects/epiclass/input/chromsizes/hg38.noy.chrom.sizes"
+    chroms = EpiDataSource.load_external_chrom_file(chroms_path)
+
+    for i in range(n_bed):
+        seed = 42 + i
+        np.random.seed(seed)
+        bins = np.random.choice(hdf5_size, desired_size, replace=False)
+        assert len(bins) == desired_size
+        assert len(set(bins)) == desired_size
+        ranges = bins_to_bed_ranges(bins, chroms, resolution)  # type: ignore
+
+        resolution_str = str(resolution // 1000) + "kb"
+        write_to_bed(
+            ranges,
+            output_dir / f"hg38.random_n{desired_size}_seed{seed}_{resolution_str}.bed",
+        )
