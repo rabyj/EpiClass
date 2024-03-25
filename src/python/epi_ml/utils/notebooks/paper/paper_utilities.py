@@ -139,10 +139,27 @@ class SplitResultsHandler:
     """Class to handle split results."""
 
     @staticmethod
-    def gather_split_results(
+    def verify_md5_consistency(dfs: Dict[str, pd.DataFrame]) -> None:
+        """Verify that all dataframes have the same md5sums.
+
+        Args:
+            dfs (Dict[str, pd.DataFrame]): {classifier_name: results_df}
+                Results dataframes need to have md5sums as index.
+        """
+        md5s = {}
+        for key, df in dfs.items():
+            md5s[key] = set(df.index)
+
+        first_key = list(dfs.keys())[0]
+        base_md5s = dfs[first_key].index
+        if not base_md5s.intersection(*list(md5s.values())) == base_md5s:
+            raise AssertionError("Not all dataframes have the same md5sums")
+
+    @staticmethod
+    def gather_split_results_across_methods(
         results_dir: Path, label_category: str, only_NN: bool = False
     ) -> Dict[str, Dict[str, pd.DataFrame]]:
-        """Gather split results for each classifier.
+        """Gather split results for each classifier.type
 
         Returns:
             Dict[str, Dict[str, pd.DataFrame]]: {split_name:{classifier_name: results_df}}
@@ -188,31 +205,71 @@ class SplitResultsHandler:
                     name = path.name.split("_", maxsplit=1)[0]
                     dfs[name] = pd.read_csv(path, header=0, index_col=0, low_memory=False)
 
-            # Verify that all dataframes have the same md5sums
-            md5s = {}
-            for key, df in dfs.items():
-                md5s[key] = set(df.index)
-
-            base_md5s = md5s["NN"]
-            if not base_md5s.intersection(*list(md5s.values())) == base_md5s:
-                raise AssertionError("Not all dataframes have the same md5sums")
+            # Verify md5sum consistency
+            SplitResultsHandler.verify_md5_consistency(dfs)
 
             all_split_dfs[split] = dfs
 
         return all_split_dfs
 
     @staticmethod
+    def gather_split_results_across_categories(
+        parent_results_dir: Path,
+    ) -> Dict[str, Dict[str, pd.DataFrame]]:
+        """Gather NN split results for each classification task in the given folder children."""
+        all_dfs = defaultdict(dict)
+        csv_path_template = "split*/validation_prediction.csv"
+        for category_dir in parent_results_dir.iterdir():
+            for experiment_dir in category_dir.iterdir():
+                experiment_name = experiment_dir.name
+                category_name = category_dir.name
+                general_name = f"{category_name}_{experiment_name}"
+
+                split_results = experiment_dir.glob(csv_path_template)
+                experiment_dict = {}
+
+                for result in split_results:
+                    split_name = result.parent.name
+                    df = pd.read_csv(result, header=0, index_col=0, low_memory=False)
+                    experiment_dict[split_name] = df
+
+                all_dfs[general_name] = experiment_dict
+
+        return all_dfs
+
+    @staticmethod
     def concatenate_split_results(
-        split_dfs: Dict[str, Dict[str, pd.DataFrame]]
+        split_dfs: Dict[str, Dict[str, pd.DataFrame]], concat_first_level: bool = False
     ) -> Dict[str, pd.DataFrame]:
-        """Concatenate split results for each different classifier.
+        """Concatenate split results for each different classifier or split name based on the order.
+
+        This method supports two structures of input dictionaries:
+        1. {split_name: {classifier_name: results_df}} when concat_first_level is False.
+        2. {classifier_name: {split_name: results_df}} when concat_first_level is True.
 
         Args:
-            split_dfs (Dict[str, Dict[str, pd.DataFrame]]): {split_name:{classifier_name: results_df}}
+            split_dfs: A nested dictionary of DataFrames to be concatenated. The structure
+                       depends on the concat_first_level flag.
+            concat_first_level: A boolean flag that indicates the structure of the split_dfs dictionary.
+                                If True, the first level is the classifier name. Otherwise, the first
+                                level is the split name.
 
         Returns:
-            Dict[str, pd.DataFrame]: {classifier_name: concatenated_df}
+            A dictionary where each key is a classifier name and each value is a DataFrame
+            resulting from concatenating all DataFrames associated with that classifier.
+
+        Raises:
+            AssertionError: If the index of any concatenated DataFrame is not of type str, indicating
+                            an unexpected index format.
         """
+        if concat_first_level:
+            # Reverse the nesting of the dictionary if concatenating by the first level.
+            reversed_dfs = defaultdict(dict)
+            for outer_key, inner_dict in split_dfs.items():
+                for inner_key, df in inner_dict.items():
+                    reversed_dfs[inner_key][outer_key] = df
+            split_dfs = reversed_dfs
+
         to_concat_dfs = defaultdict(list)
         for dfs in split_dfs.values():
             for classifier, df in dfs.items():
@@ -232,41 +289,105 @@ class SplitResultsHandler:
 
     @staticmethod
     def compute_split_metrics(
-        all_split_dfs: Dict[str, Dict[str, pd.DataFrame]]
+        all_split_dfs: Dict[str, Dict[str, pd.DataFrame]],
+        concat_first_level: bool = False,
     ) -> Dict[str, Dict[str, Dict[str, float]]]:
-        """Compute desired metrics for each split and classifier."""
+        """Compute desired metrics for each split and classifier, accommodating different dictionary structures.
+
+        This method supports two structures of input dictionaries:
+        1. {split_name: {classifier_name: results_df}} when concat_first_level is False.
+        2. {classifier_name: {split_name: results_df}} when concat_first_level is True.
+
+        Args:
+            split_dfs: A nested dictionary of DataFrames to be concatenated. The structure
+                       depends on the concat_first_level flag.
+            concat_first_level: A boolean flag that indicates the structure of the split_dfs dictionary.
+                                If True, the first level is the classifier name. Otherwise, the first
+                                level is the split name.
+
+        Returns:
+            A nested dictionary with metrics computed for each classifier and split. The structure is
+            {split_name: {classifier_name: {metric_name: value}}}.
+        """
         split_metrics = {}
+
+        if concat_first_level:
+            # Reorganize the dictionary to always work with {split_name: {classifier_name: DataFrame}}
+            temp_dict = {}
+            for classifier, splits in all_split_dfs.items():
+                for split, df in splits.items():
+                    if split not in temp_dict:
+                        temp_dict[split] = {}
+                    temp_dict[split][classifier] = df
+            all_split_dfs = temp_dict
+
         for split in [f"split{i}" for i in range(10)]:
             dfs = all_split_dfs[split]
-
-            # Compute metrics for the split
             metrics = {}
-            for key, df in dfs.items():
-                # One-hot encode true and predicted classes
+            for task_name, df in dfs.items():
+                # Forced to do this because columns names don't always match true class labels (e.g. int or bool class labels)
+                df["True class"] = df["True class"].astype(str).str.lower()
+                df.columns = list(df.columns[:2]) + [
+                    label.lower()
+                    for i, label in enumerate(df.columns.str.lower())
+                    if i > 1
+                ]
+
+                # One hot encode true class and get predicted probabilities
+                # Reindex to ensure that the order of classes is consistent
                 classes_order = df.columns[2:]
                 onehot_true = (
                     pd.get_dummies(df["True class"], dtype=int)
                     .reindex(columns=classes_order, fill_value=0)
                     .values
                 )
-                pred_probs = df[
-                    classes_order
-                ].values  # Ensure this aligns with your model's output format
+                pred_probs = df[classes_order].values
 
                 ravel_true = np.argmax(onehot_true, axis=1)
                 ravel_pred = np.argmax(pred_probs, axis=1)
+                try:
+                    metrics[task_name] = {
+                        "Accuracy": accuracy_score(ravel_true, ravel_pred),
+                        "F1_macro": f1_score(ravel_true, ravel_pred, average="macro"),
+                        "AUC_micro": roc_auc_score(
+                            onehot_true, pred_probs, multi_class="ovr", average="micro"
+                        ),
+                        "AUC_macro": roc_auc_score(
+                            onehot_true, pred_probs, multi_class="ovr", average="macro"
+                        ),
+                    }
+                except ValueError as err:
+                    if "Only one class present in y_true" in str(err):
+                        print(
+                            f"Only one class present in {split} for {task_name}. Setting AUC metrics to NaN."
+                        )
+                        if not set(df["True class"].unique()).issubset(
+                            set(classes_order.values)
+                        ):
+                            raise ValueError(
+                                f"Problem with the reindexing of classes_order. Labels do not match columns. Labels: {list(df['True class'].unique())}. Columns: {list(classes_order.values)}"
+                            ) from err
+                        if len(df["True class"].unique()) == 1:
+                            print(
+                                f"Only one class present in {split} for {task_name}. Setting AUC metrics to NaN."
+                            )
+                            metrics[task_name] = {
+                                "Accuracy": accuracy_score(ravel_true, ravel_pred),
+                                "F1_macro": f1_score(
+                                    ravel_true, ravel_pred, average="macro"
+                                ),
+                                "AUC_micro": np.nan,
+                                "AUC_macro": np.nan,
+                            }
+                    else:
+                        print(f"Error in {split} for {task_name}.")
+                        print(f"columns: {df.columns}")
+                        print("True class values:", df["True class"].value_counts())
+                        print(
+                            f"ravel_true unique values: {set(val for val in ravel_true)}"
+                        )
+                        raise err
 
-                metrics[key] = {
-                    "Accuracy": accuracy_score(ravel_true, ravel_pred),
-                    "F1_macro": f1_score(ravel_true, ravel_pred, average="macro"),
-                    "AUC_micro": roc_auc_score(
-                        onehot_true, pred_probs, multi_class="ovr", average="micro"
-                    ),
-                    "AUC_macro": roc_auc_score(
-                        onehot_true, pred_probs, multi_class="ovr", average="macro"
-                    ),
-                }
-
-                split_metrics[split] = metrics
+            split_metrics[split] = metrics
 
         return split_metrics
