@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List
@@ -325,7 +326,7 @@ class SplitResultsHandler:
             dfs = all_split_dfs[split]
             metrics = {}
             for task_name, df in dfs.items():
-                # Forced to do this because columns names don't always match true class labels (e.g. int or bool class labels)
+                # Ensure 'True class' labels match (e.g. int or bool class labels)
                 df["True class"] = df["True class"].astype(str).str.lower()
                 df.columns = list(df.columns[:2]) + [
                     label.lower()
@@ -357,36 +358,47 @@ class SplitResultsHandler:
                         ),
                     }
                 except ValueError as err:
-                    if "Only one class present in y_true" in str(err):
-                        print(
-                            f"Only one class present in {split} for {task_name}. Setting AUC metrics to NaN."
+                    if "Only one class" in str(err) or "multiclass format" in str(err):
+                        logging.warning(
+                            "Single class or incompatible format in %s for %s.",
+                            split,
+                            task_name,
                         )
+                        metrics[task_name] = {
+                            "Accuracy": np.nan,
+                            "F1_macro": np.nan,
+                            "AUC_micro": np.nan,
+                            "AUC_macro": np.nan,
+                        }
                         if not set(df["True class"].unique()).issubset(
                             set(classes_order.values)
                         ):
+                            logging.error("Classes do not match columns names.")
+                            logging.debug("Classes in df: %s", df["True class"].unique())
+                            logging.debug("Classes in classes_order: %s", classes_order)
                             raise ValueError(
-                                f"Problem with the reindexing of classes_order. Labels do not match columns. Labels: {list(df['True class'].unique())}. Columns: {list(classes_order.values)}"
+                                "Classes in df do not match columns names."
                             ) from err
-                        if len(df["True class"].unique()) == 1:
-                            print(
-                                f"Only one class present in {split} for {task_name}. Setting AUC metrics to NaN."
+                        # Attempt to compute metrics that don't require multiple classes
+                        if len(np.unique(ravel_true)) == 1:
+                            metrics[task_name]["Accuracy"] = accuracy_score(
+                                ravel_true, ravel_pred
                             )
-                            metrics[task_name] = {
-                                "Accuracy": accuracy_score(ravel_true, ravel_pred),
-                                "F1_macro": f1_score(
-                                    ravel_true, ravel_pred, average="macro"
-                                ),
-                                "AUC_micro": np.nan,
-                                "AUC_macro": np.nan,
-                            }
+                            metrics[task_name]["F1_macro"] = f1_score(
+                                ravel_true, ravel_pred, average="macro"
+                            )
                     else:
-                        print(f"Error in {split} for {task_name}.")
-                        print(f"columns: {df.columns}")
-                        print("True class values:", df["True class"].value_counts())
-                        print(
-                            f"ravel_true unique values: {set(val for val in ravel_true)}"
+                        err_msg = f"Unexpected error in {split} for {task_name}."
+                        logging.error(err_msg)
+                        logging.debug("columns: %s", df.columns)
+                        logging.debug(
+                            "True class values: %s", df["True class"].value_counts()
                         )
-                        raise err
+                        logging.debug(
+                            "ravel_true unique values: %s",
+                            set(val for val in ravel_true),
+                        )
+                        raise ValueError(err_msg) from err
 
             split_metrics[split] = metrics
 
