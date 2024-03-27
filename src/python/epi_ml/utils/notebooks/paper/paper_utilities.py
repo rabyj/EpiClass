@@ -214,25 +214,41 @@ class SplitResultsHandler:
         return all_split_dfs
 
     @staticmethod
+    def read_split_results(parent_dir: Path) -> Dict[str, pd.DataFrame]:
+        """Read split results from the given parent directory.
+
+        Args:
+            parent_dir: The parent directory containing the split results.
+
+        Returns:
+            Dict[str, pd.DataFrame]: {split_name: results_df}
+        """
+        csv_path_template = "split*/validation_prediction.csv"
+        experiment_dict = {}
+        for split_result_csv in parent_dir.glob(csv_path_template):
+            split_name = split_result_csv.parent.name
+            df = pd.read_csv(split_result_csv, header=0, index_col=0, low_memory=False)
+            experiment_dict[split_name] = df
+        return experiment_dict
+
+    @staticmethod
     def gather_split_results_across_categories(
         parent_results_dir: Path,
     ) -> Dict[str, Dict[str, pd.DataFrame]]:
-        """Gather NN split results for each classification task in the given folder children."""
+        """Gather NN split results for each classification task in the given folder children.
+
+        Returns:
+            Dict[str, Dict[str, pd.DataFrame]]: {general_name:{split_name: results_df}}
+        """
         all_dfs = defaultdict(dict)
-        csv_path_template = "split*/validation_prediction.csv"
+
         for category_dir in parent_results_dir.iterdir():
             for experiment_dir in category_dir.iterdir():
                 experiment_name = experiment_dir.name
                 category_name = category_dir.name
                 general_name = f"{category_name}_{experiment_name}"
 
-                split_results = experiment_dir.glob(csv_path_template)
-                experiment_dict = {}
-
-                for result in split_results:
-                    split_name = result.parent.name
-                    df = pd.read_csv(result, header=0, index_col=0, low_memory=False)
-                    experiment_dict[split_name] = df
+                experiment_dict = SplitResultsHandler.read_split_results(experiment_dir)
 
                 all_dfs[general_name] = experiment_dict
 
@@ -256,8 +272,7 @@ class SplitResultsHandler:
                                 level is the split name.
 
         Returns:
-            A dictionary where each key is a classifier name and each value is a DataFrame
-            resulting from concatenating all DataFrames associated with that classifier.
+            Dict[str, pd.DataFrame] : {classifier_name: concatenated_dataframe}
 
         Raises:
             AssertionError: If the index of any concatenated DataFrame is not of type str, indicating
