@@ -16,6 +16,8 @@ from epi_ml.core.metadata import Metadata
 
 ASSAY: str = "assay_epiclass"
 CELL_TYPE: str = "harmonized_sample_ontology_intermediate"
+SEX: str = "harmonized_donor_sex"
+LIFE_STAGE: str = "harmonized_donor_life_stage"
 ASSAY_MERGE_DICT: Dict[str, str] = {
     "mrna_seq": "rna_seq",
     "wgbs-pbat": "wgbs",
