@@ -81,6 +81,10 @@ def merge_similar_assays(df: pd.DataFrame) -> pd.DataFrame:
     df.drop(columns=["mrna_seq", "wgbs-standard", "wgbs-pbat"], inplace=True)
     df["True class"].replace(ASSAY_MERGE_DICT, inplace=True)
     df["Predicted class"].replace(ASSAY_MERGE_DICT, inplace=True)
+    try:
+        df[ASSAY].replace(ASSAY_MERGE_DICT, inplace=True)
+    except KeyError:
+        pass
 
     try:
         df[ASSAY].replace(ASSAY_MERGE_DICT, inplace=True)
@@ -145,6 +149,8 @@ class SplitResultsHandler:
     def verify_md5_consistency(dfs: Dict[str, pd.DataFrame]) -> None:
         """Verify that all dataframes have the same md5sums.
 
+        Used to compare the md5sums of the same split across different classifiers methods.
+
         Args:
             dfs (Dict[str, pd.DataFrame]): {classifier_name: results_df}
                 Results dataframes need to have md5sums as index.
@@ -154,7 +160,7 @@ class SplitResultsHandler:
             md5s[key] = set(df.index)
 
         first_key = list(dfs.keys())[0]
-        base_md5s = dfs[first_key].index
+        base_md5s = set(dfs[first_key].index)
         if not base_md5s.intersection(*list(md5s.values())) == base_md5s:
             raise AssertionError("Not all dataframes have the same md5sums")
 
@@ -162,29 +168,30 @@ class SplitResultsHandler:
     def gather_split_results_across_methods(
         results_dir: Path, label_category: str, only_NN: bool = False
     ) -> Dict[str, Dict[str, pd.DataFrame]]:
-        """Gather split results for each classifier.type
+        """Gather split results for each classifier type.
 
         Returns:
             Dict[str, Dict[str, pd.DataFrame]]: {split_name:{classifier_name: results_df}}
         """
+        base_NN_path = results_dir / f"{label_category}_1l_3000n"
+        if label_category == ASSAY:
+            NN_csv_path_template = base_NN_path / "11c"
+        elif label_category == CELL_TYPE:
+            NN_csv_path_template = base_NN_path
+        else:
+            raise ValueError("Label category not supported.")
+
+        NN_csv_path_template = str(
+            NN_csv_path_template
+            / "10fold-oversampling"
+            / "{split}"
+            / "validation_prediction.csv"
+        )
         all_split_dfs = {}
         for split in [f"split{i}" for i in range(10)]:
             # Get the csv paths
-            if label_category == ASSAY:
-                second_dir_end = ""
-            elif label_category == CELL_TYPE:
-                second_dir_end = "-dfreeze-v2"
-
-            NN_csv_path = (
-                results_dir
-                / f"{label_category}_1l_3000n"
-                / f"10fold{second_dir_end}"
-                / split
-                / "validation_prediction.csv"
-            )
-            other_csv_root = (
-                results_dir / f"{label_category}" / f"predict-10fold{second_dir_end}"
-            )
+            NN_csv_path = Path(NN_csv_path_template.format(split=split))  # type: ignore
+            other_csv_root = results_dir / f"{label_category}" / "predict-10fold"
 
             if not only_NN:
                 if not other_csv_root.exists():
@@ -200,16 +207,18 @@ class SplitResultsHandler:
                     )
 
             # Load the dataframes
-            dfs = {}
+            dfs: Dict[str, pd.DataFrame] = {}
             dfs["NN"] = pd.read_csv(NN_csv_path, header=0, index_col=0, low_memory=False)
 
             if not only_NN:
                 for path in other_csv_paths:
-                    name = path.name.split("_", maxsplit=1)[0]
-                    dfs[name] = pd.read_csv(path, header=0, index_col=0, low_memory=False)
+                    category = path.name.split("_", maxsplit=1)[0]
+                    dfs[category] = pd.read_csv(
+                        path, header=0, index_col=0, low_memory=False
+                    )
 
-            # Verify md5sum consistency
-            SplitResultsHandler.verify_md5_consistency(dfs)
+                # Verify md5sum consistency
+                SplitResultsHandler.verify_md5_consistency(dfs)
 
             all_split_dfs[split] = dfs
 
