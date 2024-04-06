@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List
@@ -23,6 +24,17 @@ ASSAY_MERGE_DICT: Dict[str, str] = {
     "wgbs-pbat": "wgbs",
     "wgbs-standard": "wgbs",
 }
+ASSAY_ORDER = [
+    "h3k4me3",
+    "h3k27ac",
+    "h3k4me1",
+    "h3k36me3",
+    "h3k27me3",
+    "h3k9me3",
+    "input",
+    "rna_seq",
+    "wgbs",
+]
 
 
 class IHECColorMap:
@@ -30,12 +42,13 @@ class IHECColorMap:
 
     def __init__(self, base_fig_dir: Path):
         self.base_fig_dir = base_fig_dir
-        self.ihec_colormap_name = "IHEC_EpiATLAS_IA_colors_Mar18_2024.json"
+        self.ihec_colormap_name = "IHEC_EpiATLAS_IA_colors_Apl01_2024.json"
         self.ihec_color_map = self.get_IHEC_color_map(
             base_fig_dir, self.ihec_colormap_name
         )
-        self.assay_color_map = self.create_assay_color_map(self.ihec_color_map)
-        self.cell_type_color_map = self.create_cell_type_color_map(self.ihec_color_map)
+        self.assay_color_map = self.create_assay_color_map()
+        self.cell_type_color_map = self.create_cell_type_color_map()
+        self.sex_color_map = self.create_sex_color_map()
 
     @staticmethod
     def get_IHEC_color_map(folder: Path, name: str) -> List[Dict]:
@@ -45,27 +58,32 @@ class IHECColorMap:
             ihec_color_map = json.load(color_map_file)
         return ihec_color_map
 
-    @staticmethod
-    def create_assay_color_map(ihec_color_map: List[Dict]) -> Dict[str, str]:
-        """Create a rbg color map for ihec core assays."""
-        colors = dict(ihec_color_map[0]["experiment"][0].items())
-        for name, color in list(colors.items()):
+    def _create_color_map(self, label_category: str) -> Dict[str, str]:
+        """Create a rbg color map from IHEC rgb strings"""
+        color_dict = [elem for elem in self.ihec_color_map if label_category in elem][0][
+            label_category
+        ][0]
+        for name, color in list(color_dict.items()):
             rbg = color.split(",")
-            colors[name.lower()] = f"rgb({rbg[0]},{rbg[1]},{rbg[2]})"
+            color_dict[name] = f"rgb({rbg[0]},{rbg[1]},{rbg[2]})"
+            color_dict[name.lower()] = color_dict[name]
+        return color_dict
 
-        colors["rna_seq"] = colors["rna-seq"]
-        return colors
+    def create_sex_color_map(self) -> Dict[str, str]:
+        """Create a rbg color map for ihec sex label category."""
+        color_dict = self._create_color_map(SEX)
+        return color_dict
 
-    @staticmethod
-    def create_cell_type_color_map(ihec_color_map: List[Dict]) -> Dict[str, str]:
-        """Read the rbg color map for ihec cell types."""
-        colors = dict(
-            ihec_color_map[3]["harmonized_sample_ontology_intermediate"][0].items()
-        )
-        for name, color in list(colors.items()):
-            rbg = color.split(",")
-            colors[name] = f"rgb({rbg[0]},{rbg[1]},{rbg[2]})"
-        return colors
+    def create_assay_color_map(self) -> Dict[str, str]:
+        """Create a rbg color map for ihec assays."""
+        category_label = "experiment"
+        color_dict = self._create_color_map(category_label)
+        color_dict["rna_seq"] = color_dict["rna-seq"]
+        return color_dict
+
+    def create_cell_type_color_map(self) -> Dict[str, str]:
+        """Create the rbg color map for ihec cell types."""
+        return self._create_color_map(CELL_TYPE)
 
 
 def merge_similar_assays(df: pd.DataFrame) -> pd.DataFrame:
@@ -92,7 +110,7 @@ def merge_similar_assays(df: pd.DataFrame) -> pd.DataFrame:
         pass
 
     # Recompute Max pred if it exists
-    classes = df["True class"].unique()
+    classes = list(df["True class"].unique()) + list(df["Predicted class"].unique())
     if "Max pred" in df.columns:
         df["Max pred"] = df[classes].max(axis=1)
     return df
@@ -121,7 +139,8 @@ class MetadataHandler:
         metadata = Metadata(self.paper_dir / "data" / "metadata" / names[version])
         return metadata
 
-    def join_metadata(self, df: pd.DataFrame, metadata: Metadata) -> pd.DataFrame:
+    @staticmethod
+    def join_metadata(df: pd.DataFrame, metadata: Metadata) -> pd.DataFrame:
         """Join the metadata to the results dataframe."""
         metadata_df = pd.DataFrame(metadata.datasets)
         metadata_df.set_index("md5sum", inplace=True)
@@ -129,7 +148,7 @@ class MetadataHandler:
         diff_set = set(df.index) - set(metadata_df.index)
         if diff_set:
             err_df = pd.DataFrame(diff_set, columns=["md5sum"])
-            err_df.to_csv(self.data_dir / "join_missing_md5sums.csv", index=False)
+            print(err_df.to_string(), file=sys.stderr)
             raise AssertionError(
                 f"{len(diff_set)} md5sums in the results dataframe are not present in the metadata dataframe. Saved error md5sums to join_missing_md5sums.csv."
             )
@@ -141,9 +160,39 @@ class MetadataHandler:
             )
         return merged_df
 
+    def load_metadata_df(self, version: str) -> pd.DataFrame:
+        """Return metadata for a specific version as a DataFrame."""
+        metadata = self.load_metadata(version)
+        metadata_df = pd.DataFrame.from_records(list(metadata.datasets))
+        metadata_df.set_index("md5sum", inplace=True)
+        return metadata_df
+
 
 class SplitResultsHandler:
     """Class to handle split results."""
+
+    @staticmethod
+    def add_max_pred(df: pd.DataFrame) -> pd.DataFrame:
+        """Add the max prediction to the results dataframe.
+
+        The dataframe needs to not contain extra metadata columns.
+        """
+        if "Max pred" not in df.columns:
+            df = df.copy(deep=True)
+            classes_test = (
+                df["True class"].unique().tolist()
+                + df["Predicted class"].unique().tolist()
+            )
+            classes_test = list(set(classes_test))
+
+            classes = list(df.columns[2:])
+            for class_label in classes:
+                if class_label not in classes_test:
+                    raise ValueError(
+                        "Dataframe contains extra metadata columns, cannot ascertain classes."
+                    )
+            df["Max pred"] = df[classes].max(axis=1)
+        return df
 
     @staticmethod
     def verify_md5_consistency(dfs: Dict[str, pd.DataFrame]) -> None:
@@ -176,6 +225,8 @@ class SplitResultsHandler:
         base_NN_path = results_dir / f"{label_category}_1l_3000n"
         if label_category == ASSAY:
             NN_csv_path_template = base_NN_path / "11c"
+            if not NN_csv_path_template.exists():
+                NN_csv_path_template = base_NN_path
         elif label_category == CELL_TYPE:
             NN_csv_path_template = base_NN_path
         else:
@@ -386,13 +437,12 @@ class SplitResultsHandler:
                 except ValueError as err:
                     if "Only one class" in str(err) or "multiclass format" in str(err):
                         logging.warning(
-                            "Single class or incompatible format in %s for %s.",
+                            "Single class or incompatible format in %s for %s. Error: %s",
                             split,
                             task_name,
+                            err,
                         )
                         metrics[task_name] = {
-                            "Accuracy": np.nan,
-                            "F1_macro": np.nan,
                             "AUC_micro": np.nan,
                             "AUC_macro": np.nan,
                         }
@@ -405,14 +455,14 @@ class SplitResultsHandler:
                             raise ValueError(
                                 "Classes in df do not match columns names."
                             ) from err
+
                         # Attempt to compute metrics that don't require multiple classes
-                        if len(np.unique(ravel_true)) == 1:
-                            metrics[task_name]["Accuracy"] = accuracy_score(
-                                ravel_true, ravel_pred
-                            )
-                            metrics[task_name]["F1_macro"] = f1_score(
-                                ravel_true, ravel_pred, average="macro"
-                            )
+                        metrics[task_name]["Accuracy"] = accuracy_score(
+                            ravel_true, ravel_pred
+                        )
+                        metrics[task_name]["F1_macro"] = f1_score(
+                            ravel_true, ravel_pred, average="macro"
+                        )
                     else:
                         err_msg = f"Unexpected error in {split} for {task_name}."
                         logging.error(err_msg)
