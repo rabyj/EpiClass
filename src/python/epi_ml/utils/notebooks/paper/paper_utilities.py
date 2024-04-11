@@ -479,3 +479,23 @@ class SplitResultsHandler:
             split_metrics[split] = metrics
 
         return split_metrics
+
+    @staticmethod
+    def invert_metrics_dict(
+        metrics: Dict[str, Dict[str, Dict[str, float]]]
+    ) -> Dict[str, Dict[str, Dict[str, float]]]:
+        """Invert metrics dict so classifier name is parent key.
+        Before: {split_name:{classifier_name:{metric_name:val}}}
+        After: {classifier_name:{split_name:{metric_name:val}}}
+        """
+        # Check for correct input
+        first_keys = list(metrics.keys())
+        if not all("split" in key for key in first_keys):
+            raise ValueError("Wrong input dict: first level keys don't contain 'split'.")
+
+        # Invert
+        new_metrics = defaultdict(dict)
+        for split_name, split_metrics in metrics.items():
+            for classifier_name, classifier_metrics in split_metrics.items():
+                new_metrics[classifier_name][split_name] = classifier_metrics
+        return new_metrics
