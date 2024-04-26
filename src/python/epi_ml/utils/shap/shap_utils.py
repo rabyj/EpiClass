@@ -1,4 +1,5 @@
 """Module containing utility functions for shap files handling and a bit of analysis."""
+
 # pylint: disable=use-dict-literal
 from __future__ import annotations
 
@@ -214,8 +215,16 @@ def get_shap_matrix(
     return selected_class_shap, chosen_idxs
 
 
-def n_most_important_features(sample_shaps: np.ndarray, n: int):
-    """Return features with highest absolute shap values."""
+def n_most_important_features(sample_shaps: np.ndarray, n: int) -> np.ndarray:
+    """Return indices of features with the highest absolute shap values.
+
+    Args:
+        sample_shaps (np.ndarray): Array of SHAP values for a single sample.
+        n (int): Number of top features to return.
+
+    Returns:
+        np.ndarray: Indices of the top `n` features with the highest absolute SHAP values.
+    """
     return np.flip(np.argsort(np.absolute(sample_shaps)))[:n]
 
 
