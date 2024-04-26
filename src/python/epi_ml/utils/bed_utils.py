@@ -19,9 +19,10 @@ The function values_to_bedgraph() is not yet implemented and will raise a NotImp
 
 from __future__ import annotations
 
+import io
 import itertools
 from pathlib import Path
-from typing import Iterable, List, Tuple
+from typing import IO, Iterable, List, Tuple
 
 import numpy as np
 
@@ -166,6 +167,30 @@ def bins_to_bed_ranges(
     return bin_ranges
 
 
+def read_bed_to_ranges(bed_source: str | Path | IO[bytes]) -> List[Tuple[str, int, int]]:
+    """Read a .bed file and return the ranges as a list of tuples.
+
+    Args:
+        bed_source (Union[str, Path, IO[bytes]]): The path to the .bed file or an open file-like object.
+
+    Returns:
+        List[Tuple[str, int, int]]: List of tuples, each containing (chromosome name, start position, end position).
+    """
+    bed_ranges = []
+    if isinstance(bed_source, (str, Path)):
+        file = open(bed_source, "r", encoding="utf8")
+    else:
+        # Assume bed_source is an open binary stream and wrap it with a TextIOWrapper for reading as text
+        file = io.TextIOWrapper(bed_source, encoding="utf8")
+
+    with file:
+        for line in file:
+            chrom, start, end = line.strip().split("\t")
+            bed_ranges.append((chrom, int(start), int(end)))
+
+    return bed_ranges
+
+
 def bed_ranges_to_bins(
     ranges: List[Tuple[str, int, int]], chroms: List[Tuple[str, int]], resolution: int
 ) -> List[int]:
@@ -184,7 +209,7 @@ def bed_ranges_to_bins(
         IndexError: If any range is not in any chromosome.
 
     Note:
-        The function assumes that chromosomes in `chroms` are ordered as they appear in the genome.
+        The function assumes that chromosomes in `chroms` are ordered in alphanumerical order (chr1, chr10, ...).
         The functions assumes that the binning was done per chromosome and then joined.
         The ranges are half-open intervals [start, end).
         The returned bin indexes are zero-based and span the entire genome considering the resolution.

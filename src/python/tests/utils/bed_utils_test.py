@@ -1,8 +1,14 @@
 """Test bed utils functions"""
+
 import pytest
 
 from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory
-from epi_ml.utils.bed_utils import bed_ranges_to_bins, bins_to_bed_ranges
+from epi_ml.utils.bed_utils import (
+    bed_ranges_to_bins,
+    bins_to_bed_ranges,
+    read_bed_to_ranges,
+    write_to_bed,
+)
 
 
 def test_bins_to_bed_ranges() -> None:
@@ -139,6 +145,30 @@ def test_bed_bin_conversion_2(test_epiatlas_data_handler: EpiAtlasFoldFactory):
 
     ranges = bins_to_bed_ranges(bin_indexes, chroms, resolution)
     returned_bin_indexes = bed_ranges_to_bins(ranges, chroms, resolution)
+
+    assert set(returned_bin_indexes) == set(
+        bin_indexes
+    ), f"Returned bin indexes should match the original bin indexes after conversion to ranges and back to bins. Failed for bin_indexes={bin_indexes}"
+
+
+def test_bed_bin_conversion_3(test_epiatlas_data_handler: EpiAtlasFoldFactory, tmp_path):
+    """Test conversion of bin indexes to bed files and back to bin indexes."""
+    chroms = test_epiatlas_data_handler.epiatlas_dataset.datasource.load_chrom_sizes()
+    resolution = 1000 * 100
+    # fmt: off
+    bin_indexes = [29956, 28774, 28775, 16809, 26345, 29551, 15888, 5651, 15219, 28889, 11325, 8574]  # fmt: on
+
+    ranges = bins_to_bed_ranges(bin_indexes, chroms, resolution)
+
+    bed_path = tmp_path / "test.bed"
+    write_to_bed(bed_ranges=ranges, bed_path=bed_path)
+
+    returned_ranges = read_bed_to_ranges(bed_source=bed_path)
+    returned_bin_indexes = bed_ranges_to_bins(returned_ranges, chroms, resolution)
+
+    assert set(returned_ranges) == set(
+        ranges
+    ), f"Returned bin ranges should match the original bin ranges after reading back from written bed. Failed for ranges={ranges}"
 
     assert set(returned_bin_indexes) == set(
         bin_indexes
