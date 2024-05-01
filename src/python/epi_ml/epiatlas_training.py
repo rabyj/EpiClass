@@ -103,6 +103,7 @@ def main():
     my_metadata.remove_category_subsets(
         label_category="track_type", labels=["Unique.raw"]
     )
+    my_metadata.remove_missing_labels(category)
 
     if category in {"paired", "paired_end_mode"}:
         category = "paired_end_mode"

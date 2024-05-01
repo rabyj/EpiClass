@@ -234,7 +234,7 @@ class Metadata:
                     f"md5: {md5} has non-string label of type {type(val)}: {val}",
                     file=sys.stderr,
                 )
-                raise ValueError("Non-string label for {label_category} at {md5}.")
+                raise ValueError(f"Non-string label for {label_category} at {md5}.")
 
             uniq.add(self[md5].get(label_category))
         uniq.discard(None)
