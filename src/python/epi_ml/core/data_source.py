@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List, Tuple
 
+import h5py
+
 HDF5_RESOLUTION = {"1kb": 1000, "10kb": 10000, "100kb": 100000, "1mb": 1000000}
 
 
@@ -56,8 +58,14 @@ class EpiDataSource:
     @staticmethod
     def get_file_hdf5_resolution(hdf5_file: Path) -> int:
         """Return resolution as an integer."""
-        resolution_string = hdf5_file.name.split("_")[1]
-        return HDF5_RESOLUTION[resolution_string]
+        with h5py.File(hdf5_file, "r") as h5_file:
+            try:
+                resolution = int(h5_file.attrs["bin"][0])  # type: ignore
+            except KeyError as err:
+                raise KeyError(
+                    f"Resolution not found in {hdf5_file}. (attribute 'bin' does not exist)"
+                ) from err
+        return resolution
 
     @staticmethod
     def load_external_chrom_file(chrom_file: Path | str) -> List[Tuple[str, int]]:
