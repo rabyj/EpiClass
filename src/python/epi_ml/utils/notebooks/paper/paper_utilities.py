@@ -123,20 +123,23 @@ class MetadataHandler:
         self.paper_dir = Path(paper_dir)
         self.data_dir = self.paper_dir / "data"
 
+        self.version_names = {
+            "v1": "hg38_2023-epiatlas_dfreeze_formatted_JR.json",
+            "v2": "hg38_2023-epiatlas-dfreeze-pospurge-nodup_filterCtl.json",
+            "v2-encode": "hg38_2023-epiatlas-dfreeze_v2.1_w_encode_noncore_2.json",
+        }
+
     def load_metadata(self, version: str) -> Metadata:
         """Return metadata for a specific version.
 
         Example of epiRR unique to v1: IHECRE00003355.2
         """
-        if version not in ["v1", "v2", "v2-encode"]:
-            raise ValueError("Version must be one of v1, v2, v2-encode")
+        if version not in self.version_names:
+            raise ValueError(f"Version must be one of {self.version_names.keys()}")
 
-        names = {
-            "v1": "hg38_2023-epiatlas_dfreeze_formatted_JR.json",
-            "v2": "hg38_2023-epiatlas-dfreeze-pospurge-nodup_filterCtl.json",
-            "v2-encode": "hg38_2023-epiatlas-dfreeze_v2.1_w_encode_noncore_2.json",
-        }
-        metadata = Metadata(self.paper_dir / "data" / "metadata" / names[version])
+        metadata = Metadata(
+            self.paper_dir / "data" / "metadata" / self.version_names[version]
+        )
         return metadata
 
     @staticmethod

@@ -1,4 +1,5 @@
 """Functions to split epiatlas datasets properly, keeping track types together in the different sets."""
+
 # TODO: Proper Data vs TestData typing
 from __future__ import annotations
 
@@ -172,7 +173,33 @@ class EpiAtlasDataset:
         return metadata
 
 
-# TODO: Reimplement create_total_data for no_valid training
+class EpiAtlasMetadata(EpiAtlasDataset):
+    """Class that handles how epiatlas data ids are linked together.
+
+    Parameters
+    ----------
+    datasource : EpiDataSource
+        Where everything is read from.
+    label_category : str
+        The target category of labels to use.
+    label_list : List[str], optional
+        List of labels/classes to include from given category
+    min_class_size : int, optional
+        Minimum number of samples per class.
+    md5_list : List[str], optional
+        List of datasource md5s to include in the dataset. If None, everything is used and usual filter methods are used.
+        (using min_class_size and label_list)
+    force_filter : bool, optional
+        If True, will filter the metadata even if md5_list is given. If False, will not filter the metadata if md5_list.
+    metadata : UUIDMetadata, optional
+        If given, will use this metadata instead of loading it from the datasource.
+    """
+
+    def _load_signals(self) -> Dict[str, np.ndarray]:
+        """Load empty signals as no signals are needed for metadata."""
+        return {md5: np.ndarray(0) for md5 in self._metadata.md5s}
+
+
 class EpiAtlasFoldFactory:
     """Class that handles how epiatlas data is split into training, validation, and testing sets.
 
