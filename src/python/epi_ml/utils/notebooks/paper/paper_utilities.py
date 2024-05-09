@@ -89,6 +89,10 @@ class IHECColorMap:
 def merge_similar_assays(df: pd.DataFrame) -> pd.DataFrame:
     """Attempt to merge rna-seq/wgbs categories, included prediction score."""
     df = df.copy(deep=True)
+
+    if "wgbs" in df.columns:
+        return df
+
     try:
         df["rna_seq"] = df["rna_seq"] + df["mrna_seq"]
         df["wgbs"] = df["wgbs-standard"] + df["wgbs-pbat"]
@@ -132,6 +136,10 @@ class MetadataHandler:
     def load_metadata(self, version: str) -> Metadata:
         """Return metadata for a specific version.
 
+        Args:
+            version (str): The version of the metadata to load.
+            One of 'v1', 'v2', 'v2-encode'.
+
         Example of epiRR unique to v1: IHECRE00003355.2
         """
         if version not in self.version_names:
@@ -141,6 +149,18 @@ class MetadataHandler:
             self.paper_dir / "data" / "metadata" / self.version_names[version]
         )
         return metadata
+
+    def load_metadata_df(self, version: str, merge_assays: bool = True):
+        """Load a metadata dataframe for a given version.
+
+        Merge similar assays (rna 2x / wgb 2x)
+        """
+        metadata = self.load_metadata(version)
+        metadata_df = pd.DataFrame.from_records(list(metadata.datasets))
+        metadata_df.set_index("md5sum", inplace=True)
+        if merge_assays:
+            metadata_df[ASSAY].replace(ASSAY_MERGE_DICT, inplace=True)
+        return metadata_df
 
     @staticmethod
     def join_metadata(df: pd.DataFrame, metadata: Metadata) -> pd.DataFrame:
@@ -162,13 +182,6 @@ class MetadataHandler:
                 "Merged dataframe has different length than original dataframe"
             )
         return merged_df
-
-    def load_metadata_df(self, version: str) -> pd.DataFrame:
-        """Return metadata for a specific version as a DataFrame."""
-        metadata = self.load_metadata(version)
-        metadata_df = pd.DataFrame.from_records(list(metadata.datasets))
-        metadata_df.set_index("md5sum", inplace=True)
-        return metadata_df
 
 
 class SplitResultsHandler:
@@ -305,7 +318,7 @@ class SplitResultsHandler:
         Returns:
             Dict[str, Dict[str, pd.DataFrame]]: {general_name:{split_name: results_df}}
         """
-        all_dfs = defaultdict(dict)
+        all_dfs = {}
 
         for category_dir in parent_results_dir.iterdir():
             for experiment_dir in category_dir.iterdir():
@@ -501,4 +514,4 @@ class SplitResultsHandler:
         for split_name, split_metrics in metrics.items():
             for classifier_name, classifier_metrics in split_metrics.items():
                 new_metrics[classifier_name][split_name] = classifier_metrics
-        return new_metrics
+        return dict(new_metrics)
