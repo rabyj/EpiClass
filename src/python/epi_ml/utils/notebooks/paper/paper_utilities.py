@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import sys
@@ -235,6 +236,11 @@ class SplitResultsHandler:
     ) -> Dict[str, Dict[str, pd.DataFrame]]:
         """Gather split results for each classifier type.
 
+        Args:
+            results_dir: The directory containing the results. Child directories should be task/classifer names.
+            label_category: The label category for the results.
+            only_NN: A boolean flag to only gather the NN results.
+
         Returns:
             Dict[str, Dict[str, pd.DataFrame]]: {split_name:{classifier_name: results_df}}
         """
@@ -403,6 +409,7 @@ class SplitResultsHandler:
             A nested dictionary with metrics computed for each classifier and split. The structure is
             {split_name: {classifier_name: {metric_name: value}}}.
         """
+        all_split_dfs = copy.deepcopy(all_split_dfs)  # avoid side-effects
         split_metrics = {}
 
         if concat_first_level:
@@ -426,7 +433,6 @@ class SplitResultsHandler:
                     for i, label in enumerate(df.columns.str.lower())
                     if i > 1
                 ]
-
                 # One hot encode true class and get predicted probabilities
                 # Reindex to ensure that the order of classes is consistent
                 classes_order = df.columns[2:]
