@@ -5,10 +5,11 @@ from __future__ import annotations
 import copy
 import json
 import logging
+import re
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List, Set
 
 import numpy as np
 import pandas as pd
@@ -521,3 +522,91 @@ class SplitResultsHandler:
             for classifier_name, classifier_metrics in split_metrics.items():
                 new_metrics[classifier_name][split_name] = classifier_metrics
         return dict(new_metrics)
+
+
+def extract_data_from_files(
+    parent_folder: Path,
+    file_pattern: str,
+    search_line: str,
+    extract_pattern: str,
+    type_cast: type = int,
+    unique: bool = True,
+) -> Dict[str, Set[Any]]:
+    """
+    Extracts data from files matching a specific pattern within each directory of a parent folder.
+
+    Args:
+        parent_folder (Path): The directory containing subdirectories to search.
+        file_pattern (str): Glob pattern for files to search within each subdirectory.
+        search_line (str): Line identifier to search for data extraction.
+        extract_pattern (str): Regex pattern to extract the desired data from the identified line.
+        type_cast (type): Type to cast the extracted data to.
+
+    Returns:
+        Dict[str, Set[type]]: A dictionary with subdirectory names as keys and sets of extracted data as values.
+    """
+    data = defaultdict(set)
+    for folder in parent_folder.iterdir():
+        if not folder.is_dir():
+            continue
+        for file in folder.rglob(file_pattern):
+            with open(file, "r", encoding="utf8") as f:
+                # print(f"Reading {file.name}")
+                lines = [l.rstrip() for l in f if search_line in l]
+                if not lines:
+                    # print(f"Skipping {file.name}, no relevant data found.")
+                    continue
+                if len(lines) > 1 and unique:
+                    if len(set(lines)) == 1:
+                        pass
+                    else:
+                        raise ValueError(
+                            f"Incorrect file reading, captured more than one unique line in {file.name}: {lines}"
+                        )
+                matches = [
+                    re.match(pattern=extract_pattern, string=line) for line in lines
+                ]
+                try:
+                    extracted_data = [type_cast(match.group(1)) for match in matches]  # type: ignore
+                    # print(f"Extracted data: {extracted_data}")
+                except AttributeError as err:
+                    raise ValueError(
+                        f"Could not extract data from {file.name} using pattern {extract_pattern}."
+                    ) from err
+                data[folder.name].update(extracted_data)
+    return dict(data)
+
+
+def extract_input_sizes_from_output_files(parent_folder: Path) -> Dict[str, Set[int]]:
+    """Extracts model input sizes from output (.o) files."""
+    return extract_data_from_files(
+        parent_folder=parent_folder,
+        file_pattern="output_job*.o",
+        search_line="(1): Linear",
+        extract_pattern=r".*in_features=(\d+).*",
+        type_cast=int,
+    )
+
+
+def extract_node_jobs_from_error_files(parent_folder: Path) -> Dict[str, Set[int]]:
+    """Extracts SLURM job IDs from error (.e) files."""
+    return extract_data_from_files(
+        parent_folder=parent_folder,
+        file_pattern="output_job*.e",
+        search_line="SLURM_JOB_ID",
+        extract_pattern=r".*SLURM_JOB_ID\s+: (\d+)$",
+        type_cast=int,
+    )
+
+
+def extract_experiment_keys_from_output_files(parent_folder: Path) -> Dict[str, Set[str]]:
+    """Extracts experiment keys from output (.o) files."""
+    search_line = "The current experiment key is"
+    return extract_data_from_files(
+        parent_folder=parent_folder,
+        file_pattern="output_job*.o",
+        search_line=search_line,
+        extract_pattern=search_line + r" (\w{32})$",
+        type_cast=str,
+        unique=False,
+    )
