@@ -232,6 +232,34 @@ class SplitResultsHandler:
             raise AssertionError("Not all dataframes have the same md5sums")
 
     @staticmethod
+    def compute_acc_per_assay(
+        split_results: Dict[str, pd.DataFrame], metadata_df: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Compute accuracy per assay for each split.
+
+        Args:
+            split_results: {split_name: results_df}
+            metadata_df: The metadata dataframe.
+        """
+
+        assay_acc = defaultdict(dict)
+        for split_name, split_result_df in split_results.items():
+            # Merge metadata
+            split_result_df = split_result_df.merge(
+                metadata_df, left_index=True, right_index=True
+            )
+
+            # Compute accuracy per assay
+            assay_groupby = split_result_df.groupby(ASSAY)
+            for assay, assay_df in assay_groupby:
+                assay_acc[assay][split_name] = np.mean(
+                    assay_df["True class"].astype(str).str.lower()
+                    == assay_df["Predicted class"].astype(str).str.lower()
+                )
+
+        return pd.DataFrame(assay_acc)
+
+    @staticmethod
     def gather_split_results_across_methods(
         results_dir: Path, label_category: str, only_NN: bool = False
     ) -> Dict[str, Dict[str, pd.DataFrame]]:
