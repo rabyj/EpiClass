@@ -1,6 +1,7 @@
 """
-This module provides functionalities compute the chrY and chrX coverage from bigwig files.
+This module provides functionalities compute the chrY and chrX mean signal from bigwig files.
 """
+
 # pylint: disable=invalid-name
 from __future__ import annotations
 
@@ -29,7 +30,7 @@ def parse_arguments() -> argparse.Namespace:
     arg_parser.add_argument(
         "output_dir",
         type=DirectoryChecker(),
-        help="Directory where to write the coverage file.",
+        help="Directory where to write the mean signal file.",
     )
     return arg_parser.parse_args()
 
@@ -40,11 +41,11 @@ def chunks(lst: List, n: int) -> Generator[List, None, None]:
         yield lst[i : i + n]
 
 
-def compute_coverage(file_path: Path) -> Tuple[str, int, int]:
+def compute_mean(file_path: Path) -> Tuple[str, int, int]:
     """Compute mean signal value in chrY and chrX
 
     Return
-        Tuple[filename, chrY_coverage, chrX_coverage, chrY_coverage/chrX_coverage]
+        Tuple[filename, chrY_mean, chrX_mean, chrY_mean/chrX_mean]
     """
     try:
         bw = pyBigWig.open(str(file_path), "r")
@@ -53,19 +54,19 @@ def compute_coverage(file_path: Path) -> Tuple[str, int, int]:
         return (file_path.name, 0, 0)
 
     try:
-        chrY_coverage = bw.stats("chrY", exact=True)[0]
-        chrX_coverage = bw.stats("chrX", exact=True)[0]
+        chrY_mean = bw.stats("chrY", exact=True)[0]
+        chrX_mean = bw.stats("chrX", exact=True)[0]
     except RuntimeError as err:
         print(f"{err}: Could not process {file_path}.", flush=True, file=sys.stderr)
-        chrY_coverage = 0
-        chrX_coverage = 0
+        chrY_mean = 0
+        chrX_mean = 0
     finally:
         bw.close()
 
     return (
         file_path.name,
-        chrY_coverage,
-        chrX_coverage,
+        chrY_mean,
+        chrX_mean,
     )
 
 
@@ -77,7 +78,7 @@ def main():
     cli = parse_arguments()
 
     hdf5_list_path = cli.hdf5_list
-    logdir = cli.output_dir.resolve()
+    logdir: Path = cli.output_dir.resolve()
     max_workers = int(os.getenv("SLURM_CPUS_PER_TASK", "4"))
     log_every_n_files = 1000  # Define how many bigwigs to process before logging
 
@@ -88,23 +89,23 @@ def main():
     # Divide hdf5_files into chunks and process them concurrently
     for idx, chunk in enumerate(chunks(hdf5_files, log_every_n_files)):
         with ThreadPoolExecutor(max_workers) as executor:
-            chunk_result = list(executor.map(compute_coverage, chunk))
+            chunk_result = list(executor.map(compute_mean, chunk))
 
         all_results.extend(chunk_result)
 
         # Log the results of the current chunk
-        chunk_name = logdir / f"coverage_chunk_{idx}.csv"
+        chunk_name = logdir / f"mean_chunk_{idx}.csv"
         if chunk_name.exists():
-            chunk_name = logdir / f"coverage_chunk_{idx}_{time_now_str()}.csv"
+            chunk_name = logdir / f"mean_chunk_{idx}_{time_now_str()}.csv"
 
         pd.DataFrame(chunk_result, columns=["filename", "chrY", "chrX"]).to_csv(
             chunk_name, index=False
         )
 
-    # Combine all results and save if required
-    final_name = logdir / "coverage_combined.csv"
+    # Combine all results and save.
+    final_name = logdir / "mean_combined.csv"
     if final_name.exists():
-        final_name = logdir / f"coverage_combined_{time_now_str()}.csv"
+        final_name = logdir / f"mean_combined_{time_now_str()}.csv"
     pd.DataFrame(all_results, columns=["filename", "chrY", "chrX"]).to_csv(
         final_name, index=False
     )
