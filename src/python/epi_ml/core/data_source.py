@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 from typing import List, Tuple
 
@@ -52,8 +53,20 @@ class EpiDataSource:
         """Return resolution as an integer."""
         with open(self.hdf5_file, "r", encoding="utf-8") as my_file:
             first_path = Path(next(my_file).rstrip())
-            resolution = EpiDataSource.get_file_hdf5_resolution(first_path)
+            try:
+                resolution = EpiDataSource.get_file_hdf5_resolution(first_path)
+            except FileNotFoundError:
+                warnings.warn(
+                    f"File not found: {first_path}. Seeking resolution with filename."
+                )
+                resolution = self.get_resolution_from_filename(first_path)
         return resolution
+
+    @staticmethod
+    def get_resolution_from_filename(path: Path) -> int:
+        """Return resolution as an integer."""
+        resolution_string = path.name.split("_")[1]
+        return HDF5_RESOLUTION[resolution_string]
 
     @staticmethod
     def get_file_hdf5_resolution(hdf5_file: Path) -> int:
