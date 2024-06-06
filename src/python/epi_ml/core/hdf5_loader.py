@@ -29,7 +29,7 @@ class Hdf5Loader:
 
     @property
     def signals(self) -> Dict[str, np.ndarray]:
-        """Return a {md5:signal dict} with the last loaded signals,
+        """Return a {md5:signal} dict with the last loaded signals,
         where the signal has concanenated chromosomes, and is normalized if set so.
         """
         return self._signals
