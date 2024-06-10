@@ -99,9 +99,7 @@ def merge_similar_assays(df: pd.DataFrame) -> pd.DataFrame:
         df["rna_seq"] = df["rna_seq"] + df["mrna_seq"]
         df["wgbs"] = df["wgbs-standard"] + df["wgbs-pbat"]
     except KeyError as exc:
-        raise ValueError(
-            "Wrong results dataframe, label category is not assay specific."
-        ) from exc
+        raise ValueError("Wrong results dataframe, rna or wgbs columns missing.") from exc
     df.drop(columns=["mrna_seq", "wgbs-standard", "wgbs-pbat"], inplace=True)
     df["True class"].replace(ASSAY_MERGE_DICT, inplace=True)
     df["Predicted class"].replace(ASSAY_MERGE_DICT, inplace=True)
