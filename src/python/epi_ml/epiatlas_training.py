@@ -319,6 +319,9 @@ def do_one_experiment(
         training_time = time_now() - before_train
         print(f"training time: {training_time}")
 
+        # Make sure to wait for logging to finish
+        logger.experiment.end()
+
         # reload comet logger for further logging, will create new experience in offline mode
         IsOffline = bool(type(logger.experiment).__name__ == "OfflineExperiment")
 
@@ -363,6 +366,9 @@ def do_one_experiment(
 
     logger.experiment.add_tag("Finished")
     logger.finalize(status="Finished")
+
+    # Make sure to wait for logging to finish
+    logger.experiment.end()
 
 
 if __name__ == "__main__":
