@@ -468,6 +468,7 @@ class SplitResultsHandler:
                     .reindex(columns=classes_order, fill_value=0)
                     .values
                 )
+
                 pred_probs = df[classes_order].values
 
                 ravel_true = np.argmax(onehot_true, axis=1)
@@ -485,12 +486,19 @@ class SplitResultsHandler:
                     }
                 except ValueError as err:
                     if "Only one class" in str(err) or "multiclass format" in str(err):
-                        logging.warning(
-                            "Single class or incompatible format in %s for %s. Error: %s",
-                            split,
-                            task_name,
-                            err,
-                        )
+                        if len(df["True class"].unique()) != len(classes_order):
+                            logging.warning(
+                                "At least one ground truth class missing from %s for %s. Cannot compute ROC AUC.",
+                                split,
+                                task_name,
+                            )
+                        else:
+                            logging.warning(
+                                "Single class or incompatible format in %s for %s. Error: %s",
+                                split,
+                                task_name,
+                                err,
+                            )
                         metrics[task_name] = {
                             "AUC_micro": np.nan,
                             "AUC_macro": np.nan,
