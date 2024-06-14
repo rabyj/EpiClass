@@ -587,27 +587,26 @@ def extract_data_from_files(
             with open(file, "r", encoding="utf8") as f:
                 # print(f"Reading {file.name}")
                 lines = [l.rstrip() for l in f if search_line in l]
-                if not lines:
-                    # print(f"Skipping {file.name}, no relevant data found.")
-                    continue
-                if len(lines) > 1 and unique:
-                    if len(set(lines)) == 1:
-                        pass
-                    else:
-                        raise ValueError(
-                            f"Incorrect file reading, captured more than one unique line in {file.name}: {lines}"
-                        )
-                matches = [
-                    re.match(pattern=extract_pattern, string=line) for line in lines
-                ]
-                try:
-                    extracted_data = [type_cast(match.group(1)) for match in matches]  # type: ignore
-                    # print(f"Extracted data: {extracted_data}")
-                except AttributeError as err:
+
+            if not lines:
+                # print(f"Skipping {file.name}, no relevant data found.")
+                continue
+            if len(lines) > 1 and unique:
+                if len(set(lines)) == 1:
+                    pass
+                else:
                     raise ValueError(
-                        f"Could not extract data from {file.name} using pattern {extract_pattern}."
-                    ) from err
-                data[folder.name].update(extracted_data)
+                        f"Incorrect file reading, captured more than one unique line in {file.name}: {lines}"
+                    )
+            matches = [re.match(pattern=extract_pattern, string=line) for line in lines]
+            try:
+                extracted_data = [type_cast(match.group(1)) for match in matches]  # type: ignore
+                # print(f"Extracted data: {extracted_data}")
+            except AttributeError as err:
+                raise ValueError(
+                    f"Could not extract data from {file.name} using pattern {extract_pattern}."
+                ) from err
+            data[folder.name].update(extracted_data)
     return dict(data)
 
 
