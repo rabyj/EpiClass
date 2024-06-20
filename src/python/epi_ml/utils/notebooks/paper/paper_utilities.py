@@ -487,10 +487,14 @@ class SplitResultsHandler:
                 except ValueError as err:
                     if "Only one class" in str(err) or "multiclass format" in str(err):
                         if len(df["True class"].unique()) != len(classes_order):
+                            missing_classes = set(classes_order.values) - set(
+                                df["True class"].unique()
+                            )
                             logging.warning(
-                                "At least one ground truth class missing from %s for %s. Cannot compute ROC AUC.",
+                                "Cannot compute ROC AUC. At least one ground truth class missing from %s for %s: (%s)",
                                 split,
                                 task_name,
+                                missing_classes,
                             )
                         else:
                             logging.warning(
