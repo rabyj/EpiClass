@@ -1,4 +1,5 @@
 """Main for training on EpiAtlas data without a validation set."""
+
 from __future__ import annotations
 
 import argparse
@@ -26,8 +27,8 @@ from epi_ml.core.data_source import EpiDataSource
 from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory
 from epi_ml.core.model_pytorch import LightningDenseClassifier
 from epi_ml.core.trainer import MyTrainer, define_callbacks
+from epi_ml.utils import modify_metadata
 from epi_ml.utils.check_dir import create_dirs
-from epi_ml.utils.modify_metadata import filter_by_pairs, fix_roadmap, merge_pair_end_info
 from epi_ml.utils.my_logging import log_dset_composition, log_pre_training
 from epi_ml.utils.time import time_now
 
@@ -102,12 +103,13 @@ def main():
     my_metadata.remove_category_subsets(
         label_category="track_type", labels=["Unique.raw"]
     )
+    my_metadata.remove_missing_labels(category)
 
     if category in {"paired", "paired_end_mode"}:
         category = "paired_end_mode"
-        merge_pair_end_info(my_metadata)
-
-    fix_roadmap(my_metadata)
+        modify_metadata.merge_pair_end_info(my_metadata)
+    elif category == "data_generating_centre":
+        modify_metadata.fix_roadmap(my_metadata)
 
     label_list = metadata.env_filtering(my_metadata, category)
 
@@ -116,8 +118,23 @@ def main():
     else:
         min_class_size = hparams.get("min_class_size", 10)
 
-    if category == "harm_sample_ontology_intermediate":
-        my_metadata = filter_by_pairs(my_metadata)
+    if category in set(
+        [
+            "harmonized_sample_ontology_intermediate",
+            "harm_sample_ontology_intermediate",
+            "cell_type",
+        ]
+    ):
+        categories = set(my_metadata.get_categories())
+        if "assay_epiclass" in categories:
+            assay_cat = "assay_epiclass"
+        elif "assay" in categories:
+            assay_cat = "assay"
+        else:
+            raise ValueError("Cannot find assay category for class pairs.")
+        my_metadata = modify_metadata.filter_by_pairs(
+            my_metadata, assay_cat=assay_cat, cat2=category, nb_pairs=9, min_per_pair=10
+        )
 
     # --- Load signals and train ---
     loading_begin = time_now()
