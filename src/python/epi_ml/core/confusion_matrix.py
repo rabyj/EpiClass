@@ -1,4 +1,5 @@
 """ConfusionMatrixWriter class"""
+
 from __future__ import annotations
 
 import math
@@ -135,13 +136,13 @@ class ConfusionMatrixWriter:
         confusion_mat2 = np.nan_to_num(confusion_mat1)
         return confusion_mat2.T
 
-    def to_png(self, path):
+    def to_png(self, path: str | Path) -> None:
         """Write to path an image of the confusion matrix.
         Colors : https://i.stack.imgur.com/cmk1J.png
         Ref code : https://matplotlib.org/3.1.0/tutorials/colors/colormap-manipulation.html
         https://stackoverflow.com/questions/35710931/remove-a-section-of-a-colormap
         """
-        plt.figure()
+        fig, ax = plt.subplots()  # Initialize a new figure and axes
 
         vmax = 0.9999  # this is so exactly 1.0 is a different color from the rest
         vmin = 0.0
@@ -159,7 +160,6 @@ class ConfusionMatrixWriter:
         )  # color for max values, do it LAST
 
         # create color mesh and arrange ticks
-        fig, ax = plt.subplots()
         mesh = ax.pcolormesh(
             data_mask, cmap=new_cmap, vmin=vmin, vmax=vmax, edgecolors="k"
         )
@@ -171,10 +171,8 @@ class ConfusionMatrixWriter:
         ax.invert_yaxis()
         ax.xaxis.tick_top()
 
-        ax.set_xticklabels(self._pd_rel_matrix.columns)
-        ax.set_yticklabels(self._pd_rel_matrix.index)
-        plt.xticks(rotation=70, ha="left")
-        plt.yticks(va="top")
+        ax.set_xticklabels(self._pd_rel_matrix.columns, rotation=70, ha="left")
+        ax.set_yticklabels(self._pd_rel_matrix.index, va="top")
 
         ax = plt.gca()
         for t in ax.xaxis.get_major_ticks():
@@ -190,7 +188,7 @@ class ConfusionMatrixWriter:
                 count = self._pd_matrix.iat[i, j]
                 if count != 0:
                     text = f"{count}\n{self._pd_rel_matrix.iat[i, j]*100:.1f}%"
-                    text_obj = plt.text(
+                    text_obj = ax.text(
                         x=j + 0.5,
                         y=i + 0.5,
                         s=text,
@@ -218,8 +216,8 @@ class ConfusionMatrixWriter:
         cbar.ax.tick_params(labelsize=7)
 
         plt.tight_layout()
-        plt.savefig(path, format="png", dpi=500)
-        plt.clf()
+        fig.savefig(path, format="png", dpi=500)  # Save the figure to a file
+        plt.close(fig)  # Close the figure window
 
     def to_csv(self, path, relative):
         """Write to path a csv file of the confusion matrix.
@@ -245,7 +243,7 @@ class ConfusionMatrixWriter:
 
         self.to_csv(out1, relative=False)
         self.to_csv(out1_rel, relative=True)
-        self.to_png(out2)
+        self.to_png(str(out2))
 
         return out1, out1_rel, out2
 
