@@ -1,4 +1,5 @@
 """Functions to perform more complex operations on the metadata."""
+
 import collections
 import copy
 import datetime
@@ -144,6 +145,13 @@ def filter_by_pairs(
 
     full_metadata = copy.deepcopy(my_metadata)
 
+    nb_assay = len(full_metadata.label_counter(assay_cat, verbose=False))
+    if nb_assay < nb_pairs:
+        print(
+            f"WARNING: {nb_assay} assays when nb_pairs asked is {nb_pairs}. Using {nb_assay} instead."
+        )
+        nb_pairs = nb_assay
+
     # Remove (assay, cat2) pairs with less than X unique examples (min_per_pair condition)
     # Use uuid to count unique experiments
     counter = count_pairs(my_metadata, assay_cat, cat2, use_uuid=use_uuid)
@@ -170,6 +178,10 @@ def filter_by_pairs(
         if len(assays) >= nb_pairs:
             ok_ct.append(cell_type)
     print(f"After nb_pairs >= {nb_pairs} condition: {len(ok_ct)} {cat2} labels left.")
+    if len(ok_ct) == 0:
+        raise ValueError(
+            f"No {cat2} labels left after filtering by pairs. Try with less strict conditions."
+        )
 
     full_metadata.select_category_subsets(cat2, ok_ct)
     full_metadata.display_labels(assay_cat)
