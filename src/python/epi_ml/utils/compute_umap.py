@@ -11,10 +11,10 @@ from importlib import metadata
 from pathlib import Path
 
 import numpy as np
-
 import umap
-from epi_ml.core.hdf5_loader import Hdf5Loader
 from umap.umap_ import nearest_neighbors
+
+from epi_ml.core.hdf5_loader import Hdf5Loader
 
 
 def parse_arguments() -> argparse.Namespace:
