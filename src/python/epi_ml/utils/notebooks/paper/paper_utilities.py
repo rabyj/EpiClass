@@ -647,3 +647,22 @@ def extract_experiment_keys_from_output_files(parent_folder: Path) -> Dict[str, 
         type_cast=str,
         unique=False,
     )
+
+
+def add_second_highest_prediction(df: pd.DataFrame, pred_cols: List[str]) -> pd.DataFrame:
+    """Return the DataFrame with a column for the second highest prediction class."""
+    # Convert the relevant columns to a numpy array
+    predictions = df[pred_cols].values
+
+    # Get the indices of the sorted values
+    sorted_indices = np.argsort(predictions, axis=1)
+
+    # The second highest will be at position -2 (second to last) in the sorted order
+    second_highest_indices = sorted_indices[:, -2]
+
+    # Map indices to column names
+    second_highest_columns = np.array(pred_cols)[second_highest_indices]
+
+    # Add the second highest prediction column to the DataFrame
+    df["2nd_pred_class"] = second_highest_columns
+    return df
