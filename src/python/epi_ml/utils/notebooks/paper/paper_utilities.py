@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Set
 
 import numpy as np
 import pandas as pd
+from IPython.display import display
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 
 from epi_ml.core.metadata import Metadata
@@ -666,3 +667,10 @@ def add_second_highest_prediction(df: pd.DataFrame, pred_cols: List[str]) -> pd.
     # Add the second highest prediction column to the DataFrame
     df["2nd_pred_class"] = second_highest_columns
     return df
+
+
+def display_perc(df: pd.DataFrame | pd.Series):
+    """Display a DataFrame with percentages."""
+    # pylint: disable=consider-using-f-string
+    with pd.option_context("display.float_format", "{:.2f}".format):
+        display(df)
