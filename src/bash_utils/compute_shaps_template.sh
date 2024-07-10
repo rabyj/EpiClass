@@ -65,15 +65,18 @@ chroms="${input_path}/chromsizes/hg38.noy.chrom.sizes"
 out1="${output_log}/output_job${SLURM_JOB_ID}_${SLURM_JOB_NAME}_${timestamp}.o"
 out2="${output_log}/output_job${SLURM_JOB_ID}_${SLURM_JOB_NAME}_${timestamp}.e"
 
-echo "Input arguments:"
-for var in ${list_background} ${list_explain} ${chroms}
-do
-ls $var
+
+for path in ${list_background} ${list_explain} ${chroms}; do
+  if [ ! -f ${path} ]; then
+    echo "${path} is not a file. Please check the path."
+    exit 1
+  else
+    echo "Input: ${path}"
+  fi
 done
 
-
 # --- Pre-checks ---
-
+set -e # in case check_dir fails, to stop bash script
 program_path="${gen_path}/sources/epi_ml/src/python/epi_ml"
 cd ${program_path}
 
@@ -109,8 +112,6 @@ then
   tar -xf $tar_file
 
   export HDF5_PARENT="${name}" # IMPORTANT
-  cd $name
-  scp ${hdf5s_location}/${name}-4ctl/* . #extra files in v2.1
 fi
 
 

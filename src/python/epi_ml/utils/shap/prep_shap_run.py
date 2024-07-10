@@ -195,6 +195,7 @@ def main():
         x for x in base_logdir.iterdir() if (x.is_dir() and x.name.startswith("split"))
     ]
 
+    job_files = []
     for split_folder in split_folders:
         split_nb = int(split_folder.name.split("split")[-1])
 
@@ -299,6 +300,20 @@ def main():
             file.write(file_contents)
 
         print(f"Created {job_file}")
+        job_files.append(job_file)
+
+    print("Creating submission script.")
+    submission_script = base_logdir / f"submit_{category}_shap_all_splits.sh"
+    if submission_script.exists() and not overwrite:
+        raise FileExistsError(f"{submission_script} already exists")
+
+    with open(submission_script, "w", encoding="utf8") as file:
+        file.write("#!/bin/bash\n")
+        for i, job_file in enumerate(job_files):
+            file.write(f"job{i}=$(sbatch {job_file})\n")
+            file.write(f"echo $job{i}\n")
+        file.write("echo 'All jobs submitted.'\n")
+    print(f"Created:{submission_script}")
 
     end = time_now()
     print(f"end {end}")
@@ -309,6 +324,7 @@ def main():
         Don't forget to check for:
         1) correct paths for where the scripts are run from (e.g. $HOME)
         2) correct model paths (in best_checkpoint.list files)
+        3) Add analysis job to submit script if desired.
         """
     )
 
