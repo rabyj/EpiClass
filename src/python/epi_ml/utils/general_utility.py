@@ -3,19 +3,24 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, List
 
 
 def write_hdf5_paths_to_file(
     md5s: Iterable[str], parent: str, suffix: str, filepath: str | Path
-) -> None:
+) -> List[Path]:
     """Write a list of md5s to a file, with a prefix and suffix.
-    Path(prefix=parent)/{md5}_{suffix}_value.hdf5
+    Creates files of the format: Path(prefix=parent)/{md5}_{suffix}.hdf5
+
+    Returns a list of the paths written to the file.
     """
+    files = []
     with open(filepath, "w", encoding="utf8") as f:
         for md5 in md5s:
-            line = Path(parent) / (f"{md5}_{suffix}_value.hdf5\n")
-            f.write(str(line))
+            path = Path(parent) / (f"{md5}_{suffix}.hdf5")
+            f.write(f"{path}\n")
+            files.append(path)
+    return files
 
 
 def write_md5s_to_file(md5s: Iterable[str], logdir: str | Path, name: str) -> Path:

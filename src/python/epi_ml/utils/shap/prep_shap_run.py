@@ -9,6 +9,7 @@ import os
 import random
 import shutil
 import sys
+import tarfile
 from collections import defaultdict
 from pathlib import Path
 from typing import Iterable, List, Tuple
@@ -158,6 +159,10 @@ def parse_arguments() -> argparse.Namespace:
         "base_logdir", type=DirectoryChecker(), help="Directory where different fold directories are present"
     )
     parser.add_argument(
+        "full_tar_path", type=Path, help="tar path to full dataset. Archive should have a parent folder."
+    )
+
+    parser.add_argument(
         "--overwrite", action="store_true", help="Overwrite existing files."
         )
     parser.add_argument(
@@ -179,6 +184,7 @@ def main():
     base_logdir = cli.base_logdir
     overwrite = cli.overwrite
     sampling_sizes = cli.sampling_sizes
+    tar_path = cli.full_tar_path
 
     try:
         # Beware, sensitive to file structure
@@ -189,6 +195,16 @@ def main():
             raise FileNotFoundError("Could not find compute_shaps_template.sh")
     except IndexError as exc:
         raise FileNotFoundError("Could not find compute_shaps_template.sh") from exc
+
+    # Define hdf5 suffix with tar content
+    with tarfile.open(tar_path, "r") as tar:
+        tar_content = tar.getnames()
+        all_hdf5 = [Path(x) for x in tar_content if x.endswith(".hdf5")]
+        all_hdf5_suffix = [x.stem.split(sep="_", maxsplit=1)[1] for x in all_hdf5]
+    if len(set(all_hdf5_suffix)) != 1:
+        raise ValueError(f"Multiple hdf5 suffixes found: {all_hdf5_suffix}")
+    hdf5_suffix = all_hdf5_suffix[0]
+    print(f"Using hdf5 suffix for list creation: {hdf5_suffix}")
 
     # Find all split folders
     split_folders = [
@@ -241,7 +257,7 @@ def main():
         write_hdf5_paths_to_file(
             md5s=sorted(best_background_md5s),
             parent=".",
-            suffix="100kb_all_none",
+            suffix=hdf5_suffix,
             filepath=background_filename,
         )
 
@@ -257,7 +273,7 @@ def main():
         write_hdf5_paths_to_file(
             md5s=sorted(valid_md5),
             parent=".",
-            suffix="100kb_all_none",
+            suffix=hdf5_suffix,
             filepath=eval_filename,
         )
 
@@ -287,6 +303,7 @@ def main():
             ":::output_log:::": str(shap_folder),
             ":::background_list:::": str(background_filename),
             ":::eval_list:::": str(eval_filename),
+            ":::full_tar_path:::": str(tar_path),
         }
 
         # Read / replace / write
@@ -322,9 +339,10 @@ def main():
     print(
         """
         Don't forget to check for:
-        1) correct paths for where the scripts are run from (e.g. $HOME)
-        2) correct model paths (in best_checkpoint.list files)
-        3) Add analysis job to submit script if desired.
+        - Correct paths for where the scripts are run from (e.g. $HOME)
+        - Correct model paths (in best_checkpoint.list files)
+        - Correct hdf5 filenames in created lists.
+        Add analysis job to submit script if desired.
         """
     )
 

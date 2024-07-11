@@ -46,7 +46,6 @@ fi
 model="NN" # IMPORTANT
 
 category=:::category::: # IMPORTANT
-resolution="100kb" # IMPORTANT
 
 # -- NN --
 
@@ -102,16 +101,17 @@ fi
 
 if [[ -n "$SLURM_JOB_ID" ]];
 then
-  hdf5s_location="/lustre06/project/6007515/ihec_share/local_ihec_data/epiatlas/hg38/hdf5"
-  name="epiatlas_dfreeze_${resolution}_all_none"
-  tar_file="${hdf5s_location}/${name}.tar"  # IMPORTANT
+  tar_file=":::full_tar_path:::"  # IMPORTANT
 
   cd $SLURM_TMPDIR
 
   echo "Untaring $tar_file in $SLURM_TMPDIR"
   tar -xf $tar_file
 
-  export HDF5_PARENT="${name}" # IMPORTANT
+  folder_name=$(find . -mindepth 1 -type d | head -n 1)
+  folder_name=$(basename $folder_name)
+  echo "Using folder_name: $folder_name"
+  export HDF5_PARENT="${folder_name}" # IMPORTANT
 fi
 
 
