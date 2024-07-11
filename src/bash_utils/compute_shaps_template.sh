@@ -1,16 +1,20 @@
 #!/bin/bash
-#SBATCH --time=24:00:00
+#SBATCH --time=8:00:00
 #SBATCH --account=:::account:::
 #SBATCH --job-name=:::job_name:::
 #SBATCH --output=/lustre06/project/6007017/rabyj/epilap/output/sub/slurm_files/%x-job%j.out
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=30
-#SBATCH --mem=128G
+#SBATCH --mem=80G
 #SBATCH --mail-user=:::email:::
 #SBATCH --mail-type=END,FAIL
 # shellcheck disable=SC2317  # Don't warn about unreachable commands in this file
 # shellcheck disable=SC2086  # Don't warn about double quoting
 # shellcheck disable=SC1091  # Don't warn about sourcing unreachable files
+
+echo "$(date +%F_%T) - Starting script"
+
+ml StdEnv/2020 python/3.8
 
 export PYTHONUNBUFFERED=TRUE
 
@@ -30,6 +34,7 @@ program_path="${gen_program_path}/src/python/epi_ml"
 slurm_out_folder="${gen_path}/epilap/output/sub/slurm_files"
 
 # use correct environment
+echo "$(date +%F_%T) - Loading and/or creating the virtual environment"
 set -e
 if [[ -n "$SLURM_JOB_ID" ]];
 then
@@ -64,7 +69,7 @@ chroms="${input_path}/chromsizes/hg38.noy.chrom.sizes"
 out1="${output_log}/output_job${SLURM_JOB_ID}_${SLURM_JOB_NAME}_${timestamp}.o"
 out2="${output_log}/output_job${SLURM_JOB_ID}_${SLURM_JOB_NAME}_${timestamp}.e"
 
-
+echo "$(date +%F_%T) - Evaluating paths."
 for path in ${list_background} ${list_explain} ${chroms}; do
   if [ ! -f ${path} ]; then
     echo "${path} is not a file. Please check the path."
@@ -75,6 +80,7 @@ for path in ${list_background} ${list_explain} ${chroms}; do
 done
 
 # --- Pre-checks ---
+echo "$(date +%F_%T) - Executing pre-checks"
 set -e # in case check_dir fails, to stop bash script
 program_path="${gen_path}/sources/epi_ml/src/python/epi_ml"
 cd ${program_path}
@@ -85,10 +91,6 @@ python ${program_path}/utils/check_dir.py --exists ${model_path}
 
 printf '%s\n' "python ${program_path}/utils/check_dir.py ${output_log}"
 python ${program_path}/utils/check_dir.py ${output_log}
-
-printf '\n%s\n' "Launching following command"
-printf '%s\n' "python ${program_path}/utils/preconditions.py"
-python ${program_path}/utils/preconditions.py
 
 # Preconditions passed, copy launch script to log dir.
 if [[ -n "$SLURM_JOB_ID" ]];
@@ -101,6 +103,7 @@ fi
 
 if [[ -n "$SLURM_JOB_ID" ]];
 then
+  echo "$(date +%F_%T) - Extracting hdf5s"
   tar_file=":::full_tar_path:::"  # IMPORTANT
 
   cd $SLURM_TMPDIR
@@ -108,7 +111,8 @@ then
   echo "Untaring $tar_file in $SLURM_TMPDIR"
   tar -xf $tar_file
 
-  folder_name=$(find . -mindepth 1 -type d | head -n 1)
+  # Finding correct hdf5 folder name
+  folder_name=$(find . -mindepth 1 -type d | grep -v "epiclass" | head -n 1)
   folder_name=$(basename $folder_name)
   echo "Using folder_name: $folder_name"
   export HDF5_PARENT="${folder_name}" # IMPORTANT
@@ -124,13 +128,11 @@ set +e
 basecmd="python ${program_path}/compute_shaps.py -m ${model} --background_hdf5 ${list_background} --explain_hdf5 ${list_explain} --chromsize ${chroms} -l ${output_log} -o explain_${category}"
 basecmd="${basecmd} --model_dir ${model_path}"
 
-
-echo "Time before launch: $(date +%F_%T)"
+echo "$(date +%F_%T) - Running main program"
 printf '\n%s\n' "Launching following command"
 printf '%s\n' "${basecmd} > ${out1} 2> ${out2}"
 ${basecmd} > ${out1} 2> ${out2}
-echo "Time after launch: $(date +%F_%T)"
-
+echo "$(date +%F_%T) - Time after main program"
 
 
 # Copy slurm output file to log dir
@@ -139,3 +141,5 @@ then
   slurm_out_file="${SLURM_JOB_NAME}-*${SLURM_JOB_ID}.out"
   cp -v ${slurm_out_folder}/${slurm_out_file} ${output_log}/
 fi
+
+echo "$(date +%F_%T) - END OF SCRIPT"
