@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import itertools
 import os
 import pickle
 import warnings
@@ -100,17 +101,17 @@ def main():
     nn_bigger = 30
     nn_biggest = 100
     embedding_params = {}
-    for nn_size in [nn_default, nn_bigger, nn_biggest]:
-        embedding_params[f"standard_3D_nn{nn_size}"] = {
+    for nn_size, n_dim in itertools.product([nn_default, nn_bigger, nn_biggest], [2, 3]):
+        embedding_params[f"standard_{n_dim}D_nn{nn_size}"] = {
             "n_neighbors": nn_size,
             "min_dist": 0.1,
-            "n_components": 3,
+            "n_components": n_dim,
             "low_memory": False,
         }
-        embedding_params[f"densmap_3D_nn{nn_size}"] = {
+        embedding_params[f"densmap_{n_dim}D_nn{nn_size}"] = {
             "n_neighbors": nn_size,
             "min_dist": 0.1,
-            "n_components": 3,
+            "n_components": n_dim,
             "low_memory": False,
             "densmap": True,
         }
@@ -145,11 +146,16 @@ def main():
 
     # Compute+save embeddings
     for name, params in embedding_params.items():
+        filename = output_dir / f"embedding_{name}.pkl"
+        if filename.exists():
+            print(f"Embedding {name} already exists. Skipping.")
+            continue
+
         embedding = umap.UMAP(
             **params, random_state=42, precomputed_knn=precomputed_knn
         ).fit_transform(X=data)
 
-        with open(output_dir / f"embedding_{name}.pkl", "wb") as f:
+        with open(filename, "wb") as f:
             pickle.dump({"ids": file_names, "embedding": embedding, "params": params}, f)
             print(f"Saved embedding_{name}.pkl")
 
