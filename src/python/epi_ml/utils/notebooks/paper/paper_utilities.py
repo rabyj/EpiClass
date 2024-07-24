@@ -651,7 +651,13 @@ def extract_experiment_keys_from_output_files(parent_folder: Path) -> Dict[str, 
 
 
 def add_second_highest_prediction(df: pd.DataFrame, pred_cols: List[str]) -> pd.DataFrame:
-    """Return the DataFrame with a column for the second highest prediction class."""
+    """Return the DataFrame with a columns for the second highest prediction class.
+
+    Adds columns:
+    - '2nd pred class': The class with the second highest prediction.
+    - '1rst/2nd prob diff': The difference between the highest and second highest prediction probabilities.
+    - '1rst/2nd prob ratio': The ratio of the highest to second highest prediction probabilities.
+    """
     # Convert the relevant columns to a numpy array
     predictions = df[pred_cols].values
 
@@ -663,14 +669,21 @@ def add_second_highest_prediction(df: pd.DataFrame, pred_cols: List[str]) -> pd.
 
     # Map indices to column names
     second_highest_columns = np.array(pred_cols)[second_highest_indices]
+    df["2nd pred class"] = second_highest_columns
 
-    # Add the second highest prediction column to the DataFrame
-    df["2nd_pred_class"] = second_highest_columns
+    # Calculate the difference and ratio
+    highest_probs = np.max(predictions, axis=1)
+    second_highest_probs = predictions[
+        np.arange(len(predictions)), second_highest_indices
+    ]
+
+    df["1st/2nd prob diff"] = highest_probs - second_highest_probs
+    df["1st/2nd prob ratio"] = highest_probs / second_highest_probs
     return df
 
 
-def display_perc(df: pd.DataFrame | pd.Series):
+def display_perc(df: pd.DataFrame | pd.Series) -> None:
     """Display a DataFrame with percentages."""
     # pylint: disable=consider-using-f-string
-    with pd.option_context("display.float_format", "{:.2f}".format):
+    with pd.option_context("display.float_format", "{:.3f}".format):
         display(df)
