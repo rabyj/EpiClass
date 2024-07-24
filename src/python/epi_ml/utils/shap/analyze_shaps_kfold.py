@@ -375,6 +375,17 @@ def analyze_single_fold(
     )
 
 
+def get_resolution_from_path(path: Path) -> int:
+    """Extract resolution from path."""
+    re_pattern = "|".join(list(HDF5_RESOLUTION.keys()))
+    match = re.search(pattern=re_pattern, string=str(path))
+    if match is None:
+        raise ValueError(
+            f"Could not find resolution in path name '{path}'. Expected one of {HDF5_RESOLUTION.keys()}"
+        )
+    return HDF5_RESOLUTION[match.group(0)]
+
+
 def parse_arguments() -> argparse.Namespace:
     """Argument parser for command line."""
     # fmt: off
@@ -427,13 +438,7 @@ def main():
     overwrite: bool = cli.overwrite
 
     # Get resolution from base_logdir
-    re_pattern = "|".join(list(HDF5_RESOLUTION.keys()))
-    match = re.search(pattern=re_pattern, string=str(base_logdir))
-    if match is None:
-        raise ValueError(
-            f"Could not find resolution in path name '{base_logdir}'. Expected one of {HDF5_RESOLUTION.keys()}"
-        )
-    resolution = HDF5_RESOLUTION[match.group(0)]
+    resolution = get_resolution_from_path(base_logdir)
 
     if top_N_required < 1:
         raise ValueError(f"top_N_shap must be >= 1, got {top_N_required}")
