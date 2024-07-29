@@ -73,7 +73,7 @@ def main():
         if all_classes is None:
             all_classes = classes
             concat_ranks = [[] for _ in range(len(classes))]
-        elif all_classes != classes:
+        elif not np.array_equal(all_classes, classes):
             raise ValueError("Classes differ between splits")
 
         all_md5s.extend(eval_md5s)
