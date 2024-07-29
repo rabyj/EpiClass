@@ -94,7 +94,7 @@ def main():
     # Save new combined archive
     output_folder = parent_folder / "shap_ranks"
     output_folder.mkdir(exist_ok=True)
-    output_file = output_folder / "all_shap_ranks.npz"
+    output_file = output_folder / "all_shap_abs_ranks.npz"
 
     np.savez_compressed(
         file=output_file,
