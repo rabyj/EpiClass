@@ -54,10 +54,11 @@ def process_split(
     return split_ranks, eval_md5s, classes
 
 
-def main():
+def main(parent_folder: Path | None = None):  # type: ignore
     """Main"""
-    cli = parse_arguments()
-    parent_folder: Path = cli.parent_folder
+    if parent_folder is None:
+        cli = parse_arguments()
+        parent_folder: Path = cli.parent_folder
     print(f"Collecting SHAP values from: {parent_folder}")
 
     all_classes = None
