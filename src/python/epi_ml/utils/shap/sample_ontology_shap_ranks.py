@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Tuple
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from epi_ml.argparseutils.directorychecker import DirectoryChecker
@@ -54,6 +55,51 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def compute_iqr(data: ArrayLike) -> float:
+    """Calculate the interquartile range."""
+    if len(data) > 0:  # type: ignore
+        q75, q25 = np.percentile(a=data, q=[75, 25])  # type: ignore
+        iqr = q75 - q25
+    else:
+        iqr = np.nan
+    return iqr
+
+
+def write_stats(
+    output_file: Path,
+    header: str,
+    data: Dict[Tuple[str, str], Dict],
+    features_idx: List[int],
+):
+    """Write stats to a file.
+
+    Input:
+    - output_file (Path): Path to the output file.
+    - header (str): Header format.
+    - data (Dict[Tuple, Dict]): Dictionary of data to write.
+    - features_idx (List[int]): Feature indices (for data columns names).
+    """
+    # Create header
+    header_line = (
+        "Assay\tCellType\t" + "\t".join(header.format(f=f) for f in features_idx) + "\n"
+    )
+
+    # Create content lines
+    content_lines = [
+        f"{subset_assay}\t{subset_ct}\t"
+        + "\t".join(
+            f"{feature_stats[feature_idx][0]:.2f}\t{feature_stats[feature_idx][1]:.2f}"
+            for feature_idx in features_idx
+        )
+        + "\n"
+        for (subset_assay, subset_ct), feature_stats in data.items()
+    ]
+
+    with open(output_file, "w", encoding="utf8") as f:
+        f.write(header_line)
+        f.writelines(content_lines)
+
+
 def main():
     """Main"""
     print(f"Main starting at {time_now_str()}")
@@ -89,7 +135,9 @@ def main():
 
     output_classes: List[str] = [pair[1] for pair in rank_data["classes"]]
     available_md5s: Set[str] = set(rank_data["md5s"])
-    class_to_idx: Dict[str, int] = {pair[1]: int(pair[0]) for pair in rank_data["classes"]}
+    class_to_idx: Dict[str, int] = {
+        pair[1]: int(pair[0]) for pair in rank_data["classes"]
+    }
 
     # Filter metadata
     for md5 in list(metadata.md5s):
@@ -151,31 +199,39 @@ def main():
                                     feature_idx
                                 ].append(class_ranks[i, feature_idx])
 
-            # Calculate ranks stats
+            # Calculate ranks stats, (avg, stddev) and (median, iqr)
+            # fmt: off
             avg_ranks = {
                 (a, c): {
-                    f: (np.mean(ranks), np.std(ranks)) for f, ranks in subset_data.items()
+                    f: (np.mean(ranks), np.std(ranks))
+                    for f, ranks in subset_data.items()
                 }
                 for (a, c), subset_data in all_subset_ranks.items()
             }
 
-            # Save the results
+            med_ranks = {
+                (a, c): {
+                    f: (np.median(ranks), compute_iqr(ranks))
+                    for f, ranks in subset_data.items()
+                }
+                for (a, c), subset_data in all_subset_ranks.items()
+            }
+            # fmt: on
+
+            # Save average ranks
             output_file = output_folder / f"{assay}_{ct}_feature_set_avg_ranks.tsv"
-            with open(output_file, "w", encoding="utf8") as f:
-                f.write(
-                    "Assay\tCellType\t"
-                    + "\t".join(f"Feature_{f}_Avg\tFeature_{f}_Std" for f in features_idx)
-                    + "\n"
-                )
-                for (subset_assay, subset_ct), feature_stats in avg_ranks.items():
-                    f.write(f"{subset_assay}\t{subset_ct}")
-                    for feature_idx in features_idx:
-                        avg, std = feature_stats[feature_idx]
-                        f.write(f"\t{avg:.2f}\t{std:.2f}")
-                    f.write("\n")
+            write_stats(
+                output_file, "Feature_{f}_avg\tFeature_{f}_std", avg_ranks, features_idx
+            )
+
+            # Save median ranks
+            output_file = output_folder / f"{assay}_{ct}_feature_set_median_ranks.tsv"
+            write_stats(
+                output_file, "Feature_{f}_med\tFeature_{f}_iqr", med_ranks, features_idx
+            )
 
             print(
-                f"{time_now_str()} - Saved average ranks and std dev for features from {assay} - {ct} to {output_file}"
+                f"{time_now_str()} - Saved ranks statistics for features from {assay} - {ct}"
             )
 
 
