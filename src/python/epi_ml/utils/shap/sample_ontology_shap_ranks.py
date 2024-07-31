@@ -5,21 +5,22 @@ Examine:
     - ranks on important features for a cell type (one output class) vs othe cell types
     - both above, but for features unique to the selection
 """
-# pylint: disable=too-many-nested-blocks, too-many-branches
+# pylint: disable=too-many-nested-blocks,too-many-branches
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, Iterable, List, Set, Tuple, Union
 
 import numpy as np
-from numpy.typing import ArrayLike
 
 from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from epi_ml.argparseutils.directorychecker import DirectoryChecker
 from epi_ml.core.metadata import Metadata
 from epi_ml.utils.shap.subset_features_handling import (
-    collect_features_from_feature_count_file,
+    filter_feature_sets,
+    process_all_subsamplings,
+    read_all_feature_sets,
 )
 from epi_ml.utils.time import time_now_str
 
@@ -57,7 +58,7 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def compute_iqr(data: ArrayLike) -> float:
+def compute_iqr(data: List[int]) -> float:
     """Calculate the interquartile range."""
     if len(data) > 0:  # type: ignore
         q75, q25 = np.percentile(a=data, q=[75, 25])  # type: ignore
@@ -67,37 +68,129 @@ def compute_iqr(data: ArrayLike) -> float:
     return iqr
 
 
+rank_stats_type = Union[
+    Dict[Tuple[str, str], Dict[int, Tuple[float, float]]],
+    Dict[str, Dict[int, Tuple[float, float]]],
+]
+
+
+def calculate_rank_stats(
+    all_subset_ranks: Dict[Tuple[str, str], Dict[int, List[int]]]
+    | Dict[str, Dict[int, List[int]]]
+) -> Tuple[rank_stats_type, rank_stats_type]:
+    """
+    Calculate statistics for ranks associated with each feature in each subset of samples.
+
+    Args:
+        all_subset_ranks (Dict[Tuple[str, str], Dict[int, List[int]]] OR Dict[str, Dict[int, List[int]]]):
+            The ranks of each feature in each subset of samples. Can be either:
+            - A dictionary with (assay, cell_type) tuples as keys and feature ranks as values, or
+            - A dictionary with cell_type strings as keys and feature ranks as values.
+            Feature ranks should be a dictionary with feature indices as keys and lists of ranks as values.
+
+    Returns:
+        Tuple[Dict[Tuple[str, str], Dict[int, Tuple[float, float]]], Dict[Tuple[str, str], Dict[int, Tuple[float, float]]]]:
+            A tuple with two dictionaries:
+            1. The average rank and standard deviation for each feature in each subset.
+            2. The median rank and interquartile range for each feature in each subset.
+    """
+    avg_ranks = {
+        key: {
+            f: (float(np.mean(ranks)), float(np.std(ranks)))
+            for f, ranks in subset_data.items()
+        }
+        for key, subset_data in all_subset_ranks.items()
+    }
+    med_ranks = {
+        key: {
+            f: (float(np.median(ranks)), float(compute_iqr(ranks)))
+            for f, ranks in subset_data.items()
+        }
+        for key, subset_data in all_subset_ranks.items()
+    }
+    return avg_ranks, med_ranks  # type: ignore
+
+
 def write_stats(
     output_file: Path,
     header: str,
-    data: Dict[Tuple[str, str], Dict],
-    features_idx: List[int],
-):
-    """Write stats to a file.
-
-    Input:
-    - output_file (Path): Path to the output file.
-    - header (str): Header format.
-    - data (Dict[Tuple, Dict]): Dictionary of data to write.
-    - features_idx (List[int]): Feature indices (for data columns names).
+    data: Dict[Tuple[str, str], Dict[int, Tuple[float, float]]]
+    | Dict[str, Dict[int, Tuple[float, float]]],
+    features_idx: Iterable[int],
+    include_assay: bool = True,
+) -> None:
     """
+    Write statistical data to a TSV file.
+
+    This function can handle two types of data structures:
+    1. Data with assay and cell type: Dict[Tuple[str, str], Dict[int, Tuple[float, float]]]
+    2. Data with only cell type: Dict[str, Dict[int, Tuple[float, float]]]
+
+    Args:
+        output_file (Path): The path to the output TSV file.
+        header (str): A format string for the header of each feature column.
+                      Should contain '{f}' which will be replaced by the feature index.
+        data (Dict[Tuple[str, str], Dict[int, Tuple[float, float]]] OR
+              Dict[str, Dict[int, Tuple[float, float]]]):
+            The statistical data to write. Can be either:
+            - A dictionary with (assay, cell_type) tuples as keys and feature stats as values, or
+            - A dictionary with cell_type strings as keys and feature stats as values.
+            Feature stats should be a dictionary with feature indices as keys and (stat1, stat2) tuples as values.
+        features_idx (Iterable[int]): Feature indices to include in the output.
+        include_assay (bool, optional): Whether to include the assay column in the output.
+                                        Defaults to True.
+
+    Returns:
+        None
+
+    Raises:
+        ValueError: If the data structure doesn't match the include_assay parameter.
+
+    Example:
+        write_stats(
+            Path("output.tsv"),
+            "Feature_{f}_Avg\tFeature_{f}_Std",
+            {("AssayA", "CellType1"): {0: (1.0, 0.1), 1: (2.0, 0.2)}},
+            [0, 1],
+            include_assay=True
+        )
+    """
+    # Determine if the data includes assay information
+    has_assay = isinstance(next(iter(data.keys())), tuple)
+
+    if has_assay != include_assay:
+        raise ValueError("Data structure doesn't match the include_assay parameter.")
+
     # Create header
-    header_line = (
-        "Assay\tCellType\t" + "\t".join(header.format(f=f) for f in features_idx) + "\n"
-    )
+    if include_assay and has_assay:
+        header_line = (
+            "Assay\tCellType\t"
+            + "\t".join(header.format(f=f) for f in features_idx)
+            + "\n"
+        )
+    else:
+        header_line = (
+            "CellType\t" + "\t".join(header.format(f=f) for f in features_idx) + "\n"
+        )
 
     # Create content lines
-    content_lines = [
-        f"{subset_assay}\t{subset_ct}\t"
-        + "\t".join(
+    content_lines = []
+    for key, feature_stats in data.items():
+        if has_assay:
+            assay, cell_type = key
+            line_start = f"{assay}\t{cell_type}\t"
+        else:
+            cell_type = key
+            line_start = f"{cell_type}\t"
+
+        feature_values = "\t".join(
             f"{feature_stats[feature_idx][0]:.2f}\t{feature_stats[feature_idx][1]:.2f}"
             for feature_idx in features_idx
         )
-        + "\n"
-        for (subset_assay, subset_ct), feature_stats in data.items()
-    ]
+        content_lines.append(line_start + feature_values + "\n")
 
-    with open(output_file, "w", encoding="utf8") as f:
+    # Write to file using a buffer
+    with open(output_file, "w", encoding="utf8", buffering=1024 * 1024) as f:
         f.write(header_line)
         f.writelines(content_lines)
 
@@ -116,19 +209,14 @@ def main():
         if not path.exists():
             raise FileNotFoundError(f"{path} does not exist.")
 
-    print(f"{time_now_str()} - Loading important features.")
     # Collect important features
-    important_features: Dict[str, Dict[str, List[int]]] = {}
-    for folder in global_analysis_folder.iterdir():
-        if not folder.is_dir():
-            continue
+    print(f"{time_now_str()} - Loading important features.")
+    important_features = read_all_feature_sets(global_analysis_folder)
+    important_features = filter_feature_sets(important_features, minimum_count=8)
 
-        feature_file = folder / "feature_count.json"
-        if not feature_file.exists():
-            raise FileNotFoundError(f"{feature_file} does not exist.")
-
-        file_features = collect_features_from_feature_count_file(feature_file, n=8)
-        important_features[folder.name] = file_features
+    complex_feature_subsets = process_all_subsamplings(
+        global_analysis_folder, aggregate=True, minimum_count=8, verbose=False
+    )
 
     # Load SHAP ranks+classes
     print(f"{time_now_str()} - Loading SHAP ranks file.")
@@ -142,6 +230,7 @@ def main():
     }
 
     # Filter metadata
+    print(f"{time_now_str()} - Filtering metadata")
     for md5 in list(metadata.md5s):
         if md5 not in available_md5s:
             del metadata[md5]
@@ -201,40 +290,74 @@ def main():
                                     feature_idx
                                 ].append(class_ranks[i, feature_idx])
 
-            # Calculate ranks stats, (avg, stddev) and (median, iqr)
-            # fmt: off
-            avg_ranks = {
-                (a, c): {
-                    f: (np.mean(ranks), np.std(ranks))
-                    for f, ranks in subset_data.items()
-                }
-                for (a, c), subset_data in all_subset_ranks.items()
-            }
+            avg_ranks, median_ranks = calculate_rank_stats(all_subset_ranks)
 
-            med_ranks = {
-                (a, c): {
-                    f: (np.median(ranks), compute_iqr(ranks))
-                    for f, ranks in subset_data.items()
-                }
-                for (a, c), subset_data in all_subset_ranks.items()
-            }
-            # fmt: on
-
-            # Save average ranks
+            # Save rank stats
             output_file = output_folder / f"{assay}_{ct}_feature_set_avg_ranks.tsv"
             write_stats(
-                output_file, "Feature_{f}_avg\tFeature_{f}_std", avg_ranks, features_idx
+                output_file=output_file,
+                header="Feature_{f}_avg\tFeature_{f}_std",
+                data=avg_ranks,
+                features_idx=features_idx,
+                include_assay=True,
             )
-
-            # Save median ranks
             output_file = output_folder / f"{assay}_{ct}_feature_set_median_ranks.tsv"
             write_stats(
-                output_file, "Feature_{f}_med\tFeature_{f}_iqr", med_ranks, features_idx
+                output_file=output_file,
+                header="Feature_{f}_med\tFeature_{f}_iqr",
+                data=median_ranks,
+                features_idx=features_idx,
+                include_assay=True,
             )
-
             print(
                 f"{time_now_str()} - Saved ranks statistics for features from {assay} - {ct}"
             )
+
+    # Do a similar analysis but with merge_samplings_[output_class].
+    # This time compare output class vs other output classes
+    for subset_name, features_idx in complex_feature_subsets.items():
+        if "merge_samplings_" not in subset_name:
+            continue
+
+        output_class = subset_name.replace("merge_samplings_", "")
+        print(f"{time_now_str()} - Processing feature set for '{subset_name}'")
+
+        all_subset_ranks = {ct: {f: [] for f in features_idx} for ct in cell_types}
+        for ct in cell_types:
+            subset_md5s = set(metadata.md5_per_class(CELL_TYPE)[ct])
+            samples_idx = [
+                i for i, md5 in enumerate(rank_data["md5s"]) if md5 in subset_md5s
+            ]
+
+            for i in samples_idx:
+                for feature_idx in features_idx:
+                    all_subset_ranks[ct][feature_idx].append(
+                        rank_data["ranks"][class_to_idx[output_class]][i, feature_idx]
+                    )
+
+        avg_ranks, median_ranks = calculate_rank_stats(all_subset_ranks)
+
+        # Save rank stats
+        output_file = output_folder / f"{subset_name}_feature_set_avg_ranks.tsv"
+        write_stats(
+            output_file=output_file,
+            header="Feature_{f}_avg\tFeature_{f}_std",
+            data=avg_ranks,
+            features_idx=features_idx,
+            include_assay=False,
+        )
+        output_file = output_folder / f"{subset_name}_feature_set_median_ranks.tsv"
+        write_stats(
+            output_file=output_file,
+            header="Feature_{f}_med\tFeature_{f}_iqr",
+            data=median_ranks,
+            features_idx=features_idx,
+            include_assay=False,
+        )
+
+        print(
+            f"{time_now_str()} - Saved ranks statistics for features from '{subset_name}'"
+        )
 
 
 if __name__ == "__main__":
