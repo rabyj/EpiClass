@@ -1,11 +1,8 @@
 """Module containing utility functions for shap files handling and a bit of analysis."""
-
 # pylint: disable=use-dict-literal
 from __future__ import annotations
 
 import copy
-import json
-from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -270,40 +267,3 @@ def n_most_important_features(sample_shaps: np.ndarray, n: int) -> np.ndarray:
 #         print(
 #             f"Warning: The subsampling for class index {class_int} may not be coherent with SHAP values. Highest SHAP values belong to class index {highest_shap_class_idx}."
 #         )
-
-
-def collect_features_from_feature_count_file(
-    path: str | Path, n: int = 8
-) -> Dict[str, List[int]]:
-    """Collect features from feature count file that are present in at least n splits.
-
-    Returns:
-        selected_features (Dict[str, List[int]]): A dictionary where keys are classifer output classes and values are lists of features.
-    """
-    feature_count_path = Path(path)
-    with open(feature_count_path, "r", encoding="utf8") as f:
-        feature_count_input = json.load(f)
-
-    selected_features = defaultdict(set)
-    for output_class, feature_counts in feature_count_input.items():
-        for feature_idx, count in feature_counts:
-            if count >= n:
-                selected_features[output_class].add(feature_idx)
-
-    selected_features = {k: sorted(v) for k, v in selected_features.items()}
-    return selected_features
-
-
-def collect_all_features_from_feature_count_file(
-    path: str | Path, n: int = 8
-) -> List[int]:
-    """Collect all features from feature count file that are present in at least n splits.
-
-    Returns:
-        List[int]: A sorted list of all features present in the feature count file.
-    """
-    selected_features = collect_features_from_feature_count_file(path, n)
-    all_features = set()
-    for features in selected_features.values():
-        all_features.update(features)
-    return sorted(all_features)

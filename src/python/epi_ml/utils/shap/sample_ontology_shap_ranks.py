@@ -18,7 +18,9 @@ from numpy.typing import ArrayLike
 from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from epi_ml.argparseutils.directorychecker import DirectoryChecker
 from epi_ml.core.metadata import Metadata
-from epi_ml.utils.shap.shap_utils import collect_features_from_feature_count_file
+from epi_ml.utils.shap.subset_features_handling import (
+    collect_features_from_feature_count_file,
+)
 from epi_ml.utils.time import time_now_str
 
 CELL_TYPE = "harmonized_sample_ontology_intermediate"
