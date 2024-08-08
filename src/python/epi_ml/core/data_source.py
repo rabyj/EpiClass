@@ -54,12 +54,15 @@ class EpiDataSource:
         with open(self.hdf5_file, "r", encoding="utf-8") as my_file:
             first_path = Path(next(my_file).rstrip())
             try:
-                resolution = EpiDataSource.get_file_hdf5_resolution(first_path)
-            except FileNotFoundError:
-                warnings.warn(
-                    f"File not found: {first_path}. Seeking resolution with filename."
-                )
-                resolution = self.get_resolution_from_filename(first_path)
+                resolution = self.get_file_hdf5_resolution(first_path)
+            except KeyError as err:
+                warnings.warn(f"{err}. Seeking resolution from filename.")
+                try:
+                    resolution = self.get_resolution_from_filename(first_path)
+                except KeyError as err2:
+                    raise KeyError(
+                        f"Filename does not contain resolution: {first_path}"
+                    ) from err2
         return resolution
 
     @staticmethod
