@@ -26,6 +26,11 @@ class Test_Hdf5Loader:
         """Mock test EpiAtlasFoldFactory."""
         return EpiAtlasTreatmentTestData.default_test_data().epiatlas_dataset
 
+    def test_load_hdf5s(self, test_data: EpiAtlasDataset):
+        """Verify that files are loading correctly."""
+        hdf5_loader = Hdf5Loader(test_data.datasource.chromsize_file, True)
+        hdf5_loader.load_hdf5s(test_data.datasource.hdf5_file, strict=True)
+
     def test_load_hdf5_wrong_name(self, test_data: EpiAtlasDataset):
         """Verify that files are loading
         even if the internal filename does not match the md5sum.
@@ -55,14 +60,14 @@ class Test_Hdf5Loader:
         hdf5_list = Hdf5Loader.read_list(test_data.datasource.hdf5_file)
         chosen_file = list(hdf5_list.values())[0]
 
-        # corrupt a file
-        os.system(
-            f"dd if=/dev/urandom of={chosen_file} bs=1024 seek=$((RANDOM%10)) count=1 conv=notrunc"
-        )
+        with open(chosen_file, "r+b") as f:
+            f.seek(0)
+            f.write(os.urandom(1024))
 
         hdf5_loader = Hdf5Loader(test_data.datasource.chromsize_file, True)
+
         with pytest.raises(OSError, match="file signature not found"):
-            hdf5_loader.load_hdf5s(test_data.datasource.hdf5_file)
+            hdf5_loader.load_hdf5s(test_data.datasource.hdf5_file, strict=True)
 
     def test_adapt_to_environment(self, test_folder: Path, test_data: EpiAtlasDataset):
         """Test that the existence of $SLURM_TMPDIR/hdf5s affects hdf5 loading."""
