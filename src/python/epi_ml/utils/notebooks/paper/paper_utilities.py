@@ -687,3 +687,29 @@ def display_perc(df: pd.DataFrame | pd.Series) -> None:
     # pylint: disable=consider-using-f-string
     with pd.option_context("display.float_format", "{:.3f}".format):
         display(df)
+
+
+def merge_epiatlas_CA_metadata(
+    epiatlas_metadata: Metadata, ca_pred_df: pd.DataFrame
+) -> pd.DataFrame:
+    """Merge epiatlas and CA metadata for plotting.
+
+    Returns a DataFrame with 'plot_label' as column and sample id as index."""
+    # first update epiatlas metadata
+    epiatlas_info = {
+        md5: f"epiatlas_{epiatlas_metadata[md5][ASSAY]}" for md5 in epiatlas_metadata.md5s
+    }
+    CA_info = {
+        id_label: f"C-A_{assay}"
+        for id_label, assay in ca_pred_df[
+            ["Experimental-id", "manual_target_consensus"]
+        ].values
+    }
+
+    epiatlas_df = pd.DataFrame.from_dict(
+        epiatlas_info, orient="index", columns=["plot_label"]
+    )
+    ca_df = pd.DataFrame.from_dict(CA_info, orient="index", columns=["plot_label"])
+    new_df = pd.concat([epiatlas_df, ca_df])
+
+    return new_df
