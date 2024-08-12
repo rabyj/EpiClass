@@ -35,6 +35,12 @@ def parse_arguments() -> argparse.Namespace:
         default=None,
         help="Directory to save embeddings in.",
     )
+    arg_parser.add_argument(
+        "-l", "--hdf5_list",
+        type=Path,
+        default=None,
+        help="List of hdf5 files to load, only the filenames will be considered.",
+    )
     # fmt: on
     return arg_parser.parse_args()
 
@@ -69,14 +75,21 @@ def main():
 
     hdf5_loader = Hdf5Loader(chrom_file=chromsize_path, normalization=True)
 
-    # Make temporary file
+    # Get all paths
     hdf5_input_dir = Path(os.environ.get("SLURM_TMPDIR", "/tmp"))
 
-    # Get all paths
     all_paths = list(hdf5_input_dir.rglob("*.hdf5"))
     if not all_paths:
         raise FileNotFoundError(f"No hdf5 files found in {hdf5_input_dir}.")
 
+    # Filter hdf5 files
+    if cli.hdf5_list is not None:
+        with open(cli.hdf5_list, "r", encoding="utf8") as f:
+            hdf5_list = f.readlines()
+        hdf5_to_read = set(Path(x.strip()).name for x in hdf5_list)
+        all_paths = [x for x in all_paths if x.name in hdf5_to_read]
+
+    # Save list of hdf5 files actually read
     hdf5_paths_list_path = output_dir / f"{output_dir.name}_umap_files.list"
     with open(hdf5_paths_list_path, "w", encoding="utf8") as f:
         for path in all_paths:
