@@ -52,7 +52,7 @@ repos:
     - id: trailing-whitespace
       args: [--markdown-linebreak-ext=md]
 - repo: https://github.com/nbQA-dev/nbQA
-  rev: 1.6.3
+  rev: 1.8.7
   hooks:
     - id: nbqa-isort
       name: nbqa-isort
