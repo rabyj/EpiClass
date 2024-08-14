@@ -55,7 +55,7 @@ class EpiDataSource:
             first_path = Path(next(my_file).rstrip())
             try:
                 resolution = self.get_file_hdf5_resolution(first_path)
-            except KeyError as err:
+            except (KeyError, FileNotFoundError) as err:
                 warnings.warn(f"{err}. Seeking resolution from filename.")
                 try:
                     resolution = self.get_resolution_from_filename(first_path)
