@@ -195,6 +195,8 @@ class Metadata:
 
         Raises ValueError if label_category does not exist
         """
+        if isinstance(labels, str):
+            labels = [labels]
         self._check_label_category(label_category)
         filt = lambda item: item[1].get(label_category) in set(labels)
         self.apply_filter(filt)  # type: ignore
@@ -205,6 +207,8 @@ class Metadata:
 
         Raises ValueError if label_category does not exist
         """
+        if isinstance(labels, str):
+            labels = [labels]
         self._check_label_category(label_category)
         filt = lambda item: item[1].get(label_category) not in set(labels)
         self.apply_filter(filt)  # type: ignore
