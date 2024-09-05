@@ -151,12 +151,21 @@ class MetadataHandler:
         )
         return metadata
 
-    def load_metadata_df(self, version: str, merge_assays: bool = True):
+    def load_metadata_df(self, version: str, merge_assays: bool = True) -> pd.DataFrame:
         """Load a metadata dataframe for a given version.
 
-        Merge similar assays (rna 2x / wgb 2x)
+        merge_assays: Merge similar assays (rna 2x / wgb 2x)
         """
         metadata = self.load_metadata(version)
+        metadata_df = self.metadata_to_df(metadata, merge_assays)
+        return metadata_df
+
+    @staticmethod
+    def metadata_to_df(metadata: Metadata, merge_assays: bool = True) -> pd.DataFrame:
+        """Convert the metadata to a dataframe.
+
+        merge_assays: Merge similar assays (rna 2x / wgb 2x)
+        """
         metadata_df = pd.DataFrame.from_records(list(metadata.datasets))
         metadata_df.set_index("md5sum", inplace=True)
         if merge_assays:
@@ -183,6 +192,31 @@ class MetadataHandler:
                 "Merged dataframe has different length than original dataframe"
             )
         return merged_df
+
+    @staticmethod
+    def uniformize_metadata_for_plotting(
+        epiatlas_metadata: Metadata, ca_pred_df: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Simplify metadata with chip-atlas metadata for plotting."""
+        columns_to_keep = ["id", ASSAY, "track_type", "source", "plot_label"]
+
+        epiatlas_df = pd.DataFrame.from_records(list(epiatlas_metadata.datasets))
+        epiatlas_df["source"] = ["epiatlas"] * len(epiatlas_df)
+        epiatlas_df["id"] = epiatlas_df["md5sum"]
+        if "plot_label" not in epiatlas_df.columns:
+            epiatlas_df["plot_label"] = [None] * len(epiatlas_df)
+
+        ca_pred_df = ca_pred_df.copy(deep=True)
+        ca_pred_df["source"] = ["C-A"] * len(ca_pred_df)
+        ca_pred_df[ASSAY] = ca_pred_df["manual_target_consensus"]
+        ca_pred_df["track_type"] = ["pval"] * len(ca_pred_df)
+        ca_pred_df["id"] = ca_pred_df["Experimental-id"]
+        if "plot_label" not in ca_pred_df.columns:
+            ca_pred_df["plot_label"] = [None] * len(ca_pred_df)
+
+        ca_df = ca_pred_df[columns_to_keep]
+        new_df = pd.concat([epiatlas_df, ca_df])
+        return new_df
 
 
 class SplitResultsHandler:
@@ -687,29 +721,3 @@ def display_perc(df: pd.DataFrame | pd.Series) -> None:
     # pylint: disable=consider-using-f-string
     with pd.option_context("display.float_format", "{:.3f}".format):
         display(df)
-
-
-def merge_epiatlas_CA_metadata(
-    epiatlas_metadata: Metadata, ca_pred_df: pd.DataFrame
-) -> pd.DataFrame:
-    """Merge epiatlas and CA metadata for plotting.
-
-    Returns a DataFrame with 'plot_label' as column and sample id as index."""
-    # first update epiatlas metadata
-    epiatlas_info = {
-        md5: f"epiatlas_{epiatlas_metadata[md5][ASSAY]}" for md5 in epiatlas_metadata.md5s
-    }
-    CA_info = {
-        id_label: f"C-A_{assay}"
-        for id_label, assay in ca_pred_df[
-            ["Experimental-id", "manual_target_consensus"]
-        ].values
-    }
-
-    epiatlas_df = pd.DataFrame.from_dict(
-        epiatlas_info, orient="index", columns=["plot_label"]
-    )
-    ca_df = pd.DataFrame.from_dict(CA_info, orient="index", columns=["plot_label"])
-    new_df = pd.concat([epiatlas_df, ca_df])
-
-    return new_df
