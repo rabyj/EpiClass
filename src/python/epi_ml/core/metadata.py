@@ -338,6 +338,19 @@ class UUIDMetadata(Metadata):
             uuid_dict[label].add(uuid)
         return uuid_dict
 
+    def uuid_counter(self, label_category: str, verbose=True) -> Counter[str]:
+        """Return a Counter() with uuid count from the given category.
+        Ignores missing labels.
+        """
+        uuid_dict = self.uuid_per_class(label_category)
+        uuid_counter = Counter({label: len(uuid_dict[label]) for label in uuid_dict})
+
+        if verbose:
+            print(f"{uuid_counter[None]} uuid missing and ignored from count")  # type: ignore
+        del uuid_counter[None]
+
+        return uuid_counter
+
     def display_uuid_per_class(self, label_category: str) -> None:
         """Display uuid_per_class for a given metadata category."""
         uuid_dict = self.uuid_per_class(label_category)
