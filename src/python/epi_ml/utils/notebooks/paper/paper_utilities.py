@@ -206,15 +206,16 @@ class MetadataHandler:
         if "plot_label" not in epiatlas_df.columns:
             epiatlas_df["plot_label"] = [None] * len(epiatlas_df)
 
-        ca_pred_df = ca_pred_df.copy(deep=True)
-        ca_pred_df["source"] = ["C-A"] * len(ca_pred_df)
-        ca_pred_df[ASSAY] = ca_pred_df["manual_target_consensus"]
-        ca_pred_df["track_type"] = ["pval"] * len(ca_pred_df)
-        ca_pred_df["id"] = ca_pred_df["Experimental-id"]
-        if "plot_label" not in ca_pred_df.columns:
-            ca_pred_df["plot_label"] = [None] * len(ca_pred_df)
+        ca_df = ca_pred_df.copy(deep=True)
+        ca_df["source"] = ["C-A"] * len(ca_df)
+        ca_df[ASSAY] = ca_df["manual_target_consensus"]
+        ca_df["track_type"] = ["raw"] * len(ca_df)
+        ca_df["id"] = ca_df["Experimental-id"]
+        if "plot_label" not in ca_df.columns:
+            ca_df["plot_label"] = [None] * len(ca_df)
 
-        ca_df = ca_pred_df[columns_to_keep]
+        ca_df = ca_df[columns_to_keep]
+        epiatlas_df = epiatlas_df[columns_to_keep]
         new_df = pd.concat([epiatlas_df, ca_df])
         return new_df
 
