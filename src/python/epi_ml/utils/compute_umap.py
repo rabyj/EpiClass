@@ -144,6 +144,7 @@ def main():
 
         with open(output_dir / f"precomputed_knn_{nn_knn}.pkl", "wb") as f:
             pickle.dump(precomputed_knn, f)
+        print(f"Saved precomputed_knn_{nn_knn}.pkl")
 
         # Save requirements so knn pickle is never lost in the future
         dists = metadata.distributions()
@@ -152,6 +153,7 @@ def main():
                 name = dist.metadata["Name"]
                 version = dist.version
                 f.write(f"{name}=={version}\n")
+        print("Saved pickle_requirements.txt")
     else:
         # Load precomputed knn graph
         with open(output_dir / f"precomputed_knn_{nn_knn}.pkl", "rb") as f:
