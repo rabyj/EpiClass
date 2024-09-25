@@ -195,7 +195,9 @@ class MetadataHandler:
 
     @staticmethod
     def uniformize_metadata_for_plotting(
-        epiatlas_metadata: Metadata, ca_pred_df: pd.DataFrame
+        epiatlas_metadata: Metadata,
+        ca_pred_df: pd.DataFrame,
+        enc_pred_df: pd.DataFrame | None = None,
     ) -> pd.DataFrame:
         """Simplify metadata with chip-atlas metadata for plotting."""
         columns_to_keep = ["id", ASSAY, "track_type", "source", "plot_label"]
@@ -205,6 +207,7 @@ class MetadataHandler:
         epiatlas_df["id"] = epiatlas_df["md5sum"]
         if "plot_label" not in epiatlas_df.columns:
             epiatlas_df["plot_label"] = [None] * len(epiatlas_df)
+        epiatlas_df = epiatlas_df[columns_to_keep]
 
         ca_df = ca_pred_df.copy(deep=True)
         ca_df["source"] = ["C-A"] * len(ca_df)
@@ -213,10 +216,23 @@ class MetadataHandler:
         ca_df["id"] = ca_df["Experimental-id"]
         if "plot_label" not in ca_df.columns:
             ca_df["plot_label"] = [None] * len(ca_df)
-
         ca_df = ca_df[columns_to_keep]
-        epiatlas_df = epiatlas_df[columns_to_keep]
-        new_df = pd.concat([epiatlas_df, ca_df])
+
+        if enc_pred_df is not None:
+            enc_df = enc_pred_df.copy(deep=True)
+            enc_df["source"] = ["encode"] * len(enc_df)
+            enc_df[ASSAY] = enc_df[ASSAY]
+            enc_df["track_type"] = ["pval"] * len(enc_df)
+            enc_df["id"] = enc_df["ENC_ID"]
+            if "plot_label" not in enc_df.columns:
+                enc_df["plot_label"] = [None] * len(enc_df)
+
+            enc_df = enc_df[columns_to_keep]
+
+        if enc_pred_df is not None:
+            new_df = pd.concat([epiatlas_df, ca_df, enc_df])
+        else:
+            new_df = pd.concat([epiatlas_df, ca_df])
         return new_df
 
 
