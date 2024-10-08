@@ -177,6 +177,7 @@ class MetadataHandler:
         """Join the metadata to the results dataframe."""
         metadata_df = pd.DataFrame(metadata.datasets)
         metadata_df.set_index("md5sum", inplace=True)
+        metadata_df["md5sum"] = metadata_df.index
 
         diff_set = set(df.index) - set(metadata_df.index)
         if diff_set:
@@ -186,11 +187,14 @@ class MetadataHandler:
                 f"{len(diff_set)} md5sums in the results dataframe are not present in the metadata dataframe. Saved error md5sums to join_missing_md5sums.csv."
             )
 
-        merged_df = df.merge(metadata_df, how="left", left_index=True, right_index=True)
+        merged_df = df.merge(metadata_df, how="left", left_index=True, right_index=True, suffixes=(None, "_delete"))
         if len(merged_df) != len(df):
             raise AssertionError(
                 "Merged dataframe has different length than original dataframe"
             )
+        to_drop = [col for col in merged_df.columns if "_delete" in col]
+        merged_df.drop(columns=to_drop, inplace=True)
+
         return merged_df
 
     @staticmethod
