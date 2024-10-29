@@ -1,5 +1,5 @@
 """Utility functions for the paper notebooks."""
-# pylint: disable=too-many-branches
+# pylint: disable=too-many-branches,too-many-lines
 
 from __future__ import annotations
 
@@ -462,8 +462,9 @@ class SplitResultsHandler:
             split_dfs = reversed_dfs
 
         to_concat_dfs = defaultdict(list)
-        for dfs in split_dfs.values():
+        for split_name, dfs in split_dfs.items():
             for classifier, df in dfs.items():
+                df = df.assign(split=int(split_name.split("split")[-1]))
                 to_concat_dfs[classifier].append(df)
 
         concatenated_dfs = {
@@ -475,6 +476,8 @@ class SplitResultsHandler:
         for df in concatenated_dfs.values():
             if not isinstance(df.index[0], str):
                 raise AssertionError("Index is not md5sum")
+            df["md5sum"] = df.index
+            df.index.name = "md5sum"
 
         return concatenated_dfs
 
@@ -631,6 +634,8 @@ class SplitResultsHandler:
         merge_assays: bool,
         exclude_categories: List[str] | None = None,
         exclude_names: List[str] | None = None,
+        include_categories: List[str] | None = None,
+        include_names: List[str] | None = None,
         return_type: str = "both",
         mislabel_corrections: Tuple[Dict[str, str], Dict[str, Dict[str, str]]]
         | None = None,
@@ -651,6 +656,8 @@ class SplitResultsHandler:
             merge_assays (bool): Merge similar assays (rna-seq x2, wgbs x2)
             exclude_categories (List[str]): Task categories to exclude (first level directory names).
             exclude_names (List[str]): Names of folders to exclude (ex: 7c or no-mix).
+            include_categories (List[str]): Task categories to include (first level directory names).
+            include_names (List[str]): Names of folders to include (ex: 7c or no-mix).
             return_type (str): Type of data to return ('metrics', 'split_results', 'both').
             mislabel_corrections (Tuple[Dict[str, str], Dict[str, Dict[str, str]]]): ({md5sum: EpiRR_no-v},{label_category: {EpiRR_no-v: corrected_label}})
             verbose (bool): Print additional information.
@@ -687,11 +694,18 @@ class SplitResultsHandler:
             if verbose:
                 print(f"Checking {parent}")
 
-            # Get the category
+            # Get the category + filter
             relpath = parent.relative_to(results_dir)
             category = relpath.parts[0].rstrip("_1l_3000n")
+            if include_categories is not None:
+                if not any(include_str in category for include_str in include_categories):
+                    if verbose:
+                        print(f"Skipping {category}: not in {include_categories}")
+                    continue
             if exclude_categories is not None:
                 if any(exclude_str in category for exclude_str in exclude_categories):
+                    if verbose:
+                        print(f"Skipping {category}: in {exclude_categories}")
                     continue
 
             # Get the rest of the name, ignore certain runs
@@ -705,6 +719,14 @@ class SplitResultsHandler:
             if rest_of_name:
                 rest_of_name = rest_of_name[0]
 
+            # Filter out certain runs
+            if include_names is not None:
+                if not any(name in rest_of_name for name in include_names):
+                    if verbose:
+                        print(
+                            f"Skipping {category} {rest_of_name}: not in {include_names}"
+                        )
+                    continue
             if exclude_names is not None:
                 if any(name in rest_of_name for name in exclude_names):
                     if verbose:
@@ -716,6 +738,8 @@ class SplitResultsHandler:
                 full_task_name += f"_{rest_of_name}"
 
             # Get the split results
+            if verbose:
+                print(f"Getting split results for {full_task_name}")
             split_results = split_results_handler.read_split_results(parent)
             if not split_results:
                 raise ValueError(f"No split results found in {parent}")
@@ -763,6 +787,77 @@ class SplitResultsHandler:
 
         # the default return type is 'both'
         return split_results_metrics, all_split_results
+
+    def obtain_all_feature_set_data(
+        self,
+        parent_folder: Path,
+        merge_assays: bool,
+        return_type: str,
+        include_sets: List[str] | None = None,
+        include_categories: List[str] | None = None,
+        exclude_names: List[str] | None = None,
+        verbose: bool = False,
+    ) -> (
+        Dict[str, Dict[str, Dict[str, Dict[str, float]]]]
+        | Dict[str, Dict[str, Dict[str, pd.DataFrame]]]
+    ):
+        """
+        Obtain either metrics or split results for all feature sets based on the specified return_type.
+
+        Args:
+            parent_folder (Path): The parent folder containing all feature set folders.
+                Needs to be the parent of feature set folders.
+            merge_assays (bool): Whether to merge similar assays (e.g., RNA-seq x2, WGBS x2).
+            return_type (str): Type of data to return, either "metrics" or "split_results".
+            include_sets (List[str] | None): Feature sets to include.
+            include_categories (List[str] | None): Task categories to include.
+            exclude_names (List[str] | None): Names of folders to exclude (e.g., 7c or no-mix).
+            verbose (bool): Print additional information.
+
+        Returns:
+            Union[Dict[str, Dict[str, Dict[str, Dict[str, float]]]], Dict[str, Dict[str, Dict[str, pd.DataFrame]]]]:
+            A dictionary containing either metrics or results for all feature sets.
+            Format for metrics: {feature_set: {task_name: {split_name: metric_dict}}}
+            Format for split results: {feature_set: {task_name: {split_name: results_dataframe}}}
+        """
+        if return_type not in ["metrics", "split_results"]:
+            raise ValueError(
+                f"Invalid return_type: {return_type}. Choose from 'metrics' or 'split_results'."
+            )
+
+        all_data = {}
+        for folder in parent_folder.iterdir():
+            if not folder.is_dir():
+                continue
+
+            feature_set = folder.name
+            if include_sets is not None and feature_set not in include_sets:
+                if verbose:
+                    print(f"Skipping {feature_set}: not in 'include_sets' list.")
+                continue
+
+            try:
+                # Fetch either metrics or split results based on the return_type
+                split_data = self.general_split_metrics(
+                    results_dir=folder,
+                    merge_assays=merge_assays,
+                    return_type=return_type,
+                    include_categories=include_categories,
+                    exclude_names=exclude_names,
+                    verbose=verbose,
+                )
+
+                # Invert if metrics, otherwise keep as is
+                if return_type == "metrics":
+                    inverted_data = self.invert_metrics_dict(split_data)  # type: ignore
+                    all_data[feature_set] = inverted_data
+                elif return_type == "split_results":
+                    all_data[feature_set] = split_data  # type: ignore
+
+            except ValueError as err:
+                raise ValueError(f"Problem with {feature_set}") from err
+
+        return all_data
 
 
 def create_mislabel_corrector(
