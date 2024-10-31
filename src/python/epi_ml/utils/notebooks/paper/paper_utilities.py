@@ -639,7 +639,8 @@ class SplitResultsHandler:
         return_type: str = "both",
         mislabel_corrections: Tuple[Dict[str, str], Dict[str, Dict[str, str]]]
         | None = None,
-        verbose: bool = False,
+        oversampled_only: bool | None = True,
+        verbose: bool | None = False,
     ) -> (
         Dict[str, Dict[str, Dict[str, float]]]
         | Dict[str, Dict[str, pd.DataFrame]]
@@ -648,8 +649,6 @@ class SplitResultsHandler:
         ]
     ):
         """Create the content data for figure 2a. (get metrics for each task)
-
-        Currently only using oversampled runs.
 
         Args:
             results_dir (Path): Directory containing the results. Needs to be parent over category folders.
@@ -660,6 +659,7 @@ class SplitResultsHandler:
             include_names (List[str]): Names of folders to include (ex: 7c or no-mix).
             return_type (str): Type of data to return ('metrics', 'split_results', 'both').
             mislabel_corrections (Tuple[Dict[str, str], Dict[str, Dict[str, str]]]): ({md5sum: EpiRR_no-v},{label_category: {EpiRR_no-v: corrected_label}})
+            oversampled_only (bool): Only include oversampled runs.
             verbose (bool): Print additional information.
 
         Returns:
@@ -688,7 +688,9 @@ class SplitResultsHandler:
         for parent, _, _ in os.walk(results_dir):
             # Looking for oversampling only results
             parent = Path(parent)
-            if parent.name != "10fold-oversampling":
+            if "10fold" not in parent.name:
+                continue
+            if parent.name != "10fold-oversampling" and oversampled_only:
                 continue
 
             if verbose:
@@ -710,7 +712,11 @@ class SplitResultsHandler:
 
             # Get the rest of the name, ignore certain runs
             rest_of_name = list(relpath.parts[1:])
-            rest_of_name.remove("10fold-oversampling")
+            for dir_name in ["10fold", "10fold-oversampling"]:
+                try:
+                    rest_of_name.remove(dir_name)
+                except ValueError:
+                    pass
 
             if len(rest_of_name) > 1:
                 raise ValueError(
@@ -796,7 +802,8 @@ class SplitResultsHandler:
         include_sets: List[str] | None = None,
         include_categories: List[str] | None = None,
         exclude_names: List[str] | None = None,
-        verbose: bool = False,
+        oversampled_only: bool | None = True,
+        verbose: bool | None = False,
     ) -> (
         Dict[str, Dict[str, Dict[str, Dict[str, float]]]]
         | Dict[str, Dict[str, Dict[str, pd.DataFrame]]]
@@ -812,6 +819,7 @@ class SplitResultsHandler:
             include_sets (List[str] | None): Feature sets to include.
             include_categories (List[str] | None): Task categories to include.
             exclude_names (List[str] | None): Names of folders to exclude (e.g., 7c or no-mix).
+            oversampled_only (bool): Only include oversampled runs.
             verbose (bool): Print additional information.
 
         Returns:
@@ -826,6 +834,8 @@ class SplitResultsHandler:
             )
 
         all_data = {}
+        if verbose:
+            print(f"Checking folder: {parent_folder}")
         for folder in parent_folder.iterdir():
             if not folder.is_dir():
                 continue
@@ -844,6 +854,7 @@ class SplitResultsHandler:
                     return_type=return_type,
                     include_categories=include_categories,
                     exclude_names=exclude_names,
+                    oversampled_only=oversampled_only,
                     verbose=verbose,
                 )
 
