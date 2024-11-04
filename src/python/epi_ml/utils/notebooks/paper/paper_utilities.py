@@ -92,7 +92,9 @@ class IHECColorMap:
 
 
 def merge_similar_assays(df: pd.DataFrame) -> pd.DataFrame:
-    """Attempt to merge rna-seq/wgbs categories, included prediction score."""
+    """Attempt to merge rna-seq/wgbs categories, included prediction score.
+
+    A ValueError is raised if the columns are not present."""
     df = df.copy(deep=True)
 
     if "wgbs" in df.columns:
@@ -103,6 +105,7 @@ def merge_similar_assays(df: pd.DataFrame) -> pd.DataFrame:
         df["wgbs"] = df["wgbs-standard"] + df["wgbs-pbat"]
     except KeyError as exc:
         raise ValueError("Wrong results dataframe, rna or wgbs columns missing.") from exc
+
     df.drop(columns=["mrna_seq", "wgbs-standard", "wgbs-pbat"], inplace=True)
     df["True class"].replace(ASSAY_MERGE_DICT, inplace=True)
     df["Predicted class"].replace(ASSAY_MERGE_DICT, inplace=True)
@@ -266,6 +269,11 @@ class SplitResultsHandler:
             classes_test = list(set(classes_test))
 
             classes = list(df.columns[2:])
+            for col in ["md5sum", "split"]:
+                try:
+                    classes.remove(col)
+                except ValueError:
+                    pass
             for class_label in classes:
                 if class_label not in classes_test:
                     raise ValueError(
@@ -431,8 +439,10 @@ class SplitResultsHandler:
 
     @staticmethod
     def concatenate_split_results(
-        split_dfs: Dict[str, Dict[str, pd.DataFrame]], concat_first_level: bool = False
-    ) -> Dict[str, pd.DataFrame]:
+        split_dfs: Dict[str, Dict[str, pd.DataFrame]] | Dict[str, pd.DataFrame],
+        concat_first_level: bool = False,
+        depth: int = 2,
+    ) -> Dict[str, pd.DataFrame] | pd.DataFrame:
         """Concatenate split results for each different classifier or split name based on the order.
 
         This method supports two structures of input dictionaries:
@@ -445,6 +455,7 @@ class SplitResultsHandler:
             concat_first_level: A boolean flag that indicates the structure of the split_dfs dictionary.
                                 If True, the first level is the classifier name. Otherwise, the first
                                 level is the split name.
+            depth: The depth of the dictionary structure. Must be 1 or 2.
 
         Returns:
             Dict[str, pd.DataFrame] : {classifier_name: concatenated_dataframe}
@@ -453,6 +464,20 @@ class SplitResultsHandler:
             AssertionError: If the index of any concatenated DataFrame is not of type str, indicating
                             an unexpected index format.
         """
+        if depth not in [1, 2]:
+            raise ValueError(f"Depth must be 1 or 2, got {depth}")
+
+        # Handle basic case, code wasn't made for that, so a hack is done
+        if depth == 1:
+            to_concat = {"classifier": split_dfs}
+            return SplitResultsHandler.concatenate_split_results(to_concat, concat_first_level=True, depth=2)["classifier"]  # type: ignore
+
+        # Check for user error
+        if depth == 2 and isinstance(next(iter(split_dfs.values())), pd.DataFrame):
+            raise ValueError(
+                "Depth given is two, but the input is not a nested dictionary."
+            )
+
         if concat_first_level:
             # Reverse the nesting of the dictionary if concatenating by the first level.
             reversed_dfs = defaultdict(dict)
@@ -464,7 +489,14 @@ class SplitResultsHandler:
         to_concat_dfs = defaultdict(list)
         for split_name, dfs in split_dfs.items():
             for classifier, df in dfs.items():
-                df = df.assign(split=int(split_name.split("split")[-1]))
+                try:
+                    df = df.assign(split=int(split_name.split("split")[-1]))
+                except ValueError as e:
+                    if "base 10" in str(e):
+                        raise ValueError(
+                            "Wrong concat_first_level value was probably used"
+                        ) from e
+                    raise e
                 to_concat_dfs[classifier].append(df)
 
         concatenated_dfs = {
