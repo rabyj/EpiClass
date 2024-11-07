@@ -72,6 +72,7 @@ class IHECColorMap:
             rbg = color.split(",")
             color_dict[name] = f"rgb({rbg[0]},{rbg[1]},{rbg[2]})"
             color_dict[name.lower()] = color_dict[name]
+            color_dict[name.lower().replace("-", "_")] = color_dict[name]
         return color_dict
 
     def create_sex_color_map(self) -> Dict[str, str]:
@@ -83,7 +84,10 @@ class IHECColorMap:
         """Create a rbg color map for ihec assays."""
         category_label = "experiment"
         color_dict = self._create_color_map(category_label)
-        color_dict["rna_seq"] = color_dict["rna-seq"]
+        color_dict["mrna_seq"] = color_dict["rna_seq"]
+        for assay in ["wgbs-pbat", "wgbs-standard"]:
+            color_dict[assay] = color_dict["wgbs"]
+            color_dict[assay.replace("-", "_")] = color_dict["wgbs"]
         return color_dict
 
     def create_cell_type_color_map(self) -> Dict[str, str]:
@@ -860,9 +864,10 @@ class SplitResultsHandler:
             Format for metrics: {feature_set: {task_name: {split_name: metric_dict}}}
             Format for split results: {feature_set: {task_name: {split_name: results_dataframe}}}
         """
-        if return_type not in ["metrics", "split_results"]:
+        valid_return_types = ["metrics", "split_results"]
+        if return_type not in valid_return_types:
             raise ValueError(
-                f"Invalid return_type: {return_type}. Choose from 'metrics' or 'split_results'."
+                f"Invalid return_type: {return_type}. Choose from {valid_return_types}."
             )
 
         all_data = {}
@@ -909,8 +914,8 @@ def create_mislabel_corrector(
     """Obtain information necessary to correct sex and life_stage mislabels.
 
     Returns:
-        Dict[str, str]: {md5sum: EpiRR_no-v}
-        Dict[str, Dict[str, str]]: {label_category: {EpiRR_no-v: corrected_label}}
+    - Dict[str, str]: {md5sum: EpiRR_no-v}
+    - Dict[str, Dict[str, str]]: {label_category: {EpiRR_no-v: corrected_label}}
     """
     epirr_no_v = "EpiRR_no-v"
     # Associate epirrs to md5sums
