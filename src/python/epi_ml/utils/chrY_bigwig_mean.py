@@ -45,7 +45,7 @@ def compute_mean(file_path: Path) -> Tuple[str, int, int]:
     """Compute mean signal value in chrY and chrX
 
     Return
-        Tuple[filename, chrY_mean, chrX_mean, chrY_mean/chrX_mean]
+        Tuple[filename, chrY_mean, chrX_mean]
     """
     try:
         bw = pyBigWig.open(str(file_path), "r")
