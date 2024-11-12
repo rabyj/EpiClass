@@ -93,8 +93,12 @@ def main():
     # write to log
     log_file = logdir / f"{hdf5_list_path.stem}_metrics.npz"
     np.savez(log_file, **metrics)
-
     print(f"Metrics written to {log_file}")
+
+    md5s = list(signals.keys())
+    output_list = logdir / f"{hdf5_list_path.stem}_metrics_files.list"
+    with open(output_list, "w", encoding="utf8") as f:
+        f.write("\n".join(md5s))
 
 
 if __name__ == "__main__":
