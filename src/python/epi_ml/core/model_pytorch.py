@@ -223,14 +223,16 @@ class LightningDenseClassifier(pl.LightningModule):
         return probs
 
     @classmethod
-    def restore_model(cls, model_dir):
+    def restore_model(cls, model_dir, verbose=True):
         """Load the checkpoint of the best model from the last run."""
         path = Path(model_dir) / "best_checkpoint.list"
 
-        print("Reading checkpoint list and taking last line.")
+        if verbose:
+            print("Reading checkpoint list and taking last line.")
         with open(path, "r", encoding="utf-8") as ckpt_file:
             lines = ckpt_file.read().splitlines()
             ckpt_path = lines[-1].split(" ")[0]
 
-        print(f"Loading model from {ckpt_path}")
+        if verbose:
+            print(f"Loading model from {ckpt_path}")
         return LightningDenseClassifier.load_from_checkpoint(ckpt_path)

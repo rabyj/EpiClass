@@ -106,6 +106,7 @@ def main():
     if cli.model is not None:
         model_dir = cli.model
     my_model = LightningDenseClassifier.restore_model(model_dir)
+    print("Model successfully restored.")
 
     # --- OUTPUTS ---
     my_analyzer = analysis.Analysis(
