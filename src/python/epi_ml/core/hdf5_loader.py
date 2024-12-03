@@ -119,7 +119,7 @@ class Hdf5Loader:
         except KeyError:
             header = list(file.keys())[0]
             warnings.warn(
-                f"Cannot read file directly with {md5}, header is different. Using header {header}."
+                f"Cannot read file directly with using '{md5}', header is different. Using header '{header}'"
             )
             hdf5_data = file[header]
 
@@ -132,8 +132,19 @@ class Hdf5Loader:
         return array
 
     @staticmethod
-    def extract_md5(file_name: Path):
-        """Extract the md5 string from file path with specific naming convention."""
+    def extract_md5(file_name: Path) -> str:
+        """Extract the md5 string from file path with specific naming convention.
+
+        Expecting the md5 to be the first part of the file name, separated by an underscore.
+
+        If there is no md5sum, extract the filename without extension.
+        """
+        md5 = file_name.name.split("_")[0]
+        if len(md5) != 32:
+            print(
+                f"Warning: '{file_name}' does not begin with a md5sum.", file=sys.stderr
+            )
+            return file_name.stem
         return file_name.name.split("_")[0]
 
     @staticmethod
