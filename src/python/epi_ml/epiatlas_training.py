@@ -1,4 +1,5 @@
 """Main"""
+# pylint: disable=duplicate-code
 
 from __future__ import annotations
 
@@ -123,12 +124,15 @@ def main():
     else:
         min_class_size = hparams.get("min_class_size", 10)
 
-    if category in set(
-        [
-            "harmonized_sample_ontology_intermediate",
-            "harm_sample_ontology_intermediate",
-            "cell_type",
-        ]
+    if any(
+        label in category
+        for label in set(
+            [
+                "harmonized_sample_ontology_intermediate",
+                "harm_sample_ontology_intermediate",
+                "cell_type",
+            ]
+        )
     ):
         categories = set(my_metadata.get_categories())
         if "assay_epiclass" in categories:
@@ -138,7 +142,11 @@ def main():
         else:
             raise ValueError("Cannot find assay category for class pairs.")
         my_metadata = modify_metadata.filter_by_pairs(
-            my_metadata, assay_cat=assay_cat, cat2=category, nb_pairs=9, min_per_pair=10
+            my_metadata=my_metadata,
+            assay_cat=assay_cat,
+            cat2=category,
+            nb_pairs=int(os.getenv("NB_PAIRS", "9")),
+            min_per_pair=int(os.getenv("MIN_PER_PAIR", "10")),
         )
 
     # --- Load signals and train ---
