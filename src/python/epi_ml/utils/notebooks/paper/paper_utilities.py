@@ -259,7 +259,7 @@ class SplitResultsHandler:
     """Class to handle split results."""
 
     @staticmethod
-    def add_max_pred(df: pd.DataFrame) -> pd.DataFrame:
+    def add_max_pred(df: pd.DataFrame, target_label: str = "True class") -> pd.DataFrame:
         """Add the max prediction to the results dataframe.
 
         The dataframe needs to not contain extra metadata columns.
@@ -267,13 +267,14 @@ class SplitResultsHandler:
         if "Max pred" not in df.columns:
             df = df.copy(deep=True)
             classes_test = (
-                df["True class"].unique().tolist()
+                df[target_label].unique().tolist()
                 + df["Predicted class"].unique().tolist()
             )
             classes_test = list(set(classes_test))
+            print(f"Classes in df: {classes_test}")
 
             classes = list(df.columns[2:])
-            for col in ["md5sum", "split"]:
+            for col in ["md5sum", "split", "Same?", "Predicted class", "True class"]:
                 try:
                     classes.remove(col)
                 except ValueError:
@@ -281,7 +282,7 @@ class SplitResultsHandler:
             for class_label in classes:
                 if class_label not in classes_test:
                     raise ValueError(
-                        "Dataframe contains extra metadata columns, cannot ascertain classes."
+                        f"Dataframe contains extra metadata columns, cannot ascertain classes: {classes}"
                     )
             df["Max pred"] = df[classes].max(axis=1)
         return df
@@ -420,7 +421,7 @@ class SplitResultsHandler:
 
     @staticmethod
     def gather_split_results_across_categories(
-        parent_results_dir: Path,
+        parent_results_dir: Path, verbose: bool = False
     ) -> Dict[str, Dict[str, pd.DataFrame]]:
         """Gather NN split results for each classification task in the given folder children.
 
@@ -434,8 +435,14 @@ class SplitResultsHandler:
                 experiment_name = experiment_dir.name
                 category_name = category_dir.name
                 general_name = f"{category_name}_{experiment_name}"
+                if verbose:
+                    print(f"Reading {general_name} from {experiment_dir}")
 
                 experiment_dict = SplitResultsHandler.read_split_results(experiment_dir)
+                if verbose:
+                    print(
+                        f"Found {len(experiment_dict)} split results for {general_name}"
+                    )
 
                 all_dfs[general_name] = experiment_dict
 
