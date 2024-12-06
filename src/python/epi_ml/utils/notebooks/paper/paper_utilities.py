@@ -734,7 +734,9 @@ class SplitResultsHandler:
 
             # Get the category + filter
             relpath = parent.relative_to(results_dir)
-            category = relpath.parts[0].rstrip("_1l_3000n")
+            category = relpath.parts[0].replace("_1l_3000n", "")
+            if verbose:
+                print(f"Checking category: {category}")
             if include_categories is not None:
                 if not any(include_str in category for include_str in include_categories):
                     if verbose:
@@ -760,6 +762,8 @@ class SplitResultsHandler:
                 )
             if rest_of_name:
                 rest_of_name = rest_of_name[0]
+            if verbose:
+                print(f"Rest of name: {rest_of_name}")
 
             # Filter out certain runs
             if include_names is not None:
