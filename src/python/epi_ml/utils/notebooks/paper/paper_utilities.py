@@ -271,7 +271,6 @@ class SplitResultsHandler:
                 + df["Predicted class"].unique().tolist()
             )
             classes_test = list(set(classes_test))
-            print(f"Classes in df: {classes_test}")
 
             classes = list(df.columns[2:])
             for col in ["md5sum", "split", "Same?", "Predicted class", "True class"]:
@@ -313,8 +312,8 @@ class SplitResultsHandler:
         """Compute accuracy per assay for each split.
 
         Args:
-            split_results: {split_name: results_df}
-            metadata_df: The metadata dataframe.
+        - split_results: {split_name: results_df}.
+        - metadata_df: The metadata dataframe.
         """
 
         assay_acc = defaultdict(dict)
