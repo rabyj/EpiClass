@@ -115,13 +115,11 @@ class Hdf5Loader:
     def _read_hdf5(self, file: h5py.File, md5: str) -> np.ndarray:
         """Read and return concatenated genome signal for open hdf5 file."""
         try:
-            hdf5_data = file[md5]
-        except KeyError:
             header = list(file.keys())[0]
-            warnings.warn(
-                f"Cannot read file directly with using '{md5}', header is different. Using header '{header}'"
-            )
-            hdf5_data = file[header]
+        except IndexError as e:
+            raise OSError(f"Header not found in {md5}") from e
+
+        hdf5_data = file[header]
 
         chrom_signals = [hdf5_data[chrom][...] for chrom in self._chroms]  # type: ignore
         return np.concatenate(chrom_signals, dtype=np.float32)  # type: ignore
@@ -132,7 +130,7 @@ class Hdf5Loader:
         return array
 
     @staticmethod
-    def extract_md5(file_name: Path) -> str:
+    def extract_md5(file_name: Path, verbose:bool=False) -> str:
         """Extract the md5 string from file path with specific naming convention.
 
         Expecting the md5 to be the first part of the file name, separated by an underscore.
@@ -141,9 +139,10 @@ class Hdf5Loader:
         """
         md5 = file_name.name.split("_")[0]
         if len(md5) != 32:
-            print(
-                f"Warning: '{file_name}' does not begin with a md5sum.", file=sys.stderr
-            )
+            if verbose:
+                print(
+                    f"Warning: '{file_name}' does not begin with a md5sum.", file=sys.stderr
+                )
             return file_name.stem
         return file_name.name.split("_")[0]
 
