@@ -11,7 +11,7 @@ def sjoin(x):
 
 
 def merge_dataframes(
-    df1: pd.DataFrame, df2: pd.DataFrame, verbose: bool = False
+    df1: pd.DataFrame, df2: pd.DataFrame, on:str="md5sum", verbose: bool = False
 ) -> pd.DataFrame:
     """
     Merge two DataFrames by concatenating along the index, aligning common columns
@@ -31,7 +31,7 @@ def merge_dataframes(
             f"Index names are different: {df1.index.name} != {df2.index.name}"
         )
 
-    result = pd.merge(df1, df2, on="md5sum", how="outer", suffixes=("", "_merge"))
+    result = pd.merge(df1, df2, on=on, how="outer", suffixes=("", "_merge"))
 
     result.index.name = df1.index.name
     if verbose:
