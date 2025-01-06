@@ -266,6 +266,7 @@ class SplitResultsHandler:
         """Add the max prediction to the results dataframe.
 
         The dataframe needs to not contain extra metadata columns.
+        target_label: Column to ascertain output classes columns
         """
         if "Max pred" not in df.columns:
             df = df.copy(deep=True)

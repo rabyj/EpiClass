@@ -11,15 +11,22 @@ def sjoin(x):
 
 
 def merge_dataframes(
-    df1: pd.DataFrame, df2: pd.DataFrame, verbose: bool = False
+    df1: pd.DataFrame, df2: pd.DataFrame, on: str = "md5sum", verbose: bool = False
 ) -> pd.DataFrame:
     """
-    Merge two DataFrames by concatenating along the index, aligning common columns
+    Merge two DataFrames by concatenating along the given column,
+    otherwise it attemps to merge on md5sum, filename.
+    It attempts to merge by aligning common columns
     and appending non-common columns.
 
     Parameters:
     df1 (pd.DataFrame): The first DataFrame
     df2 (pd.DataFrame): The second DataFrame
+    on (str, optional): The column to merge on. Defaults to "md5sum".
+    verbose (bool, optional): Whether to print verbose output. Defaults to False.
+
+    Raises:
+        ValueError: If the index names are different, or if no merge is possible.
 
     Returns:
     pd.DataFrame: Merged DataFrame with the index name preserved.
@@ -32,7 +39,7 @@ def merge_dataframes(
         )
 
     successful_merge = False
-    merge_cols = ["md5sum", "filename"]
+    merge_cols = [on, "md5sum", "filename"]
     for merge_col in merge_cols:
         try:
             result = pd.merge(
