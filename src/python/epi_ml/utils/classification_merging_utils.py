@@ -31,7 +31,19 @@ def merge_dataframes(
             f"Index names are different: {df1.index.name} != {df2.index.name}"
         )
 
-    result = pd.merge(df1, df2, on="md5sum", how="outer", suffixes=("", "_merge"))
+    successful_merge = False
+    merge_cols = ["md5sum", "filename"]
+    for merge_col in merge_cols:
+        try:
+            result = pd.merge(
+                df1, df2, on=merge_col, how="outer", suffixes=("", "_merge")
+            )
+            successful_merge = True
+            break
+        except KeyError:
+            continue
+    if not successful_merge:
+        raise ValueError(f"Could not merge on any of the columns: {merge_cols}")
 
     result.index.name = df1.index.name
     if verbose:
