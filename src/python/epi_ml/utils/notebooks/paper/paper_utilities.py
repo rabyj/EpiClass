@@ -13,9 +13,12 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Set, Tuple
 
+try:
+    from IPython.display import display
+except ImportError:
+    display = print
 import numpy as np
 import pandas as pd
-from IPython.display import display
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 
 from epi_ml.core.metadata import Metadata
