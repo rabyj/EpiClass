@@ -272,3 +272,7 @@ def main():
 
     output_dir = base_dir
     final_results_df.to_csv(output_dir / "metadata_bias_analysis_results.csv")
+
+
+if __name__ == "__main__":
+    main()
