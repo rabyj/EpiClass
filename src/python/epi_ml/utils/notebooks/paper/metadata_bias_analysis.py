@@ -6,6 +6,7 @@ e.g. find cell type using project+assay+other
 # pylint: disable=import-error, use-dict-literal, invalid-name
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 from typing import Any, Dict, List, Set, Tuple
 
@@ -17,6 +18,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from sklearn.svm import SVC
 
+from epi_ml.argparseutils.directorychecker import DirectoryChecker
 from epi_ml.utils.notebooks.paper.paper_utilities import (
     ASSAY,
     CELL_TYPE,
@@ -163,7 +165,7 @@ def compute_all_max_bias(
         max_bias_cats, max_bias_acc = max(max_bias_dict.items(), key=lambda x: x[1])
         if verbose:
             print(f"Max bias categories: {max_bias_cats}")
-            print(f"Max bias acc: {max_bias_acc}")
+            print(f"Max bias acc: {max_bias_acc}\n")
 
         MLP_acc = avg_observed_acc[target_category]
 
@@ -194,8 +196,28 @@ def compute_all_max_bias(
     return final_results
 
 
+def parse_arguments() -> argparse.Namespace:
+    """argument parser for command line"""
+    # fmt: off
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument(
+        "training_results_dir", type=DirectoryChecker(), help="Directory where models cross-validation results are stored."
+    )
+    arg_parser.add_argument(
+        "logdir", type=DirectoryChecker(), help="A directory for the results."
+    )
+    arg_parser.add_argument("--input-only", action="store_true", default=False)
+    # fmt: on
+    return arg_parser.parse_args()
+
+
 def main():
     """Main function."""
+    cli_args = parse_arguments()
+    training_results_dir = cli_args.training_results_dir
+    logdir = cli_args.logdir
+
+    # TODO: remove hardcoded portions (do not use MetadataHandler ideally)
     base_dir = Path("/lustre07/scratch/rabyj/metadata_bias")
     if not base_dir.exists():
         raise FileNotFoundError(f"Directory {base_dir} does not exist.")
@@ -208,14 +230,12 @@ def main():
 
     split_results_handler = SplitResultsHandler()
 
-    results_dir = base_dir / "MLP_results"
-
     # Gather observed MLP results
     exclusion = ["cancer", "random", "track", "disease", "second", "end"]
     exclude_names = ["chip", "no-mixed", "ct", "7c"]
 
     all_split_results = split_results_handler.general_split_metrics(
-        results_dir=results_dir,
+        results_dir=training_results_dir,
         exclude_categories=exclusion,
         exclude_names=exclude_names,
         merge_assays=True,
@@ -232,6 +252,12 @@ def main():
     for cat_name, df in list(concat_split_results.items()):
         new_df = metadata_handler.join_metadata(df, metadata)
         concat_split_results[cat_name] = new_df
+
+    # Only keep input samples
+    if cli_args.input_only:
+        for cat_name, df in list(concat_split_results.items()):
+            new_df = df[df[ASSAY] == "input"]
+            concat_split_results[cat_name] = new_df
 
     avg_input_acc = {}
     for cat_name, df in list(concat_split_results.items()):
@@ -270,8 +296,10 @@ def main():
 
     final_results_df = pd.DataFrame.from_dict(final_results, orient="index")
 
-    output_dir = base_dir
-    final_results_df.to_csv(output_dir / "metadata_bias_analysis_results.csv")
+    filename = "metadata_bias_analysis_results"
+    if cli_args.input_only:
+        filename += "input_only"
+    final_results_df.to_csv(logdir / f"{filename}.csv")
 
 
 if __name__ == "__main__":
