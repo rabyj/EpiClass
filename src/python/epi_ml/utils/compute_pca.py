@@ -17,9 +17,9 @@ from epi_ml.core.hdf5_loader import Hdf5Loader
 
 def parse_arguments() -> argparse.Namespace:
     """argument parser for command line"""
-    # fmt: on
+    # fmt: off
     arg_parser = argparse.ArgumentParser(
-        description="Compute UMAP embeddings for hdf5 files. Files need to be stored in /tmp or $SLURM_TMPDIR."
+        description="Compute Incremental PCA embeddings for hdf5 files."
     )
     arg_parser.add_argument(
         "chromsize",
@@ -32,6 +32,18 @@ def parse_arguments() -> argparse.Namespace:
         default=None,
         help="Directory to save embeddings in. Saves in home directory if not provided.",
     )
+    arg_parser.add_argument(
+        "--batch_size",
+        type=int,
+        help="Size of batches for incremental PCA. Default 30 000.",
+        default=30000,
+    )
+    arg_parser.add_argument(
+        "--input_list",
+        type=Path,
+        help="List of hdf5 files to load. Absolute path is recommended. By default, all hdf5 files in SLURM_TMPDIR or /tmp are used.",
+        default=None,
+    )
     # fmt: on
     return arg_parser.parse_args()
 
@@ -40,68 +52,111 @@ def main():
     """Run the main function."""
     cli = parse_arguments()
 
-    if cli.output is not None:
-        output_dir = cli.output
-        try:
-            output_dir.mkdir(exist_ok=True)
-        except FileNotFoundError:
-            output_dir = Path.home()
-    else:
-        output_dir = Path.home()
+    output_dir = cli.output if cli.output is not None else Path.home()
 
+    if cli.batch_size <= 0:
+        raise ValueError("batch_size must be positive")
+
+    # Initialize HDF5 loader
     chromsize_path = cli.chromsize
     hdf5_loader = Hdf5Loader(chrom_file=chromsize_path, normalization=True)
 
-    # Find all hdf5 files
-    hdf5_input_dir = Path(os.environ.get("SLURM_TMPDIR", "/tmp"))
+    # Handle input file paths
+    if cli.input_list is not None:
+        hdf5_paths_list_path = cli.input_list
+        # Count files in input list for reporting
+        with open(hdf5_paths_list_path, "r", encoding="utf8") as f:
+            total_files = sum(1 for _ in f)
+    else:
+        # Find all hdf5 files
+        hdf5_input_dir = Path(os.environ.get("SLURM_TMPDIR", "/tmp"))
+        all_paths = list(hdf5_input_dir.rglob("*.hdf5"))
+        if not all_paths:
+            raise FileNotFoundError(f"No hdf5 files found in {hdf5_input_dir}.")
 
-    all_paths = list(hdf5_input_dir.rglob("*.hdf5"))
-    if not all_paths:
-        raise FileNotFoundError(f"No hdf5 files found in {hdf5_input_dir}.")
-    print(f"Found {len(all_paths)} hdf5 files.")
+        total_files = len(all_paths)
+        print(f"Found {total_files} hdf5 files.")
 
-    hdf5_paths_list_path = output_dir / f"{output_dir.name}_umap_files.list"
-    with open(hdf5_paths_list_path, "w", encoding="utf8") as f:
-        for path in all_paths:
-            f.write(f"{path}\n")
-    print(f"Saved hdf5 files used to: {hdf5_paths_list_path}")
+        hdf5_paths_list_path = output_dir / f"{output_dir.name}_umap_files.list"
+        with open(hdf5_paths_list_path, "w", encoding="utf8") as f:
+            for path in all_paths:
+                f.write(f"{path}\n")
+        print(f"Saved hdf5 files list to: {hdf5_paths_list_path}")
 
-    # Load relevant files
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", message="Cannot read file directly with")
-        hdf5_dict = hdf5_loader.load_hdf5s(
-            data_file=hdf5_paths_list_path,
-            verbose=True,
-            strict=False,
-        ).signals
+    # Load HDF5 files
+    try:
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="Cannot read file directly with")
+            hdf5_dict = hdf5_loader.load_hdf5s(
+                data_file=hdf5_paths_list_path,
+                verbose=True,
+                strict=False,
+            ).signals
+    except Exception as e:
+        raise RuntimeError(f"Error loading HDF5 files: {str(e)}") from e
 
-    print(f"Loaded {len(hdf5_dict)}/{len(all_paths)} files.")
+    if not hdf5_dict:
+        raise ValueError("No valid data loaded from HDF5 files")
+
+    print(f"Loaded {len(hdf5_dict)}/{total_files} files.")
+
+    # Extract data and free memory
     file_names = list(hdf5_dict.keys())
-    data = np.array(list(hdf5_dict.values()), dtype=np.float32)
-    del hdf5_dict
+    try:
+        data = np.array(list(hdf5_dict.values()), dtype=np.float32)
+    except Exception as e:
+        raise RuntimeError(f"Error converting data to numpy array: {str(e)}") from e
+    finally:
+        del hdf5_dict  # Free memory immediately
+
+    if data.size == 0:
+        raise ValueError("Empty dataset after conversion")
+
     N_files = len(file_names)
 
-    # PCA computation
-    n_components = 3
-    ipca = IncrementalPCA(n_components=n_components, batch_size=int(N_files / 5))
-    X_ipca = ipca.fit_transform(data)
+    # Validate batch size against dataset size
+    if cli.batch_size > N_files:
+        print(
+            f"Warning: batch_size ({cli.batch_size}) is larger than dataset size ({N_files})"
+        )
+        batch_size = N_files
+    else:
+        batch_size = cli.batch_size
 
-    # Save the PCA model and the transformed data
+    # PCA computation
+    n_components = min(3, N_files)  # Ensure n_components doesn't exceed dataset size
+    ipca = IncrementalPCA(n_components=n_components, batch_size=batch_size)
+
+    try:
+        X_ipca = ipca.fit_transform(data)
+    except Exception as e:
+        raise RuntimeError(f"PCA computation failed: {str(e)}") from e
+    finally:
+        del data  # Free memory immediately after PCA
+
+    # Save results
     fit_name = f"IPCA_fit_n{N_files}.skops"
     X_name = f"X_IPCA_n{N_files}.skops"
     dump_fit = {"file_names": file_names, "ipca_fit": ipca}
     dump_transformed_data = {"file_names": file_names, "X_ipca": X_ipca}
-    skio.dump(dump_fit, output_dir / fit_name)
-    skio.dump(dump_transformed_data, output_dir / X_name)
 
-    # Save requirements saved file still usable in the future
-    dists = metadata.distributions()
-    req_file_name = "IPCA_saved_files_requirements.txt"
-    with open(output_dir / req_file_name, "w", encoding="utf8") as f:
-        for dist in dists:
-            name = dist.metadata["Name"]
-            version = dist.version
-            f.write(f"{name}=={version}\n")
+    try:
+        skio.dump(dump_fit, output_dir / fit_name)
+        skio.dump(dump_transformed_data, output_dir / X_name)
+    except Exception as e:
+        raise RuntimeError(f"Error saving results: {str(e)}") from e
+
+    # Save requirements
+    try:
+        dists = metadata.distributions()
+        req_file_name = "IPCA_saved_files_requirements.txt"
+        with open(output_dir / req_file_name, "w", encoding="utf8") as f:
+            for dist in dists:
+                name = dist.metadata["Name"]
+                version = dist.version
+                f.write(f"{name}=={version}\n")
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        print(f"Warning: Could not save requirements file: {str(e)}")
 
     print(f"Saved IPCA fit to: {output_dir / fit_name}")
     print(f"Saved transformed data to: {output_dir / X_name}")
