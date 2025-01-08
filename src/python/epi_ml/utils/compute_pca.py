@@ -7,6 +7,7 @@ import os
 import warnings
 from importlib import metadata
 from pathlib import Path
+from typing import List
 
 import numpy as np
 import skops.io as skio
@@ -46,6 +47,15 @@ def parse_arguments() -> argparse.Namespace:
     )
     # fmt: on
     return arg_parser.parse_args()
+
+
+def find_rows_with_same_values(arr, atol=1e-5) -> List[int]:
+    """Find rows in an array with all values close to the first value."""
+    problematic_rows = []
+    for idx, row in enumerate(arr):
+        if np.all(np.isclose(row, row[0], atol=atol)):
+            problematic_rows.append(idx)
+    return problematic_rows
 
 
 def main():
@@ -103,7 +113,9 @@ def main():
     # Extract data and free memory
     file_names = list(hdf5_dict.keys())
     try:
+        # Stack all arrays into a single 2D array
         data = np.array(list(hdf5_dict.values()), dtype=np.float32)
+        print(f"Dataset shape: {data.shape}")
     except Exception as e:
         raise RuntimeError(f"Error converting data to numpy array: {str(e)}") from e
     finally:
@@ -111,6 +123,26 @@ def main():
 
     if data.size == 0:
         raise ValueError("Empty dataset after conversion")
+
+    # Find rows containing NaN or Inf values
+    problematic_rows = (~np.isfinite(data)).any(axis=1)
+    if np.any(problematic_rows):
+        row_indices = np.where(problematic_rows)[0]
+        print(f"Problematic rows (indices): {row_indices}")
+
+        affected_files = [file_names[i] for i in row_indices]
+        print(f"Filenames with issues: {affected_files}")
+
+        raise ValueError("Dataset contains inf or NaN values")
+
+    problematic_rows_idx = find_rows_with_same_values(data)
+    if problematic_rows_idx:
+        print(f"Problematic rows (indices): {problematic_rows_idx}")
+        affected_files = [file_names[i] for i in problematic_rows_idx]
+        print(f"Filenames with issues: {affected_files}")
+        raise ValueError(
+            "Dataset contains rows with all identical values. Check preprocessing steps."
+        )
 
     N_files = len(file_names)
 
