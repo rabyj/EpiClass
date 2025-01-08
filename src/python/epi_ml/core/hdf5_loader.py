@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import os
 import sys
-import warnings
 from pathlib import Path
 from typing import Dict, List
 
@@ -130,7 +129,7 @@ class Hdf5Loader:
         return array
 
     @staticmethod
-    def extract_md5(file_name: Path, verbose:bool=False) -> str:
+    def extract_md5(file_name: Path, verbose: bool = False) -> str:
         """Extract the md5 string from file path with specific naming convention.
 
         Expecting the md5 to be the first part of the file name, separated by an underscore.
@@ -141,7 +140,8 @@ class Hdf5Loader:
         if len(md5) != 32:
             if verbose:
                 print(
-                    f"Warning: '{file_name}' does not begin with a md5sum.", file=sys.stderr
+                    f"Warning: '{file_name}' does not begin with a md5sum.",
+                    file=sys.stderr,
                 )
             return file_name.stem
         return file_name.name.split("_")[0]
