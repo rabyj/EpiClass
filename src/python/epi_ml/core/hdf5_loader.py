@@ -97,7 +97,7 @@ class Hdf5Loader:
             try:
                 with h5py.File(file, "r") as f:
                     signals[md5] = self._normalize(self._read_hdf5(f, md5))
-            except OSError as err:
+            except (OSError, FloatingPointError) as err:
                 print(f"Error occured with {md5}: {file}. {err}", file=sys.stderr)
                 if strict:
                     print(
@@ -124,8 +124,16 @@ class Hdf5Loader:
         return np.concatenate(chrom_signals, dtype=np.float32)  # type: ignore
 
     def _normalize(self, array: np.ndarray) -> np.ndarray:
+        """Normalize array if internal flag set so.
+
+        If normalization is not set, return array as is.
+
+        Raises:
+            FloatingPointError: if operation fails
+        """
         if self._normalization:
-            return (array - array.mean()) / array.std()
+            with np.errstate(all="raise"):
+                return (array - array.mean()) / array.std()
         return array
 
     @staticmethod
