@@ -94,6 +94,7 @@ def main():
         print(f"Saved hdf5 files list to: {hdf5_paths_list_path}")
 
     # Load HDF5 files
+    print("Loading HDF5 files.")
     try:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", message="Cannot read file directly with")
@@ -156,6 +157,7 @@ def main():
         batch_size = cli.batch_size
 
     # PCA computation
+    print("Computing PCA")
     n_components = min(3, N_files)  # Ensure n_components doesn't exceed dataset size
     ipca = IncrementalPCA(n_components=n_components, batch_size=batch_size)
 

@@ -298,7 +298,7 @@ def main():
 
     filename = "metadata_bias_analysis_results"
     if cli_args.input_only:
-        filename += "input_only"
+        filename += "_input_only"
     final_results_df.to_csv(logdir / f"{filename}.csv")
 
 
