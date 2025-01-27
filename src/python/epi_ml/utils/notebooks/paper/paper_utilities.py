@@ -218,11 +218,13 @@ class MetadataHandler:
     @staticmethod
     def uniformize_metadata_for_plotting(
         epiatlas_metadata: Metadata,
-        ca_pred_df: pd.DataFrame,
+        ca_pred_df: pd.DataFrame | None = None,
         enc_pred_df: pd.DataFrame | None = None,
+        recount3_metadata: pd.DataFrame | None = None,
     ) -> pd.DataFrame:
         """Simplify metadata with chip-atlas metadata for plotting."""
         columns_to_keep = ["id", ASSAY, "track_type", "source", "plot_label"]
+        to_concat = []
 
         epiatlas_df = pd.DataFrame.from_records(list(epiatlas_metadata.datasets))
         epiatlas_df["source"] = ["epiatlas"] * len(epiatlas_df)
@@ -231,14 +233,19 @@ class MetadataHandler:
             epiatlas_df["plot_label"] = [None] * len(epiatlas_df)
         epiatlas_df = epiatlas_df[columns_to_keep]
 
-        ca_df = ca_pred_df.copy(deep=True)
-        ca_df["source"] = ["C-A"] * len(ca_df)
-        ca_df[ASSAY] = ca_df["manual_target_consensus"]
-        ca_df["track_type"] = ["raw"] * len(ca_df)
-        ca_df["id"] = ca_df["Experimental-id"]
-        if "plot_label" not in ca_df.columns:
-            ca_df["plot_label"] = [None] * len(ca_df)
-        ca_df = ca_df[columns_to_keep]
+        to_concat.append(epiatlas_df)
+
+        if ca_pred_df is not None:
+            ca_df = ca_pred_df.copy(deep=True)
+            ca_df["source"] = ["C-A"] * len(ca_df)
+            ca_df[ASSAY] = ca_df["manual_target_consensus"]
+            ca_df["track_type"] = ["raw"] * len(ca_df)
+            ca_df["id"] = ca_df["Experimental-id"]
+            if "plot_label" not in ca_df.columns:
+                ca_df["plot_label"] = [None] * len(ca_df)
+
+            ca_df = ca_df[columns_to_keep]
+            to_concat.append(ca_df)
 
         if enc_pred_df is not None:
             enc_df = enc_pred_df.copy(deep=True)
@@ -250,12 +257,21 @@ class MetadataHandler:
                 enc_df["plot_label"] = [None] * len(enc_df)
 
             enc_df = enc_df[columns_to_keep]
+            to_concat.append(enc_df)
 
-        if enc_pred_df is not None:
-            new_df = pd.concat([epiatlas_df, ca_df, enc_df])
-        else:
-            new_df = pd.concat([epiatlas_df, ca_df])
-        return new_df
+        if recount3_metadata is not None:
+            recount3_df = recount3_metadata.copy(deep=True)
+            recount3_df["source"] = ["recount3"] * len(recount3_df)
+            recount3_df[ASSAY] = recount3_df["harmonized_assay"]
+            recount3_df["track_type"] = ["unique_raw"] * len(recount3_df)
+            recount3_df["id"] = recount3_df["ID"]
+            if "plot_label" not in recount3_df.columns:
+                recount3_df["plot_label"] = [None] * len(recount3_df)
+
+            recount3_df = recount3_df[columns_to_keep]
+            to_concat.append(recount3_df)
+
+        return pd.concat(to_concat)
 
 
 class SplitResultsHandler:
