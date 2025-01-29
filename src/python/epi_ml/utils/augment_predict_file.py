@@ -46,6 +46,11 @@ def parse_arguments() -> argparse.Namespace:
         action="store_true",
         help="Add coherence metrics to file.",
     )
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Verbose mode.",
+    )
 
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument(
@@ -246,6 +251,7 @@ def main():
 
     metadata = Metadata(args.metadata)
     pred_file = args.predict_file
+    verbose = args.verbose
 
     if args.correct_true:
         correct_true(path=pred_file, category=args.correct_true, metadata=metadata)
@@ -266,6 +272,9 @@ def main():
 
     if args.compute_coherence:
         write_coherence(new_path, "Predicted class")
+
+    if verbose:
+        print(f"Augmented prediction file saved to {new_path}")
 
 
 if __name__ == "__main__":

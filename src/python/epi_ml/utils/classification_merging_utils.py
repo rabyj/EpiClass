@@ -26,17 +26,24 @@ def merge_dataframes(
     verbose (bool, optional): Whether to print verbose output. Defaults to False.
 
     Raises:
-        ValueError: If the index names are different, or if no merge is possible.
+        ValueError: If no merge is possible.
 
     Returns:
-    pd.DataFrame: Merged DataFrame with the index name preserved.
+    pd.DataFrame: Merged DataFrame. Index name is preserved if it was the same.
     """
     if verbose:
         print(f"Entering shapes: {df1.shape}, {df2.shape}")
-    if df1.index.name != df2.index.name:
+    if on == "index" and df1.index.name != df2.index.name:
         raise ValueError(
             f"Index names are different: {df1.index.name} != {df2.index.name}"
         )
+
+    if on == "index":
+        try:
+            result = pd.merge(df1, df2, how="outer", suffixes=("", "_merge"))
+            return result
+        except ValueError:
+            pass
 
     successful_merge = False
     merge_cols = [on, "md5sum", "filename"]
@@ -52,17 +59,17 @@ def merge_dataframes(
     if not successful_merge:
         raise ValueError(f"Could not merge on any of the columns: {merge_cols}")
 
-    result.index.name = df1.index.name
     if verbose:
-        print(f"Output shape 1 (pd.merge): {result.shape}")
+        print(f"Output shape 1 (After pd.merge): {result.shape}")
 
+    # Merge duplicates columns
     dup_cols = [name for name in result.columns if name.endswith("_merge")]
     for dup_col in dup_cols:
         normal_col = dup_col[: -len("_merge")]
         result[normal_col].update(result.pop(dup_col))
 
     if verbose:
-        print(f"Output shape 2 (merge dups): {result.shape}")
+        print(f"Output shape 2 (After merging dups columns): {result.shape}")
 
     return result
 

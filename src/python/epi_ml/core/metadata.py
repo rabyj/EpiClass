@@ -27,13 +27,18 @@ class Metadata:
         self._rest = {}
 
     @classmethod
-    def from_dict(cls, metadata: Dict[str, dict]) -> Metadata:
+    def from_dict(
+        cls, metadata: Dict[str, dict], allow_non_md5sum_index: bool = False
+    ) -> Metadata:
         """Creates an object from a dict conforming to {md5sum:dset} format."""
         first_key = list(metadata.keys())[0]
         if len(first_key) != 32:
-            raise ValueError(
-                f"Incorrect format of metadata. Key need to be md5sum (len=32). Is: {first_key}"
-            )
+            message = f"Incorrect format of metadata. Key need to be md5sum (len=32). First key is: {first_key}"
+            if not allow_non_md5sum_index:
+                raise ValueError(
+                    f"Incorrect format of metadata. Key need to be md5sum (len=32). First key is: {first_key}"
+                )
+            print(message, file=sys.stderr)
 
         obj = cls.__new__(cls)
         obj._metadata = copy.deepcopy(metadata)
@@ -279,13 +284,18 @@ class UUIDMetadata(Metadata):
     """Metadata class for UUID datasets, e.g. epiatlas."""
 
     @classmethod
-    def from_dict(cls, metadata: Dict[str, dict]) -> UUIDMetadata:
+    def from_dict(
+        cls, metadata: Dict[str, dict], allow_non_md5sum_index: bool = False
+    ) -> UUIDMetadata:
         """Creates an object from a dict conforming to {md5sum:dset} format."""
         first_key = list(metadata.keys())[0]
         if len(first_key) != 32:
-            raise ValueError(
-                f"Incorrect format of metadata. Key need to be md5sum (len=32). Is: {first_key}"
-            )
+            message = f"Incorrect format of metadata. Key need to be md5sum (len=32). First key is: {first_key}"
+            if not allow_non_md5sum_index:
+                raise ValueError(
+                    f"Incorrect format of metadata. Key need to be md5sum (len=32). First key is: {first_key}"
+                )
+            print(message, file=sys.stderr)
 
         obj = cls.__new__(cls)
         obj._metadata = copy.deepcopy(metadata)
