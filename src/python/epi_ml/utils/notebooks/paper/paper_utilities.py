@@ -279,7 +279,7 @@ class SplitResultsHandler:
 
     @staticmethod
     def add_max_pred(df: pd.DataFrame, target_label: str = "True class") -> pd.DataFrame:
-        """Add the max prediction to the results dataframe.
+        """Add the max prediction column ("Max pred") to the results dataframe.
 
         The dataframe needs to not contain extra metadata columns.
         target_label: Column to ascertain output classes columns
@@ -287,12 +287,19 @@ class SplitResultsHandler:
         if "Max pred" not in df.columns:
             df = df.copy(deep=True)
             classes_test = (
-                df[target_label].unique().tolist()
-                + df["Predicted class"].unique().tolist()
+                df[target_label].astype(str).unique().tolist()
+                + df["Predicted class"].astype(str).unique().tolist()
             )
             classes_test = list(set(classes_test))
 
             classes = list(df.columns[2:])
+            if any(label in classes for label in ["TRUE", "FALSE"]):
+                print(
+                    "WARNING: Found TRUE or FALSE in pred vector columns. Changing column names."
+                )
+                df.rename(columns={"TRUE": "True", "FALSE": "False"}, inplace=True)
+                classes = list(df.columns[2:])
+
             for col in ["md5sum", "split", "Same?", "Predicted class", "True class"]:
                 try:
                     classes.remove(col)
@@ -301,7 +308,8 @@ class SplitResultsHandler:
             for class_label in classes:
                 if class_label not in classes_test:
                     raise ValueError(
-                        f"Dataframe contains extra metadata columns, cannot ascertain classes: {classes}"
+                        f"""Dataframe contains extra metadata columns, cannot ascertain classes: {classes}.
+                        Column {class_label} is not in {classes_test}"""
                     )
             df["Max pred"] = df[classes].max(axis=1)
         return df
