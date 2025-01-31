@@ -715,6 +715,7 @@ class SplitResultsHandler:
         | None = None,
         oversampled_only: bool | None = True,
         verbose: bool | None = False,
+        min_pred_score: float | None = None,
     ) -> (
         Dict[str, Dict[str, Dict[str, float]]]
         | Dict[str, Dict[str, pd.DataFrame]]
@@ -735,6 +736,7 @@ class SplitResultsHandler:
             mislabel_corrections (Tuple[Dict[str, str], Dict[str, Dict[str, str]]]): ({md5sum: EpiRR_no-v},{label_category: {EpiRR_no-v: corrected_label}})
             oversampled_only (bool): Only include oversampled runs.
             verbose (bool): Print additional information.
+            min_pred_score (float): Minimum prediction score to consider. Affects the metrics. Defaults to None.
 
         Returns:
             Union[Dict[str, Dict[str, Dict[str, float]]],
@@ -850,6 +852,14 @@ class SplitResultsHandler:
                         print(f"Skipping {full_task_name} assay merging: {e}")
                         break
                     split_results[split_name] = split_result_df
+
+            if min_pred_score:
+                for split_name, df in split_results.items():
+                    tmp_df = df.copy()
+                    tmp_df = SplitResultsHandler.add_max_pred(tmp_df)
+                    tmp_df = tmp_df[tmp_df["Max pred"] >= min_pred_score]
+                    tmp_df = tmp_df.drop(columns=["Max pred"])
+                    split_results[split_name] = tmp_df
 
             all_split_results[full_task_name] = split_results
 
