@@ -450,7 +450,11 @@ class SplitResultsHandler:
         all_dfs = {}
 
         for category_dir in parent_results_dir.iterdir():
+            if not category_dir.is_dir():
+                continue
             for experiment_dir in category_dir.iterdir():
+                if not experiment_dir.is_dir():
+                    continue
                 experiment_name = experiment_dir.name
                 category_name = category_dir.name
                 general_name = f"{category_name}_{experiment_name}"
