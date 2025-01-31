@@ -1096,3 +1096,31 @@ def display_perc(df: pd.DataFrame | pd.Series) -> None:
     # pylint: disable=consider-using-f-string
     with pd.option_context("display.float_format", "{:.3f}".format):
         display(df)
+
+
+def merge_life_stages(df: pd.DataFrame, column_name_templates: List[str]) -> pd.DataFrame:
+    """Merge prenatal stages into one category, for given column names.
+
+    New columns for LIFE_STAGE_merged will be added for each column name template.
+    Args:
+        df (pd.DataFrame): DataFrame to merge columns in.
+        column_name_templates (List[str]): List of column name templates to merge.
+            ex: ["{}", "True class ({})", "Predicted class ({})", "Max pred ({})"]
+    Returns:
+        pd.DataFrame: DataFrame with merged columns.
+    """
+    df = df.copy(deep=True)
+    life_stage_merge_dict = {
+        "fetal": "prenatal",
+        "embryonic": "prenatal",
+        "newborn": "prenatal",
+    }
+
+    for column_label in column_name_templates:
+        new_cat_label = f"{LIFE_STAGE}_merged"
+        new_cat_label = column_label.format(new_cat_label)
+
+        old_cat_label = column_label.format(LIFE_STAGE)
+        df[new_cat_label] = df[old_cat_label].replace(life_stage_merge_dict)
+
+    return df
