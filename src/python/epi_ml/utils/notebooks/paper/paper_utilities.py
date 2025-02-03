@@ -624,6 +624,7 @@ class SplitResultsHandler:
                         "AUC_macro": roc_auc_score(
                             onehot_true, pred_probs, multi_class="ovr", average="macro"
                         ),
+                        "count": len(df),
                     }
                 except ValueError as err:
                     if "Only one class" in str(err) or "multiclass format" in str(err):
