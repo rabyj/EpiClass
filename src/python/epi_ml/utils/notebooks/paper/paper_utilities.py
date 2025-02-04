@@ -704,6 +704,26 @@ class SplitResultsHandler:
         return dict(new_metrics)
 
     @staticmethod
+    def extract_count_from_metrics(metrics) -> Dict[str, int]:
+        """Extract total file count from metrics dict (sums on each split).
+
+        Returns a dict {classifier_name: count}
+        """
+        new_metrics = copy.deepcopy(metrics)
+
+        # Check for correct input
+        first_keys = list(new_metrics.keys())
+        if all("split" in key for key in first_keys):
+            new_metrics = SplitResultsHandler.invert_metrics_dict(new_metrics)
+
+        counts = defaultdict(int)
+        for classifier_name, all_split_metrics in new_metrics.items():
+            for _, split_metrics in all_split_metrics.items():
+                counts[classifier_name] += split_metrics["count"]  # type: ignore
+
+        return dict(counts)
+
+    @staticmethod
     def general_split_metrics(
         results_dir: Path,
         merge_assays: bool,
