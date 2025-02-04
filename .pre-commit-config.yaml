@@ -65,7 +65,7 @@ repos:
     - id: nbqa-pylint
       name: nbqa-pylint
       args: ["--rcfile=src/python/pyproject.toml", "--recursive=y", "-sn"]
-      additional_dependencies: [pylint==2.16.4]
+      additional_dependencies: [pylint==3.2.7]
       verbose: true
 - repo: https://github.com/PyCQA/isort
   rev: 5.12.0

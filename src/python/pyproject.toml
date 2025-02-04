@@ -55,7 +55,6 @@ disable = [
     "bad-inline-option",
     "deprecated-pragma",
     "file-ignored",
-    "fixme",
     "invalid-name",
     "line-too-long",
     "locally-disabled",
