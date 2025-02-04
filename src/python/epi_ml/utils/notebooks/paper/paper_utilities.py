@@ -1170,3 +1170,17 @@ def merge_life_stages(df: pd.DataFrame, column_name_templates: List[str]) -> pd.
         df[new_cat_label] = df[old_cat_label].replace(life_stage_merge_dict)
 
     return df
+
+
+class TemporaryLogFilter:
+    """Context manager for adding a filter to a logger."""
+
+    def __init__(self, filter_obj, logger=None):
+        self.logger = logger or logging.getLogger()
+        self.filter = filter_obj
+
+    def __enter__(self):
+        self.logger.addFilter(self.filter)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.logger.removeFilter(self.filter)
