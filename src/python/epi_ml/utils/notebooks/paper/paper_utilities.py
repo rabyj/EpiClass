@@ -660,11 +660,14 @@ class SplitResultsHandler:
                             ) from err
 
                         # Attempt to compute metrics that don't require multiple classes
-                        metrics[task_name]["Accuracy"] = accuracy_score(
-                            ravel_true, ravel_pred
-                        )
-                        metrics[task_name]["F1_macro"] = f1_score(
-                            ravel_true, ravel_pred, average="macro"
+                        metrics[task_name].update(
+                            {
+                                "Accuracy": accuracy_score(ravel_true, ravel_pred),
+                                "F1_macro": f1_score(
+                                    ravel_true, ravel_pred, average="macro"
+                                ),
+                                "count": len(df),
+                            }
                         )
                     else:
                         err_msg = f"Unexpected error in {split} for {task_name}."
