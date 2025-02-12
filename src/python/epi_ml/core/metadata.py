@@ -14,6 +14,8 @@ from difflib import SequenceMatcher as SM
 from pathlib import Path
 from typing import Dict, Iterable, List, Set, Tuple
 
+import pandas as pd
+
 
 class Metadata:
     """
@@ -112,6 +114,10 @@ class Metadata:
     def items(self) -> ItemsView:
         """Return a (md5,datasets) view (like dict.items())."""
         return self._metadata.items()
+
+    def to_df(self):
+        """Return a dataframe with one file per row."""
+        return pd.DataFrame.from_records(list(self.datasets))
 
     def _load_metadata(self, path):
         """Return md5:dataset dict."""
