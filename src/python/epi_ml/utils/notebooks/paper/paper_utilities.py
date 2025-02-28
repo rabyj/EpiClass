@@ -252,7 +252,7 @@ class MetadataHandler:
             enc_df["source"] = ["encode"] * len(enc_df)
             enc_df[ASSAY] = enc_df[ASSAY]
             enc_df["track_type"] = ["pval"] * len(enc_df)
-            enc_df["id"] = enc_df["ENC_ID"]
+            enc_df["id"] = enc_df["FILE_accession"]
             if "plot_label" not in enc_df.columns:
                 enc_df["plot_label"] = [None] * len(enc_df)
 
@@ -899,6 +899,7 @@ class SplitResultsHandler:
                 raise e
 
         if return_type == "metrics":
+            # pylint: disable=possibly-used-before-assignment
             return split_results_metrics
         if return_type == "split_results":
             return all_split_results
