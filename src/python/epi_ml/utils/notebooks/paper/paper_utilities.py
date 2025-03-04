@@ -1185,3 +1185,56 @@ class TemporaryLogFilter:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.logger.removeFilter(self.filter)
+
+
+def set_file_id(
+    df: pd.DataFrame, input_col: str = "Unnamed: 0", output_col: str = "md5sum"
+) -> pd.DataFrame:
+    """Standardizes a filename column by extracting the prefix and ensuring it is the first column.
+
+    This function renames a given column (`input_col`) by extracting the prefix (before `_`)
+    and moves it to the first position in the DataFrame. If `input_col` and `output_col`
+    are the same, the column is updated in place and repositioned.
+
+    Handled filename cases:
+    - recount3: sra.base_sums.SRP076599_SRR3669968.ALL_[resolution]_[filters].hdf5 -> SRR3669968
+    - ENCODE/ChIP-Atlas: [file_db_accession]_[resolution]_[filters].hdf5 -> [file_db_accession]
+    - EpiATLAS: [md5sum]_[resolution]_[filters].hdf5 -> [md5sum]
+
+
+    Args:
+        df (pd.DataFrame): The input DataFrame.
+        input_col (str, optional): The name of the column to process. Defaults to "Unnamed: 0".
+        output_col (str, optional): The name of the resulting column. Defaults to "md5sum".
+
+    Returns:
+        pd.DataFrame: A modified DataFrame with the processed column as the first column.
+
+    Raises:
+        KeyError: If `input_col` is not found in the DataFrame.
+    """
+    df = df.copy(deep=True)
+
+    try:
+        input_vals = df[input_col]
+    except KeyError as err:
+        raise KeyError(f"Column {input_col} not found.") from err
+
+    if output_col in df.columns:
+        df = df.drop(output_col, axis=1)
+
+    new_ids = [
+        input_val.split("_")[0]
+        if input_val[0:3] != "sra"
+        else input_val.split(".")[2].split("_")[1]
+        for input_val in input_vals
+    ]
+
+    if len(set(new_ids)) != len(new_ids):
+        raise ValueError("Produce non-unique ids. Review input column and code.")
+
+    # Remove input_col and reinsert as the first column, regardless of whether input_col == output_col
+    df[input_col] = new_ids
+    df.insert(0, output_col, df.pop(input_col))
+
+    return df
