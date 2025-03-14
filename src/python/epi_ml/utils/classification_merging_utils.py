@@ -38,23 +38,31 @@ def merge_dataframes(
             f"Index names are different: {df1.index.name} != {df2.index.name}"
         )
 
-    if on == "index":
-        try:
-            result = pd.merge(df1, df2, how="outer", suffixes=("", "_merge"))
-            return result
-        except ValueError:
-            pass
-
     successful_merge = False
-    merge_cols = [on, "md5sum", "filename"]
+    # Create a prioritized list of columns to try
+    merge_cols = [on]
+    for col in ["md5sum", "filename"]:
+        if on != col:
+            merge_cols.append(col)
+
     for merge_col in merge_cols:
         try:
-            result = pd.merge(
-                df1, df2, on=merge_col, how="outer", suffixes=("", "_merge")
-            )
+            if merge_col == "index":
+                result = pd.merge(
+                    df1,
+                    df2,
+                    left_index=True,
+                    right_index=True,
+                    how="outer",
+                    suffixes=("", "_merge"),
+                )
+            else:
+                result = pd.merge(
+                    df1, df2, on=merge_col, how="outer", suffixes=("", "_merge")
+                )
             successful_merge = True
             break
-        except KeyError:
+        except (KeyError, ValueError):
             continue
     if not successful_merge:
         raise ValueError(f"Could not merge on any of the columns: {merge_cols}")
@@ -62,11 +70,46 @@ def merge_dataframes(
     if verbose:
         print(f"Output shape 1 (After pd.merge): {result.shape}")
 
-    # Merge duplicates columns
+    # Helper function to format numbers without decimal points for whole numbers
+    def clean_format(x: object) -> str:
+        """
+        Format a value to string, removing decimal points for whole numbers.
+        Args:
+            x: Any value that needs string formatting
+        Returns:
+            Formatted string representation of the value
+        """
+        if isinstance(x, (int, float)):
+            try:
+                if float(x).is_integer():
+                    return str(int(x))
+            except (ValueError, AttributeError):
+                pass
+        return str(x)
+
+    # Combine different values with a separator
     dup_cols = [name for name in result.columns if name.endswith("_merge")]
     for dup_col in dup_cols:
-        normal_col = dup_col[: -len("_merge")]
-        result[normal_col].update(result.pop(dup_col))
+        normal_col = dup_col.replace("_merge", "")  # More readable way to remove suffix
+
+        # For rows where both columns have values and they're different
+        # combine them with a semicolon
+        both_exist_mask = result[normal_col].notna() & result[dup_col].notna()
+        different_vals_mask = both_exist_mask & (result[normal_col] != result[dup_col])
+
+        # Combine different values with semicolon separator and clean formatting
+        result.loc[different_vals_mask, normal_col] = (
+            result.loc[different_vals_mask, normal_col].apply(clean_format)
+            + ";"
+            + result.loc[different_vals_mask, dup_col].apply(clean_format)
+        )
+
+        # Fill missing values in normal column from duplicate column
+        missing_mask = result[normal_col].isna() & result[dup_col].notna()
+        result.loc[missing_mask, normal_col] = result.loc[missing_mask, dup_col]
+
+        # Drop the duplicate column
+        result = result.drop(columns=[dup_col])
 
     if verbose:
         print(f"Output shape 2 (After merging dups columns): {result.shape}")
