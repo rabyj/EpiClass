@@ -168,7 +168,7 @@ def main():
     loading_time = time_now() - loading_begin
 
     to_log = {
-        "loading_time": str(loading_time),
+        "loading_time": loading_time.total_seconds(),
         "hdf5_resolution": str(hdf5_resolution),
         "category": category,
     }
@@ -184,7 +184,7 @@ def main():
             continue
 
         split_time = time_now() - time_before_split
-        to_log.update({"split_time": str(split_time)})
+        to_log.update({"split_time": split_time.total_seconds()})
 
         # --- Startup LOGGER ---
         # api key in config file
@@ -340,7 +340,9 @@ def do_one_experiment(
             auto_metric_logging=False,
             experiment_key=logger.experiment.get_key(),
         )
-        logger.experiment.log_metric("Training time", training_time, step=split_nb)
+        logger.experiment.log_metric(
+            "Training time", training_time.total_seconds(), step=split_nb
+        )
         logger.experiment.log_metric("Last epoch", my_model.current_epoch, step=split_nb)
     try:
         my_model = LightningDenseClassifier.restore_model(logger.save_dir)
@@ -369,7 +371,7 @@ def do_one_experiment(
 
     end_loop = time_now()
     loop_time = end_loop - begin_loop
-    logger.experiment.log_metric("Loop time", loop_time, step=split_nb)
+    logger.experiment.log_metric("Loop time", loop_time.total_seconds(), step=split_nb)
     print(f"Loop time (excludes split time): {loop_time}")
 
     logger.experiment.add_tag("Finished")

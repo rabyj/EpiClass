@@ -163,7 +163,7 @@ def main():
     loading_time = time_now() - loading_begin
 
     to_log = {
-        "loading_time": str(loading_time),
+        "loading_time": loading_time.total_seconds(),
         "hdf5_resolution": str(hdf5_resolution),
         "category": category,
     }
@@ -301,7 +301,7 @@ def train_without_valid(
             auto_metric_logging=False,
             experiment_key=logger.experiment.get_key(),
         )
-        logger.experiment.log_metric("Training time", training_time)
+        logger.experiment.log_metric("Training time", training_time.total_seconds())
         logger.experiment.log_metric("Last epoch", my_model.current_epoch)
 
     try:
