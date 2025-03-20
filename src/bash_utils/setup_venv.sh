@@ -63,9 +63,13 @@ python3 -m venv $ENV_NAME
 # Activate the virtual environment
 source $ENV_NAME/bin/activate
 
+# Start by installing wheel and updating pip
+pip install wheel
+pip install --upgrade pip
+
 # Check if requirements file exists
 if [ ! -f $REQUIREMENTS_FILE ]; then
-  echo "requirements.txt does not exist. Please check the path."
+  echo "requirements.txt does not exist. Please check the path: $REQUIREMENTS_FILE"
   exit 1
 fi
 
@@ -77,7 +81,7 @@ fi
 
 # Check if local module path exists
 if [ ! -d $LOCAL_MODULE_PATH ]; then
-  echo "The specified local module path does not exist. Please check the path."
+  echo "The specified local module path does not exist. Please check the path: $LOCAL_MODULE_PATH"
   exit 1
 fi
 
