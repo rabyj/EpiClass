@@ -38,6 +38,7 @@ ignore = [
 exclude = ["**/notes", "**/epilap/**", ".git", "**/bin/**", "**/lib/**"]
 
 [tool.pylint.MASTER]
+init-hook = "import sys; sys.path.insert(0, 'src/python')"
 ignore-paths = ["venv-epilap-pytorch"]
 
 [tool.pylint.main]
@@ -77,6 +78,15 @@ generated-members = [
     "pytorch_lightning.*",
     "optuna.integration.lightgbm.*",
     "pyBigWig.*",
+]
+ignored-modules = [
+    "pandas",
+    "requests",
+    "numpy",
+    "torch",
+    "pytorch_lightning",
+    "optuna.integration.lightgbm",
+    "pyBigWig",
 ]
 
 [tool.pylint.format]
