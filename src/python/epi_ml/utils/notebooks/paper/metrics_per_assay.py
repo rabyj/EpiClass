@@ -482,15 +482,13 @@ class MetricsPerAssay:
                 }
             )
 
-        # Apply common post-processing rules
+        # Apply post-processing rules
 
         # f1-score on ASSAY task, per assay, doesn't make sense
         df_metrics.loc[df_metrics["task_name"] == ASSAY, "f1-score"] = "NA"
 
-        # acc / f1 for unknown labels is not defined
-        df_metrics.loc[
-            df_metrics[ASSAY].str.contains("unknown"), ["acc", "f1-score"]
-        ] = "NA"
+        # metrics for unknown expected class are not defined
+        df_metrics.loc[df_metrics[ASSAY] == "avg-all-unknown", ["acc", "f1-score"]] = "NA"
 
         # acc / f1 for 0 samples is not defined
         df_metrics.loc[df_metrics["nb_samples"] == 0, ["acc", "f1-score"]] = "NA"
