@@ -413,7 +413,7 @@ class MetricsPerAssay:
     def save_metrics_per_assay(
         self,
         input_metrics: Dict[str, Dict],
-        folders: List[Path],
+        folders: List[Path] | Path,
         filename: str,
         chunked: bool = False,
         verbose: bool = True,
@@ -511,6 +511,9 @@ class MetricsPerAssay:
             print(f"Saving {df_metrics.shape[0]} rows")
 
         # Save to all specified folders
+        if isinstance(folders, Path):
+            folders = [folders]
+
         for folder in folders:
             path = folder / filename
             df_metrics.to_csv(
@@ -526,7 +529,7 @@ class MetricsPerAssay:
     def save_acc_per_assay(
         self,
         metrics: Dict[str, Dict],
-        folders: List[Path],
+        folders: List[Path] | Path,
         filename: str,
         verbose: bool = True,
     ) -> pd.DataFrame:
@@ -554,7 +557,7 @@ class MetricsPerAssay:
     def save_chunked_acc_per_assay(
         self,
         metrics: Dict[str, Dict],
-        folders: List[Path],
+        folders: List[Path] | Path,
         filename: str,
         verbose: bool = True,
     ) -> pd.DataFrame:
@@ -578,3 +581,54 @@ class MetricsPerAssay:
             chunked=True,
             verbose=verbose,
         )
+
+    def compute_multiple_metric_formats(
+        self,
+        preds: pd.DataFrame,
+        folders_to_save: List[Path],
+        general_filename: str,
+        verbose: bool = True,
+        return_df: bool = False,
+        compute_fct_kwargs: Dict[str, Any] | None = None,
+    ) -> None | Dict[str, pd.DataFrame]:
+        """Compute and save metrics in different formats.
+
+        Args:
+            preds (pd.DataFrame): Dataframe containing predictions.
+            folders_to_save (List[Path]): List of folders to save the results to.
+            general_filename (str): The filename stem to use for the output files.
+                Saves files will will be "<general_filename>.tsv" and "<general_filename>_chunked.tsv"
+            verbose (bool, optional): Whether to print verbose output. Defaults to True.
+            return_df (bool, optional): Whether to return the metrics dataframes. Defaults to False.
+            compute_fct_kwargs (Dict[str, Any], optional): Keyword arguments to pass to the compute function. Defaults to None.
+        """
+        if return_df:
+            return_dict = {}
+
+        for filename in [f"{general_filename}.tsv", f"{general_filename}_chunked.tsv"]:
+            if "chunked" in filename:
+                compute_fct = self.compute_all_chunked_acc_per_assay
+                save_fct = self.save_chunked_acc_per_assay
+            else:
+                compute_fct = self.compute_all_acc_per_assay
+                save_fct = self.save_acc_per_assay
+
+            metrics = compute_fct(  # type: ignore
+                all_preds=preds,
+                verbose=verbose,
+                **(compute_fct_kwargs or {}),
+            )
+            metrics_df = save_fct(
+                metrics=metrics,  # type: ignore
+                folders=folders_to_save,
+                filename=filename,
+                verbose=verbose,
+            )
+
+            if return_df:
+                return_dict[filename] = metrics_df
+
+        if return_df:
+            return return_dict
+
+        return None
