@@ -78,6 +78,7 @@ generated-members = [
     "pytorch_lightning.*",
     "optuna.integration.lightgbm.*",
     "pyBigWig.*",
+    "sklearn.*",
 ]
 ignored-modules = [
     "pandas",
@@ -87,6 +88,7 @@ ignored-modules = [
     "pytorch_lightning",
     "optuna.integration.lightgbm",
     "pyBigWig",
+    "sklearn",
 ]
 
 [tool.pylint.format]
