@@ -219,16 +219,22 @@ class MetricsPerAssay:
                 metric_function = self.compute_metrics
 
         df = all_preds.copy(deep=True)
-        if not (all_preds["in_epiatlas"].astype(str) == "False").all() and no_epiatlas:
+        if no_epiatlas and not (all_preds["in_epiatlas"].astype(str) == "False").all():
             df = df[df["in_epiatlas"].astype(str) == "False"]
 
+        # target classification
         df = df.fillna("unknown")
-        core_assays = ASSAY_ORDER.copy()
-        if "no_consensus" in df[assay_label].unique():
-            core_assays.append("no_consensus")
+        if core_assays is None:
+            core_assays = ASSAY_ORDER.copy()
+            if "no_consensus" in df[assay_label].unique():
+                core_assays.append("no_consensus")
 
-        non_core_assays = ["ctcf", "non-core"]
+        if non_core_assays is None:
+            non_core_assays = ["ctcf", "non-core"]
+
         all_assays = core_assays + non_core_assays
+
+        # Define 'unknown' for expected labels
         unknown_labels = ["unknown", "other"]
 
         # merging rna / wgbs assays
@@ -253,6 +259,12 @@ class MetricsPerAssay:
                 else:
                     if verbose:
                         print(f"Warning: Column '{col}' not found for merging assays.")
+
+        filter_dict = {
+            "avg-all": lambda df: pd.Series(True, index=df.index),
+            "avg-core": lambda df: df[assay_label].isin(core_assays),
+            "avg-non-core": lambda df: df[assay_label].isin(non_core_assays),
+        }
 
         all_metrics_per_assay = {}
         for category_name in categories:
@@ -294,8 +306,16 @@ class MetricsPerAssay:
 
             # Process individual assays
             for label in all_assays:
+                if verbose:
+                    print(f"Processing assay target {label}")
+
                 # Process known labels
                 known_assay_df = known_df[known_df[assay_label] == label]
+                if verbose:
+                    print(f"Known {label} samples: {known_assay_df.shape[0]}")
+                    print(known_assay_df[y_true_col].value_counts(dropna=False), "\n")
+                    print(known_assay_df[y_pred_col].value_counts(dropna=False), "\n")
+
                 if not known_assay_df.empty or label in known_df[assay_label].unique():
                     if chunked:
                         # Compute chunked metrics for this assay
@@ -322,20 +342,18 @@ class MetricsPerAssay:
             if not unknown_df.empty:
                 metrics_per_assay["avg-all-unknown"] = []
 
-            for set_label in ["avg-all", "avg-core", "avg-non-core"]:
-                metrics_per_assay[set_label] = []
-
-            filter_dict = {
-                "avg-all": lambda df: pd.Series(True, index=df.index),
-                "avg-core": lambda df: df[assay_label].isin(core_assays),
-                "avg-non-core": lambda df: df[assay_label].isin(non_core_assays),
-            }
+            set_labels = ["avg-all", "avg-core", "avg-non-core"]
+            if all_assays in (core_assays, non_core_assays):
+                set_labels = ["avg-all"]
 
             if ASSAY in category_name:
-                del filter_dict["avg-non-core"]
-                del filter_dict["avg-all"]
+                set_labels = ["avg-core"]
 
-            for set_label, filter_condition in filter_dict.items():
+            for set_label in set_labels:
+                metrics_per_assay[set_label] = []
+
+            for set_label in set_labels:
+                filter_condition = filter_dict[set_label]
                 filtered_df = known_df[filter_condition(known_df)]
                 if filtered_df.empty:
                     continue
