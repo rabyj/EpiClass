@@ -2,6 +2,7 @@
 # pylint: disable=too-many-branches
 from __future__ import annotations
 
+from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Tuple
 
@@ -158,27 +159,36 @@ class MetricsPerAssay:
         assay_label: str = ASSAY,
         chunked: bool = False,
         interval: float = 0.1,
+        core_assays: List[str] | None = None,
+        non_core_assays: List[str] | None = None,
         metric_function: Callable | None = None,
         metric_args: Dict[str, Any] | None = None,
     ) -> Dict[str, Dict]:
-        """Private helper function to compute metrics for each assay.
+        """Compute metrics for each assay.
 
         Args:
-        - all_preds: The dataframe containing the predictions.
-        - categories: List of categories to compute accuracy/f1 for.
-        - verbose: Whether to print the results.
-        - no_epiatlas: Whether to exclude EpiAtlas samples.
-        - column_templates: Dictionary of column templates for true/predicted/max_pred columns.
-            If None, the default templates will be used ([column_name] ([category]))
-        - merge_assays: Whether to merge similar assays (e.g., RNA-seq x2, WGBS x2).
-        - assay_label: The label to use for the assay column.
-        - chunked: Whether to use chunked metrics (True) or standard metrics (False).
-        - interval: Size of prediction score interval (only used if chunked=True).
-        - metric_function: Function to use for computing metrics.
-        - metric_args: Additional arguments for the metric function.
+            all_preds (pd.DataFrame): Dataframe containing predictions.
+            categories (List[str] | None): List of categories to compute accuracy/F1 for. If None, uses default categories.
+                Default: [f"{ASSAY}_7c", f"{ASSAY}_11c", CELL_TYPE, SEX, LIFE_STAGE, f"{LIFE_STAGE}_merged", CANCER, f"{CANCER}_merged"]
+            verbose (bool): Whether to print the results.
+            no_epiatlas (bool): Whether to exclude EpiAtlas samples.
+            column_templates (Dict[str, str] | None): Column name templates. If None, uses default templates.
+                Default: {'True': 'True class ({})', 'Predicted': 'Predicted class ({})', 'Max pred': 'Max pred ({})'}
+            merge_assays (bool): Whether to merge similar assays.
+            assay_label (str): Label to use for the assay column.
+                Default: "assay_epiclass
+            chunked (bool): Whether to compute chunked metrics.
+            interval (float): Prediction score interval (only if chunked=True).
+            core_assays (List[str] | None): List of core assays.
+                Default: core11 assays (6 histones + input + 2 rna + 2 wgb)
+            non_core_assays (List[str] | None): List of non-core assays.
+                Default: ["ctcf", "non-core"]
+            metric_function (Callable | None): Function for computing metrics.
+            metric_args (Dict[str, Any] | None): Additional arguments for metric function.
+
 
         Returns:
-        - A dictionary with metrics for each assay.
+            Dict[str, Dict]: Metrics for each assay.
         """
         if categories is None:
             categories = [
@@ -388,13 +398,17 @@ class MetricsPerAssay:
 
         return all_metrics_per_assay
 
+    @wraps(_compute_metrics_per_assay)
     def compute_all_chunked_acc_per_assay(self, *args, **kwargs):
-        """Compute metrics for all assays, using `val1 <= minPred < val2` format."""
-        return self._compute_metrics_per_assay(*args, chunked=True, **kwargs)
+        """Compute metrics for all assays using chunked evaluation."""
+        result = self._compute_metrics_per_assay(*args, chunked=True, **kwargs)
+        return result
 
+    @wraps(_compute_metrics_per_assay)
     def compute_all_acc_per_assay(self, *args, **kwargs):
-        """Compute metrics for all assays, using `minPred>=val` format."""
-        return self._compute_metrics_per_assay(*args, chunked=False, **kwargs)
+        """Compute metrics for all assays using threshold-based evaluation."""
+        result = self._compute_metrics_per_assay(*args, chunked=False, **kwargs)
+        return result
 
     def save_metrics_per_assay(
         self,
