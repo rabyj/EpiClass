@@ -222,20 +222,22 @@ class MetricsPerAssay:
         if no_epiatlas and not (all_preds["in_epiatlas"].astype(str) == "False").all():
             df = df[df["in_epiatlas"].astype(str) == "False"]
 
-        # target classification
+        all_df_assays = df[assay_label].unique()
+
+        # assay target classification
         df = df.fillna("unknown")
         if core_assays is None:
             core_assays = ASSAY_ORDER.copy()
-            if "no_consensus" in df[assay_label].unique():
-                core_assays.append("no_consensus")
 
+        # only accepting specific labels, all labels not in core_assays
         if non_core_assays is None:
-            non_core_assays = ["ctcf", "non-core"]
+            accepted_nc_labels = ["ctcf", "non-core", "other"]
+            non_core_assays = list(set(all_df_assays) & set(accepted_nc_labels))
 
         all_assays = core_assays + non_core_assays
 
-        # Define 'unknown' for expected labels
-        unknown_labels = ["unknown", "other"]
+        # Define 'unknown' for expected labels (not assay targets)
+        unknown_labels = ["unknown", "other", "no_consensus"]
 
         # merging rna / wgbs assays
         if merge_assays:
@@ -291,8 +293,10 @@ class MetricsPerAssay:
                 known_df = known_df[known_df[CELL_TYPE].isin(EPIATLAS_16_CT)]
 
             # assumed to be ASSAY_11c/ASSAY_7c, non-core assays are removed (+ no unknown)
+            cat_core_assays = core_assays.copy()
             if ASSAY in category_name:
-                known_df = known_df[known_df[ASSAY].isin(core_assays)]
+                cat_core_assays = set(cat_core_assays) & set(ASSAY_ORDER)
+                known_df = known_df[known_df[assay_label].isin(cat_core_assays)]
 
             if verbose:
                 print(category_name, known_df.shape)
@@ -338,12 +342,9 @@ class MetricsPerAssay:
                             )
                             metrics_per_assay[label].append((min_pred, *result))
 
-            # Compute global metrics
-            if not unknown_df.empty:
-                metrics_per_assay["avg-all-unknown"] = []
-
+            # --- Calculate global metrics for KNOWN expected class ---
             set_labels = ["avg-all", "avg-core", "avg-non-core"]
-            if all_assays in (core_assays, non_core_assays):
+            if all_assays in (cat_core_assays, non_core_assays):
                 set_labels = ["avg-all"]
 
             if ASSAY in category_name:
@@ -365,27 +366,6 @@ class MetricsPerAssay:
                         column_templates=column_templates,
                         **metric_args,
                     )
-                    # Process unknown samples for chunked metrics
-                    if not unknown_df.empty:
-                        # Create chunks for unknown samples
-                        chunk_bounds = np.arange(0, 1.0 + interval, interval)
-                        unknown_chunks = []
-
-                        for i in range(len(chunk_bounds) - 1):
-                            lower_bound = chunk_bounds[i]
-                            upper_bound = chunk_bounds[i + 1]
-
-                            # Count unknown samples with prediction scores in this range
-                            count = (
-                                (unknown_df[max_pred_label] >= lower_bound)
-                                & (unknown_df[max_pred_label] < upper_bound)
-                            ).sum()
-
-                            unknown_chunks.append(
-                                (lower_bound, upper_bound, 0.0, 0.0, count)
-                            )
-
-                        metrics_per_assay["avg-all-unknown"] = unknown_chunks
                 else:
                     # Standard global metrics with different thresholds
                     for min_pred in ["0.0", "0.6", "0.8", "0.9"]:
@@ -398,14 +378,29 @@ class MetricsPerAssay:
                         )
                         metrics_per_assay[set_label].append((min_pred, *result))
 
-                        # Average across all unknown
-                        if "avg-all-unknown" in metrics_per_assay:
-                            high_pred_count = (
-                                unknown_df[max_pred_label] >= float(min_pred)
-                            ).sum()
-                            metrics_per_assay["avg-all-unknown"].append(
-                                (min_pred, 0, 0, high_pred_count)
-                            )
+            # --- Calculate metrics for UNKNOWN expected class ---
+            if not unknown_df.empty:
+                if chunked:
+                    chunk_bounds = np.arange(0, 1.0 + interval, interval)
+                    unknown_chunks = []
+                    for i in range(len(chunk_bounds) - 1):
+                        lower_bound = chunk_bounds[i]
+                        upper_bound = chunk_bounds[i + 1]
+                        count = (
+                            (unknown_df[max_pred_label] >= lower_bound)
+                            & (unknown_df[max_pred_label] < upper_bound)
+                        ).sum()
+                        unknown_chunks.append((lower_bound, upper_bound, 0.0, 0.0, count))
+                    metrics_per_assay["avg-all-unknown"] = unknown_chunks
+                else:  # chunked=False
+                    metrics_per_assay["avg-all-unknown"] = []
+                    for min_pred in ["0.0", "0.6", "0.8", "0.9"]:
+                        high_pred_count = (
+                            unknown_df[max_pred_label] >= float(min_pred)
+                        ).sum()
+                        metrics_per_assay["avg-all-unknown"].append(
+                            (min_pred, 0, 0, high_pred_count)
+                        )
 
             all_metrics_per_assay[category_name] = metrics_per_assay
 
@@ -491,6 +486,9 @@ class MetricsPerAssay:
                     "nb_samples": "int",
                 }
             )
+            df_metrics = df_metrics.sort_values(
+                ["task_name", ASSAY, "pred_score_min"], ignore_index=True
+            )
         else:
             columns = [
                 "task_name",
@@ -513,8 +511,12 @@ class MetricsPerAssay:
                     "nb_samples": "int",
                 }
             )
+            df_metrics = df_metrics.sort_values(
+                ["task_name", ASSAY, "min_predScore"], ignore_index=True
+            )
+        df_metrics.loc[:, ["acc", "f1-score"]] = df_metrics[["acc", "f1-score"]].round(4)
 
-        # Apply post-processing rules
+        # --- Apply post-processing rules ---
 
         # f1-score on ASSAY task, per assay, doesn't make sense
         df_metrics.loc[df_metrics["task_name"] == ASSAY, "f1-score"] = "NA"
