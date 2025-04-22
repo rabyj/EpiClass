@@ -1,5 +1,5 @@
 """Module that defines class for computing metrics (acc, f1) per assay."""
-# pylint: disable=too-many-branches
+# pylint: disable=too-many-branches, line-too-long
 from __future__ import annotations
 
 from functools import wraps
@@ -44,7 +44,10 @@ class MetricsPerAssay:
         Args:
             df: DataFrame containing the predictions and true classes.
             cat_label: Label for the category being evaluated, for
-            labels of the form "True class (category)".
+                labels of the form "True class (category)".
+            column_templates: Dictionary mapping column types to template strings.
+                Requires "True", "Predicted" and "Max pred" keys.
+                If None, uses default templates.
             min_pred: Minimum prediction score to consider.
 
         Returns:
@@ -423,43 +426,55 @@ class MetricsPerAssay:
         result = self._compute_metrics_per_assay(*args, chunked=False, **kwargs)
         return result
 
-    def save_metrics_per_assay(
+    def create_metrics_dataframe(
         self,
         input_metrics: Dict[str, Dict],
-        folders: List[Path] | Path,
-        filename: str,
         chunked: bool = False,
-        verbose: bool = True,
     ) -> pd.DataFrame:
         """
-        Take metrics dictionary and save it to TSV files.
-        Works with both standard metrics and chunked metrics.
+        Takes a metrics dictionary and converts it into a structured Pandas DataFrame.
+        Applies necessary formatting, type conversions, and post-processing.
 
         Args:
-        - metrics: Output of compute_all_acc_per_assay or compute_all_chunked_acc_per_assay.
-        - folders: A list of folders to save the results to.
-        - filename: The name of the file to save the results to.
+        - input_metrics: Output of compute_all_acc_per_assay or compute_all_chunked_acc_per_assay.
         - chunked: Whether the input contains chunked metrics (True) or standard metrics (False).
-        - verbose: Whether to print verbose output.
+        - ASSAY: The name of the assay column in the data.
 
         Returns:
-        - A restructured dataframe with metrics for each assay
+        - A processed Pandas DataFrame containing the metrics.
         """
-        # Convert metrics to table format
         rows = []
         for name, metrics_per_assay in input_metrics.items():
             for assay, values in metrics_per_assay.items():
+                # Handle potential empty values list gracefully
+                if not values:
+                    continue
                 for value_tuple in values:
                     if chunked:
                         # Chunked format: (lower_bound, upper_bound, acc, f1, nb_samples)
+                        if len(value_tuple) != 5:
+                            # Add some basic validation if needed
+                            print(
+                                f"Warning: Skipping malformed chunked tuple for {name}/{assay}: {value_tuple}"
+                            )
+                            continue
                         lower_bound, upper_bound, acc, f1, nb_samples = value_tuple
                         rows.append(
                             [name, assay, lower_bound, upper_bound, acc, f1, nb_samples]
                         )
                     else:
                         # Standard format: (min_pred, acc, f1, nb_samples)
+                        if len(value_tuple) != 4:
+                            print(
+                                f"Warning: Skipping malformed standard tuple for {name}/{assay}: {value_tuple}"
+                            )
+                            continue
                         min_pred, acc, f1, nb_samples = value_tuple
                         rows.append([name, assay, min_pred, acc, f1, nb_samples])
+
+        # Return empty DataFrame if no valid rows were generated
+        if not rows:
+            raise ValueError("Warning: No valid rows generated from input_metrics.")
 
         # Create DataFrame with appropriate columns
         if chunked:
@@ -473,8 +488,6 @@ class MetricsPerAssay:
                 "nb_samples",
             ]
             df_metrics = pd.DataFrame(rows, columns=columns)
-
-            # Convert columns to appropriate types
             df_metrics = df_metrics.astype(
                 {
                     "task_name": "str",
@@ -499,8 +512,6 @@ class MetricsPerAssay:
                 "nb_samples",
             ]
             df_metrics = pd.DataFrame(rows, columns=columns)
-
-            # Convert columns to appropriate types
             df_metrics = df_metrics.astype(
                 {
                     "task_name": "str",
@@ -514,9 +525,19 @@ class MetricsPerAssay:
             df_metrics = df_metrics.sort_values(
                 ["task_name", ASSAY, "min_predScore"], ignore_index=True
             )
-        df_metrics.loc[:, ["acc", "f1-score"]] = df_metrics[["acc", "f1-score"]].round(4)
+
+        # Round float columns - Use .round() directly on columns
+        # Convert to numeric first, coercing errors, then round, then handle NAs if needed
+        float_cols = ["acc", "f1-score"]
+        for col in float_cols:
+            # Ensure column is numeric, making non-numeric values NaN
+            df_metrics[col] = pd.to_numeric(df_metrics[col], errors="coerce")
+        df_metrics[float_cols] = df_metrics[float_cols].round(4)
 
         # --- Apply post-processing rules ---
+        # Note: After rounding, NAs might be NaNs. Using 'NA' string representation.
+        # For consistency, let's use pd.NA which works better across types if needed,
+        # but stick to 'NA' string if TSV output requires it.
 
         # f1-score on ASSAY task, per assay, doesn't make sense
         df_metrics.loc[df_metrics["task_name"] == ASSAY, "f1-score"] = "NA"
@@ -527,22 +548,113 @@ class MetricsPerAssay:
         # acc / f1 for 0 samples is not defined
         df_metrics.loc[df_metrics["nb_samples"] == 0, ["acc", "f1-score"]] = "NA"
 
-        if verbose:
-            print(f"Saving {df_metrics.shape[0]} rows")
+        # Fill potential NaNs created by coerce/round with 'NA' string if desired for output
+        # Or handle them during saving with `na_rep='NA'`
+        # df_metrics = df_metrics.fillna("NA") # Optional: fill NaNs here if needed
 
-        # Save to all specified folders
+        return df_metrics
+
+    def save_dataframe_to_tsv(
+        self,
+        df_to_save: pd.DataFrame,
+        folders: List[Path] | Path,
+        filename: str,
+        verbose: bool = True,
+    ) -> None:
+        """
+        Saves a Pandas DataFrame to one or more TSV files.
+
+        Args:
+        - df_to_save: The Pandas DataFrame to save.
+        - folders: A single Path object or a list of Path objects indicating the directories to save the file in.
+        - filename: The name of the file (e.g., 'metrics.tsv').
+        - verbose: Whether to print status messages.
+        """
+        if df_to_save.empty:
+            if verbose:
+                print(f"DataFrame is empty. Skipping save for '{filename}'.")
+            return
+
+        if verbose:
+            print(f"Preparing to save {df_to_save.shape[0]} rows to '{filename}'...")
+
         if isinstance(folders, Path):
             folders = [folders]
-
-        for folder in folders:
-            path = folder / filename
-            df_metrics.to_csv(
-                path,
-                sep="\t",
-                index=False,
+        elif not isinstance(folders, list):
+            raise TypeError(
+                f"`folders` must be a Path or a list of Paths, got {type(folders)}"
             )
-            if verbose:
-                print(f"Saved to {path}")
+
+        saved_count = 0
+        for folder in folders:
+            if not isinstance(folder, Path):
+                print(
+                    f"Warning: Skipping invalid folder type: {type(folder)}. Expected Path."
+                )
+                continue
+
+            try:
+                folder.mkdir(parents=True, exist_ok=True)
+                path = folder / filename
+                df_to_save.to_csv(
+                    path,
+                    sep="\t",
+                    index=False,
+                    na_rep="NA",  # Represent missing values as 'NA' in the TSV
+                )
+                if verbose:
+                    print(f"Successfully saved to {path}")
+                saved_count += 1
+            except OSError as e:
+                print(
+                    f"Error: Could not create directory or save file at {folder / filename}: {e}"
+                )
+            except Exception as e:  # pylint: disable=broad-except
+                print(
+                    f"Error: An unexpected error occurred while saving to {folder / filename}: {e}"
+                )
+
+        if verbose and saved_count > 0:
+            print(f"Finished saving. '{filename}' saved in {saved_count} location(s).")
+        elif verbose and saved_count == 0:
+            print(
+                f"Warning: '{filename}' was not saved to any locations due to errors or invalid folder paths."
+            )
+
+    def save_metrics_per_assay(
+        self,
+        input_metrics: Dict[str, Dict],
+        folders: List[Path] | Path,
+        filename: str,
+        chunked: bool = False,
+        verbose: bool = True,
+    ) -> pd.DataFrame:
+        """
+        Take metrics dictionary and save it to TSV files.
+        Works with both standard metrics and chunked metrics.
+
+        Args:
+        - metrics: Output of compute_all_acc_per_assay or compute_all_chunked_acc_per_assay.
+        - folders: A list of folders to save the results to.
+        - filename: The name of the file to save the results to.
+        - chunked: Whether the input contains chunked metrics (True) or standard metrics (False).
+        - verbose: Whether to print verbose output.
+
+        Returns:
+        - A restructured dataframe with metrics for each assay
+        """
+
+        df_metrics = self.create_metrics_dataframe(
+            input_metrics=input_metrics,
+            chunked=chunked,
+        )
+
+        self.save_dataframe_to_tsv(
+            df_to_save=df_metrics,
+            folders=folders,
+            filename=filename,
+            verbose=verbose,
+        )
 
         return df_metrics
 
