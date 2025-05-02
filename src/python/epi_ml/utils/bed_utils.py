@@ -241,6 +241,28 @@ def bed_ranges_to_bins(
     return bin_indexes
 
 
+def bed_to_bins(
+    bed_source: str | Path | IO[bytes],
+    chroms: List[Tuple[str, int]],
+    resolution: int,
+) -> List[int]:
+    """Convert the content of a .bed file to global genome bins.
+
+    Chains the `read_bed_to_ranges` and `bed_ranges_to_bins` functions.
+
+    Args:
+        bed_source (Union[str, Path, IO[bytes]]): The path to the .bed file or an open file-like object.
+        chroms (List[Tuple[str, int]]): List of tuples (ordered by chromosome order),
+            where each tuple contains a chromosome name and its length in base pairs.
+        resolution (int): The size of each bin, in bp.
+
+    Returns:
+        List[int]: List of bin indexes in the genome.
+    """
+    ranges = read_bed_to_ranges(bed_source)
+    return bed_ranges_to_bins(ranges, chroms, resolution)
+
+
 def create_new_random_bed(
     hdf5_size: int,
     desired_size: int,
