@@ -13,9 +13,21 @@ from epi_ml.argparseutils.directorychecker import DirectoryChecker
 from epi_ml.core.hdf5_loader import Hdf5Loader
 
 
+def module_exists(module_name):
+    """Check if a module exists."""
+    try:
+        __import__(module_name)
+    except ImportError:
+        return False
+    return True
+
+
 def parse_arguments() -> argparse.Namespace:
     """argument parser for command line"""
-    arg_parser = ArgumentParser()
+    arg_parser = ArgumentParser(
+        prog="collect_hdf5_vals",
+        description="Collect values from hdf5 files and save them as csv and/or hdf5.",
+    )
     # fmt: off
     arg_parser.add_argument(
         "hdf5_list", type=Path, help="A file with hdf5 filenames. Filenames in the list must use absolute path!"
@@ -38,7 +50,7 @@ def parse_arguments() -> argparse.Namespace:
     arg_parser.add_argument(
         "--hdf",
         action="store_true",
-        help="Save the values as hdf5 file."
+        help="Save the values as hdf5 file. pytables must be installed."
     )
     arg_parser.add_argument(
         "--csv",
@@ -68,6 +80,12 @@ def main() -> None:
 
     if not save_hdf and not save_csv:
         raise ValueError("Must provide at least one of --hdf or --csv")
+
+    if save_hdf:
+        if not module_exists("tables"):
+            raise ImportError(
+                "pytables must be installed to save hdf5 files. Try: `pip install tables`."
+            )
 
     output_dir = cli.output_dir
 
