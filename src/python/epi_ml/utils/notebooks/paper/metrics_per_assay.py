@@ -125,7 +125,10 @@ class MetricsPerAssay:
             min_pred_column = column_templates["Max pred"].format(cat_label)
 
         # Create chunks based on interval
-        chunk_bounds = np.arange(0, 1.0 + interval, interval)
+        chunk_bounds = np.arange(0, 1, interval)
+        chunk_bounds = np.append(
+            chunk_bounds, 1.0001
+        )  # last upper bound needs to be inclusive
         chunked_results = []
 
         for i in range(len(chunk_bounds) - 1):
