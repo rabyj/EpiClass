@@ -17,7 +17,7 @@ import pyBigWig
 
 from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
 from epi_ml.argparseutils.directorychecker import DirectoryChecker
-from epi_ml.core.hdf5_loader import Hdf5Loader
+from epi_ml.utils.general_utility import read_paths
 from epi_ml.utils.time import time_now_str
 
 
@@ -25,7 +25,7 @@ def parse_arguments() -> argparse.Namespace:
     """argument parser for command line"""
     arg_parser = ArgumentParser()
     arg_parser.add_argument(
-        "hdf5_list", type=Path, help="A file with hdf5 filenames. Use absolute path!"
+        "bigwig_list", type=Path, help="A file with bigwig filenames (as absolute paths)"
     )
     arg_parser.add_argument(
         "output_dir",
@@ -71,23 +71,19 @@ def compute_mean(file_path: Path) -> Tuple[str, int, int]:
 
 
 def main():
-    """
-    Main function that parses command-line arguments and
-    performs the operations to copy and cast HDF5 files.
-    """
+    """Main. See module docstring."""
     cli = parse_arguments()
 
-    hdf5_list_path = cli.hdf5_list
+    bw_list_path = cli.bigwig_list
     logdir: Path = cli.output_dir.resolve()
     max_workers = int(os.getenv("SLURM_CPUS_PER_TASK", "4"))
     log_every_n_files = 1000  # Define how many bigwigs to process before logging
 
-    hdf5_files = list(Hdf5Loader.read_list(hdf5_list_path, adapt=False).values())
+    bw_files = read_paths(bw_list_path)
 
+    # Divide bw list into chunks, and process files concurrently
     all_results = []
-
-    # Divide hdf5_files into chunks and process them concurrently
-    for idx, chunk in enumerate(chunks(hdf5_files, log_every_n_files)):
+    for idx, chunk in enumerate(chunks(bw_files, log_every_n_files)):
         with ThreadPoolExecutor(max_workers) as executor:
             chunk_result = list(executor.map(compute_mean, chunk))
 

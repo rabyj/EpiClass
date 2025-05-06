@@ -41,3 +41,13 @@ def get_valid_filename(name: str):
     if s[-1] == "_":
         s = s[:-1]
     return s
+
+
+def read_paths(list_path: Path) -> List[Path]:
+    """Read a list of paths from a file."""
+    with open(list_path, "r", encoding="utf-8") as file_of_paths:
+        paths = []
+        for path in file_of_paths:
+            path = Path(path.rstrip())
+            paths.append(path)
+    return paths
