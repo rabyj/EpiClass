@@ -64,21 +64,26 @@ def chunks(lst: List, n: int) -> Generator[List, None, None]:
         yield lst[i : i + n]
 
 
-def compute_metrics(bw, regions: pd.DataFrame, metric: str) -> List[float | None]:
+def compute_metrics(
+    bw: pyBigWig.bigWigFile, regions: pd.DataFrame, metric: str
+) -> List[float | None]:
     """Compute metric value in each region using pyBigWig stats.
-
-    Parameters
-        bw (from pyBigWig): Open bigwig file
-        regions (pd.DataFrame): DataFrame with regions (chr, start, end)
-        metric (str): Metric to compute. Must respect metrics available to pyBigWig stats.
-
-    Return
-        List[float|None] : List of metric values
+    Returns a list of scalar metric values (or None if region is unsummarizable).
     """
-    return [
-        bw.stats(region.chr, region.start, region.end, type=metric, exact=True)
-        for region in regions.itertuples(index=False)
-    ]
+    scalar_values = []
+    for region in regions.itertuples(index=False):
+        # pyBigWig.stats with nBins=1 (default) returns a list e.g. [0.75], or None
+        stat_result = bw.stats(
+            region.chr, region.start, region.end, type=metric, exact=True
+        )
+        if stat_result is None:
+            # Region was unsummarizable (e.g., no coverage)
+            scalar_values.append(None)
+        else:
+            # stat_result is a list like [value], extract the scalar.
+            # It should always contain one element if not None and nBins=1.
+            scalar_values.append(stat_result[0])
+    return scalar_values
 
 
 def read_regions(regions_path: Path) -> pd.DataFrame:
