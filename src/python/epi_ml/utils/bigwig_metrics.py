@@ -150,6 +150,10 @@ def main():
     logdir: Path = cli.output_dir.resolve()
     logdir.mkdir(parents=True, exist_ok=True)
 
+    # Filter names tend to have points in them
+    regions_path: Path = cli.bed_regions.resolve()
+    regions_name = regions_path.stem.replace(".", "_")
+
     if cli.n_jobs:
         max_workers = cli.n_jobs
     elif "SLURM_CPUS_PER_TASK" in os.environ:
@@ -159,10 +163,12 @@ def main():
 
     metric_type: str = cli.metric
 
+    output_filename_base = f"{metric_type}_{bw_list_name}_{regions_name}"
+
     log_every_n_files = 2500  # Define how many bigwigs to process before logging
 
     # Read lists
-    regions_df = read_regions(cli.bed_regions)
+    regions_df = read_regions(regions_path)
     bw_files = read_paths(bw_list_path)
 
     # Divide bw list into chunks, and process files concurrently
@@ -172,6 +178,7 @@ def main():
         compute_all_metrics, regions=regions_df, metric=metric_type
     )
 
+    print(f"Computing {metric_type} for {len(bw_files)} bigwigs...", flush=True)
     for idx, file_chunk in enumerate(chunks(bw_files, log_every_n_files)):
         with ThreadPoolExecutor(max_workers) as executor:
             chunk_results = list(
@@ -181,10 +188,10 @@ def main():
         all_results.extend(chunk_results)
 
         # Log the results of the current chunk, it's only a failsafe if job fails
-        chunk_name = logdir / f"{metric_type}_chunk_{idx}_{bw_list_name}.pkl"
+        chunk_name = logdir / f"{output_filename_base}_chunk_{idx}.pkl"
         if chunk_name.exists():
             chunk_name = (
-                logdir / f"{metric_type}_chunk_{idx}_{bw_list_name}_{time_now_str()}.pkl"
+                logdir / f"{output_filename_base}_chunk_{idx}_{time_now_str()}.pkl"
             )
 
         with open(chunk_name, "wb") as f:
@@ -221,12 +228,14 @@ def main():
         columns=region_ids
     )  # Ensure all region_ids are present and in same order
 
+    output_path = logdir / f"{output_filename_base}.h5"
     print(
-        f"Saving final DataFrame to {logdir / f'{metric_type}_{bw_list_name}.h5'}...",
+        f"Saving final DataFrame to {output_path}...",
         flush=True,
     )
+
     final_df.to_hdf(
-        logdir / f"{metric_type}_metrics.h5",
+        output_path,
         key="df",
         mode="w",
         format="fixed",
