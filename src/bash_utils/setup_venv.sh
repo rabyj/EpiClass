@@ -32,7 +32,8 @@ while [[ "$#" -gt 0 ]]; do
       usage
       ;;
     *)
-      echo "Unknown parameter passed: $1. Use -h or --help for usage"
+      echo "Unknown parameter passed: '$1'"
+      echo "Use -h or --help for usage"
       exit 1
       ;;
   esac
@@ -69,7 +70,7 @@ pip install --upgrade pip
 
 # Check if requirements file exists
 if [ ! -f $REQUIREMENTS_FILE ]; then
-  echo "requirements.txt does not exist. Please check the path: $REQUIREMENTS_FILE"
+  echo "requirements file does not exist. Please check the path: $REQUIREMENTS_FILE"
   exit 1
 fi
 
