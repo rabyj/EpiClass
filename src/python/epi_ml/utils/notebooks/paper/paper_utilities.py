@@ -1265,3 +1265,20 @@ def set_file_id(
     df.insert(0, output_col, df.pop(input_col))
 
     return df
+
+
+def print_column_content(df: pd.DataFrame, col: str) -> None:
+    """Print absolute and relative count of a string column."""
+    label_count_df = df[col].value_counts(dropna=False).to_frame()
+
+    label_count_df["relative"] = label_count_df["count"] / len(df)
+
+    label_count_df.loc["Total", "count"] = len(df)
+    label_count_df.loc["Total", "relative"] = 1
+
+    style_map = {
+        "count": "{:.0f}",
+        "relative": "{:.2%}",
+    }
+
+    display(label_count_df.style.format(style_map))  # type: ignore
