@@ -10,6 +10,24 @@ def sjoin(x):
     return ";".join(x[x.notnull()].astype(str))
 
 
+# Helper function to format numbers without decimal points for whole numbers
+def clean_format(x: object) -> str:
+    """
+    Format a value to string, removing decimal points for whole numbers.
+    Args:
+        x: Any value that needs string formatting
+    Returns:
+        Formatted string representation of the value
+    """
+    if isinstance(x, (int, float)):
+        try:
+            if float(x).is_integer():
+                return str(int(x))
+        except (ValueError, AttributeError):
+            pass
+    return str(x)
+
+
 def merge_dataframes(
     df1: pd.DataFrame, df2: pd.DataFrame, on: str = "md5sum", verbose: bool = False
 ) -> pd.DataFrame:
@@ -18,6 +36,8 @@ def merge_dataframes(
     otherwise it attemps to merge on md5sum, filename.
     It attempts to merge by aligning common columns
     and appending non-common columns.
+
+    Column with same names get combined with ';' value separator.
 
     Parameters:
     df1 (pd.DataFrame): The first DataFrame
@@ -69,23 +89,6 @@ def merge_dataframes(
 
     if verbose:
         print(f"Output shape 1 (After pd.merge): {result.shape}")
-
-    # Helper function to format numbers without decimal points for whole numbers
-    def clean_format(x: object) -> str:
-        """
-        Format a value to string, removing decimal points for whole numbers.
-        Args:
-            x: Any value that needs string formatting
-        Returns:
-            Formatted string representation of the value
-        """
-        if isinstance(x, (int, float)):
-            try:
-                if float(x).is_integer():
-                    return str(int(x))
-            except (ValueError, AttributeError):
-                pass
-        return str(x)
 
     # Combine different values with a separator
     dup_cols = [name for name in result.columns if name.endswith("_merge")]
