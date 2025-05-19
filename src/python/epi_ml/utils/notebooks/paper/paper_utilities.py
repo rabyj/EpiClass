@@ -583,6 +583,116 @@ class SplitResultsHandler:
         return concatenated_dfs
 
     @staticmethod
+    def calculate_metrics_for_single_df(
+        df: pd.DataFrame,
+        task_name: str = "unknown task",
+        logging_name: str = "df",
+    ) -> Dict[str, float]:
+        """Compute metrics for a single task's DataFrame.
+
+        Expects a DataFrame with the following columns:
+            md5sum, True class, predicted class, predicted probabilities
+
+        Output is a dictionary of metrics with the following the following keys:
+            Accuracy, F1_macro, AUC_micro, AUC_macro, count
+        """
+        df = df.copy()
+
+        # Ensure 'True class' labels match (e.g. int or bool class labels)
+        df["True class"] = df["True class"].astype(str).str.lower()
+        df.columns = list(df.columns[:2]) + [
+            label.lower() for i, label in enumerate(df.columns.str.lower()) if i > 1
+        ]
+        # One hot encode true class and get predicted probabilities
+        # Reindex to ensure that the order of classes is consistent
+        classes_order = df.columns[2:]
+        onehot_true = (
+            pd.get_dummies(df["True class"], dtype=int)
+            .reindex(columns=classes_order, fill_value=0)
+            .values
+        )
+
+        pred_probs = df[classes_order].values
+
+        ravel_true = np.argmax(onehot_true, axis=1)
+        ravel_pred = np.argmax(pred_probs, axis=1)
+
+        # fmt: off
+        task_metrics_dict: Dict[str, float|int] = {
+            "Accuracy": accuracy_score(ravel_true, ravel_pred),
+            "F1_macro": f1_score(ravel_true, ravel_pred, average="macro", zero_division="warn"), # type: ignore
+            "count": len(df),
+            }
+        try:
+
+            # Could fail for various reasons
+            task_metrics_dict.update(
+                {
+                    "AUC_micro": roc_auc_score(onehot_true, pred_probs, multi_class="ovr", average="micro"), # type: ignore
+                    "AUC_macro": roc_auc_score(onehot_true, pred_probs, multi_class="ovr", average="macro"), # type: ignore
+                }
+            )
+        # fmt: on
+
+        # Known AUC Failure modes:
+        # - ValueError: "Only one class is present in y_true"
+        # - ValueError: "Input format is not supported for multi-class"
+        # - ValueError: y_true is missing a class known from pred columns.
+        # Error messages are very misleading, so not showing them sometimes.
+        except ValueError as err:
+            # AUC failure
+            if "Only one class present in y_true" in str(
+                err
+            ) or "multiclass format" in str(err):
+                # One class
+                if len(df["True class"].unique()) == 1:
+                    logging.warning(
+                        "Cannot compute ROC AUC. Only one class present in %s for %s: %s",
+                        logging_name,
+                        task_name,
+                        df["True class"].unique(),
+                    )
+                # Probably failed previous column transformation
+                elif len(df["True class"].unique()) != len(classes_order):
+                    missing_classes = set(classes_order.values) - set(
+                        df["True class"].unique()
+                    )
+                    logging.warning(
+                        "Cannot compute ROC AUC. At least one ground truth class missing from %s for %s: (%s)",
+                        logging_name,
+                        task_name,
+                        missing_classes,
+                    )
+                # Other multiclass failure
+                else:
+                    logging.warning(
+                        "Incompatible format in %s for %s. Error: %s",
+                        logging_name,
+                        task_name,
+                        err,
+                    )
+                task_metrics_dict.update({"AUC_micro": np.nan, "AUC_macro": np.nan})
+
+                # Debug logging
+                if not set(df["True class"].unique()).issubset(set(classes_order.values)):
+                    logging.error("Classes do not match columns names.")
+                    logging.debug("Classes in df: %s", df["True class"].unique())
+                    logging.debug("Classes in classes_order: %s", classes_order)
+                    raise ValueError("Classes in df do not match columns names.") from err
+            else:
+                err_msg = f"Unexpected error in {logging_name} for {task_name}."
+                logging.error(err_msg)
+                logging.debug("columns: %s", df.columns)
+                logging.debug("True class values: %s\n", df["True class"].value_counts())
+                logging.debug(
+                    "ravel_true unique values: %s",
+                    set(val for val in ravel_true),
+                )
+                raise ValueError(err_msg) from err
+
+        return task_metrics_dict
+
+    @staticmethod
     def compute_split_metrics(
         all_split_dfs: Dict[str, Dict[str, pd.DataFrame]],
         concat_first_level: bool = False,
@@ -594,9 +704,9 @@ class SplitResultsHandler:
         2. {classifier_name: {split_name: results_df}} when concat_first_level is True.
 
         Args:
-            split_dfs: A nested dictionary of DataFrames to be concatenated. The structure
-                       depends on the concat_first_level flag.
-            concat_first_level: A boolean flag that indicates the structure of the split_dfs dictionary.
+            all_split_dfs: A nested dictionary of DataFrames. The structure
+                           depends on the concat_first_level flag. (Docstring corrected to use all_split_dfs)
+            concat_first_level: A boolean flag that indicates the structure of the all_split_dfs dictionary.
                                 If True, the first level is the classifier name. Otherwise, the first
                                 level is the split name.
 
@@ -604,110 +714,32 @@ class SplitResultsHandler:
             A nested dictionary with metrics computed for each classifier and split. The structure is
             {split_name: {classifier_name: {metric_name: value}}}.
         """
-        all_split_dfs = copy.deepcopy(all_split_dfs)  # avoid side-effects
-        split_metrics = {}
+        all_split_dfs = copy.deepcopy(all_split_dfs)
+        split_metrics: Dict[str, Dict[str, Dict[str, float]]] = {}
 
+        # Reorganize the dictionary to always work with {split_name: {classifier_name: DataFrame}}
         if concat_first_level:
-            # Reorganize the dictionary to always work with {split_name: {classifier_name: DataFrame}}
-            temp_dict = {}
+            temp_dict: Dict[str, Dict[str, pd.DataFrame]] = {}
             for classifier, splits in all_split_dfs.items():
-                for split, df in splits.items():
-                    if split not in temp_dict:
-                        temp_dict[split] = {}
-                    temp_dict[split][classifier] = df
+                for split_val, df_val in splits.items():
+                    if split_val not in temp_dict:
+                        temp_dict[split_val] = {}
+                    temp_dict[split_val][classifier] = df_val
+
             all_split_dfs = temp_dict
 
         for split in [f"split{i}" for i in range(10)]:
             dfs = all_split_dfs[split]
-            metrics = {}
+
+            metrics: Dict[str, Dict[str, float]] = {}
+
             for task_name, df in dfs.items():
-                # Ensure 'True class' labels match (e.g. int or bool class labels)
-                df["True class"] = df["True class"].astype(str).str.lower()
-                df.columns = list(df.columns[:2]) + [
-                    label.lower()
-                    for i, label in enumerate(df.columns.str.lower())
-                    if i > 1
-                ]
-                # One hot encode true class and get predicted probabilities
-                # Reindex to ensure that the order of classes is consistent
-                classes_order = df.columns[2:]
-                onehot_true = (
-                    pd.get_dummies(df["True class"], dtype=int)
-                    .reindex(columns=classes_order, fill_value=0)
-                    .values
+                metrics[
+                    task_name
+                ] = SplitResultsHandler().calculate_metrics_for_single_df(
+                    df=df, task_name=task_name, logging_name=split
                 )
-
-                pred_probs = df[classes_order].values
-
-                ravel_true = np.argmax(onehot_true, axis=1)
-                ravel_pred = np.argmax(pred_probs, axis=1)
-                try:
-                    metrics[task_name] = {
-                        "Accuracy": accuracy_score(ravel_true, ravel_pred),
-                        "F1_macro": f1_score(ravel_true, ravel_pred, average="macro"),
-                        "AUC_micro": roc_auc_score(
-                            onehot_true, pred_probs, multi_class="ovr", average="micro"
-                        ),
-                        "AUC_macro": roc_auc_score(
-                            onehot_true, pred_probs, multi_class="ovr", average="macro"
-                        ),
-                        "count": len(df),
-                    }
-                except ValueError as err:
-                    if "Only one class" in str(err) or "multiclass format" in str(err):
-                        if len(df["True class"].unique()) != len(classes_order):
-                            missing_classes = set(classes_order.values) - set(
-                                df["True class"].unique()
-                            )
-                            logging.warning(
-                                "Cannot compute ROC AUC. At least one ground truth class missing from %s for %s: (%s)",
-                                split,
-                                task_name,
-                                missing_classes,
-                            )
-                        else:
-                            logging.warning(
-                                "Single class or incompatible format in %s for %s. Error: %s",
-                                split,
-                                task_name,
-                                err,
-                            )
-                        metrics[task_name] = {
-                            "AUC_micro": np.nan,
-                            "AUC_macro": np.nan,
-                        }
-                        if not set(df["True class"].unique()).issubset(
-                            set(classes_order.values)
-                        ):
-                            logging.error("Classes do not match columns names.")
-                            logging.debug("Classes in df: %s", df["True class"].unique())
-                            logging.debug("Classes in classes_order: %s", classes_order)
-                            raise ValueError(
-                                "Classes in df do not match columns names."
-                            ) from err
-
-                        # Attempt to compute metrics that don't require multiple classes
-                        metrics[task_name].update(
-                            {
-                                "Accuracy": accuracy_score(ravel_true, ravel_pred),
-                                "F1_macro": f1_score(
-                                    ravel_true, ravel_pred, average="macro"
-                                ),
-                                "count": len(df),
-                            }
-                        )
-                    else:
-                        err_msg = f"Unexpected error in {split} for {task_name}."
-                        logging.error(err_msg)
-                        logging.debug("columns: %s", df.columns)
-                        logging.debug(
-                            "True class values: %s", df["True class"].value_counts()
-                        )
-                        logging.debug(
-                            "ravel_true unique values: %s",
-                            set(val for val in ravel_true),
-                        )
-                        raise ValueError(err_msg) from err
+                # --- END OF REFACTORED PART ---
 
             split_metrics[split] = metrics
 
