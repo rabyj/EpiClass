@@ -1,5 +1,5 @@
 """Utility functions for the paper notebooks."""
-# pylint: disable=too-many-branches,too-many-lines
+# pylint: disable=too-many-branches, too-many-lines, too-many-positional-arguments
 
 from __future__ import annotations
 
@@ -265,7 +265,7 @@ class MetadataHandler:
         if ca_pred_df is not None:
             ca_df = ca_pred_df.copy(deep=True)
             ca_df["source"] = ["C-A"] * len(ca_df)
-            ca_df[ASSAY] = ca_df["manual_target_consensus"]
+            ca_df[ASSAY] = ca_df["manual_target_consensus"].str.lower()
             ca_df["track_type"] = ["raw"] * len(ca_df)
             ca_df["id"] = ca_df["Experimental-id"]
             if "plot_label" not in ca_df.columns:
@@ -277,7 +277,7 @@ class MetadataHandler:
         if enc_pred_df is not None:
             enc_df = enc_pred_df.copy(deep=True)
             enc_df["source"] = ["encode"] * len(enc_df)
-            enc_df[ASSAY] = enc_df[ASSAY]
+            enc_df[ASSAY] = enc_df[ASSAY].str.lower()
             enc_df["track_type"] = ["pval"] * len(enc_df)
             enc_df["id"] = enc_df["FILE_accession"]
             if "plot_label" not in enc_df.columns:
@@ -289,7 +289,7 @@ class MetadataHandler:
         if recount3_metadata is not None:
             recount3_df = recount3_metadata.copy(deep=True)
             recount3_df["source"] = ["recount3"] * len(recount3_df)
-            recount3_df[ASSAY] = recount3_df["harmonized_assay"]
+            recount3_df[ASSAY] = recount3_df["harmonized_assay"].str.lower()
             recount3_df["track_type"] = ["unique_raw"] * len(recount3_df)
             recount3_df["id"] = recount3_df["ID"]
             if "plot_label" not in recount3_df.columns:
