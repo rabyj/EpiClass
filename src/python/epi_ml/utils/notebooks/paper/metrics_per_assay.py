@@ -1,5 +1,5 @@
 """Module that defines class for computing metrics (acc, f1) per assay."""
-# pylint: disable=too-many-branches, line-too-long
+# pylint: disable=too-many-branches, line-too-long, too-many-positional-arguments
 from __future__ import annotations
 
 from functools import wraps
@@ -68,14 +68,13 @@ class MetricsPerAssay:
             pred_label = column_templates["Predicted"].format(cat_label)
             max_pred_label = column_templates["Max pred"].format(cat_label)
 
+        for label in [true_label, pred_label, max_pred_label]:
+            if label not in df.columns:
+                raise KeyError(f"Column '{label}' not found in DataFrame.")
+
         sub_df = df.copy()
         if min_pred:
-            try:
-                sub_df = sub_df[sub_df[max_pred_label] >= min_pred]
-            except KeyError as err:
-                raise KeyError(
-                    f"Column '{max_pred_label}' not found in DataFrame and min_pred is not None."
-                ) from err
+            sub_df = sub_df[sub_df[max_pred_label] >= min_pred]
 
         if sub_df.shape[0] == 0:
             return 0.0, 0.0, 0
@@ -124,6 +123,9 @@ class MetricsPerAssay:
         if min_pred_column is None:
             min_pred_column = column_templates["Max pred"].format(cat_label)
 
+        if min_pred_column not in df.columns:
+            raise KeyError(f"Column '{min_pred_column}' not found in DataFrame.")
+
         # Create chunks based on interval
         chunk_bounds = np.arange(0, 1, interval)
         chunk_bounds = np.append(
@@ -153,6 +155,54 @@ class MetricsPerAssay:
                 chunked_results.append((lower_bound, upper_bound, 0.0, 0.0, 0))
 
         return chunked_results
+
+    @staticmethod
+    def _count_unknown(
+        df_subset: pd.DataFrame, max_pred_col_name: str, chunked: bool, interval: float
+    ) -> List[Tuple[Any, ...]]:
+        """
+        Helper function to calculate counts of unknown samples,
+        either chunked by prediction score or by min_pred thresholds.
+        Sets acc/f1 to np.nan as they are not applicable for unknown counts.
+        """
+        # (lower_bound, upper_bound, acc, f1, n_samples) or (min_pred, acc, f1, n_samples)
+        counts_list: List[Tuple[Any, ...]] = []
+
+        if df_subset.empty:
+            # Populate with zero counts if the subset DataFrame is empty
+            if chunked:
+                # Use robust chunk bounds consistent with compute_chunked_metrics
+                current_chunk_bounds = np.arange(0, 1, interval)
+                current_chunk_bounds = np.append(
+                    current_chunk_bounds, 1.0001
+                )  # Ensures last bin includes 1.0
+                for i in range(len(current_chunk_bounds) - 1):
+                    lower_bound = current_chunk_bounds[i]
+                    upper_bound = current_chunk_bounds[i + 1]
+                    counts_list.append((lower_bound, upper_bound, np.nan, np.nan, 0))
+            else:  # chunked=False
+                for min_pred_str in ["0.0", "0.6", "0.8", "0.9"]:
+                    counts_list.append((min_pred_str, np.nan, np.nan, 0))
+            return counts_list
+
+        if chunked:
+            current_chunk_bounds = np.arange(0, 1, interval)
+            current_chunk_bounds = np.append(current_chunk_bounds, 1.0001)
+
+            for i in range(len(current_chunk_bounds) - 1):
+                lower_bound = current_chunk_bounds[i]
+                upper_bound = current_chunk_bounds[i + 1]
+                count = (
+                    (df_subset[max_pred_col_name] >= lower_bound)
+                    & (df_subset[max_pred_col_name] < upper_bound)
+                ).sum()
+                counts_list.append((lower_bound, upper_bound, np.nan, np.nan, count))
+        else:  # chunked=False
+            for min_pred_str in ["0.0", "0.6", "0.8", "0.9"]:
+                min_pred_float = float(min_pred_str)
+                high_pred_count = (df_subset[max_pred_col_name] >= min_pred_float).sum()
+                counts_list.append((min_pred_str, np.nan, np.nan, high_pred_count))
+        return counts_list
 
     def _compute_metrics_per_assay(
         self,
@@ -288,6 +338,7 @@ class MetricsPerAssay:
             if max_pred_label not in df.columns:
                 raise ValueError(f"Column '{max_pred_label}' not found.")
 
+            # Get unknown samples
             unknown_mask = task_df[y_true_col].isin(unknown_labels)
             unknown_df = task_df[unknown_mask]
 
@@ -385,28 +436,25 @@ class MetricsPerAssay:
                         metrics_per_assay[set_label].append((min_pred, *result))
 
             # --- Calculate metrics for UNKNOWN expected class ---
-            if not unknown_df.empty:
-                if chunked:
-                    chunk_bounds = np.arange(0, 1.0 + interval, interval)
-                    unknown_chunks = []
-                    for i in range(len(chunk_bounds) - 1):
-                        lower_bound = chunk_bounds[i]
-                        upper_bound = chunk_bounds[i + 1]
-                        count = (
-                            (unknown_df[max_pred_label] >= lower_bound)
-                            & (unknown_df[max_pred_label] < upper_bound)
-                        ).sum()
-                        unknown_chunks.append((lower_bound, upper_bound, 0.0, 0.0, count))
-                    metrics_per_assay["avg-all-unknown"] = unknown_chunks
-                else:  # chunked=False
-                    metrics_per_assay["avg-all-unknown"] = []
-                    for min_pred in ["0.0", "0.6", "0.8", "0.9"]:
-                        high_pred_count = (
-                            unknown_df[max_pred_label] >= float(min_pred)
-                        ).sum()
-                        metrics_per_assay["avg-all-unknown"].append(
-                            (min_pred, 0, 0, high_pred_count)
-                        )
+
+            # Total
+            metrics_per_assay["count-unknown"] = MetricsPerAssay._count_unknown(
+                unknown_df, max_pred_label, chunked, interval
+            )
+
+            # Core
+            unknown_core_df = unknown_df[unknown_df[assay_label].isin(core_assays)]
+            metrics_per_assay["count-unknown-core"] = MetricsPerAssay._count_unknown(
+                unknown_core_df, max_pred_label, chunked, interval
+            )
+
+            # non-core
+            unknown_non_core_df = unknown_df[
+                unknown_df[assay_label].isin(non_core_assays)
+            ]
+            metrics_per_assay["count-unknown-non_core"] = MetricsPerAssay._count_unknown(
+                unknown_non_core_df, max_pred_label, chunked, interval
+            )
 
             all_metrics_per_assay[category_name] = metrics_per_assay
 
@@ -438,13 +486,16 @@ class MetricsPerAssay:
         Takes a metrics dictionary and converts it into a structured Pandas DataFrame.
         Applies necessary formatting, type conversions, and post-processing.
 
+        FutureWarning: Setting an item of incompatible dtype is deprecated and will raise an error in a future version of pandas. Value 'NA' has dtype incompatible with float64, please explicitly cast to a compatible dtype first.
+        Currently tested for pandas 2.2.3 (py3.12) and 1.4.1 (py3.8).
+
         Args:
         - input_metrics: Output of compute_all_acc_per_assay or compute_all_chunked_acc_per_assay.
         - chunked: Whether the input contains chunked metrics (True) or standard metrics (False).
         - ASSAY: The name of the assay column in the data.
 
         Returns:
-        - A processed Pandas DataFrame containing the metrics.
+        - A processed Pandas DataFrame containing the metrics. Contains float columns with 'NA' values.
         """
         rows = []
         for name, metrics_per_assay in input_metrics.items():
@@ -536,24 +587,27 @@ class MetricsPerAssay:
             # Ensure column is numeric, making non-numeric values NaN
             df_metrics[col] = pd.to_numeric(df_metrics[col], errors="coerce")
         df_metrics[float_cols] = df_metrics[float_cols].round(4)
+        df_metrics[float_cols].fillna("NA", inplace=True)
 
         # --- Apply post-processing rules ---
-        # Note: After rounding, NAs might be NaNs. Using 'NA' string representation.
-        # For consistency, let's use pd.NA which works better across types if needed,
-        # but stick to 'NA' string if TSV output requires it.
 
         # f1-score on ASSAY task, per assay, doesn't make sense
         df_metrics.loc[df_metrics["task_name"] == ASSAY, "f1-score"] = "NA"
 
         # metrics for unknown expected class are not defined
-        df_metrics.loc[df_metrics[ASSAY] == "avg-all-unknown", ["acc", "f1-score"]] = "NA"
+        unknown_count_keys = [
+            "count-unknown",
+            "count-unknown-core",
+            "count-unknown-non_core",
+        ]
+        df_metrics.loc[
+            df_metrics[ASSAY].isin(unknown_count_keys), ["acc", "f1-score"]
+        ] = "NA"
 
         # acc / f1 for 0 samples is not defined
-        df_metrics.loc[df_metrics["nb_samples"] == 0, ["acc", "f1-score"]] = "NA"
-
-        # Fill potential NaNs created by coerce/round with 'NA' string if desired for output
-        # Or handle them during saving with `na_rep='NA'`
-        # df_metrics = df_metrics.fillna("NA") # Optional: fill NaNs here if needed
+        df_metrics.loc[
+            df_metrics["nb_samples"].astype(int) == 0, ["acc", "f1-score"]
+        ] = "NA"
 
         return df_metrics
 
