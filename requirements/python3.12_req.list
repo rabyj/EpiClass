@@ -133,7 +133,7 @@ triton==3.3.0
 typing_extensions==4.13.2
 tzdata==2025.2
 umap-learn==0.5.7
-UpSetPlot==0.9.0
+UpSetPlot @ git+https://github.com/RicYaben/UpSetPlot.git@bceb91d7655dd30a189eb58823c9b301a174f35b
 urllib3==2.4.0
 wcwidth==0.2.13
 wheel==0.45.1
