@@ -1204,30 +1204,66 @@ def display_perc(df: pd.DataFrame | pd.Series) -> None:
         display(df)
 
 
-def merge_life_stages(df: pd.DataFrame, column_name_templates: List[str]) -> pd.DataFrame:
-    """Merge prenatal stages into one category, for given column names.
+def merge_life_stages(
+    df: pd.DataFrame,
+    lifestage_column_name: str = LIFE_STAGE,
+    column_name_templates: List[str] | None = None,
+) -> pd.DataFrame:
+    """Merge perinatal stages into one category, for given column names.
 
     New columns for LIFE_STAGE_merged will be added for each column name template.
     Args:
         df (pd.DataFrame): DataFrame to merge columns in.
-        column_name_templates (List[str]): List of column name templates to merge.
-            ex: ["{}", "True class ({})", "Predicted class ({})", "Max pred ({})"]
+        lifestage_column_name (Optional, str): Name of the life stage category.
+        column_name_templates (Optional, List[str]): List of column name templates to merge.
+            ex: ["{}", "True class ({})", "Predicted class ({})"]
     Returns:
         pd.DataFrame: DataFrame with merged columns.
     """
     df = df.copy(deep=True)
-    life_stage_merge_dict = {
-        "fetal": "prenatal",
-        "embryonic": "prenatal",
-        "newborn": "prenatal",
+    lifestage_remapper = {
+        "adult": "adult",
+        "embryo": "perinatal",
+        "embryonic": "perinatal",
+        "fetal": "perinatal",
+        "newborn": "perinatal",
+        "child": "child",
+        "unknown": "unknown",
+        np.nan: "unknown",
+        pd.NA: "unknown",
     }
 
-    for column_label in column_name_templates:
-        new_cat_label = f"{LIFE_STAGE}_merged"
-        new_cat_label = column_label.format(new_cat_label)
+    if column_name_templates is None:
+        column_name_templates = [
+            "{}",
+            "True class ({})",
+            "Predicted class ({})",
+            "Max pred ({})",
+        ]
 
-        old_cat_label = column_label.format(LIFE_STAGE)
-        df[new_cat_label] = df[old_cat_label].replace(life_stage_merge_dict)
+    for column_label in column_name_templates:
+        old_cat_label = column_label.format(lifestage_column_name)
+        new_cat_label = old_cat_label.replace(
+            lifestage_column_name, f"{lifestage_column_name}_merged"
+        )
+
+        if old_cat_label not in df.columns:
+            raise KeyError(f"Column {old_cat_label} not found in dataframe.")
+
+        # Prediction score column, cannot remap, can only create new column.
+        if column_label == "Max pred ({})":
+            df[new_cat_label] = df[old_cat_label]
+            continue
+
+        df[new_cat_label] = df[old_cat_label].map(lifestage_remapper)
+
+        if df[new_cat_label].isnull().any():
+            print(
+                f"DEBUG: Dataframe labels: {df[old_cat_label].unique().tolist()}, remapper labels: {list(lifestage_remapper.keys())}"
+            )
+            raise KeyError(
+                f"Lifestage remapper is missing a label that exists in {old_cat_label}."
+            )
 
     return df
 
