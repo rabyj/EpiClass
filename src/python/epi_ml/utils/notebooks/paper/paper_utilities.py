@@ -1227,6 +1227,7 @@ def merge_life_stages(
         "embryonic": "perinatal",
         "fetal": "perinatal",
         "newborn": "perinatal",
+        "perinatal": "perinatal",
         "child": "child",
         "unknown": "unknown",
         np.nan: "unknown",
@@ -1251,7 +1252,7 @@ def merge_life_stages(
             raise KeyError(f"Column {old_cat_label} not found in dataframe.")
 
         # Prediction score column, cannot remap, can only create new column.
-        if column_label == "Max pred ({})":
+        if "max" in old_cat_label.lower():
             df[new_cat_label] = df[old_cat_label]
             continue
 
