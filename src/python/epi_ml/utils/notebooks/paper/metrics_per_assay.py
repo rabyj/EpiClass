@@ -438,23 +438,35 @@ class MetricsPerAssay:
             # --- Calculate metrics for UNKNOWN expected class ---
 
             # Total
-            metrics_per_assay["count-unknown"] = MetricsPerAssay._count_unknown(
+            label = "count-unknown"
+            metrics_per_assay[label] = MetricsPerAssay._count_unknown(
                 unknown_df, max_pred_label, chunked, interval
             )
+            N_all = metrics_per_assay[label][0][-1]
 
             # Core
+            label = "count-unknown-core"
             unknown_core_df = unknown_df[unknown_df[assay_label].isin(core_assays)]
-            metrics_per_assay["count-unknown-core"] = MetricsPerAssay._count_unknown(
+            metrics_per_assay[label] = MetricsPerAssay._count_unknown(
                 unknown_core_df, max_pred_label, chunked, interval
             )
+            N_core = metrics_per_assay[label][0][-1]
 
             # non-core
+            label = "count-unknown-non_core"
             unknown_non_core_df = unknown_df[
                 unknown_df[assay_label].isin(non_core_assays)
             ]
-            metrics_per_assay["count-unknown-non_core"] = MetricsPerAssay._count_unknown(
+            metrics_per_assay[label] = MetricsPerAssay._count_unknown(
                 unknown_non_core_df, max_pred_label, chunked, interval
             )
+            N_non_core = metrics_per_assay[label][0][-1]
+
+            # Check that all unknown samples are accounted for
+            if N_all != N_core + N_non_core:
+                raise ValueError(
+                    f"Unknown sample core/non-core not complementary: N_all ({N_all}) != N_core ({N_core}) + N_non_core ({N_non_core})"
+                )
 
             all_metrics_per_assay[category_name] = metrics_per_assay
 
