@@ -1204,6 +1204,69 @@ def display_perc(df: pd.DataFrame | pd.Series) -> None:
         display(df)
 
 
+def check_label_coherence(
+    dataframe, categories, column_templates: Dict[str, str] | None = None
+):
+    """
+    Check that the predicted and true labels for each category are consistent.
+
+    Args:
+        dataframe: DataFrame containing the predictions and true classes.
+        categories: List of categories to check.
+        column_templates: Dictionary mapping column types to template strings.
+            Requires "True", "Predicted"
+            If None, uses default templates.
+
+    Raises ValueError if the predicted and true labels are not consistent.
+    """
+    if column_templates is None:
+        column_templates = {
+            "True": "True class ({})",
+            "Predicted": "Predicted class ({})",
+        }
+
+    df = dataframe.copy()
+
+    for col in categories:
+        pred_col = column_templates["Predicted"].format(col)
+        true_col = column_templates["True"].format(col)
+
+        try:
+            predicted_labels = df[pred_col].unique()
+        except KeyError:
+            print("KeyError:", pred_col)
+            print("Attempting to use merged column name.")
+            pred_col = f"Predicted class ({col}_merged)"
+            predicted_labels = df[pred_col].unique()
+
+        print(df[pred_col].value_counts(dropna=False), "\n")
+
+        try:
+            expected_labels = df[true_col].unique()
+        except KeyError:
+            print("KeyError:", true_col)
+            print("Attempting to use merged column name.")
+            true_col = column_templates["True"].format(f"{col}_merged")
+            expected_labels = df[true_col].unique()
+
+        print(df[true_col].value_counts(dropna=False), "\n")
+
+        predicted_labels = set(predicted_labels)
+        expected_labels = set(expected_labels)
+        for unknown_label in ["unknown", "other", "indeterminate"]:
+            expected_labels.discard(unknown_label)
+
+        if any(l not in predicted_labels for l in expected_labels):
+            if "life" in col:
+                print("Need to merge expected or predicted life stages")
+                print("Predicted life stages:", predicted_labels)
+                print("Expected life stages:", expected_labels)
+            else:
+                raise ValueError(
+                    f"Expected labels not matching with predicted labels in `{col}`:\nPredicted labels: {predicted_labels}\nExpected labels: {expected_labels}"
+                )
+
+
 def merge_life_stages(
     df: pd.DataFrame,
     lifestage_column_name: str = LIFE_STAGE,
@@ -1232,6 +1295,7 @@ def merge_life_stages(
         "unknown": "unknown",
         np.nan: "unknown",
         pd.NA: "unknown",
+        "indeterminate": "unknown",
     }
 
     if column_name_templates is None:
@@ -1249,7 +1313,7 @@ def merge_life_stages(
         )
 
         if old_cat_label not in df.columns:
-            raise KeyError(f"Column {old_cat_label} not found in dataframe.")
+            raise KeyError(f"Column `{old_cat_label}` not found in dataframe.")
 
         # Prediction score column, cannot remap, can only create new column.
         if "max" in old_cat_label.lower():
@@ -1263,7 +1327,7 @@ def merge_life_stages(
                 f"DEBUG: Dataframe labels: {df[old_cat_label].unique().tolist()}, remapper labels: {list(lifestage_remapper.keys())}"
             )
             raise KeyError(
-                f"Lifestage remapper is missing a label that exists in {old_cat_label}."
+                f"Lifestage remapper is missing a label that exists in `{old_cat_label}`."
             )
 
     return df
@@ -1351,3 +1415,45 @@ def print_column_content(df: pd.DataFrame, col: str) -> None:
     }
 
     display(label_count_df.style.format(style_map))  # type: ignore
+
+
+def format_labels(df: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
+    """
+    For given column label, format the labels by replacing spaces by underscores,
+    and converting to lowercase.
+    """
+    for col in columns:
+        try:
+            df[col] = df[col].str.replace(" ", "_").str.lower()
+        except KeyError as err:
+            raise KeyError(f"Column {col} not found.") from err
+    return df
+
+
+def rename_columns(
+    df, remapper: Dict[str, str], exact_match: bool = False, verbose: bool = False
+) -> pd.DataFrame:
+    """Rename columns in a DataFrame using a dictionary of old to new column names.
+
+    If exact_match is True, the columns will be renamed exactly as specified in the dictionary.
+    If exact_match is False, the columns will be renamed using a regular expression to replace the all occurrences of a string to a new string.
+    """
+    if exact_match:
+        if verbose:
+            for old, new in remapper.items():
+                if old in df.columns:
+                    print(f"Renaming {old} to {new}")
+                    df.rename(columns={old: new}, inplace=True)
+        else:
+            df = df.rename(columns=remapper)
+        return df
+
+    for column in list(df.columns):
+        for old, new in remapper.items():
+            if re.search(old, column):
+                new_column = re.sub(old, new, column)
+                if verbose:
+                    print(f"Renaming {column} to {new_column}")
+                df = df.rename(columns={column: new_column})
+
+    return df
