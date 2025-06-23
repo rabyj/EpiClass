@@ -1271,19 +1271,31 @@ def merge_life_stages(
     df: pd.DataFrame,
     lifestage_column_name: str = LIFE_STAGE,
     column_name_templates: List[str] | None = None,
+    exact_replace: bool = False,
+    verbose: bool = True,
 ) -> pd.DataFrame:
     """Merge perinatal stages into one category, for given column names.
 
-    New columns for LIFE_STAGE_merged will be added for each column name template.
+    New columns for f"{LIFE_STAGE}_merged" will be added for each column name template.
+
     Args:
         df (pd.DataFrame): DataFrame to merge columns in.
-        lifestage_column_name (Optional, str): Name of the life stage category.
-        column_name_templates (Optional, List[str]): List of column name templates to merge.
+        lifestage_column_name (str): Name of the life stage category.
+        column_name_templates (List[str] | None): List of column name templates to merge.
             ex: ["{}", "True class ({})", "Predicted class ({})"]
+        exact_replace (bool): If True, raise error if column not found or replacement already exists.
+        verbose (bool): If True, print the column names that are being merged or skipped.
+
     Returns:
         pd.DataFrame: DataFrame with merged columns.
+
+    Raises:
+        KeyError: If exact_replace=True and column operations fail.
+        ValueError: If remapping fails due to unmapped values.
     """
     df = df.copy(deep=True)
+
+    # Define the life stage mapping
     lifestage_remapper = {
         "adult": "adult",
         "embryo": "perinatal",
@@ -1293,11 +1305,12 @@ def merge_life_stages(
         "perinatal": "perinatal",
         "child": "child",
         "unknown": "unknown",
+        "indeterminate": "unknown",
         np.nan: "unknown",
         pd.NA: "unknown",
-        "indeterminate": "unknown",
     }
 
+    # Set default column templates if not provided
     if column_name_templates is None:
         column_name_templates = [
             "{}",
@@ -1306,29 +1319,88 @@ def merge_life_stages(
             "Max pred ({})",
         ]
 
-    for column_label in column_name_templates:
-        old_cat_label = column_label.format(lifestage_column_name)
-        new_cat_label = old_cat_label.replace(
+    def _is_score_column(column_name: str) -> bool:
+        """Check if column contains prediction scores that should be copied, not remapped."""
+        return "max" in column_name.lower()
+
+    def _check_column_availability(old_col: str, new_col: str) -> bool:
+        """
+        Check if column processing should proceed.
+
+        Returns:
+            bool: True if processing should continue, False if should skip.
+
+        Raises:
+            KeyError: If exact_replace=True and conditions aren't met.
+        """
+        # Case 1: Neither column exists
+        if old_col not in df.columns and new_col not in df.columns:
+            if exact_replace:
+                raise KeyError(
+                    f"Column `{old_col}` not found in dataframe, and replacement "
+                    f"column `{new_col}` not found in dataframe."
+                )
+            if verbose:
+                print(f"Column `{old_col}` not found in dataframe. Skipping.")
+            return False
+
+        # Case 2: Source column doesn't exist
+        if old_col not in df.columns:
+            if exact_replace:
+                raise KeyError(f"Column `{old_col}` not found in dataframe.")
+            if verbose:
+                print(f"Column `{old_col}` not found in dataframe. Skipping.")
+            return False
+
+        # Case 3: Target column already exists
+        if new_col in df.columns:
+            if exact_replace:
+                raise KeyError(f"Column `{new_col}` already exists in dataframe.")
+            if verbose:
+                print(f"Column `{new_col}` already exists. Skipping.")
+            return False
+
+        return True
+
+    # Process each column template
+    for column_template in column_name_templates:
+        old_column_name = column_template.format(lifestage_column_name)
+        new_column_name = old_column_name.replace(
             lifestage_column_name, f"{lifestage_column_name}_merged"
         )
 
-        if old_cat_label not in df.columns:
-            raise KeyError(f"Column `{old_cat_label}` not found in dataframe.")
-
-        # Prediction score column, cannot remap, can only create new column.
-        if "max" in old_cat_label.lower():
-            df[new_cat_label] = df[old_cat_label]
+        # Check if we should process this column
+        if not _check_column_availability(old_column_name, new_column_name):
             continue
 
-        df[new_cat_label] = df[old_cat_label].map(lifestage_remapper)
+        if verbose:
+            print(f"Processing: {old_column_name} -> {new_column_name}")
 
-        if df[new_cat_label].isnull().any():
-            print(
-                f"DEBUG: Dataframe labels: {df[old_cat_label].unique().tolist()}, remapper labels: {list(lifestage_remapper.keys())}"
+        # Handle prediction score columns (copy without remapping)
+        if _is_score_column(old_column_name):
+            df[new_column_name] = df[old_column_name].copy()
+            if verbose:
+                print("Copied scores (no remapping applied)")
+            continue
+
+        # Apply life stage remapping
+        df[new_column_name] = df[old_column_name].map(lifestage_remapper)
+
+        # Validate that all values were successfully mapped
+        unmapped_mask = df[new_column_name].isnull() & df[old_column_name].notnull()
+        if unmapped_mask.any():
+            unmapped_values = df.loc[unmapped_mask, old_column_name].unique().tolist()
+            available_keys = list(lifestage_remapper.keys())
+
+            raise ValueError(
+                f"Failed to remap all values in column `{old_column_name}`. "
+                f"Unmapped values: {unmapped_values}. "
+                f"Available remapper keys: {available_keys}"
             )
-            raise KeyError(
-                f"Lifestage remapper is missing a label that exists in `{old_cat_label}`."
-            )
+
+        if verbose:
+            value_counts = df[new_column_name].value_counts(dropna=False)
+            print(f"Remapped successfully. New categories:\n{value_counts}\n")
 
     return df
 
