@@ -35,6 +35,8 @@ class MetricsPerAssay:
         """Compute the accuracy and f1 of the predictions on a DataFrame that
         has columns of the format 'True/Predicted class ([category])'.
 
+        F1 score is computed against known true classes.
+
         If min_pred is not None, only consider predictions with a score
         greater than or equal to min_pred.
 
@@ -87,7 +89,7 @@ class MetricsPerAssay:
         f1: float = f1_score(  # type: ignore
             y_true,
             y_pred,
-            labels=y_pred.unique(),
+            labels=y_true.unique(),
             average="macro",
         )
         return acc, f1, sub_df.shape[0]
