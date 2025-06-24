@@ -1529,3 +1529,129 @@ def rename_columns(
                 df = df.rename(columns={column: new_column})
 
     return df
+
+
+def find_target_recall(
+    df: pd.DataFrame,
+    category_name: str,
+    col_templates: Dict[str, str],
+    class_of_interest: str,
+    target_recall: float = 0.9,
+    verbose: bool = False,
+    iterations: int = 250,
+    minimum_threshold: float = 0.5,
+):
+    """
+    Find the first threshold such that recall ≥ target_recall
+    among predictions with prediction score ≥ threshold.
+
+    Args:
+        df: DataFrame
+        category_name: metadata category (e.g. 'biomaterial_type')
+        col_templates: Column templates for 'true_col', 'pred_col', and 'max_pred' columns.
+        class_of_interest: Label of class within category
+        target_recall: The target recall value
+        verbose: Print intermediate results
+        iterations: Number of thresholds to try in between minimum_threshold and 1
+
+    Returns:
+        threshold, recall
+    """
+    if target_recall > 1.0 or target_recall < 0:
+        raise ValueError(f"target_recall not between 0 and 1: {target_recall}")
+
+    if minimum_threshold > 1.0 or minimum_threshold < 0:
+        raise ValueError(f"minimum_threshold not between 0 and 1: {minimum_threshold}")
+
+    if iterations < 10:
+        raise ValueError(f"iterations must be at least 10: {iterations}")
+
+    true_col = col_templates["True"].format(category_name)
+    pred_col = col_templates["Predicted"].format(category_name)
+    max_pred_col = col_templates["Max pred"].format(category_name)
+
+    thresholds = np.linspace(minimum_threshold, 1.0, iterations)
+
+    for t in thresholds:
+        # Filtered subset
+        sub_df = df[df[max_pred_col] >= t]
+
+        # Number of true positives for class_of_interest in filtered set
+        tp = (
+            (sub_df[true_col] == class_of_interest)
+            & (sub_df[pred_col] == class_of_interest)
+        ).sum()
+
+        # Number of all true class_of_interest samples in filtered set
+        total = (sub_df[true_col] == class_of_interest).sum()
+
+        recall = tp / total
+
+        if verbose:
+            print(f"{t:.3f}:{recall:.3f}")
+
+        if recall >= target_recall:
+            return t, recall
+
+    return None, 0.0
+
+
+def filter_biomat_LS(
+    df: pd.DataFrame,
+    biomaterial_cat_name: str,
+    col_templates: Dict[str, str],
+    predScore_threshold: float = 0.8,
+    verbose: bool = True,
+) -> pd.DataFrame:
+    """Filter biomaterials for to enable more life stage predictions.
+
+    Remove samples expected to be from cell lines.
+
+    For unknown biomat, retain samples where biomat predictions are not
+    cell line with predScore > predScore_threshold.
+
+    Args:
+        df: DataFrame with biomaterial type predictions.
+        biomaterial_cat_name: metadata category label (e.g. 'biomaterial_type')
+        col_templates: Column templates for 'true_col', 'pred_col', and 'max_pred' columns.
+        predScore_threshold: threshold for minimum prediction score
+        verbose: Print intermediate results
+    """
+    unknown_values = ["unknown", "other", "indeterminate"]
+
+    if verbose:
+        print("Filtering biomaterial types for life stage predictions.")
+
+    true_col = col_templates["True"].format(biomaterial_cat_name)
+    pred_col = col_templates["Predicted"].format(biomaterial_cat_name)
+    max_pred_col = col_templates["Max pred"].format(biomaterial_cat_name)
+
+    if verbose:
+        print(
+            f"Before:\n{df[true_col].value_counts(dropna=False)}\n\n{df[pred_col].value_counts(dropna=False)}\n"
+        )
+
+    # First filter out cell lines
+    df = df[~df[true_col].isin(["cell_line"])]
+
+    # Then retain unknown that are probably not cell lines
+    unknown_subset = df[df[true_col].isin(unknown_values)]
+
+    if verbose:
+        print(
+            f"Unknown subset pre predScore filter:\n{unknown_subset[true_col].value_counts(dropna=False)}\n\n{unknown_subset[pred_col].value_counts(dropna=False)}\n"
+        )
+
+    # Only consider samples with predScore > predScore_threshold
+    unknown_subset = unknown_subset[unknown_subset[max_pred_col] > predScore_threshold]
+
+    if verbose:
+        print(
+            f"Unknown subset post 'predScore > {predScore_threshold}' filter:\n{unknown_subset[true_col].value_counts(dropna=False)}\n\n{unknown_subset[pred_col].value_counts(dropna=False)}\n"
+        )
+
+    unknown_subset = unknown_subset[(unknown_subset[pred_col] != "cell_line")]
+
+    df = pd.concat([df, unknown_subset])
+
+    return df
