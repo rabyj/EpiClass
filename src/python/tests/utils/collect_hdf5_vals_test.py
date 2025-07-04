@@ -44,13 +44,18 @@ def test_collect_hdf5_vals(test_dir: Path, feature_list: List[int]):
             f"{fixtures_dir}/89a0dcb635f0e9740f587931437b69f1_100kb_all_none_value.hdf5\n"
         )
 
+    # usage: collect_hdf5_vals [-h] [--feature_list FEATURE_LIST] [--normalize] [--hdf] [--csv]
+    #                          hdf5_list chromsize output_dir
     sys.argv = [
         "collect_hdf5_vals.py",
         str(hdf5_list),
         str(chroms),
+        str(output_dir),
+        "--feature_list",
         str(feature_list_path),
         normalize,
-        str(output_dir),
+        "--csv",
+        "--hdf",
     ]
 
     main_module()

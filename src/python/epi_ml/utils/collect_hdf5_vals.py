@@ -30,17 +30,20 @@ def parse_arguments() -> argparse.Namespace:
     )
     # fmt: off
     arg_parser.add_argument(
-        "hdf5_list", type=Path, help="A file with hdf5 filenames. Filenames in the list must use absolute path!"
+        "hdf5_list",
+        type=Path,
+        help="A file with hdf5 filenames. Filenames in the list must use absolute path!",
     )
     arg_parser.add_argument(
         "chromsize",
         type=Path,
-        help="A file with chrom sizes.")
+        help="A file with chrom sizes.",
+        )
     arg_parser.add_argument(
         "--feature_list",
         type=Path,
         help="A file with feature bin indexes in json format.",
-        default=None
+        default=None,
     )
     arg_parser.add_argument(
         "--normalize",
@@ -50,12 +53,12 @@ def parse_arguments() -> argparse.Namespace:
     arg_parser.add_argument(
         "--hdf",
         action="store_true",
-        help="Save the values as hdf5 file. pytables must be installed."
+        help="Save the values as hdf5 file. pytables must be installed.",
     )
     arg_parser.add_argument(
         "--csv",
         action="store_true",
-        help="Save the values as csv file."
+        help="Save the values as csv file.",
     )
     arg_parser.add_argument(
         "output_dir",
