@@ -162,7 +162,7 @@ class Metadata:
         self, min_class_size: int, label_category: str, verbose=True
     ):
         """Remove classes with less than min_class_size examples
-        for a given metatada category.
+        for a given metadata category.
 
         Returns string of class ratio left if verbose.
         """
@@ -396,7 +396,7 @@ class UUIDMetadata(Metadata):
         using_uuid: bool = True,
     ):
         """Remove classes with less than min_class_size examples
-        for a given metatada category.
+        for a given metadata category.
 
         Counts unique uuids if using_uuid=True, else counts md5s.
 

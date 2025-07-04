@@ -51,7 +51,7 @@ def parse_arguments() -> argparse.Namespace:
 
     # fmt: off
     arg_parser.add_argument(
-        "category", type=str, help="The metatada category to analyse.",
+        "category", type=str, help="The metadata category to analyse.",
     )
     arg_parser.add_argument(
         "hyperparameters", type=Path, help="A json file containing model hyperparameters.",

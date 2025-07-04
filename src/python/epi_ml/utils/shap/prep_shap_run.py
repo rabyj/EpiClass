@@ -150,7 +150,7 @@ def parse_arguments() -> argparse.Namespace:
     # fmt: off
     parser = ArgumentParser()
     parser.add_argument(
-        "category", type=str, help="The metatada category to analyse."
+        "category", type=str, help="The metadata category to analyse."
         )
     parser.add_argument(
         "metadata", type=Path, help="A metadata JSON file."

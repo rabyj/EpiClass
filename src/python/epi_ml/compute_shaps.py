@@ -50,10 +50,10 @@ def parse_arguments() -> argparse.Namespace:
     depend_group = arg_parser.add_argument_group("Model dependant arguments")
 
     depend_group.add_argument(
-        "--model_file", metavar="model_file", type=Path, help="Needed for LGBM. Specify the model file to load.",
+        "--model_file", metavar="model_file", type=Path, help="Needed for LGBM model. Specify the model file to load.",
     )
     depend_group.add_argument(
-        "--model_dir", type=DirectoryChecker(), help="Needed for neural netowork. Directory with 'best_checkpoint.list' file.",
+        "--model_dir", type=DirectoryChecker(), help="Needed for neural network model. Directory with 'best_checkpoint.list' file.",
     )
     # fmt: on
     return arg_parser.parse_args()

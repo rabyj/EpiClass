@@ -33,7 +33,7 @@ def parse_arguments() -> argparse.Namespace:
     parser = ArgumentParser()
     group1 = parser.add_argument_group("General")
     group1.add_argument(
-        "category", type=str, help="The metatada category to analyse."
+        "category", type=str, help="The metadata category to analyse."
         )
     group1.add_argument(
         "hdf5", type=Path, help="A file with hdf5 filenames. Use absolute path!"
