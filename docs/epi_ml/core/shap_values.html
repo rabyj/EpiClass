@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+<meta name="generator" content="pdoc3 0.11.0">
+<title>epi_ml.core.shap_values API documentation</title>
+<meta name="description" content="Module containing shap values related code (e.g. handling computation, analysing results).">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/sanitize.min.css" integrity="sha512-y1dtMcuvtTMJc1yPgEqF0ZjQbhnc/bFhyvIyVNb9Zk5mIGtqVaAB1Ttl28su8AvFMOY0EwRbAe+HCLqj6W7/KA==" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/typography.min.css" integrity="sha512-Y1DYSb995BAfxobCkKepB1BqJJTPrOp3zPL74AWFugHHmmdcvO+C48WLrUOlhGMc0QG7AE3f7gmvvcrmX2fDoA==" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:1.5em;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:2em 0 .50em 0}h3{font-size:1.4em;margin:1.6em 0 .7em 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .2s ease-in-out}a:visited{color:#503}a:hover{color:#b62}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900;font-weight:bold}pre code{font-size:.8em;line-height:1.4em;padding:1em;display:block}code{background:#f3f3f3;font-family:"DejaVu Sans Mono",monospace;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em 1em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul ul{padding-left:1em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha512-D9gUyxqja7hBtkWpPWGt9wfbfaMGVt9gnyCvYa+jojwwPHLCzUm5i8rpk7vD7wNee9bA35eYIjobYPaQuKS1MQ==" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => {
+hljs.configure({languages: ['bash', 'css', 'diff', 'graphql', 'ini', 'javascript', 'json', 'plaintext', 'python', 'python-repl', 'rust', 'shell', 'sql', 'typescript', 'xml', 'yaml']});
+hljs.highlightAll();
+})</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>epi_ml.core.shap_values</code></h1>
+</header>
+<section id="section-intro">
+<p>Module containing shap values related code (e.g. handling computation, analysing results).</p>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="epi_ml.core.shap_values.LGBM_SHAP_Handler"><code class="flex name class">
+<span>class <span class="ident">LGBM_SHAP_Handler</span></span>
+<span>(</span><span>model_analyzer: EstimatorAnalyzer, logdir: Path | str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Handle shap computations and data saving/loading.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class LGBM_SHAP_Handler:
+    &#34;&#34;&#34;Handle shap computations and data saving/loading.&#34;&#34;&#34;
+
+    def __init__(self, model_analyzer: EstimatorAnalyzer, logdir: Path | str):
+        self.logdir = logdir
+        self.saver = SHAP_Saver(logdir=logdir)
+        self.model_classes = list(model_analyzer.mapping.items())
+        self.model: LGBMClassifier = LGBM_SHAP_Handler._check_model_is_lgbm(
+            model_analyzer
+        )
+
+    @staticmethod
+    def _check_model_is_lgbm(model_analyzer: EstimatorAnalyzer) -&gt; LGBMClassifier:
+        &#34;&#34;&#34;Return lightgbm classifier if found, else raise ValueError.&#34;&#34;&#34;
+        model = model_analyzer.classifier
+        if isinstance(model, Pipeline):
+            model = model.steps[-1][1]
+        if not isinstance(model, LGBMClassifier):
+            raise ValueError(
+                f&#34;Expected model to be a lightgbm classifier, but got {model} instead.&#34;
+            )
+        return model
+
+    def compute_shaps(
+        self,
+        background_dset: SomeData,
+        evaluation_dset: SomeData,
+        save=True,
+        name=&#34;&#34;,
+        num_workers: int = 4,
+    ) -&gt; Tuple[List[np.ndarray], shap.TreeExplainer]:
+        &#34;&#34;&#34;Compute shap values of lgbm model on evaluation dataset.
+
+        Returns shap values and explainer
+        &#34;&#34;&#34;
+        explainer = shap.TreeExplainer(
+            model=self.model,
+            data=background_dset.signals,
+            model_output=&#34;raw&#34;,
+            feature_perturbation=&#34;interventional&#34;,
+        )
+
+        if save:
+            self.saver.save_to_npz(
+                name=name + &#34;_explainer_background&#34;,
+                background_md5s=background_dset.ids,
+                background_expectation=explainer.expected_value,  # type: ignore
+                classes=self.model_classes,
+            )
+
+        shap_values = LGBM_SHAP_Handler._compute_shap_values_parallel(
+            explainer=explainer,
+            signals=evaluation_dset.signals,
+            num_workers=num_workers,
+        )
+
+        if save:
+            self.saver.save_to_npz(
+                name=name + &#34;_evaluation&#34;,
+                evaluation_md5s=evaluation_dset.ids,
+                shap_values=shap_values,
+                expected_value=explainer.expected_value,
+                classes=self.model_classes,
+            )
+
+        return shap_values, explainer
+
+    @staticmethod
+    def _compute_shap_values_parallel(
+        explainer: shap.TreeExplainer,
+        signals: ArrayLike,
+        num_workers: int,
+    ) -&gt; List[np.ndarray]:
+        # Split the signals into chunks for parallel processing
+        signal_chunks = np.array_split(signals, num_workers)
+
+        # Worker function
+        def worker(chunk):
+            explainer_copy = copy.deepcopy(explainer)
+            return explainer_copy.shap_values(X=chunk)
+
+        # Use ThreadPoolExecutor to compute shap_values in parallel
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
+            shap_values_chunks = list(executor.map(worker, signal_chunks))
+
+        # Concatenate the chunks
+        if isinstance(shap_values_chunks[0], np.ndarray):  # binary case
+            shap_values = list(np.concatenate(shap_values_chunks, axis=0))
+        else:  # multiclass case
+            shap_values = [
+                np.concatenate([chunk[i] for chunk in shap_values_chunks], axis=0)
+                for i in range(len(shap_values_chunks[0]))
+            ]
+
+        return shap_values</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="epi_ml.core.shap_values.LGBM_SHAP_Handler.compute_shaps"><code class="name flex">
+<span>def <span class="ident">compute_shaps</span></span>(<span>self, background_dset: SomeData, evaluation_dset: SomeData, save=True, name='', num_workers: int = 4) ‑> Tuple[List[numpy.ndarray], shap.explainers._tree.Tree]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Compute shap values of lgbm model on evaluation dataset.</p>
+<p>Returns shap values and explainer</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="epi_ml.core.shap_values.NN_SHAP_Handler"><code class="flex name class">
+<span>class <span class="ident">NN_SHAP_Handler</span></span>
+<span>(</span><span>model: LightningDenseClassifier, logdir: Path | str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Handle shap computations and data saving/loading.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class NN_SHAP_Handler:
+    &#34;&#34;&#34;Handle shap computations and data saving/loading.&#34;&#34;&#34;
+
+    def __init__(self, model: LightningDenseClassifier, logdir: Path | str):
+        self.model = model
+        self.model.eval()
+        self.model_classes = list(self.model.mapping.items())
+        self.logdir = logdir
+        self.saver = SHAP_Saver(logdir=logdir)
+
+    def compute_shaps(
+        self,
+        background_dset: SomeData,
+        evaluation_dset: SomeData,
+        save=True,
+        name=&#34;&#34;,
+        num_workers: int = 4,
+    ) -&gt; Tuple[shap.DeepExplainer, List[np.ndarray]]:
+        &#34;&#34;&#34;Compute shap values of deep learning model on evaluation dataset
+        by creating an explainer with background dataset.
+
+        Returns explainer and shap values (as a list of matrix per class)
+        &#34;&#34;&#34;
+        explainer = shap.DeepExplainer(
+            model=self.model, data=torch.from_numpy(background_dset.signals).float()
+        )
+        if save:
+            self.saver.save_to_npz(
+                name=name + &#34;_explainer_background&#34;,
+                background_md5s=background_dset.ids,
+                background_expectation=explainer.expected_value,  # type: ignore
+                classes=self.model_classes,
+            )
+
+        signals = torch.from_numpy(evaluation_dset.signals).float()
+        shap_values = NN_SHAP_Handler._compute_shap_values_parallel(
+            explainer, signals, num_workers
+        )
+
+        if save:
+            self.saver.save_to_npz(
+                name=name + &#34;_evaluation&#34;,
+                evaluation_md5s=evaluation_dset.ids,
+                shap_values=shap_values,
+                classes=self.model_classes,
+            )
+
+        return explainer, shap_values  # type: ignore
+
+    @staticmethod
+    def _compute_shap_values_parallel(
+        explainer: shap.DeepExplainer,
+        signals: torch.Tensor,
+        num_workers: int,
+    ) -&gt; List[np.ndarray]:
+        &#34;&#34;&#34;Compute SHAP values in parallel using a ThreadPoolExecutor.
+
+        Args:
+            explainer (shap.DeepExplainer): The SHAP explainer object used for computing SHAP values.
+            signals (torch.Tensor): The evaluation dataset samples as a torch Tensor of shape (#samples, #features).
+            num_workers (int): The number of parallel threads to use for computation.
+
+        Returns:
+            List[np.ndarray]: A list of SHAP values matrices (one per output class) of shape (#samples, #features).
+        &#34;&#34;&#34;
+        signal_chunks = torch.tensor_split(signals, num_workers)
+
+        def worker(chunk: torch.Tensor) -&gt; np.ndarray:
+            explainer_copy = copy.deepcopy(explainer)
+            return explainer_copy.shap_values(chunk)  # type: ignore
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
+            shap_values_chunks = list(executor.map(worker, signal_chunks))
+
+        shap_values = [
+            np.concatenate([chunk[i] for chunk in shap_values_chunks], axis=0)
+            for i in range(len(shap_values_chunks[0]))
+        ]
+
+        return shap_values</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="epi_ml.core.shap_values.NN_SHAP_Handler.compute_shaps"><code class="name flex">
+<span>def <span class="ident">compute_shaps</span></span>(<span>self, background_dset: SomeData, evaluation_dset: SomeData, save=True, name='', num_workers: int = 4) ‑> Tuple[shap.explainers._deep.Deep, List[numpy.ndarray]]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Compute shap values of deep learning model on evaluation dataset
+by creating an explainer with background dataset.</p>
+<p>Returns explainer and shap values (as a list of matrix per class)</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="epi_ml.core.shap_values.SHAP_Analyzer"><code class="flex name class">
+<span>class <span class="ident">SHAP_Analyzer</span></span>
+<span>(</span><span>model: LightningDenseClassifier, explainer: shap.DeepExplainer)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>SHAP_Analyzer class for analyzing SHAP values of a model.</p>
+<h2 id="attributes">Attributes</h2>
+<dl>
+<dt><strong><code>model</code></strong></dt>
+<dd>The trained model.</dd>
+<dt><strong><code>explainer</code></strong></dt>
+<dd>The SHAP explainer object used to compute SHAP values.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class SHAP_Analyzer:
+    &#34;&#34;&#34;SHAP_Analyzer class for analyzing SHAP values of a model.
+
+    Attributes:
+        model: The trained model.
+        explainer: The SHAP explainer object used to compute SHAP values.
+    &#34;&#34;&#34;
+
+    def __init__(self, model: LightningDenseClassifier, explainer: shap.DeepExplainer):
+        self.model = model
+        self.explainer = explainer
+
+    def verify_shap_values_coherence(
+        self, shap_values: List, dset: SomeData, tolerance=1e-6  # type: ignore
+    ):
+        &#34;&#34;&#34;Verify the coherence of SHAP values with the model&#39;s output probabilities.
+
+        Checks if the sum of SHAP values for each sample (across all classes) and the
+        base values is approximately equal to the model&#39;s output probabilities.
+
+        Args:
+            shap_values: List of SHAP values for each class.
+            dset: The dataset used to compute the SHAP values.
+                  The samples need to be in the same order as in list of shap values.
+            tolerance: The allowed tolerance for the difference between the sum of SHAP
+                values and the model&#39;s output probabilities (default is 1e-6).
+
+        Returns:
+            bool: True if the SHAP values are coherent, False otherwise.
+        &#34;&#34;&#34;
+        num_classes = len(shap_values)
+        num_samples = shap_values[0].shape[0]
+        # Calculate the sum of SHAP values for each sample (across all classes) and add base values
+        shap_sum = np.zeros((num_samples, num_classes))
+        for i, shap_values_class in enumerate(shap_values):
+            # shap_values_class.sum(axis=1).shape = (n_samples,)
+            shap_sum[:, i] = (
+                shap_values_class.sum(axis=1) + self.explainer.expected_value[i]  # type: ignore
+            )
+
+        # Compute the model&#39;s output probabilities for the samples
+        signals = torch.from_numpy(dset.signals).float()
+        model_output_logits = self.model(signals).detach()
+        probs = F.softmax(model_output_logits, dim=1).detach().numpy()
+        shap_to_prob = (
+            F.softmax(torch.from_numpy(shap_sum).float(), dim=1)
+            .sum(dim=1)
+            .detach()
+            .numpy()
+        )
+        print(
+            f&#34;Verifying model output: Sum close to 1? {np.all(1 - probs.sum(axis=1) &lt;= tolerance)}&#34;
+        )
+        print(
+            f&#34;Verifying SHAP output: Sum close to 1 (w expected value)? {np.all(1 - shap_to_prob &lt;= tolerance)}&#34;
+        )
+        print(f&#34;Shap sum shape, detailling all classes: {shap_sum.shape}&#34;)
+        total = shap_sum.sum(axis=1)
+        print(
+            f&#34;Sum of all shap values across classes, for {total.shape} samples: {total}\n&#34;
+        )
+        # Compare the sum of SHAP values with the model&#39;s output probabilities
+        diff = np.abs(shap_sum - model_output_logits.numpy())
+        coherent = np.all(diff &lt;= tolerance)
+        print(
+            f&#34;Detailled values for shap sum, model preds and diff:\n {shap_sum}\n{model_output_logits}\n{diff}&#34;
+        )
+        if not coherent:
+            problematic_samples = np.argwhere(diff &gt; tolerance)
+            print(f&#34;SHAP values are not coherent for samples:\n {problematic_samples}&#34;)
+
+        return coherent</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="epi_ml.core.shap_values.SHAP_Analyzer.verify_shap_values_coherence"><code class="name flex">
+<span>def <span class="ident">verify_shap_values_coherence</span></span>(<span>self, shap_values: List, dset: SomeData, tolerance=1e-06)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Verify the coherence of SHAP values with the model's output probabilities.</p>
+<p>Checks if the sum of SHAP values for each sample (across all classes) and the
+base values is approximately equal to the model's output probabilities.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>shap_values</code></strong></dt>
+<dd>List of SHAP values for each class.</dd>
+<dt><strong><code>dset</code></strong></dt>
+<dd>The dataset used to compute the SHAP values.
+The samples need to be in the same order as in list of shap values.</dd>
+<dt><strong><code>tolerance</code></strong></dt>
+<dd>The allowed tolerance for the difference between the sum of SHAP
+values and the model's output probabilities (default is 1e-6).</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>bool</code></dt>
+<dd>True if the SHAP values are coherent, False otherwise.</dd>
+</dl></div>
+</dd>
+</dl>
+</dd>
+<dt id="epi_ml.core.shap_values.SHAP_Saver"><code class="flex name class">
+<span>class <span class="ident">SHAP_Saver</span></span>
+<span>(</span><span>logdir: Path | str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Handle shap data saving/loading.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class SHAP_Saver:
+    &#34;&#34;&#34;Handle shap data saving/loading.&#34;&#34;&#34;
+
+    def __init__(self, logdir: Path | str):
+        self.logdir = logdir
+        self.filename_template = &#34;shap_{name}_{time}.{ext}&#34;
+
+    def _create_filename(self, ext: str, name=&#34;&#34;) -&gt; Path:
+        &#34;&#34;&#34;Create a filename with the given extension and name, and a timestamp.&#34;&#34;&#34;
+        filename = self.filename_template.format(name=name, ext=ext, time=time_now_str())
+        filename = Path(self.logdir) / filename
+        return filename
+
+    def save_to_csv(
+        self, shap_values_matrix: np.ndarray, ids: List[str], name: str
+    ) -&gt; Path:
+        &#34;&#34;&#34;Save a single shap value matrix (shape (n_samples, #features)) to csv.
+        Giving a name is mandatory.
+
+        Returns path of saved file.
+        &#34;&#34;&#34;
+        if isinstance(shap_values_matrix, list):
+            raise ValueError(
+                f&#34;Expected &#39;shap_values_matrix&#39; to be a numpy array of shape (n_samples, #features), but got a list instead: {shap_values_matrix}&#34;  # pylint: disable=line-too-long
+            )
+        filename = self._create_filename(name=name, ext=&#34;csv&#34;)
+
+        n_dims = shap_values_matrix.shape[1]
+        df = pd.DataFrame(data=shap_values_matrix, index=ids, columns=range(n_dims))
+
+        print(f&#34;Saving SHAP values to: {filename}&#34;)
+        df.to_csv(filename)
+
+        return filename
+
+    def save_to_npz(self, name: str, verbose=True, **kwargs):
+        &#34;&#34;&#34;Save kwargs to numpy compressed npz file. Transforms everything into numpy arrays.&#34;&#34;&#34;
+        filename = self._create_filename(name=name, ext=&#34;npz&#34;)
+        if verbose:
+            print(f&#34;Saving SHAP values to: {filename}&#34;)
+        np.savez_compressed(
+            file=filename,
+            **kwargs,  # type: ignore
+        )
+
+    @staticmethod
+    def load_from_csv(path: Path | str) -&gt; pd.DataFrame:
+        &#34;&#34;&#34;Return pandas dataframe of shap values for loaded file.&#34;&#34;&#34;
+        return pd.read_csv(path, index_col=0)</code></pre>
+</details>
+<h3>Static methods</h3>
+<dl>
+<dt id="epi_ml.core.shap_values.SHAP_Saver.load_from_csv"><code class="name flex">
+<span>def <span class="ident">load_from_csv</span></span>(<span>path: Path | str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return pandas dataframe of shap values for loaded file.</p></div>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="epi_ml.core.shap_values.SHAP_Saver.save_to_csv"><code class="name flex">
+<span>def <span class="ident">save_to_csv</span></span>(<span>self, shap_values_matrix: np.ndarray, ids: List[str], name: str) ‑> pathlib.Path</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Save a single shap value matrix (shape (n_samples, #features)) to csv.
+Giving a name is mandatory.</p>
+<p>Returns path of saved file.</p></div>
+</dd>
+<dt id="epi_ml.core.shap_values.SHAP_Saver.save_to_npz"><code class="name flex">
+<span>def <span class="ident">save_to_npz</span></span>(<span>self, name: str, verbose=True, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Save kwargs to numpy compressed npz file. Transforms everything into numpy arrays.</p></div>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="epi_ml.core" href="index.html">epi_ml.core</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="epi_ml.core.shap_values.LGBM_SHAP_Handler" href="#epi_ml.core.shap_values.LGBM_SHAP_Handler">LGBM_SHAP_Handler</a></code></h4>
+<ul class="">
+<li><code><a title="epi_ml.core.shap_values.LGBM_SHAP_Handler.compute_shaps" href="#epi_ml.core.shap_values.LGBM_SHAP_Handler.compute_shaps">compute_shaps</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="epi_ml.core.shap_values.NN_SHAP_Handler" href="#epi_ml.core.shap_values.NN_SHAP_Handler">NN_SHAP_Handler</a></code></h4>
+<ul class="">
+<li><code><a title="epi_ml.core.shap_values.NN_SHAP_Handler.compute_shaps" href="#epi_ml.core.shap_values.NN_SHAP_Handler.compute_shaps">compute_shaps</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="epi_ml.core.shap_values.SHAP_Analyzer" href="#epi_ml.core.shap_values.SHAP_Analyzer">SHAP_Analyzer</a></code></h4>
+<ul class="">
+<li><code><a title="epi_ml.core.shap_values.SHAP_Analyzer.verify_shap_values_coherence" href="#epi_ml.core.shap_values.SHAP_Analyzer.verify_shap_values_coherence">verify_shap_values_coherence</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="epi_ml.core.shap_values.SHAP_Saver" href="#epi_ml.core.shap_values.SHAP_Saver">SHAP_Saver</a></code></h4>
+<ul class="">
+<li><code><a title="epi_ml.core.shap_values.SHAP_Saver.load_from_csv" href="#epi_ml.core.shap_values.SHAP_Saver.load_from_csv">load_from_csv</a></code></li>
+<li><code><a title="epi_ml.core.shap_values.SHAP_Saver.save_to_csv" href="#epi_ml.core.shap_values.SHAP_Saver.save_to_csv">save_to_csv</a></code></li>
+<li><code><a title="epi_ml.core.shap_values.SHAP_Saver.save_to_npz" href="#epi_ml.core.shap_values.SHAP_Saver.save_to_npz">save_to_npz</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.0</a>.</p>
+</footer>
+</body>
+</html>

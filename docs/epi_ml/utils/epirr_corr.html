@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+<meta name="generator" content="pdoc3 0.11.0">
+<title>epi_ml.utils.epirr_corr API documentation</title>
+<meta name="description" content="Create a correlation matrix based on the correlation of the signals of all datasets for a given epiRR (concatenated signals)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/sanitize.min.css" integrity="sha512-y1dtMcuvtTMJc1yPgEqF0ZjQbhnc/bFhyvIyVNb9Zk5mIGtqVaAB1Ttl28su8AvFMOY0EwRbAe+HCLqj6W7/KA==" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/typography.min.css" integrity="sha512-Y1DYSb995BAfxobCkKepB1BqJJTPrOp3zPL74AWFugHHmmdcvO+C48WLrUOlhGMc0QG7AE3f7gmvvcrmX2fDoA==" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:1.5em;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:2em 0 .50em 0}h3{font-size:1.4em;margin:1.6em 0 .7em 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .2s ease-in-out}a:visited{color:#503}a:hover{color:#b62}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900;font-weight:bold}pre code{font-size:.8em;line-height:1.4em;padding:1em;display:block}code{background:#f3f3f3;font-family:"DejaVu Sans Mono",monospace;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em 1em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul ul{padding-left:1em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha512-D9gUyxqja7hBtkWpPWGt9wfbfaMGVt9gnyCvYa+jojwwPHLCzUm5i8rpk7vD7wNee9bA35eYIjobYPaQuKS1MQ==" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => {
+hljs.configure({languages: ['bash', 'css', 'diff', 'graphql', 'ini', 'javascript', 'json', 'plaintext', 'python', 'python-repl', 'rust', 'shell', 'sql', 'typescript', 'xml', 'yaml']});
+hljs.highlightAll();
+})</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>epi_ml.utils.epirr_corr</code></h1>
+</header>
+<section id="section-intro">
+<p>Create a correlation matrix based on the correlation of the signals of all datasets for a given epiRR (concatenated signals)</p>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="epi_ml.utils.epirr_corr.define_accepted_tracks"><code class="name flex">
+<span>def <span class="ident">define_accepted_tracks</span></span>(<span>) ‑> FrozenSet[str]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Create and return set of tracks accepted for this program.</p></div>
+</dd>
+<dt id="epi_ml.utils.epirr_corr.load_signals"><code class="name flex">
+<span>def <span class="ident">load_signals</span></span>(<span>datasource: <a title="epi_ml.core.data_source.EpiDataSource" href="../core/data_source.html#epi_ml.core.data_source.EpiDataSource">EpiDataSource</a>, md5sums: List[str]) ‑> Dict[str, numpy.ndarray]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load signals from HDF5 files using the provided EpiDataSource and
+a list of MD5 checksums which identify the files.</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>dict</code></dt>
+<dd>A dictionary containing the loaded signals, where the keys are the md5sums</dd>
+</dl>
+<p>and the values are the corresponding signals.</p></div>
+</dd>
+<dt id="epi_ml.utils.epirr_corr.main"><code class="name flex">
+<span>def <span class="ident">main</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="epi_ml.utils.epirr_corr.parse_arguments"><code class="name flex">
+<span>def <span class="ident">parse_arguments</span></span>(<span>) ‑> argparse.Namespace</span>
+</code></dt>
+<dd>
+<div class="desc"><p>argument parser for command line</p></div>
+</dd>
+<dt id="epi_ml.utils.epirr_corr.print_unique_target_sets_distribution"><code class="name flex">
+<span>def <span class="ident">print_unique_target_sets_distribution</span></span>(<span>epirr_dict: Dict[str, Dict[~KT, ~VT]])</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Prints the distribution of unique target/assay sets for all epiRRs.</p>
+<p>This function takes a dictionary containing EpiRR and their dsets and calculates the
+distribution of unique target sets (assays) for each EpiRR. It then prints the
+occurrence count, cumulative sum, and the sorted assays for each unique target set.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>epirr_dict</code></strong> :&ensp;<code>Dict[str, Dict]</code></dt>
+<dd>A dictionary where the keys are EpiRR IDs and the
+values are experiment metadata datasets.</dd>
+</dl>
+<h2 id="example">Example</h2>
+<p>epirr_dict = {
+"EPIRR00001": [{md5sum:val1, assay:val2, &hellip;}, {md5sum:val3, assay:val4, &hellip;}],
+"EPIRR00002": [dset1, dset2, dset3]
+}
+print_unique_target_sets_distribution(epirr_dict)</p></div>
+</dd>
+</dl>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="epi_ml.utils.epirr_corr.EpirrSignals"><code class="flex name class">
+<span>class <span class="ident">EpirrSignals</span></span>
+<span>(</span><span>metadata: <a title="epi_ml.core.metadata.Metadata" href="../core/metadata.html#epi_ml.core.metadata.Metadata">Metadata</a>, hdf5_signals: Dict[str, numpy.ndarray], accepted_targets: Collection[+T_co])</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class EpirrSignals:
+    def __init__(
+        self,
+        metadata: Metadata,
+        hdf5_signals: Dict[str, np.ndarray],
+        accepted_targets: Collection,
+    ):
+        self.target_mapping = self.create_target_mapping(sorted(accepted_targets))
+        self._epirr_signals, self._epirr_md5s = self.create_epirr_signals(
+            epirr_dict=self.group_by_epirr(metadata),
+            signals_dict=hdf5_signals,
+            targets_id=self.target_mapping,
+        )
+        &#34;&#34;&#34;
+        Initialize the EpirrSignals class.
+
+        Args:
+            metadata (Metadata): A Metadata instance containing information about the experiments.
+            hdf5_signals (Dict[str, np.ndarray]): A dict mapping md5sums to signal arrays.
+            accepted_targets (Collection): A collection of accepted targets/assays (&#34;assay_epiclass&#34;)
+        &#34;&#34;&#34;
+
+    @property
+    def epirr_signals(self):
+        return self._epirr_signals
+
+    @property
+    def epirr_md5s(self):
+        &#34;&#34;&#34;md5s used to create the epiRR signals.&#34;&#34;&#34;
+        return self._epirr_md5s
+
+    @staticmethod
+    def group_by_epirr(metadata: Metadata) -&gt; Dict[str, List]:
+        &#34;&#34;&#34;Return all datasets grouped by epiRR as new dictionnary&#34;&#34;&#34;
+        epirr_dict = defaultdict(list)
+        for dset in metadata.datasets:
+            epirr = dset[&#34;epirr_id&#34;]
+            epirr_dict[epirr].append(dset)
+        return epirr_dict
+
+    @staticmethod
+    def create_target_mapping(targets: List[str]) -&gt; Dict[str, int]:
+        &#34;&#34;&#34;
+        Create a target mapping for sections of the epiRR arrays (where to place signals).
+
+        The targets list (mostly) defines the set and order of targets for the Epirr signal.
+
+        Some pairs occupy the same zone:
+         - WGBS-PBAT and WGBS-standard, standard is chosen over PBAT.
+         - RNA-seq and mRNA-seq, RNA is chosen over mRNA.
+
+        The number of expected zones/assays to represent an epiRR is hardcoded.
+
+        Args:
+            targets (List[str]): A list of target/assays strings.
+
+        Returns:
+            Dict[str, int]: A dictionary mapping target strings to integer indices.
+
+        Raises:
+            ValueError: If there are duplicate target values in the input list, or if the
+                        target count does not match the expected number of Epirr array zones,
+                        or if the target mapping does not match the expected integer range.
+        &#34;&#34;&#34;
+        if len(targets) != len(set(targets)):
+            raise ValueError(f&#34;Incoherent target/assay values: {targets}&#34;)
+
+        nb_zones = 9
+        target_mapping: Dict[str, int] = {}
+        for target in targets:
+            if re.match(r&#34;^\w?rna&#34;, target):
+                target_mapping[target] = nb_zones - 2
+                targets.remove(target)
+            elif re.match(r&#34;^wgbs&#34;, target):
+                target_mapping[target] = nb_zones - 1
+                targets.remove(target)
+
+        if len(targets) != nb_zones:
+            raise ValueError(
+                f&#34;{nb_zones} epirr array zones expected, {len(targets)} targets: {targets}&#34;
+            )
+
+        for i, target in enumerate(targets):
+            target_mapping[target] = i
+
+        if set(target_mapping.values()) != set(range(0, nb_zones)):
+            raise ValueError(
+                f&#34;Target mapping does not match expected range {set(target_mapping.values())} VS {set(range(0, nb_zones))}&#34;
+            )
+
+        return target_mapping
+
+    @staticmethod
+    def create_epirr_signals(
+        epirr_dict: Dict[str, List],
+        signals_dict: Dict[str, np.ndarray],
+        targets_id: Dict[str, int],
+    ) -&gt; Tuple[Dict[str, np.ndarray], List[str]]:
+        &#34;&#34;&#34;
+        Create a dictionary of the new epiRR signals representation.
+
+        Args:
+            epirr_dict (Dict[str, List]): A dict mapping EpiRR IDs to their list of datasets.
+            signals_dict (Dict[str, np.ndarray]): A dict mapping md5sums to signals.
+            targets_id (Dict[str, int]): A dictionary mapping target strings to integer indices.
+
+        Returns:
+            Dict[str, np.ndarray]: A dictionary mapping EpiRR IDs to signal arrays.
+            List[str]: A list of all md5sums used in the creation of the different arrays.
+        &#34;&#34;&#34;
+        nb_bins = list(signals_dict.values())[0].shape[0]
+        array_length = len(targets_id) * nb_bins
+
+        epirr_signals = {}
+        used_signals = []
+        for epirr, dset_list in epirr_dict.items():
+            epirr_signal = np.empty(array_length)
+            epirr_signal[:] = np.nan
+            for dset in dset_list:
+                target_id = targets_id[dset[&#34;assay_epiclass&#34;]]
+                md5sum = dset[&#34;md5sum&#34;]
+                used_signals.append((epirr, md5sum))
+
+                start_index = target_id * nb_bins
+                end_index = start_index + nb_bins
+                epirr_signal[start_index:end_index] = signals_dict[md5sum]
+
+            epirr_signals[epirr] = epirr_signal
+
+        return epirr_signals, used_signals</code></pre>
+</details>
+<h3>Static methods</h3>
+<dl>
+<dt id="epi_ml.utils.epirr_corr.EpirrSignals.create_epirr_signals"><code class="name flex">
+<span>def <span class="ident">create_epirr_signals</span></span>(<span>epirr_dict: Dict[str, List[~T]], signals_dict: Dict[str, numpy.ndarray], targets_id: Dict[str, int]) ‑> Tuple[Dict[str, numpy.ndarray], List[str]]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Create a dictionary of the new epiRR signals representation.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>epirr_dict</code></strong> :&ensp;<code>Dict[str, List]</code></dt>
+<dd>A dict mapping EpiRR IDs to their list of datasets.</dd>
+<dt><strong><code>signals_dict</code></strong> :&ensp;<code>Dict[str, np.ndarray]</code></dt>
+<dd>A dict mapping md5sums to signals.</dd>
+<dt><strong><code>targets_id</code></strong> :&ensp;<code>Dict[str, int]</code></dt>
+<dd>A dictionary mapping target strings to integer indices.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Dict[str, np.ndarray]</code></dt>
+<dd>A dictionary mapping EpiRR IDs to signal arrays.</dd>
+<dt><code>List[str]</code></dt>
+<dd>A list of all md5sums used in the creation of the different arrays.</dd>
+</dl></div>
+</dd>
+<dt id="epi_ml.utils.epirr_corr.EpirrSignals.create_target_mapping"><code class="name flex">
+<span>def <span class="ident">create_target_mapping</span></span>(<span>targets: List[str]) ‑> Dict[str, int]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Create a target mapping for sections of the epiRR arrays (where to place signals).</p>
+<p>The targets list (mostly) defines the set and order of targets for the Epirr signal.</p>
+<p>Some pairs occupy the same zone:
+- WGBS-PBAT and WGBS-standard, standard is chosen over PBAT.
+- RNA-seq and mRNA-seq, RNA is chosen over mRNA.</p>
+<p>The number of expected zones/assays to represent an epiRR is hardcoded.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>targets</code></strong> :&ensp;<code>List[str]</code></dt>
+<dd>A list of target/assays strings.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Dict[str, int]</code></dt>
+<dd>A dictionary mapping target strings to integer indices.</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>ValueError</code></dt>
+<dd>If there are duplicate target values in the input list, or if the
+target count does not match the expected number of Epirr array zones,
+or if the target mapping does not match the expected integer range.</dd>
+</dl></div>
+</dd>
+<dt id="epi_ml.utils.epirr_corr.EpirrSignals.group_by_epirr"><code class="name flex">
+<span>def <span class="ident">group_by_epirr</span></span>(<span>metadata: <a title="epi_ml.core.metadata.Metadata" href="../core/metadata.html#epi_ml.core.metadata.Metadata">Metadata</a>) ‑> Dict[str, List[~T]]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return all datasets grouped by epiRR as new dictionnary</p></div>
+</dd>
+</dl>
+<h3>Instance variables</h3>
+<dl>
+<dt id="epi_ml.utils.epirr_corr.EpirrSignals.epirr_md5s"><code class="name">prop <span class="ident">epirr_md5s</span></code></dt>
+<dd>
+<div class="desc"><p>md5s used to create the epiRR signals.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def epirr_md5s(self):
+    &#34;&#34;&#34;md5s used to create the epiRR signals.&#34;&#34;&#34;
+    return self._epirr_md5s</code></pre>
+</details>
+</dd>
+<dt id="epi_ml.utils.epirr_corr.EpirrSignals.epirr_signals"><code class="name">prop <span class="ident">epirr_signals</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def epirr_signals(self):
+    return self._epirr_signals</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="epi_ml.utils" href="index.html">epi_ml.utils</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="epi_ml.utils.epirr_corr.define_accepted_tracks" href="#epi_ml.utils.epirr_corr.define_accepted_tracks">define_accepted_tracks</a></code></li>
+<li><code><a title="epi_ml.utils.epirr_corr.load_signals" href="#epi_ml.utils.epirr_corr.load_signals">load_signals</a></code></li>
+<li><code><a title="epi_ml.utils.epirr_corr.main" href="#epi_ml.utils.epirr_corr.main">main</a></code></li>
+<li><code><a title="epi_ml.utils.epirr_corr.parse_arguments" href="#epi_ml.utils.epirr_corr.parse_arguments">parse_arguments</a></code></li>
+<li><code><a title="epi_ml.utils.epirr_corr.print_unique_target_sets_distribution" href="#epi_ml.utils.epirr_corr.print_unique_target_sets_distribution">print_unique_target_sets_distribution</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="epi_ml.utils.epirr_corr.EpirrSignals" href="#epi_ml.utils.epirr_corr.EpirrSignals">EpirrSignals</a></code></h4>
+<ul class="">
+<li><code><a title="epi_ml.utils.epirr_corr.EpirrSignals.create_epirr_signals" href="#epi_ml.utils.epirr_corr.EpirrSignals.create_epirr_signals">create_epirr_signals</a></code></li>
+<li><code><a title="epi_ml.utils.epirr_corr.EpirrSignals.create_target_mapping" href="#epi_ml.utils.epirr_corr.EpirrSignals.create_target_mapping">create_target_mapping</a></code></li>
+<li><code><a title="epi_ml.utils.epirr_corr.EpirrSignals.epirr_md5s" href="#epi_ml.utils.epirr_corr.EpirrSignals.epirr_md5s">epirr_md5s</a></code></li>
+<li><code><a title="epi_ml.utils.epirr_corr.EpirrSignals.epirr_signals" href="#epi_ml.utils.epirr_corr.EpirrSignals.epirr_signals">epirr_signals</a></code></li>
+<li><code><a title="epi_ml.utils.epirr_corr.EpirrSignals.group_by_epirr" href="#epi_ml.utils.epirr_corr.EpirrSignals.group_by_epirr">group_by_epirr</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.0</a>.</p>
+</footer>
+</body>
+</html>

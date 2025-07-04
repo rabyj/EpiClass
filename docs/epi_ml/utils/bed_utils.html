@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+<meta name="generator" content="pdoc3 0.11.0">
+<title>epi_ml.utils.bed_utils API documentation</title>
+<meta name="description" content="This module provides a collection of utilities for manipulating and analyzing genomic data.
+The utilities are useful for performing operations such as …">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/sanitize.min.css" integrity="sha512-y1dtMcuvtTMJc1yPgEqF0ZjQbhnc/bFhyvIyVNb9Zk5mIGtqVaAB1Ttl28su8AvFMOY0EwRbAe+HCLqj6W7/KA==" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/typography.min.css" integrity="sha512-Y1DYSb995BAfxobCkKepB1BqJJTPrOp3zPL74AWFugHHmmdcvO+C48WLrUOlhGMc0QG7AE3f7gmvvcrmX2fDoA==" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:1.5em;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:2em 0 .50em 0}h3{font-size:1.4em;margin:1.6em 0 .7em 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .2s ease-in-out}a:visited{color:#503}a:hover{color:#b62}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900;font-weight:bold}pre code{font-size:.8em;line-height:1.4em;padding:1em;display:block}code{background:#f3f3f3;font-family:"DejaVu Sans Mono",monospace;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em 1em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul ul{padding-left:1em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha512-D9gUyxqja7hBtkWpPWGt9wfbfaMGVt9gnyCvYa+jojwwPHLCzUm5i8rpk7vD7wNee9bA35eYIjobYPaQuKS1MQ==" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => {
+hljs.configure({languages: ['bash', 'css', 'diff', 'graphql', 'ini', 'javascript', 'json', 'plaintext', 'python', 'python-repl', 'rust', 'shell', 'sql', 'typescript', 'xml', 'yaml']});
+hljs.highlightAll();
+})</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>epi_ml.utils.bed_utils</code></h1>
+</header>
+<section id="section-intro">
+<p>This module provides a collection of utilities for manipulating and analyzing genomic data.
+The utilities are useful for performing operations such as mapping between genomic ranges and bins,
+and writing genomic data to bedgraph or .bed files.</p>
+<p>The module provides functions to:
+- Compute the size of a concatenated genome based on the resolution of each chromosome.
+- Verify if a given resolution is coherent with the input size of the network.
+- Convert values to a bedgraph format.
+- Write given bed ranges to a .bed file.
+- Compute the cumulative bin positions at the start of each chromosome.
+- Convert multiple global genome bins to chromosome ranges.
+- Convert multiple chromosome ranges to global genome bins.
+- Generate new random bed files.</p>
+<p>Please note:
+The function values_to_bedgraph() is not yet implemented and will raise a NotImplementedError when invoked.</p>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="epi_ml.utils.bed_utils.assert_correct_resolution"><code class="name flex">
+<span>def <span class="ident">assert_correct_resolution</span></span>(<span>chroms, resolution, signal_length)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Raise AssertionError if the given resolution is not coherent with
+the input size of the network.</p></div>
+</dd>
+<dt id="epi_ml.utils.bed_utils.bed_ranges_to_bins"><code class="name flex">
+<span>def <span class="ident">bed_ranges_to_bins</span></span>(<span>ranges: List[Tuple[str, int, int]], chroms: List[Tuple[str, int]], resolution: int) ‑> List[int]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Convert multiple chromosome ranges to global genome bins.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>ranges</code></strong> :&ensp;<code>List[Tuple[str, int, int]]</code></dt>
+<dd>List of tuples, each containing (chromosome name, start position, end position).</dd>
+<dt><strong><code>chroms</code></strong> :&ensp;<code>List[Tuple[str, int]]</code></dt>
+<dd>List of tuples (ordered by chromosome order),
+where each tuple contains a chromosome name and its length in base pairs.</dd>
+<dt><strong><code>resolution</code></strong> :&ensp;<code>int</code></dt>
+<dd>The size of each bin.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>List[int]</code></dt>
+<dd>List of bin indexes in the genome.</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>IndexError</code></dt>
+<dd>If any range is not in any chromosome.</dd>
+</dl>
+<h2 id="note">Note</h2>
+<p>The function assumes that chromosomes in <code>chroms</code> are ordered in alphanumerical order (chr1, chr10, &hellip;).
+The functions assumes that the binning was done per chromosome and then joined.
+The ranges are half-open intervals [start, end).
+The returned bin indexes are zero-based and span the entire genome considering the resolution.</p></div>
+</dd>
+<dt id="epi_ml.utils.bed_utils.bed_to_bins"><code class="name flex">
+<span>def <span class="ident">bed_to_bins</span></span>(<span>bed_source: str | Path | IO[bytes], chroms: List[Tuple[str, int]], resolution: int)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Convert the content of a .bed file to global genome bins.</p>
+<p>Chains the <code><a title="epi_ml.utils.bed_utils.read_bed_to_ranges" href="#epi_ml.utils.bed_utils.read_bed_to_ranges">read_bed_to_ranges()</a></code> and <code><a title="epi_ml.utils.bed_utils.bed_ranges_to_bins" href="#epi_ml.utils.bed_utils.bed_ranges_to_bins">bed_ranges_to_bins()</a></code> functions.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>bed_source</code></strong> :&ensp;<code>Union[str, Path, IO[bytes]]</code></dt>
+<dd>The path to the .bed file or an open file-like object.</dd>
+<dt><strong><code>chroms</code></strong> :&ensp;<code>List[Tuple[str, int]]</code></dt>
+<dd>List of tuples (ordered by chromosome order),
+where each tuple contains a chromosome name and its length in base pairs.</dd>
+<dt><strong><code>resolution</code></strong> :&ensp;<code>int</code></dt>
+<dd>The size of each bin, in bp.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>List[int]</code></dt>
+<dd>List of bin indexes in the genome.</dd>
+</dl></div>
+</dd>
+<dt id="epi_ml.utils.bed_utils.bins_to_bed_ranges"><code class="name flex">
+<span>def <span class="ident">bins_to_bed_ranges</span></span>(<span>bin_indexes: Iterable[int], chroms: List[Tuple[str, int]], resolution: int) ‑> List[Tuple[str, int, int]]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Convert multiple global genome bins to chromosome ranges.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>bin_indexes</code></strong> :&ensp;<code>List[int]</code></dt>
+<dd>List of bin indexes in the genome.</dd>
+<dt><strong><code>chroms</code></strong> :&ensp;<code>List[Tuple[str, int]]</code></dt>
+<dd>List of tuples (ordered by chromosome order),
+where each tuple contains a chromosome name and its length in base pairs.</dd>
+<dt><strong><code>resolution</code></strong> :&ensp;<code>int</code></dt>
+<dd>The size of each bin.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>List[Tuple[str, int, int]]</code></dt>
+<dd>List of tuples, each containing (chromosome name, start position, end position).</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>IndexError</code></dt>
+<dd>If any bin index is not in any chromosome,</dd>
+</dl>
+<p>i.e., it's greater than the total number of bins in the genome.</p>
+<h2 id="note">Note</h2>
+<p>The function assumes that chromosomes in <code>chroms</code> are ordered as they appear in the genome.
+The functions assumes that the binning was done per chromosome and then joined.
+The bin indexes are zero-based and span the entire genome considering the resolution.
+The returned ranges are half-open intervals [start, end).</p></div>
+</dd>
+<dt id="epi_ml.utils.bed_utils.compute_cumulative_bins"><code class="name flex">
+<span>def <span class="ident">compute_cumulative_bins</span></span>(<span>chroms: List[Tuple[str, int]], resolution: int) ‑> List[int]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Compute the cumulative bin positions at the start of each chromosome.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>chroms</code></strong> :&ensp;<code>List[Tuple[str, int]]</code></dt>
+<dd>List of tuples (ordered by bedsort chromosome order),
+where each tuple contains a chromosome name and its length in base pairs.</dd>
+<dt><strong><code>resolution</code></strong> :&ensp;<code>int</code></dt>
+<dd>The size of each bin.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>List[int]</code></dt>
+<dd>List of cumulative bin positions.</dd>
+</dl></div>
+</dd>
+<dt id="epi_ml.utils.bed_utils.create_new_random_bed"><code class="name flex">
+<span>def <span class="ident">create_new_random_bed</span></span>(<span>hdf5_size: int, desired_size: int, resolution: int, n_bed: int = 1, output_dir: Path = PosixPath('/home/local/USHERBROOKE/rabj2301/Projects/sources/epi_ml/docs'))</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Create new random bed files.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>hdf5_size</code></strong> :&ensp;<code>int</code></dt>
+<dd>The total size of the HDF5 file (unique to each resolution).</dd>
+<dt><strong><code>desired_size</code></strong> :&ensp;<code>int</code></dt>
+<dd>The desired size of the random bed file.</dd>
+<dt><strong><code>resolution</code></strong> :&ensp;<code>int</code></dt>
+<dd>The resolution of each bed/hdf5 bins.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>None</p></div>
+</dd>
+<dt id="epi_ml.utils.bed_utils.pairwise"><code class="name flex">
+<span>def <span class="ident">pairwise</span></span>(<span>iterable)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>s -&gt; (s0,s1), (s1,s2), (s2, s3), &hellip;</p></div>
+</dd>
+<dt id="epi_ml.utils.bed_utils.predict_concat_size"><code class="name flex">
+<span>def <span class="ident">predict_concat_size</span></span>(<span>chroms, resolution)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Compute the size of a concatenated genome from the resolution of each chromosome.</p></div>
+</dd>
+<dt id="epi_ml.utils.bed_utils.read_bed_to_ranges"><code class="name flex">
+<span>def <span class="ident">read_bed_to_ranges</span></span>(<span>bed_source: str | Path | IO[bytes])</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Read a .bed file and return the ranges as a list of tuples.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>bed_source</code></strong> :&ensp;<code>Union[str, Path, IO[bytes]]</code></dt>
+<dd>The path to the .bed file or an open file-like object.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>List[Tuple[str, int, int]]</code></dt>
+<dd>List of tuples, each containing (chromosome name, start position, end position).</dd>
+</dl></div>
+</dd>
+<dt id="epi_ml.utils.bed_utils.values_to_bedgraph"><code class="name flex">
+<span>def <span class="ident">values_to_bedgraph</span></span>(<span>values, chroms, resolution, bedgraph_path)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Write a bedgraph from a full genome values iterable (e.g. importance).
+The chromosome coordinates are zero-based, half-open (from 0 to N-1).</p></div>
+</dd>
+<dt id="epi_ml.utils.bed_utils.write_to_bed"><code class="name flex">
+<span>def <span class="ident">write_to_bed</span></span>(<span>bed_ranges: List[Tuple[str, int, int]], bed_path: str | Path, verbose: bool = False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Writes the given bed ranges to a .bed file.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>bed_ranges</code></strong> :&ensp;<code>List[Tuple[str, int, int]]</code></dt>
+<dd>List of tuples, each containing
+(chromosome name, start position, end position).</dd>
+<dt><strong><code>bed_path</code></strong> :&ensp;<code>str</code></dt>
+<dd>The path where the .bed file should be written.</dd>
+</dl>
+<h2 id="note">Note</h2>
+<p>The function doesn't return anything. It writes directly to a file.</p></div>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="epi_ml.utils" href="index.html">epi_ml.utils</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="epi_ml.utils.bed_utils.assert_correct_resolution" href="#epi_ml.utils.bed_utils.assert_correct_resolution">assert_correct_resolution</a></code></li>
+<li><code><a title="epi_ml.utils.bed_utils.bed_ranges_to_bins" href="#epi_ml.utils.bed_utils.bed_ranges_to_bins">bed_ranges_to_bins</a></code></li>
+<li><code><a title="epi_ml.utils.bed_utils.bed_to_bins" href="#epi_ml.utils.bed_utils.bed_to_bins">bed_to_bins</a></code></li>
+<li><code><a title="epi_ml.utils.bed_utils.bins_to_bed_ranges" href="#epi_ml.utils.bed_utils.bins_to_bed_ranges">bins_to_bed_ranges</a></code></li>
+<li><code><a title="epi_ml.utils.bed_utils.compute_cumulative_bins" href="#epi_ml.utils.bed_utils.compute_cumulative_bins">compute_cumulative_bins</a></code></li>
+<li><code><a title="epi_ml.utils.bed_utils.create_new_random_bed" href="#epi_ml.utils.bed_utils.create_new_random_bed">create_new_random_bed</a></code></li>
+<li><code><a title="epi_ml.utils.bed_utils.pairwise" href="#epi_ml.utils.bed_utils.pairwise">pairwise</a></code></li>
+<li><code><a title="epi_ml.utils.bed_utils.predict_concat_size" href="#epi_ml.utils.bed_utils.predict_concat_size">predict_concat_size</a></code></li>
+<li><code><a title="epi_ml.utils.bed_utils.read_bed_to_ranges" href="#epi_ml.utils.bed_utils.read_bed_to_ranges">read_bed_to_ranges</a></code></li>
+<li><code><a title="epi_ml.utils.bed_utils.values_to_bedgraph" href="#epi_ml.utils.bed_utils.values_to_bedgraph">values_to_bedgraph</a></code></li>
+<li><code><a title="epi_ml.utils.bed_utils.write_to_bed" href="#epi_ml.utils.bed_utils.write_to_bed">write_to_bed</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.0</a>.</p>
+</footer>
+</body>
+</html>
