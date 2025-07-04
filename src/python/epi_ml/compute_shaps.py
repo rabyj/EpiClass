@@ -47,7 +47,7 @@ def parse_arguments() -> argparse.Namespace:
     gen_group.add_argument(
         "-o", "--output_name", metavar="--output-name", default="", help="Name (not path) of outputted pickle file containing computed SHAP values",
     )
-    depend_group = arg_parser.add_argument_group("Model dependant arguments")
+    depend_group = arg_parser.add_argument_group("Model dependent arguments")
 
     depend_group.add_argument(
         "--model_file", metavar="model_file", type=Path, help="Needed for LGBM model. Specify the model file to load.",
