@@ -15,7 +15,7 @@ from epi_ml.core.data_source import EpiDataSource
 from epi_ml.core.epiatlas_treatment import TRACKS_MAPPING
 from epi_ml.core.hdf5_loader import Hdf5Loader
 from epi_ml.core.metadata import Metadata
-from epi_ml.utils.modify_metadata import epiatlas_assays
+from epi_ml.utils.metadata_utils import EPIATLAS_ASSAYS as epiatlas_assays
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -71,9 +71,7 @@ def print_unique_target_sets_distribution(epirr_dict: Dict[str, Dict]):
     print(len(epirr_assays_dict))
 
 
-def load_signals(
-    datasource: EpiDataSource, md5sums: List[str]
-) -> Dict[str, np.ndarray]:
+def load_signals(datasource: EpiDataSource, md5sums: List[str]) -> Dict[str, np.ndarray]:
     """
     Load signals from HDF5 files using the provided EpiDataSource and
     a list of MD5 checksums which identify the files.
@@ -98,6 +96,8 @@ def define_accepted_tracks() -> FrozenSet[str]:
 
 
 class EpirrSignals:
+    """Class to create epiRR signals based on the signals of all datasets for a given epiRR (concatenated signals)"""
+
     def __init__(
         self,
         metadata: Metadata,
@@ -121,6 +121,7 @@ class EpirrSignals:
 
     @property
     def epirr_signals(self):
+        """Returns the epiRR signals."""
         return self._epirr_signals
 
     @property
@@ -230,7 +231,7 @@ class EpirrSignals:
 
 
 def main():
-
+    """main"""
     cli = parse_arguments()
 
     my_datasource = EpiDataSource(cli.hdf5, cli.chromsize, cli.metadata)
