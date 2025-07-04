@@ -1,127 +1,120 @@
 #!/bin/bash
-#SBATCH --time=24:00:00
-#SBATCH --account=your-account
-#SBATCH --job-name=your-job-name
-#SBATCH --output=./slurm_files/%x-%j.out
+#SBATCH --time=:::time:::
+#SBATCH --account=:::your-account:::
+#SBATCH --job-name==:::your-job-name:::
+#SBATCH --output=./slurm_files/%x-job%j.out
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
-#SBATCH --mem=128G
-#SBATCH --mail-user=john.doe@domain.ca
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=:::memory::: # ex: 16G
+#SBATCH --mail-user=john.doe@domain.com
 #SBATCH --mail-type=END,FAIL
 
-# ----> TEMPLATE PATHS TO MODIFY FOR SURE ARE IN []. Use regex to find, e.g. \[.*\]<----
+# NOTE: The values in between ':::' are to be replaced by the user
 
+# shellcheck disable=SC1091  # Don't warn about sourcing unreachable files
 
 export PYTHONUNBUFFERED=TRUE
 
-if [[ -n "$SLURM_JOB_ID" ]];
-then
+if [[ -n "$SLURM_JOB_ID" ]]; then
   echo "print =========================================="
   echo "print SLURM_JOB_ID = $SLURM_JOB_ID"
   echo "print SLURM_JOB_NODELIST = $SLURM_JOB_NODELIST"
   echo "print =========================================="
 fi
 
-gen_path="/home/[username]/[general-workspace]"
-input_path="${gen_path}/[project_folder]/input"
-output_path="${gen_path}/[project_folder]/output/logs"
+gen_path="/path/to/epiclass" # MODIFY, input/output directories
+input_path="${gen_path}/epiclass/input"
+output_path="${gen_path}/epiclass/output/logs"
 
-# use correct environment
-source [/path/to/venv]
+gen_program_path="${gen_path}/sources/epi_ml" # MODIFY: git root
+program_path="${gen_program_path}/src/python/epi_ml"
+
+slurm_out_folder="${gen_path}/epiclass/output/sub/slurm_files"
+
+for path in ${slurm_out_folder} ${gen_program_path} ${input_path} ${output_path}; do
+  if [ ! -d ${path} ]; then
+    echo "${path} is not a directory. Please check the path."
+    exit 1
+  else
+    echo "Used directory: ${path}"
+  fi
+done
+
+
+# --- use correct environment ---
+
+set -e
+if [[ -n "$SLURM_JOB_ID" ]]; then
+  cd $SLURM_TMPDIR
+  bash ${gen_program_path}/src/bash_utils/setup_venv.sh -r ${gen_program_path}/requirements/minimal_requirements.txt -s ${gen_program_path}/src/python &>${slurm_out_folder}/${SLURM_JOB_ID}_setup.log
+  source epiclass_env/bin/activate
+else
+  source /path/to/preinstalled/venv/bin/activate # MODIFY
+fi
+
 
 # --- choose category + hparams + source files ---
+
 # MODIFY THINGS HERE
 
-category="cell_type" # IMPORTANT
-# export ASSAY_LIST='["h3k27ac", "h3k27me3", "h3k36me3", "h3k4me1", "h3k4me3", "h3k9me3", "input", "rna_seq", "mrna_seq", "wgbs"]' # as json
-export LABEL_LIST='["female", "male"]'
-# export LABEL_LIST='["single_end", "paired_end"]'
-# export EXCLUDE_LIST='["other", "--", "NA", ""]'
+# RESTORE="--restore" # COMMENT IF TRAINING # IMPORTANT
+# NO_VALID="hell yeah" # COMMENT IF 10fold  TRAINING # IMPORTANT
 
+category="assay_epiclass"
 
-hparams="human_longer.json" # IMPORTANT
-release="2023-01-epiatlas-freeze"
+export EXCLUDE_LIST='["other", "--", "NA", "", "unknown"]'
+export MIN_CLASS_SIZE="10" # IMPORTANT
+
+hparams="human_longer_oversample" # IMPORTANT
+
+release="epiatlas-dfreeze-v2.1"
 assembly="hg38"
-resolution="100kb" # IMPORTANT
 
-
+resolution="100kb"
 basename="${resolution}_all_none"
 list_name="${basename}" # IMPORTANT
-
-dataset=${assembly}"_"${release} # ex: hg38_2018-10
-
-echo $dataset
 
 export LAYER_SIZE="3000" # IMPORTANT
 export NB_LAYER="1"
 
 log="${output_path}/${release}/${assembly}_${basename}/${category}_${NB_LAYER}l_${LAYER_SIZE}n" # IMPORTANT# IMPORTANT# IMPORTANT# IMPORTANT
-log="${log}/10fold" # IMPORTANT
+log="${log}/10fold-oversampling"
+
 
 # --- Creating correct paths for programs/launching ---
 
 timestamp=$(date +%s)
 
-arg2="${input_path}/hparams/${hparams}"
-arg3="${input_path}/hdf5_list/${dataset}/${list_name}.list"
-arg4="${input_path}/chromsizes/hg38.noy.chrom.sizes"
-arg5="${input_path}/metadata/metadata_file.json"  # IMPORTANT
+hparams="${input_path}/hparams/${hparams}.json"
+hdf5_list="${input_path}/hdf5_list/hg38_epiatlas-freeze-v2/${list_name}.list"
+chroms="${input_path}/chromsizes/hg38.noy.chrom.sizes"
+metadata="${input_path}/metadata/dfreeze-v2/hg38_2023-epiatlas-dfreeze-pospurge-nodup.json"
 out1="${log}/output_job${SLURM_JOB_ID}_${SLURM_JOB_NAME}_${timestamp}.o"
 out2="${log}/output_job${SLURM_JOB_ID}_${SLURM_JOB_NAME}_${timestamp}.e"
 
 set -e
-echo "Input arguments:"
-for var in $arg2 $arg3 $arg4 $arg5
-do
-ls $var
+for path in ${hparams} ${hdf5_list} ${chroms} ${metadata}; do
+  if [ ! -f ${path} ]; then
+    echo "${path} is not a file. Please check the path."
+    exit 1
+  else
+    echo "Input: ${path}"
+  fi
 done
 
 
 # --- Pre-checks ---
 
-program_path="${gen_path}/[path-to-program-python-scripts]"
 cd ${program_path}
 
 printf '\n%s\n' "Launching following command"
 printf '%s\n' "python ${program_path}/utils/check_dir.py ${log}"
 python ${program_path}/utils/check_dir.py ${log}
 
-printf '\n%s\n' "Launching following command"
-printf '%s\n' "python ${program_path}/utils/preconditions.py -m ${arg5}"
-python ${program_path}/utils/preconditions.py -m ${arg5}
-
 # Preconditions passed, copy launch script to log dir.
-if [[ -n "$SLURM_JOB_ID" ]];
-then
-scontrol write batch_script ${SLURM_JOB_ID} ${log}/launch_script_${SLURM_JOB_NAME}-job${SLURM_JOB_ID}.sh
-fi
-
-
-# --- Transfer files to node scratch ---
-
-# if [[ -n "$SLURM_JOB_ID" ]];
-# then
-#   newdir="$SLURM_TMPDIR/hdf5s/"
-#   mkdir $newdir
-#   filelist=$(cat ${arg3})
-#     for FILE in ${filelist}
-#     do
-#       cp -L ${FILE} ${newdir}
-#     done
-# fi
-
-
-if [[ -n "$SLURM_JOB_ID" ]];
-then
-  project="[/path/to/project]"
-  tar_file="${project}/input/hdf5/epiatlas_dfreeze_${resolution}_all_none.tar"  # IMPORTANT
-
-  cd $SLURM_TMPDIR
-
-  echo "Untaring $tar_file in $SLURM_TMPDIR"
-  tar -xf $tar_file
-
-  export HDF5_PARENT="epiatlas_dfreeze_${resolution}_all_none" # IMPORTANT
+if [[ -n "$SLURM_JOB_ID" ]]; then
+  scontrol write batch_script ${SLURM_JOB_ID} ${log}/launch_script_${SLURM_JOB_NAME}-job${SLURM_JOB_ID}.sh
 fi
 
 
@@ -129,56 +122,51 @@ fi
 
 echo "Time before launch: $(date +%F_%T)"
 printf '\n%s\n' "Launching following command"
-if [[ -n "$NO_VALID" ]]; #if variable exists
-then
-  # --- no valid launch ---
+if [[ -n "$NO_VALID" ]]; then #if variable exists
+  # --- complete training without validation set launch ---
   if [[ "$log" == *"10fold"* ]]; then
     log="$log/notactually10foldbaka"
     printf '\n%s\n' "Incoherent log path, changing log to $log"
   fi
 
-  printf '%s\n' "python ${program_path}/epiatlas_training_no_valid.py $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} > ${out1} 2> ${out2}"
-  python ${program_path}/epiatlas_training_no_valid.py $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} > "${out1}" 2> "${out2}"
+  printf '%s\n' "python ${program_path}/epiatlas_training_no_valid.py $category ${hparams} ${hdf5_list} ${chroms} ${metadata} ${log} > ${out1} 2> ${out2}"
+  python ${program_path}/epiatlas_training_no_valid.py $category ${hparams} ${hdf5_list} ${chroms} ${metadata} ${log} >"${out1}" 2>"${out2}"
   echo "Time after launch: $(date +%F_%T)"
   exit
 
 elif [[ -n "$RESTORE" ]]; then
   # --- kfold launch ---
-  printf '%s\n' "python ${program_path}/epiatlas_training.py $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} --restore > ${out1} 2> ${out2}"
-  python ${program_path}/epiatlas_training.py $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} --restore > "${out1}" 2> "${out2}"
+  printf '%s\n' "python ${program_path}/epiatlas_training.py $category ${hparams} ${hdf5_list} ${chroms} ${metadata} ${log} --restore > ${out1} 2> ${out2}"
+  python ${program_path}/epiatlas_training.py $category ${hparams} ${hdf5_list} ${chroms} ${metadata} ${log} --restore >"${out1}" 2>"${out2}"
   exit
 
 else
   # --- kfold launch ---
-  printf '%s\n' "python ${program_path}/epiatlas_training.py $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} > ${out1} 2> ${out2}"
-  python ${program_path}/epiatlas_training.py $category ${arg2} ${arg3} ${arg4} ${arg5} ${log} > "${out1}" 2> "${out2}"
+  printf '%s\n' "python ${program_path}/epiatlas_training.py $category ${hparams} ${hdf5_list} ${chroms} ${metadata} ${log} > ${out1} 2> ${out2}"
+  python ${program_path}/epiatlas_training.py $category ${hparams} ${hdf5_list} ${chroms} ${metadata} ${log} >"${out1}" 2>"${out2}"
 fi
 echo "Time after launch: $(date +%F_%T)"
 
 
 # --- More logging ---
-
-export LOG="${log}"
-export NO_TRUE="False"
+set +e
 
 cd ${log}
 printf '\n%s\n' "Launching following command"
 printf '%s\n' "cat split*/validation_prediction.csv | sort -ru > full-10fold-validation_prediction.csv"
-cat split*/validation_prediction.csv | sort -ru > full-10fold-validation_prediction.csv
+cat split*/validation_prediction.csv | sort -ru >full-10fold-validation_prediction.csv
 
-# categories="spam bam foo"
 to_augment="${log}/full-10fold-validation_prediction.csv"
-metadata="${arg5}"
 
 printf '\n%s\n' "Launching following command"
 printf '%s\n' "python ${program_path}/utils/augment_predict_file.py ${to_augment} ${metadata} --all-categories"
 python ${program_path}/utils/augment_predict_file.py ${to_augment} ${metadata} --all-categories
 
+printf '%s\n' "python ${program_path}/utils/create_confusion_matrices.py --from_prediction ${to_augment}"
+python ${program_path}/utils/create_confusion_matrices.py --from_prediction ${to_augment}
 
 # Copy slurm output file to log dir
-if [[ -n "$SLURM_JOB_ID" ]];
-then
-  slurm_out_folder="${gen_path}/[path-to-slurm-output]"
+if [[ -n "$SLURM_JOB_ID" ]]; then
   slurm_out_file="${SLURM_JOB_NAME}-*${SLURM_JOB_ID}.out"
   cp -v ${slurm_out_folder}/${slurm_out_file} ${log}/
 fi
