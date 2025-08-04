@@ -126,11 +126,9 @@ def test_bed_bin_conversion():
     ]
 
     for bin_indexes in test_cases:
-        # When
         ranges = bins_to_bed_ranges(bin_indexes, chroms, resolution)
         returned_bin_indexes = bed_ranges_to_bins(ranges, chroms, resolution)
 
-        # Then
         assert set(returned_bin_indexes) == set(
             bin_indexes
         ), f"Returned bin indexes should match the original bin indexes after conversion to ranges and back to bins. Failed for bin_indexes={bin_indexes}"
@@ -140,8 +138,10 @@ def test_bed_bin_conversion_2(test_epiatlas_data_handler: EpiAtlasFoldFactory):
     """Test conversion of bin indexes to bed ranges and back to bin indexes."""
     chroms = test_epiatlas_data_handler.epiatlas_dataset.datasource.load_chrom_sizes()
     resolution = 1000 * 100
+
     # fmt: off
-    bin_indexes = [29956, 28774, 28775, 16809, 26345, 29551, 15888, 5651, 15219, 28889, 11325, 8574]  # fmt: on
+    bin_indexes = [29956, 28774, 28775, 16809, 26345, 29551, 15888, 5651, 15219, 28889, 11325, 8574]
+    # fmt: on
 
     ranges = bins_to_bed_ranges(bin_indexes, chroms, resolution)
     returned_bin_indexes = bed_ranges_to_bins(ranges, chroms, resolution)
@@ -155,8 +155,10 @@ def test_bed_bin_conversion_3(test_epiatlas_data_handler: EpiAtlasFoldFactory, t
     """Test conversion of bin indexes to bed files and back to bin indexes."""
     chroms = test_epiatlas_data_handler.epiatlas_dataset.datasource.load_chrom_sizes()
     resolution = 1000 * 100
+
     # fmt: off
-    bin_indexes = [29956, 28774, 28775, 16809, 26345, 29551, 15888, 5651, 15219, 28889, 11325, 8574]  # fmt: on
+    bin_indexes = [29956, 28774, 28775, 16809, 26345, 29551, 15888, 5651, 15219, 28889, 11325, 8574]
+    # fmt: on
 
     ranges = bins_to_bed_ranges(bin_indexes, chroms, resolution)
 
@@ -173,3 +175,51 @@ def test_bed_bin_conversion_3(test_epiatlas_data_handler: EpiAtlasFoldFactory, t
     assert set(returned_bin_indexes) == set(
         bin_indexes
     ), f"Returned bin indexes should match the original bin indexes after conversion to ranges and back to bins. Failed for bin_indexes={bin_indexes}"
+
+
+def test_bins_to_bed_ranges_preserves_order() -> None:
+    """Ensure that bins_to_bed_ranges returns output in the same order as input bin indexes."""
+    chroms = [("chr1", 100), ("chr2", 150), ("chr3", 300)]
+    resolution = 100
+
+    bin_indexes = [2, 0, 4, 1]  # deliberately out of order
+    expected = [
+        ("chr2", 100, 150),  # bin 2
+        ("chr1", 0, 100),  # bin 0
+        ("chr3", 100, 200),  # bin 4
+        ("chr2", 0, 100),  # bin 1
+    ]
+
+    actual = bins_to_bed_ranges(bin_indexes, chroms, resolution)
+    assert actual == expected, f"Expected {expected}, got {actual}"
+
+
+def test_bed_ranges_to_bins_preserves_order() -> None:
+    """Ensure that bed_ranges_to_bins returns output in the same order as input ranges."""
+    chroms = [("chr1", 100), ("chr2", 150), ("chr3", 300)]
+    resolution = 100
+
+    bed_ranges = [
+        ("chr3", 100, 200),  # bin 4
+        ("chr2", 0, 100),  # bin 1
+        ("chr2", 100, 150),  # bin 2
+        ("chr1", 0, 100),  # bin 0
+    ]
+    expected = [4, 1, 2, 0]
+
+    actual = bed_ranges_to_bins(bed_ranges, chroms, resolution)
+    assert actual == expected, f"Expected {expected}, got {actual}"
+
+
+def test_bed_bin_roundtrip_preserves_order() -> None:
+    """Test that bin → bed → bin conversion preserves order."""
+    chroms = [("chr1", 5000), ("chr2", 5000)]
+    resolution = 1000
+    bin_indexes = [5, 1, 9, 0]
+
+    ranges = bins_to_bed_ranges(bin_indexes, chroms, resolution)
+    returned_bin_indexes = bed_ranges_to_bins(ranges, chroms, resolution)
+
+    assert (
+        returned_bin_indexes == bin_indexes
+    ), f"Order was not preserved. Expected {bin_indexes}, got {returned_bin_indexes}"

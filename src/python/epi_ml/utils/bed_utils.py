@@ -141,11 +141,9 @@ def bins_to_bed_ranges(
         The bin indexes are zero-based and span the entire genome considering the resolution.
         The returned ranges are half-open intervals [start, end).
     """
-    bin_indexes = sorted(bin_indexes)
-    bin_ranges = []
-
     cumulative_bins = compute_cumulative_bins(chroms, resolution)
 
+    bin_ranges = []
     for bin_index in bin_indexes:
         # Find the chromosome that contains this bin
         for chrom_index, (chrom_start_bin, chrom_end_bin) in enumerate(
