@@ -141,15 +141,11 @@ def merge_similar_assays(df: pd.DataFrame) -> pd.DataFrame:
         raise ValueError("Wrong results dataframe, rna or wgbs columns missing.") from exc
 
     df.drop(columns=["mrna_seq", "wgbs-standard", "wgbs-pbat"], inplace=True)
-    df["True class"].replace(ASSAY_MERGE_DICT, inplace=True)
-    df["Predicted class"].replace(ASSAY_MERGE_DICT, inplace=True)
-    try:
-        df[ASSAY].replace(ASSAY_MERGE_DICT, inplace=True)
-    except KeyError:
-        pass
+    df.replace({"True class": ASSAY_MERGE_DICT}, inplace=True)
+    df.replace({"Predicted class": ASSAY_MERGE_DICT}, inplace=True)
 
     try:
-        df[ASSAY].replace(ASSAY_MERGE_DICT, inplace=True)
+        df.replace({ASSAY: ASSAY_MERGE_DICT}, inplace=True)
     except KeyError:
         pass
 
