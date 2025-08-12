@@ -846,12 +846,16 @@ class SplitResultsHandler:
             md5sum_to_epirr = {}
             epirr_to_corrections = {}
 
-        for parent, _, _ in os.walk(results_dir):
+        for parent, _, _ in os.walk(results_dir, followlinks=True):
             # Looking for oversampling only results
             parent = Path(parent)
             if "10fold" not in parent.name:
+                if verbose:
+                    print(f"Skipping {parent}: not 10fold")
                 continue
             if parent.name != "10fold-oversampling" and oversampled_only:
+                if verbose:
+                    print(f"Skipping {parent}: not oversampled")
                 continue
 
             if verbose:
