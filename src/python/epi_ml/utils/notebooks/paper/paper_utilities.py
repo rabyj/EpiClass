@@ -623,6 +623,12 @@ class SplitResultsHandler:
             "F1_macro": f1_score(ravel_true, ravel_pred, average="macro", zero_division="warn"), # type: ignore
             "count": len(df),
             }
+
+        if len(set(ravel_true)) == 1:
+            task_metrics_dict["AUC_micro"] = np.nan
+            task_metrics_dict["AUC_macro"] = np.nan
+            return task_metrics_dict
+
         try:
 
             # Could fail for various reasons
