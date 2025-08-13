@@ -128,7 +128,22 @@ class IHECColorMap:
 def merge_similar_assays(df: pd.DataFrame) -> pd.DataFrame:
     """Attempt to merge rna-seq/wgbs categories, included prediction score.
 
-    A ValueError is raised if the columns are not present."""
+    Expects the dataframe to have the following columns:
+    - rna_seq
+    - mrna_seq
+    - wgbs-standard
+    - wgbs-pbat
+
+    The output dataframe will have the following columns:
+    - rna_seq
+    - wgbs
+
+    The dataframe is modified in place.
+
+    Expecteds "True class" or "Expected class", and "Predicted class" to be present.
+
+    A ValueError is raised if the columns are not present.
+    """
     df = df.copy(deep=True)
 
     if "wgbs" in df.columns:
@@ -141,7 +156,16 @@ def merge_similar_assays(df: pd.DataFrame) -> pd.DataFrame:
         raise ValueError("Wrong results dataframe, rna or wgbs columns missing.") from exc
 
     df.drop(columns=["mrna_seq", "wgbs-standard", "wgbs-pbat"], inplace=True)
-    df.replace({"True class": ASSAY_MERGE_DICT}, inplace=True)
+
+    if "True class" in df.columns:
+        true_label = "True class"
+        df.replace({true_label: ASSAY_MERGE_DICT}, inplace=True)
+    elif "Expected class" in df.columns:
+        true_label = "Expected class"
+        df.replace({true_label: ASSAY_MERGE_DICT}, inplace=True)
+    else:
+        raise ValueError("Wrong results dataframe, True or Expected class missing.")
+
     df.replace({"Predicted class": ASSAY_MERGE_DICT}, inplace=True)
 
     try:
@@ -150,7 +174,7 @@ def merge_similar_assays(df: pd.DataFrame) -> pd.DataFrame:
         pass
 
     # Recompute Max pred if it exists
-    classes = list(df["True class"].unique()) + list(df["Predicted class"].unique())
+    classes = list(df[true_label].unique()) + list(df["Predicted class"].unique())
     if "Max pred" in df.columns:
         df["Max pred"] = df[classes].max(axis=1)
     return df
