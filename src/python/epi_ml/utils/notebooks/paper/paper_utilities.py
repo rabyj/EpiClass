@@ -206,7 +206,7 @@ class MetadataHandler:
             raise ValueError(f"Version must be one of {self.version_names.keys()}")
 
         metadata = Metadata(
-            self.paper_dir / "data" / "metadata" / self.version_names[version]
+            self.data_dir / "metadata" / "epiatlas" / self.version_names[version]
         )
         return metadata
 
