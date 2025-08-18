@@ -230,7 +230,7 @@ class MetadataHandler:
         metadata_df = pd.DataFrame.from_records(list(metadata.datasets))
         metadata_df.set_index("md5sum", inplace=True)
         if merge_assays:
-            metadata_df[ASSAY].replace(ASSAY_MERGE_DICT, inplace=True)
+            metadata_df.replace({ASSAY: ASSAY_MERGE_DICT}, inplace=True)
         return metadata_df
 
     @staticmethod

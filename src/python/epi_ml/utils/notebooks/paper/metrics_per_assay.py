@@ -603,13 +603,12 @@ class MetricsPerAssay:
         for col in float_cols:
             # Ensure column is numeric, making non-numeric values NaN
             df_metrics[col] = pd.to_numeric(df_metrics[col], errors="coerce")
-        df_metrics[float_cols] = df_metrics[float_cols].round(4)
-        df_metrics[float_cols].fillna("NA", inplace=True)
+        df_metrics[float_cols] = df_metrics[float_cols].fillna(pd.NA).round(4)
 
         # --- Apply post-processing rules ---
 
         # f1-score on ASSAY task, per assay, doesn't make sense
-        df_metrics.loc[df_metrics["task_name"] == ASSAY, "f1-score"] = "NA"
+        df_metrics.loc[df_metrics["task_name"] == ASSAY, "f1-score"] = pd.NA
 
         # metrics for unknown expected class are not defined
         unknown_count_keys = [
@@ -619,12 +618,12 @@ class MetricsPerAssay:
         ]
         df_metrics.loc[
             df_metrics[ASSAY].isin(unknown_count_keys), ["acc", "f1-score"]
-        ] = "NA"
+        ] = pd.NA
 
         # acc / f1 for 0 samples is not defined
         df_metrics.loc[
             df_metrics["nb_samples"].astype(int) == 0, ["acc", "f1-score"]
-        ] = "NA"
+        ] = pd.NA
 
         return df_metrics
 
