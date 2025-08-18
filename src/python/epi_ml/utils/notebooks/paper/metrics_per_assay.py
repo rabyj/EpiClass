@@ -340,6 +340,9 @@ class MetricsPerAssay:
             if max_pred_label not in df.columns:
                 raise ValueError(f"Column '{max_pred_label}' not found.")
 
+            for label in [y_true_col, y_pred_col]:
+                task_df[label] = task_df[label].str.lower()
+
             # Get unknown samples
             unknown_mask = task_df[y_true_col].isin(unknown_labels)
             unknown_df = task_df[unknown_mask]
