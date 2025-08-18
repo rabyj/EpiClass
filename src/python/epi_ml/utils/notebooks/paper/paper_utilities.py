@@ -9,6 +9,7 @@ import logging
 import os
 import re
 import sys
+import warnings
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Set, Tuple
@@ -19,6 +20,7 @@ except ImportError:
     display = print
 import numpy as np
 import pandas as pd
+from sklearn.exceptions import UndefinedMetricWarning
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 
 from epi_ml.core.metadata import Metadata
@@ -634,86 +636,60 @@ class SplitResultsHandler:
 
         pred_probs = df[classes_order].values
 
+        # Argmax encodings for accuracy/F1
         ravel_true = np.argmax(onehot_true, axis=1)
         ravel_pred = np.argmax(pred_probs, axis=1)
 
         # fmt: off
+        # Core metrics
         task_metrics_dict: Dict[str, float|int] = {
             "Accuracy": accuracy_score(ravel_true, ravel_pred),
             "F1_macro": f1_score(ravel_true, ravel_pred, average="macro", zero_division="warn"), # type: ignore
             "count": len(df),
             }
 
-        if len(set(ravel_true)) == 1:
-            task_metrics_dict["AUC_micro"] = np.nan
-            task_metrics_dict["AUC_macro"] = np.nan
+        # --- AUC Handling ---
+        unique_classes = np.unique(ravel_true)
+        if unique_classes.shape[0] < 2:
+            # Not enough classes ->- AUC undefined
+            logging.warning(
+                "Cannot compute ROC AUC: only one class present in %s for %s (%s)",
+                logging_name,
+                task_name,
+                df["True class"].unique(),
+            )
+            task_metrics_dict.update({"AUC_micro": np.nan, "AUC_macro": np.nan})
             return task_metrics_dict
 
+        # Try to compute AUC safely
         try:
-
-            # Could fail for various reasons
-            task_metrics_dict.update(
-                {
-                    "AUC_micro": roc_auc_score(onehot_true, pred_probs, multi_class="ovr", average="micro"), # type: ignore
-                    "AUC_macro": roc_auc_score(onehot_true, pred_probs, multi_class="ovr", average="macro"), # type: ignore
-                }
-            )
-        # fmt: on
-
-        # Known AUC Failure modes:
-        # - ValueError: "Only one class is present in y_true"
-        # - ValueError: "Input format is not supported for multi-class"
-        # - ValueError: y_true is missing a class known from pred columns.
-        # Error messages are very misleading, so not showing them sometimes.
+            # Suppress sklearn warnings explicitly inside block
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
+                task_metrics_dict.update(
+                    {
+                        "AUC_micro": roc_auc_score(
+                            onehot_true, pred_probs, multi_class="ovr", average="micro" # type: ignore
+                        ),
+                        "AUC_macro": roc_auc_score(
+                            onehot_true, pred_probs, multi_class="ovr", average="macro"
+                        ),
+                    }
+                )
         except ValueError as err:
-            # AUC failure
-            if "Only one class present in y_true" in str(
-                err
-            ) or "multiclass format" in str(err):
-                # One class
-                if len(df["True class"].unique()) == 1:
-                    logging.warning(
-                        "Cannot compute ROC AUC. Only one class present in %s for %s: %s",
-                        logging_name,
-                        task_name,
-                        df["True class"].unique(),
-                    )
-                # Probably failed previous column transformation
-                elif len(df["True class"].unique()) != len(classes_order):
-                    missing_classes = set(classes_order.values) - set(
-                        df["True class"].unique()
-                    )
-                    logging.warning(
-                        "Cannot compute ROC AUC. At least one ground truth class missing from %s for %s: (%s)",
-                        logging_name,
-                        task_name,
-                        missing_classes,
-                    )
-                # Other multiclass failure
-                else:
-                    logging.warning(
-                        "Incompatible format in %s for %s. Error: %s",
-                        logging_name,
-                        task_name,
-                        err,
-                    )
+            if "multiclass" in str(err) or "Only one class" in str(err):
+                logging.warning(
+                    "Cannot compute ROC AUC for %s/%s: %s",
+                    logging_name,
+                    task_name,
+                    err,
+                )
                 task_metrics_dict.update({"AUC_micro": np.nan, "AUC_macro": np.nan})
-
-                # Debug logging
-                if not set(df["True class"].unique()).issubset(set(classes_order.values)):
-                    logging.error("Classes do not match columns names.")
-                    logging.debug("Classes in df: %s", df["True class"].unique())
-                    logging.debug("Classes in classes_order: %s", classes_order)
-                    raise ValueError("Classes in df do not match columns names.") from err
             else:
-                err_msg = f"Unexpected error in {logging_name} for {task_name}."
+                err_msg = f"Unexpected AUC error in {logging_name} for {task_name}."
                 logging.error(err_msg)
                 logging.debug("columns: %s", df.columns)
                 logging.debug("True class values: %s\n", df["True class"].value_counts())
-                logging.debug(
-                    "ravel_true unique values: %s",
-                    set(val for val in ravel_true),
-                )
                 raise ValueError(err_msg) from err
 
         return task_metrics_dict
