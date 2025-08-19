@@ -212,6 +212,15 @@ class MetadataHandler:
         )
         return metadata
 
+    def load_any_metadata(
+        self, path: Path | str, as_dataframe: bool = False
+    ) -> Metadata | pd.DataFrame:
+        """Return metadata for a specific file."""
+        metadata = Metadata(Path(path))
+        if as_dataframe:
+            metadata = metadata.to_df()
+        return metadata
+
     def load_metadata_df(self, version: str, merge_assays: bool = True) -> pd.DataFrame:
         """Load a metadata dataframe for a given version.
 
@@ -327,7 +336,11 @@ class SplitResultsHandler:
     """Class to handle split results."""
 
     @staticmethod
-    def add_max_pred(df: pd.DataFrame, target_label: str = "True class") -> pd.DataFrame:
+    def add_max_pred(
+        df: pd.DataFrame,
+        target_label: str = "True class",
+        expected_classes: List[str] | None = None,
+    ) -> pd.DataFrame:
         """Add the max prediction column ("Max pred") to the results dataframe.
 
         The dataframe needs to not contain extra metadata columns.
@@ -340,6 +353,9 @@ class SplitResultsHandler:
                 + df["Predicted class"].astype(str).unique().tolist()
             )
             classes_test = list(set(classes_test))
+
+            if expected_classes:
+                classes_test = expected_classes
 
             classes = list(df.columns[2:])
             if any(label in classes for label in ["TRUE", "FALSE"]):
@@ -358,7 +374,7 @@ class SplitResultsHandler:
                 if class_label not in classes_test:
                     raise ValueError(
                         f"""Dataframe contains extra metadata columns, cannot ascertain classes: {classes}.
-                        Column {class_label} is not in {classes_test}"""
+                        Column '{class_label}' is not in '{classes_test}'"""
                     )
             df["Max pred"] = df[classes].max(axis=1)
         return df
