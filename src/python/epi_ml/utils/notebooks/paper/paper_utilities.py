@@ -1083,7 +1083,9 @@ def create_mislabel_corrector(
 
     # Load mislabels
     epirr_to_corrections = {}
-    metadata_dir = paper_dir / "data" / "metadata" / "official" / "BadQual-mislabels"
+    metadata_dir = (
+        paper_dir / "data" / "metadata" / "epiatlas" / "official" / "BadQual-mislabels"
+    )
 
     sex_mislabeled = pd.read_csv(metadata_dir / "official_Sex_mislabeled.csv")
     epirr_to_corrections[SEX] = sex_mislabeled.set_index(epirr_no_v)[
