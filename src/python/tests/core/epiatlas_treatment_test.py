@@ -20,7 +20,7 @@ from epi_ml.core.epiatlas_treatment import (
 from epi_ml.core.metadata import Metadata
 from epi_ml.utils.general_utility import write_md5s_to_file
 from epi_ml.utils.metadata_utils import count_labels_from_dset
-from tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
+from tests.epilap_test_data import FIXTURES_DIR, EpiAtlasTreatmentTestData
 
 
 class TestEpiAtlasFoldFactory:
@@ -42,12 +42,10 @@ class TestEpiAtlasFoldFactory:
 
         target_category = "harmonized_donor_sex"
 
-        meta_path = (
-            Path.home()
-            / "projects/epilap/input/metadata/hg38_2023_epiatlas_dfreeze_limited_categories.json"
-        )
         # Reduce total nb of files
+        meta_path = FIXTURES_DIR / "hg38_2023-epiatlas_dfreeze_limited_categories.json"
         meta = Metadata(meta_path)
+
         meta.select_category_subsets(target_category, ["female", "male"])
         md5_per_class = meta.md5_per_class(target_category)
         md5s = [md5 for md5_list in md5_per_class.values() for md5 in md5_list[:2000]]

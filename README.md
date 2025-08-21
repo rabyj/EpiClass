@@ -2,6 +2,14 @@
 
 EpiClass trains machine learning models to classify and label epigenomic data.
 
+## Publication
+
+This repository contains most of the code used to obtain results for the following paper: Leveraging the largest harmonized epigenomic data collection for metadata prediction validated and augmented over 350,000 public epigenomic datasets
+
+See [Key Scripts](#key-scripts) section for the training code.
+
+To reproduce paper figures, use [fig*.ipynb notebooks](src/python/epi_ml/utils/notebooks/paper/paper-final) at `src/python/epi_ml/utils/notebooks/paper/paper-final`. Last working packages used for graph production are available in the same folder.
+
 ## Model Availability – Neural Networks Trained on EpiATLAS
 
 Models trained on the EpiATLAS dataset and used for inference on other datasets (as part of the associated publication) will be made available on HuggingFace prior to publication.
@@ -41,18 +49,18 @@ If your system does not have Python 3.8 installed, consider using [pyenv](https:
 
 ## Input Format & Job Launching
 
-* See the `input-format/` folder for examples of required input files.
-* The `src/bash_utils/` folder contains SLURM-compatible job launcher templates.
-* Main training scripts are in `src/python/epi_ml/`.
+- See the `input-format/` folder for examples of required input files.
+- The `src/bash_utils/` folder contains SLURM-compatible job launcher templates.
+- Main training scripts are in `src/python/epi_ml/`.
 
 ### Key Scripts
 
-* `epiatlas_training.py`: Performs cross-validation training and evaluation.
-* `epiatlas_training_no_valid.py`: Trains the model without validation (e.g. final model for inference).
-* `epiatlas_training.sh`: Job submission template supporting both training modes. Update variables as needed.
-* `predict.py`: Uses a trained model to generate predictions on new data.
-* `compute_shaps.py`: Computes SHAP values using a trained model and a representative background set.
-* `other_estimators.py`: Trains and evaluates non-neural network models (e.g., Random Forest, LGBM, etc.).
+- `epiatlas_training.py`: Performs cross-validation training and evaluation.
+- `epiatlas_training_no_valid.py`: Trains the model without validation (e.g. final model for inference).
+- `epiatlas_training.sh`: Job submission template supporting both training modes. Update variables as needed.
+- `predict.py`: Uses a trained model to generate predictions on new data.
+- `compute_shaps.py`: Computes SHAP values using a trained model and a representative background set.
+- `other_estimators.py`: Trains and evaluates non-neural network models (e.g., Random Forest, LGBM, etc.).
 
 ## Metadata Handling
 
@@ -60,15 +68,15 @@ The `Metadata` class provides a convenient API for modifying metadata during pre
 
 Notable methods:
 
-* `select_category_subsets()`
-* `remove_category_subsets()`
+- `select_category_subsets()`
+- `remove_category_subsets()`
 
 These allow dynamic relabeling or filtering of specific categories.
 
 **Important notes:**
 
-* Once a label category exists, any value (including `""`, `"--"`, or `"NA"`) is interpreted as a valid label.
-* If your dataset may contain inconsistent keys, use `remove_missing_labels()` on the relevant categories.
+- Once a label category exists, any value (including `""`, `"--"`, or `"NA"`) is interpreted as a valid label.
+- If your dataset may contain inconsistent keys, use `remove_missing_labels()` on the relevant categories.
 
 For more details, refer to the [documentation](https://rabyj.github.io/epi_ml/epi_ml/python/core/metadata.html).
 
@@ -188,10 +196,10 @@ All tests are expected to pass on tagged releases (under Python 3.8), provided a
 
 Exceptions:
 
-* Two tests are on standby (due to runtime).
-* One test is currently unimplemented.
+- Three tests are on standby (due to runtime).
+- One test is currently unimplemented.
 
-To run tests:
+To run tests, first uncompress fixtures `src/python/tests/fixtures.tar.xz` as folder `fixtures`.
 
 ```bash
 pytest src/python/tests

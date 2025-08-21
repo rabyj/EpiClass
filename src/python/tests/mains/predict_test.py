@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from epi_ml.predict import main as main_module
+from tests.epilap_test_data import FIXTURES_DIR
 
 
 @pytest.fixture(name="test_dir")
@@ -15,9 +16,8 @@ def fixture_test_dir(mk_logdir) -> Path:
 
 def test_training(test_dir: Path):
     """Test if basic training succeeds."""
-    current_dir = Path(__file__).parent.resolve()
 
-    fixtures_dir = current_dir.parent / "fixtures" / "saccer3"
+    fixtures_dir = FIXTURES_DIR / "saccer3"
     file_list = fixtures_dir / "hdf5_10kb_all_none.list"
     chroms = fixtures_dir / "saccer3.can.chrom.sizes"
 

@@ -16,6 +16,7 @@ from epi_ml.core.estimators import EstimatorAnalyzer
 from epi_ml.core.hdf5_loader import Hdf5Loader
 from epi_ml.core.model_pytorch import LightningDenseClassifier
 from epi_ml.core.shap_values import LGBM_SHAP_Handler, NN_SHAP_Handler, SHAP_Analyzer
+from tests.epilap_test_data import FIXTURES_DIR
 
 
 class Test_NN_SHAP_Handler:
@@ -222,13 +223,12 @@ class Test_SHAP_Analyzer:
     @pytest.fixture
     def saccer3_dir(self) -> Path:
         """saccer3 params dir"""
-        return Path(__file__).parent.parent / "fixtures" / "saccer3"
+        return FIXTURES_DIR / "saccer3"
 
     @pytest.fixture
     def saccer3_model(self, saccer3_dir: Path) -> LightningDenseClassifier:
         """saccer3 test model"""
-        saccer3_model_dir = saccer3_dir / "model"
-        return LightningDenseClassifier.restore_model(saccer3_model_dir)
+        return LightningDenseClassifier.restore_model(saccer3_dir)
 
     @pytest.fixture
     def saccer3_signals(self, saccer3_dir: Path) -> Dict:

@@ -14,8 +14,7 @@ from epi_ml.utils.hdf5_to_float32 import (
     copy_hdf5_file,
     repack_hdf5_file,
 )
-
-current_dir = Path(__file__).parent
+from tests.epilap_test_data import FIXTURES_DIR
 
 
 @pytest.fixture(name="test_hdf5")
@@ -26,11 +25,7 @@ def hdf5_test_file() -> Path:
     Returns:
         Path: A Path object pointing to the HDF5 test file.
     """
-    return (
-        current_dir.parent
-        / "fixtures"
-        / "89a0dcb635f0e9740f587931437b69f1_100kb_all_none_value.hdf5"
-    )
+    return FIXTURES_DIR / "89a0dcb635f0e9740f587931437b69f1_100kb_all_none_value.hdf5"
 
 
 def test_copy_hdf5_file(tmp_path, test_hdf5):

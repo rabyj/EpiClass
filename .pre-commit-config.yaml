@@ -24,6 +24,7 @@ repos:
   hooks:
     - id: check-added-large-files
       args: [--maxkb=5000, --enforce-all]
+      exclude: .*fixtures.tar.xz
     - id: check-ast
     - id: check-builtin-literals
     - id: check-case-conflict
@@ -41,7 +42,7 @@ repos:
     - id: forbid-submodules
     - id: mixed-line-ending
     - id: name-tests-test
-      exclude: fixtures
+      exclude: .*epilap_test_data.py
     - id: pretty-format-json
       args: [--autofix]
       exclude: \.ipynb$

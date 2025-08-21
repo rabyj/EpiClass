@@ -8,9 +8,7 @@ from typing import List
 import pytest
 
 from epi_ml.utils.collect_hdf5_vals import main as main_module
-
-current_dir = Path(__file__).parent
-fixtures_dir = current_dir.parent / "fixtures"
+from tests.epilap_test_data import FIXTURES_DIR
 
 
 @pytest.fixture(name="test_dir")
@@ -22,7 +20,7 @@ def fixture_test_dir(mk_logdir) -> Path:
 @pytest.fixture(name="feature_list")
 def fixture_feature_list() -> List[int]:
     """Read feature list content."""
-    with open(fixtures_dir / "test_feature_list.json", "r", encoding="utf8") as f:
+    with open(FIXTURES_DIR / "test_feature_list.json", "r", encoding="utf8") as f:
         return json.load(f)
 
 
@@ -34,14 +32,14 @@ def test_collect_hdf5_vals(test_dir: Path, feature_list: List[int]):
         tmp_path (Path): Temporary path provided by pytest fixture.
     """
     hdf5_list = test_dir / "collect_vals_test_file.list"
-    chroms = fixtures_dir / "hg38.noy.chrom.sizes"
-    feature_list_path = fixtures_dir / "test_feature_list.json"
+    chroms = FIXTURES_DIR / "hg38.noy.chrom.sizes"
+    feature_list_path = FIXTURES_DIR / "test_feature_list.json"
     normalize = "--normalize"
     output_dir = test_dir
 
     with open(hdf5_list, "w", encoding="utf8") as f:
         f.write(
-            f"{fixtures_dir}/89a0dcb635f0e9740f587931437b69f1_100kb_all_none_value.hdf5\n"
+            f"{FIXTURES_DIR}/89a0dcb635f0e9740f587931437b69f1_100kb_all_none_value.hdf5\n"
         )
 
     # usage: collect_hdf5_vals [-h] [--feature_list FEATURE_LIST] [--normalize] [--hdf] [--csv]

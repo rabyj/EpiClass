@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from epi_ml.epiatlas_training_no_valid import main as main_module
-from tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
+from tests.epilap_test_data import FIXTURES_DIR, EpiAtlasTreatmentTestData
 
 
 @pytest.fixture(name="test_dir")
@@ -21,9 +21,7 @@ def test_training(test_dir: Path):
 
     datasource = EpiAtlasTreatmentTestData.default_test_data().epiatlas_dataset.datasource
 
-    current_dir = Path(__file__).parent.resolve()
-
-    hparams_file = current_dir.parent / "fixtures" / "test_human_hparams.json"
+    hparams_file = FIXTURES_DIR / "test_human_hparams.json"
 
     sys.argv = [
         "epiatlas_training_no_valid.py",

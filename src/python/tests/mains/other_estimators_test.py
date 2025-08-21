@@ -7,7 +7,7 @@ import pytest
 
 import epi_ml.core.estimators
 from epi_ml.other_estimators import main as main_module
-from tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
+from tests.epilap_test_data import FIXTURES_DIR, EpiAtlasTreatmentTestData
 
 
 @pytest.fixture(name="test_dir")
@@ -24,9 +24,7 @@ def test_hyperparams(test_dir: Path):
 
     datasource = EpiAtlasTreatmentTestData.default_test_data().epiatlas_dataset.datasource
 
-    current_dir = Path(__file__).parent.resolve()
-
-    hparams_file = current_dir.parent / "fixtures" / "other_estimators_hparams.json"
+    hparams_file = FIXTURES_DIR / "other_estimators_hparams.json"
 
     sys.argv = [
         "other_estimators.py",
@@ -61,9 +59,7 @@ def test_binary_classifier(test_dir: Path):
         label_category="sex"
     ).epiatlas_dataset.datasource
 
-    current_dir = Path(__file__).parent.resolve()
-
-    hparams_file = current_dir.parent / "fixtures" / "other_estimators_hparams.json"
+    hparams_file = FIXTURES_DIR / "other_estimators_hparams.json"
 
     sys.argv = [
         "other_estimators.py",

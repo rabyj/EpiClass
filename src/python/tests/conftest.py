@@ -9,11 +9,26 @@ import pytest
 from epi_ml.core.data import DataSet
 from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory
 from epi_ml.core.model_pytorch import LightningDenseClassifier
-from tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
+from tests.epilap_test_data import FIXTURES_DIR, EpiAtlasTreatmentTestData
 
 # def pytest_collection_modifyitems(session, config, items):
 #     """Ignore certain names from collection."""
 #     items[:] = [item for item in items if item.name != "test_logdir"]
+
+
+def pytest_sessionstart(session):
+    """
+    Called after the Session object has been created and before performing
+    collection and entering the run test loop.
+    """
+    if not FIXTURES_DIR.exists() or not any(FIXTURES_DIR.iterdir()):
+        # Stop tests immediately
+        message = (
+            f"Required fixtures directory '{FIXTURES_DIR}' is missing or empty.\n"
+            "Please ensure the fixtures are uncompressed and available before running tests.\n"
+            f"Search for: fixtures.tar.xz"
+        )
+        pytest.exit(reason=message, returncode=1)
 
 
 def nottest(obj):
@@ -35,7 +50,7 @@ def make_specific_logdir(tmp_path_factory):
 
 @pytest.fixture(scope="session", name="test_epiatlas_data_handler")
 def fixture_epiatlas_data_handler() -> EpiAtlasFoldFactory:
-    """Return mcok data handler. (in /tmp)."""
+    """Return mock data handler. (in /tmp)."""
     return EpiAtlasTreatmentTestData.default_test_data()
 
 

@@ -12,23 +12,21 @@ from epi_ml.utils.clean_hdf5 import (
     preprocess_bed,
     process_file,
 )
-
-CURRENT_DIR = Path(__file__).parent.resolve()
+from tests.epilap_test_data import FIXTURES_DIR
 
 
 @pytest.fixture(name="test_hdf5")
 def test_hdf5_file_path() -> Path:
     """Returns the path to a test HDF5 file."""
     return Path(
-        CURRENT_DIR
-        / "../fixtures/89a0dcb635f0e9740f587931437b69f1_100kb_all_none_value.hdf5"
+        FIXTURES_DIR / "89a0dcb635f0e9740f587931437b69f1_100kb_all_none_value.hdf5"
     )
 
 
 @pytest.fixture(name="real_test_bed")
 def test_bed_file_path() -> Path:
     """Returns the path to a test bed file."""
-    return Path(CURRENT_DIR / "../fixtures/hg38_unified_blacklist.bed")
+    return Path(FIXTURES_DIR / "hg38_unified_blacklist.bed")
 
 
 @pytest.fixture(name="mock_test_bed")

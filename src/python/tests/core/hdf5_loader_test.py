@@ -10,7 +10,7 @@ import pytest
 
 from epi_ml.core.epiatlas_treatment import EpiAtlasDataset
 from epi_ml.core.hdf5_loader import Hdf5Loader
-from tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
+from tests.epilap_test_data import EpiAtlasTreatmentTestData
 
 
 class Test_Hdf5Loader:

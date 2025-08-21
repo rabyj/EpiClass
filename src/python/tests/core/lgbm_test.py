@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from lightgbm import LGBMClassifier
 
-from tests.fixtures.epilap_test_data import EpiAtlasTreatmentTestData
+from tests.epilap_test_data import EpiAtlasTreatmentTestData
 
 
 @pytest.fixture(name="logdir")
