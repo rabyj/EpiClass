@@ -37,10 +37,11 @@ def test_bins_to_bed_ranges() -> None:
         ("chr2", 100, 150),
         ("chr3", 100, 200),
     ]
+    # Test out of order bin indexes
     assert bins_to_bed_ranges([5, 1, 3], chroms, resolution) == [
+        ("chr3", 200, 300),
         ("chr2", 0, 100),
         ("chr3", 0, 100),
-        ("chr3", 200, 300),
     ]
 
     # Test out of range bin indexes
