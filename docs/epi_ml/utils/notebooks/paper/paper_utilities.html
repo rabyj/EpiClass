@@ -211,6 +211,16 @@ and converting to lowercase.</p></div>
 </code></dt>
 <dd>
 <div class="desc"><p>Attempt to merge rna-seq/wgbs categories, included prediction score.</p>
+<p>Expects the dataframe to have the following columns:
+- rna_seq
+- mrna_seq
+- wgbs-standard
+- wgbs-pbat</p>
+<p>The output dataframe will have the following columns:
+- rna_seq
+- wgbs</p>
+<p>The dataframe is modified in place.</p>
+<p>Expecteds "True class" or "Expected class", and "Predicted class" to be present.</p>
 <p>A ValueError is raised if the columns are not present.</p></div>
 </dd>
 <dt id="epi_ml.utils.notebooks.paper.paper_utilities.print_column_content"><code class="name flex">
@@ -393,8 +403,17 @@ are the same, the column is updated in place and repositioned.</p>
             raise ValueError(f&#34;Version must be one of {self.version_names.keys()}&#34;)
 
         metadata = Metadata(
-            self.paper_dir / &#34;data&#34; / &#34;metadata&#34; / self.version_names[version]
+            self.data_dir / &#34;metadata&#34; / &#34;epiatlas&#34; / self.version_names[version]
         )
+        return metadata
+
+    def load_any_metadata(
+        self, path: Path | str, as_dataframe: bool = False
+    ) -&gt; Metadata | pd.DataFrame:
+        &#34;&#34;&#34;Return metadata for a specific file.&#34;&#34;&#34;
+        metadata = Metadata(Path(path))
+        if as_dataframe:
+            metadata = metadata.to_df()
         return metadata
 
     def load_metadata_df(self, version: str, merge_assays: bool = True) -&gt; pd.DataFrame:
@@ -415,7 +434,7 @@ are the same, the column is updated in place and repositioned.</p>
         metadata_df = pd.DataFrame.from_records(list(metadata.datasets))
         metadata_df.set_index(&#34;md5sum&#34;, inplace=True)
         if merge_assays:
-            metadata_df[ASSAY].replace(ASSAY_MERGE_DICT, inplace=True)
+            metadata_df.replace({ASSAY: ASSAY_MERGE_DICT}, inplace=True)
         return metadata_df
 
     @staticmethod
@@ -531,6 +550,12 @@ are the same, the column is updated in place and repositioned.</p>
 </dl>
 <h3>Methods</h3>
 <dl>
+<dt id="epi_ml.utils.notebooks.paper.paper_utilities.MetadataHandler.load_any_metadata"><code class="name flex">
+<span>def <span class="ident">load_any_metadata</span></span>(<span>self, path: Path | str, as_dataframe: bool = False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return metadata for a specific file.</p></div>
+</dd>
 <dt id="epi_ml.utils.notebooks.paper.paper_utilities.MetadataHandler.load_metadata"><code class="name flex">
 <span>def <span class="ident">load_metadata</span></span>(<span>self, version: str) ‑> <a title="epi_ml.core.metadata.Metadata" href="../../../core/metadata.html#epi_ml.core.metadata.Metadata">Metadata</a></span>
 </code></dt>
@@ -566,7 +591,11 @@ Example of epiRR unique to v1: IHECRE00003355.2</p></div>
     &#34;&#34;&#34;Class to handle split results.&#34;&#34;&#34;
 
     @staticmethod
-    def add_max_pred(df: pd.DataFrame, target_label: str = &#34;True class&#34;) -&gt; pd.DataFrame:
+    def add_max_pred(
+        df: pd.DataFrame,
+        target_label: str = &#34;True class&#34;,
+        expected_classes: List[str] | None = None,
+    ) -&gt; pd.DataFrame:
         &#34;&#34;&#34;Add the max prediction column (&#34;Max pred&#34;) to the results dataframe.
 
         The dataframe needs to not contain extra metadata columns.
@@ -579,6 +608,9 @@ Example of epiRR unique to v1: IHECRE00003355.2</p></div>
                 + df[&#34;Predicted class&#34;].astype(str).unique().tolist()
             )
             classes_test = list(set(classes_test))
+
+            if expected_classes:
+                classes_test = expected_classes
 
             classes = list(df.columns[2:])
             if any(label in classes for label in [&#34;TRUE&#34;, &#34;FALSE&#34;]):
@@ -597,7 +629,7 @@ Example of epiRR unique to v1: IHECRE00003355.2</p></div>
                 if class_label not in classes_test:
                     raise ValueError(
                         f&#34;&#34;&#34;Dataframe contains extra metadata columns, cannot ascertain classes: {classes}.
-                        Column {class_label} is not in {classes_test}&#34;&#34;&#34;
+                        Column &#39;{class_label}&#39; is not in &#39;{classes_test}&#39;&#34;&#34;&#34;
                     )
             df[&#34;Max pred&#34;] = df[classes].max(axis=1)
         return df
@@ -875,80 +907,60 @@ Example of epiRR unique to v1: IHECRE00003355.2</p></div>
 
         pred_probs = df[classes_order].values
 
+        # Argmax encodings for accuracy/F1
         ravel_true = np.argmax(onehot_true, axis=1)
         ravel_pred = np.argmax(pred_probs, axis=1)
 
         # fmt: off
+        # Core metrics
         task_metrics_dict: Dict[str, float|int] = {
             &#34;Accuracy&#34;: accuracy_score(ravel_true, ravel_pred),
             &#34;F1_macro&#34;: f1_score(ravel_true, ravel_pred, average=&#34;macro&#34;, zero_division=&#34;warn&#34;), # type: ignore
             &#34;count&#34;: len(df),
             }
-        try:
 
-            # Could fail for various reasons
-            task_metrics_dict.update(
-                {
-                    &#34;AUC_micro&#34;: roc_auc_score(onehot_true, pred_probs, multi_class=&#34;ovr&#34;, average=&#34;micro&#34;), # type: ignore
-                    &#34;AUC_macro&#34;: roc_auc_score(onehot_true, pred_probs, multi_class=&#34;ovr&#34;, average=&#34;macro&#34;), # type: ignore
-                }
+        # --- AUC Handling ---
+        unique_classes = np.unique(ravel_true)
+        if unique_classes.shape[0] &lt; 2:
+            # Not enough classes -&gt;- AUC undefined
+            logging.warning(
+                &#34;Cannot compute ROC AUC: only one class present in %s for %s (%s)&#34;,
+                logging_name,
+                task_name,
+                df[&#34;True class&#34;].unique(),
             )
-        # fmt: on
+            task_metrics_dict.update({&#34;AUC_micro&#34;: np.nan, &#34;AUC_macro&#34;: np.nan})
+            return task_metrics_dict
 
-        # Known AUC Failure modes:
-        # - ValueError: &#34;Only one class is present in y_true&#34;
-        # - ValueError: &#34;Input format is not supported for multi-class&#34;
-        # - ValueError: y_true is missing a class known from pred columns.
-        # Error messages are very misleading, so not showing them sometimes.
+        # Try to compute AUC safely
+        try:
+            # Suppress sklearn warnings explicitly inside block
+            with warnings.catch_warnings():
+                warnings.filterwarnings(&#34;ignore&#34;, category=UndefinedMetricWarning)
+                task_metrics_dict.update(
+                    {
+                        &#34;AUC_micro&#34;: roc_auc_score(
+                            onehot_true, pred_probs, multi_class=&#34;ovr&#34;, average=&#34;micro&#34; # type: ignore
+                        ),
+                        &#34;AUC_macro&#34;: roc_auc_score(
+                            onehot_true, pred_probs, multi_class=&#34;ovr&#34;, average=&#34;macro&#34;
+                        ),
+                    }
+                )
         except ValueError as err:
-            # AUC failure
-            if &#34;Only one class present in y_true&#34; in str(
-                err
-            ) or &#34;multiclass format&#34; in str(err):
-                # One class
-                if len(df[&#34;True class&#34;].unique()) == 1:
-                    logging.warning(
-                        &#34;Cannot compute ROC AUC. Only one class present in %s for %s: %s&#34;,
-                        logging_name,
-                        task_name,
-                        df[&#34;True class&#34;].unique(),
-                    )
-                # Probably failed previous column transformation
-                elif len(df[&#34;True class&#34;].unique()) != len(classes_order):
-                    missing_classes = set(classes_order.values) - set(
-                        df[&#34;True class&#34;].unique()
-                    )
-                    logging.warning(
-                        &#34;Cannot compute ROC AUC. At least one ground truth class missing from %s for %s: (%s)&#34;,
-                        logging_name,
-                        task_name,
-                        missing_classes,
-                    )
-                # Other multiclass failure
-                else:
-                    logging.warning(
-                        &#34;Incompatible format in %s for %s. Error: %s&#34;,
-                        logging_name,
-                        task_name,
-                        err,
-                    )
+            if &#34;multiclass&#34; in str(err) or &#34;Only one class&#34; in str(err):
+                logging.warning(
+                    &#34;Cannot compute ROC AUC for %s/%s: %s&#34;,
+                    logging_name,
+                    task_name,
+                    err,
+                )
                 task_metrics_dict.update({&#34;AUC_micro&#34;: np.nan, &#34;AUC_macro&#34;: np.nan})
-
-                # Debug logging
-                if not set(df[&#34;True class&#34;].unique()).issubset(set(classes_order.values)):
-                    logging.error(&#34;Classes do not match columns names.&#34;)
-                    logging.debug(&#34;Classes in df: %s&#34;, df[&#34;True class&#34;].unique())
-                    logging.debug(&#34;Classes in classes_order: %s&#34;, classes_order)
-                    raise ValueError(&#34;Classes in df do not match columns names.&#34;) from err
             else:
-                err_msg = f&#34;Unexpected error in {logging_name} for {task_name}.&#34;
+                err_msg = f&#34;Unexpected AUC error in {logging_name} for {task_name}.&#34;
                 logging.error(err_msg)
                 logging.debug(&#34;columns: %s&#34;, df.columns)
                 logging.debug(&#34;True class values: %s\n&#34;, df[&#34;True class&#34;].value_counts())
-                logging.debug(
-                    &#34;ravel_true unique values: %s&#34;,
-                    set(val for val in ravel_true),
-                )
                 raise ValueError(err_msg) from err
 
         return task_metrics_dict
@@ -1105,12 +1117,16 @@ Example of epiRR unique to v1: IHECRE00003355.2</p></div>
             md5sum_to_epirr = {}
             epirr_to_corrections = {}
 
-        for parent, _, _ in os.walk(results_dir):
+        for parent, _, _ in os.walk(results_dir, followlinks=True):
             # Looking for oversampling only results
             parent = Path(parent)
             if &#34;10fold&#34; not in parent.name:
+                if verbose:
+                    print(f&#34;Skipping {parent}: not 10fold&#34;)
                 continue
             if parent.name != &#34;10fold-oversampling&#34; and oversampled_only:
+                if verbose:
+                    print(f&#34;Skipping {parent}: not oversampled&#34;)
                 continue
 
             if verbose:
@@ -1307,7 +1323,7 @@ Example of epiRR unique to v1: IHECRE00003355.2</p></div>
 <h3>Static methods</h3>
 <dl>
 <dt id="epi_ml.utils.notebooks.paper.paper_utilities.SplitResultsHandler.add_max_pred"><code class="name flex">
-<span>def <span class="ident">add_max_pred</span></span>(<span>df: pd.DataFrame, target_label: str = 'True class') ‑> pandas.core.frame.DataFrame</span>
+<span>def <span class="ident">add_max_pred</span></span>(<span>df: pd.DataFrame, target_label: str = 'True class', expected_classes: List[str] | None = None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Add the max prediction column ("Max pred") to the results dataframe.</p>
@@ -1610,6 +1626,7 @@ Needs to be the parent of feature set folders.</dd>
 <h4><code><a title="epi_ml.utils.notebooks.paper.paper_utilities.MetadataHandler" href="#epi_ml.utils.notebooks.paper.paper_utilities.MetadataHandler">MetadataHandler</a></code></h4>
 <ul class="">
 <li><code><a title="epi_ml.utils.notebooks.paper.paper_utilities.MetadataHandler.join_metadata" href="#epi_ml.utils.notebooks.paper.paper_utilities.MetadataHandler.join_metadata">join_metadata</a></code></li>
+<li><code><a title="epi_ml.utils.notebooks.paper.paper_utilities.MetadataHandler.load_any_metadata" href="#epi_ml.utils.notebooks.paper.paper_utilities.MetadataHandler.load_any_metadata">load_any_metadata</a></code></li>
 <li><code><a title="epi_ml.utils.notebooks.paper.paper_utilities.MetadataHandler.load_metadata" href="#epi_ml.utils.notebooks.paper.paper_utilities.MetadataHandler.load_metadata">load_metadata</a></code></li>
 <li><code><a title="epi_ml.utils.notebooks.paper.paper_utilities.MetadataHandler.load_metadata_df" href="#epi_ml.utils.notebooks.paper.paper_utilities.MetadataHandler.load_metadata_df">load_metadata_df</a></code></li>
 <li><code><a title="epi_ml.utils.notebooks.paper.paper_utilities.MetadataHandler.metadata_to_df" href="#epi_ml.utils.notebooks.paper.paper_utilities.MetadataHandler.metadata_to_df">metadata_to_df</a></code></li>

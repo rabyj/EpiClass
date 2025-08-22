@@ -363,6 +363,9 @@ hljs.highlightAll();
             if max_pred_label not in df.columns:
                 raise ValueError(f&#34;Column &#39;{max_pred_label}&#39; not found.&#34;)
 
+            for label in [y_true_col, y_pred_col]:
+                task_df[label] = task_df[label].str.lower()
+
             # Get unknown samples
             unknown_mask = task_df[y_true_col].isin(unknown_labels)
             unknown_df = task_df[unknown_mask]
@@ -623,13 +626,12 @@ hljs.highlightAll();
         for col in float_cols:
             # Ensure column is numeric, making non-numeric values NaN
             df_metrics[col] = pd.to_numeric(df_metrics[col], errors=&#34;coerce&#34;)
-        df_metrics[float_cols] = df_metrics[float_cols].round(4)
-        df_metrics[float_cols].fillna(&#34;NA&#34;, inplace=True)
+        df_metrics[float_cols] = df_metrics[float_cols].fillna(pd.NA).round(4)
 
         # --- Apply post-processing rules ---
 
         # f1-score on ASSAY task, per assay, doesn&#39;t make sense
-        df_metrics.loc[df_metrics[&#34;task_name&#34;] == ASSAY, &#34;f1-score&#34;] = &#34;NA&#34;
+        df_metrics.loc[df_metrics[&#34;task_name&#34;] == ASSAY, &#34;f1-score&#34;] = pd.NA
 
         # metrics for unknown expected class are not defined
         unknown_count_keys = [
@@ -639,12 +641,12 @@ hljs.highlightAll();
         ]
         df_metrics.loc[
             df_metrics[ASSAY].isin(unknown_count_keys), [&#34;acc&#34;, &#34;f1-score&#34;]
-        ] = &#34;NA&#34;
+        ] = pd.NA
 
         # acc / f1 for 0 samples is not defined
         df_metrics.loc[
             df_metrics[&#34;nb_samples&#34;].astype(int) == 0, [&#34;acc&#34;, &#34;f1-score&#34;]
-        ] = &#34;NA&#34;
+        ] = pd.NA
 
         return df_metrics
 

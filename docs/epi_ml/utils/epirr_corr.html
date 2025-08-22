@@ -57,7 +57,7 @@ a list of MD5 checksums which identify the files.</p>
 <span>def <span class="ident">main</span></span>(<span>)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>main</p></div>
 </dd>
 <dt id="epi_ml.utils.epirr_corr.parse_arguments"><code class="name flex">
 <span>def <span class="ident">parse_arguments</span></span>(<span>) ‑> argparse.Namespace</span>
@@ -96,12 +96,14 @@ print_unique_target_sets_distribution(epirr_dict)</p></div>
 <span>(</span><span>metadata: <a title="epi_ml.core.metadata.Metadata" href="../core/metadata.html#epi_ml.core.metadata.Metadata">Metadata</a>, hdf5_signals: Dict[str, numpy.ndarray], accepted_targets: Collection[+T_co])</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Class to create epiRR signals based on the signals of all datasets for a given epiRR (concatenated signals)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class EpirrSignals:
+    &#34;&#34;&#34;Class to create epiRR signals based on the signals of all datasets for a given epiRR (concatenated signals)&#34;&#34;&#34;
+
     def __init__(
         self,
         metadata: Metadata,
@@ -125,6 +127,7 @@ print_unique_target_sets_distribution(epirr_dict)</p></div>
 
     @property
     def epirr_signals(self):
+        &#34;&#34;&#34;Returns the epiRR signals.&#34;&#34;&#34;
         return self._epirr_signals
 
     @property
@@ -308,13 +311,14 @@ def epirr_md5s(self):
 </dd>
 <dt id="epi_ml.utils.epirr_corr.EpirrSignals.epirr_signals"><code class="name">prop <span class="ident">epirr_signals</span></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Returns the epiRR signals.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">@property
 def epirr_signals(self):
+    &#34;&#34;&#34;Returns the epiRR signals.&#34;&#34;&#34;
     return self._epirr_signals</code></pre>
 </details>
 </dd>

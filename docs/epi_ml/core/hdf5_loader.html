@@ -92,13 +92,20 @@ hljs.highlightAll();
         return files
 
     def load_hdf5s(
-        self, data_file: Path, md5s=None, verbose=True, strict=False
+        self,
+        data_file: Path,
+        md5s: List[str] | None = None,
+        verbose=True,
+        strict=False,
+        hdf5_dir: Path | None = None,
     ) -&gt; Hdf5Loader:
         &#34;&#34;&#34;Load hdf5s from path list file, into self.signals
         If a list of md5s is given, load only the corresponding files.
         Normalize if internal flag set so.
 
         Check adapt_to_environment for details on dynamic path changes.
+
+        hdf5_dir is a directory in which to look for hdf5s, which will override data_file complete paths.
 
         If strict, will raise OSError if an hdf5 cannot be opened.
 
@@ -107,6 +114,10 @@ hljs.highlightAll();
         files = self.read_list(data_file)
 
         files = Hdf5Loader.adapt_to_environment(files)
+
+        if hdf5_dir is not None:
+            files = {md5: hdf5_dir / path.name for md5, path in files.items()}
+
         self._files = files
 
         # Remove undesired files
@@ -271,13 +282,14 @@ def signals(self) -&gt; Dict[str, np.ndarray]:
 <h3>Methods</h3>
 <dl>
 <dt id="epi_ml.core.hdf5_loader.Hdf5Loader.load_hdf5s"><code class="name flex">
-<span>def <span class="ident">load_hdf5s</span></span>(<span>self, data_file: Path, md5s=None, verbose=True, strict=False) ‑> <a title="epi_ml.core.hdf5_loader.Hdf5Loader" href="#epi_ml.core.hdf5_loader.Hdf5Loader">Hdf5Loader</a></span>
+<span>def <span class="ident">load_hdf5s</span></span>(<span>self, data_file: Path, md5s: List[str] | None = None, verbose=True, strict=False, hdf5_dir: Path | None = None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Load hdf5s from path list file, into self.signals
 If a list of md5s is given, load only the corresponding files.
 Normalize if internal flag set so.</p>
 <p>Check adapt_to_environment for details on dynamic path changes.</p>
+<p>hdf5_dir is a directory in which to look for hdf5s, which will override data_file complete paths.</p>
 <p>If strict, will raise OSError if an hdf5 cannot be opened.</p>
 <p>Loads them as float32.</p></div>
 </dd>
