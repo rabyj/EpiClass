@@ -80,7 +80,7 @@ These allow dynamic relabeling or filtering of specific categories.
 - Once a label category exists, any value (including `""`, `"--"`, or `"NA"`) is interpreted as a valid label.
 - If your dataset may contain inconsistent keys, use `remove_missing_labels()` on the relevant categories.
 
-For more details, refer to the [documentation](https://rabyj.github.io/epi_ml/epi_ml/python/core/metadata.html).
+For more details, refer to the [documentation](https://rabyj.github.io/epi_ml/epi_ml/core/metadata.html).
 
 For advanced metadata manipulation, use `pandas` directly.
 
