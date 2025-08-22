@@ -2,13 +2,15 @@
 
 EpiClass trains machine learning models to classify and label epigenomic data.
 
+`epi_ml` (current repository name) is the legacy name which means Epigenomic Machine Learning.
+
 ## Publication
 
 This repository contains most of the code used to obtain results for the following paper: Leveraging the largest harmonized epigenomic data collection for metadata prediction validated and augmented over 350,000 public epigenomic datasets
 
 See [Key Scripts](#key-scripts) section for the training code.
 
-To reproduce paper figures, use [fig*.ipynb notebooks](src/python/epi_ml/utils/notebooks/paper/paper-final) at `src/python/epi_ml/utils/notebooks/paper/paper-final`. Last working packages used for graph production are available in the same folder.
+To reproduce paper figures, use [fig*.ipynb notebooks](src/python/epi_ml/utils/notebooks/paper/paper-final) at `src/python/epi_ml/utils/notebooks/paper/paper-final`.
 
 ## Model Availability – Neural Networks Trained on EpiATLAS
 
@@ -16,12 +18,12 @@ Models trained on the EpiATLAS dataset and used for inference on other datasets 
 
 ## Setup
 
-The code was developed primarily with **Python 3.8**. Compatibility with other versions is not guaranteed. However, a separate requirements file is provided for **Python 3.12**. Note that some code paths remain untested under Python 3.12.
+The code was developed primarily with **Python 3.8**. Compatibility with other versions is not guaranteed. However, a separate requirements file is provided for **Python 3.12** for convenience, specifically for analysis notebooks. Note that some code paths remain untested under Python 3.12, and classifiers cannot be trained.
 
-There are two requirements files:
+There are two main types of requirements files:
 
 - `requirements/minimal_requirements.txt`: Minimal packages needed to reproduce training.
-- `dev_requirements.txt`: Additional packages for development, testing, and analysis notebooks.
+- `full_requirements.list/dev_requirements.txt`: Additional packages for development, testing, and analysis notebooks.
 
 To install the environment for training:
 
