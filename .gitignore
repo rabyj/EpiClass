@@ -5,6 +5,7 @@
 **/tests/**/*.list
 **/tests/**/*.zip
 **/tests/**/*.ckpt
+**/tests/fixtures/
 
 # cluster files
 slurm_files/

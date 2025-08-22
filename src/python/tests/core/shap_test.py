@@ -235,8 +235,11 @@ class Test_SHAP_Analyzer:
         """saccer3 epigenetic signals"""
         chrom_file = saccer3_dir / "saccer3.can.chrom.sizes"
         hdf5_filelist = saccer3_dir / "hdf5_10kb_all_none.list"
+
+        hdf5_dir = FIXTURES_DIR / "saccer3" / "hdf5"
+
         hdf5_loader = Hdf5Loader(chrom_file=chrom_file, normalization=True)
-        hdf5_loader.load_hdf5s(hdf5_filelist, strict=True)
+        hdf5_loader.load_hdf5s(hdf5_filelist, strict=True, hdf5_dir=hdf5_dir)
         return hdf5_loader.signals
 
     @pytest.fixture

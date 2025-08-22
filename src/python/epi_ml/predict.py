@@ -44,6 +44,9 @@ def parse_arguments() -> argparse.Namespace:
         type=DirectoryChecker(),
         help="Directory from which to load the desired model. Default is logdir.",
     )
+    arg_parser.add_argument(
+        "--hdf5_dir", type=Path, help="Directory in which to look for hdf5s, which will override hdf5 complete paths."
+    )
     # fmt: on
     return arg_parser.parse_args()
 
@@ -77,7 +80,11 @@ def main():
 
     # --- LOAD DATA ---
     hdf5_loader = Hdf5Loader(chrom_file=cli.chromsize, normalization=True)
-    hdf5_loader.load_hdf5s(data_file=cli.hdf5)
+
+    if cli.hdf5_dir is not None:
+        hdf5_loader.load_hdf5s(data_file=cli.hdf5, hdf5_dir=cli.hdf5_dir)
+    else:
+        hdf5_loader.load_hdf5s(data_file=cli.hdf5)
     files = hdf5_loader.signals
 
     md5s = []

@@ -58,13 +58,20 @@ class Hdf5Loader:
         return files
 
     def load_hdf5s(
-        self, data_file: Path, md5s=None, verbose=True, strict=False
+        self,
+        data_file: Path,
+        md5s: List[str] | None = None,
+        verbose=True,
+        strict=False,
+        hdf5_dir: Path | None = None,
     ) -> Hdf5Loader:
         """Load hdf5s from path list file, into self.signals
         If a list of md5s is given, load only the corresponding files.
         Normalize if internal flag set so.
 
         Check adapt_to_environment for details on dynamic path changes.
+
+        hdf5_dir is a directory in which to look for hdf5s, which will override data_file complete paths.
 
         If strict, will raise OSError if an hdf5 cannot be opened.
 
@@ -73,6 +80,10 @@ class Hdf5Loader:
         files = self.read_list(data_file)
 
         files = Hdf5Loader.adapt_to_environment(files)
+
+        if hdf5_dir is not None:
+            files = {md5: hdf5_dir / path.name for md5, path in files.items()}
+
         self._files = files
 
         # Remove undesired files
