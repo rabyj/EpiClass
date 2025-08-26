@@ -14,7 +14,7 @@ To reproduce paper figures, use [fig*.ipynb notebooks](src/python/epi_ml/utils/n
 
 ## Model Availability – Neural Networks Trained on EpiATLAS
 
-Models trained on the EpiATLAS dataset and used for inference on other datasets (as part of the associated publication) will be made available on HuggingFace prior to publication.
+Models trained on the EpiATLAS dataset and used for inference on other datasets (as part of the associated publication) are available on HuggingFace under the ["EpiClass models" collection](https://huggingface.co/collections/KatLeChat/epiclass-models-68adb5ce65c8f2fb93322e59).
 
 ## Setup
 
