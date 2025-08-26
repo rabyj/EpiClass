@@ -117,6 +117,9 @@ usage: epiatlas_training_no_valid.py [-h] [--offline] [--restore]
 
 ### `predict.py`
 
+The model directory should be the folder where the checkpoint `best_checkpoint.list` list is.
+The last path of this file will be loaded, so make sure the path points to a model weights file (`.ckpt`) that exists.
+
 ```text
 usage: predict.py [-h] [--offline] [--model MODEL] hdf5 chromsize logdir
 
