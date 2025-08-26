@@ -1,0 +1,11 @@
+not_collected
+-
+--
+na
+not_applicable
+not_determined
+unknown
+unknwon
+missing
+n/a
+n.a.

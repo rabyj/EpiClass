@@ -1,0 +1,8 @@
+keyword	class
+cell_line	cell_line
+primary_tissue	primary_tissue
+primary_cell	primary_cell
+fresh_frozn_tissue	primary_tissue
+native_tissue	primary_tissue
+primary_sample	primary_tissue
+primary_tumor_tissue	primary_tissue
