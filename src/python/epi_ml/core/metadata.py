@@ -116,8 +116,12 @@ class Metadata:
         return self._metadata.items()
 
     def to_df(self):
-        """Return a dataframe with one file per row."""
-        return pd.DataFrame.from_records(list(self.datasets))
+        """Return a dataframe with one file per row.
+        Index is md5sum.
+        """
+        df = pd.DataFrame.from_records(list(self.datasets))
+        df.set_index("md5sum", inplace=True)
+        return df
 
     def _load_metadata(self, path):
         """Return md5:dataset dict."""
