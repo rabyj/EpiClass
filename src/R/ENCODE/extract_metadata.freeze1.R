@@ -1,6 +1,6 @@
 
 #====================================================================
-# Extraction of ChIP-Atlas metadata
+# Extraction of ENCODE metadata
 #====================================================================
 
 suppressMessages(library(data.table))
