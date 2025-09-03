@@ -2,6 +2,7 @@
 # pylint: disable=unused-argument
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -16,6 +17,16 @@ from tests.epilap_test_data import FIXTURES_DIR, EpiAtlasTreatmentTestData
 #     items[:] = [item for item in items if item.name != "test_logdir"]
 
 
+def pytest_exception_interact(node, call, report):
+    """Intercept test exceptions and customize FileNotFoundError messages."""
+    if isinstance(call.excinfo.value, FileNotFoundError):
+        report.longrepr = (
+            f"\nFileNotFoundError intercepted:\n"
+            f"  {call.excinfo.value}\n"
+            f"Hint: Did you forget to extract fixtures.tar.xz?\n"
+        )
+
+
 def pytest_sessionstart(session):
     """
     Called after the Session object has been created and before performing
@@ -26,9 +37,17 @@ def pytest_sessionstart(session):
         message = (
             f"Required fixtures directory '{FIXTURES_DIR}' is missing or empty.\n"
             "Please ensure the fixtures are uncompressed and available before running tests.\n"
-            f"Search for: fixtures.tar.xz"
+            "Search for: fixtures.tar.xz"
         )
         pytest.exit(reason=message, returncode=1)
+    checkpoint_file = FIXTURES_DIR / "saccer3" / "best_checkpoint.list"
+    if not checkpoint_file.exists():
+        checkpoint_template = checkpoint_file.parent / "best_checkpoint_template.list"
+        lines = checkpoint_template.read_text().splitlines()
+        lines = [
+            re.sub(r"THIS_FOLDER", str(checkpoint_file.parent), line) for line in lines
+        ]
+        checkpoint_file.write_text("\n".join(lines))
 
 
 def nottest(obj):

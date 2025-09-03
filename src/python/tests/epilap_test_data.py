@@ -18,7 +18,12 @@ DEFAULT_TEST_LOGDIR.mkdir(exist_ok=True, parents=True)
 
 FIXTURES_DIR = (Path(__file__).parent / "fixtures").resolve()
 if not FIXTURES_DIR.exists():
-    raise FileNotFoundError(f"Could not find fixtures directory: {FIXTURES_DIR}")
+    raise FileNotFoundError(
+        (
+            f"Could not find fixtures directory: {FIXTURES_DIR}\n"
+            "Hint: Did you extract fixtures.tar.xz?\n"
+        )
+    )
 
 
 class EpiAtlasTreatmentTestData:
