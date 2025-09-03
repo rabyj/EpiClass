@@ -23,15 +23,17 @@ def import_test():
     from pytorch_lightning import loggers as pl_loggers
     from torch.utils.data import DataLoader, TensorDataset
 
-    from epi_ml.argparseutils.DefaultHelpParser import DefaultHelpParser as ArgumentParser
-    from epi_ml.argparseutils.directorychecker import DirectoryChecker
-    from epi_ml.core import analysis, data, estimators, metadata
-    from epi_ml.core.data import DataSet, UnknownData
-    from epi_ml.core.data_source import EpiDataSource
-    from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory
-    from epi_ml.core.hdf5_loader import Hdf5Loader
-    from epi_ml.core.lgbm import tune_lgbm
-    from epi_ml.core.model_pytorch import LightningDenseClassifier
-    from epi_ml.core.trainer import MyTrainer, define_callbacks
-    from epi_ml.utils.check_dir import create_dirs
-    from epi_ml.utils.time import time_now
+    from epiclass.argparseutils.DefaultHelpParser import (
+        DefaultHelpParser as ArgumentParser,
+    )
+    from epiclass.argparseutils.directorychecker import DirectoryChecker
+    from epiclass.core import analysis, data, estimators, metadata
+    from epiclass.core.data import DataSet, UnknownData
+    from epiclass.core.data_source import EpiDataSource
+    from epiclass.core.epiatlas_treatment import EpiAtlasFoldFactory
+    from epiclass.core.hdf5_loader import Hdf5Loader
+    from epiclass.core.lgbm import tune_lgbm
+    from epiclass.core.model_pytorch import LightningDenseClassifier
+    from epiclass.core.trainer import MyTrainer, define_callbacks
+    from epiclass.utils.check_dir import create_dirs
+    from epiclass.utils.time import time_now

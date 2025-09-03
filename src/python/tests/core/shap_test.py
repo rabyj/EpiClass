@@ -11,11 +11,11 @@ from lightgbm import LGBMClassifier
 from shap import TreeExplainer
 from sklearn.datasets import make_blobs
 
-from epi_ml.core.data import DataSet, UnknownData
-from epi_ml.core.estimators import EstimatorAnalyzer
-from epi_ml.core.hdf5_loader import Hdf5Loader
-from epi_ml.core.model_pytorch import LightningDenseClassifier
-from epi_ml.core.shap_values import LGBM_SHAP_Handler, NN_SHAP_Handler, SHAP_Analyzer
+from epiclass.core.data import DataSet, UnknownData
+from epiclass.core.estimators import EstimatorAnalyzer
+from epiclass.core.hdf5_loader import Hdf5Loader
+from epiclass.core.model_pytorch import LightningDenseClassifier
+from epiclass.core.shap_values import LGBM_SHAP_Handler, NN_SHAP_Handler, SHAP_Analyzer
 from tests.epilap_test_data import FIXTURES_DIR
 
 

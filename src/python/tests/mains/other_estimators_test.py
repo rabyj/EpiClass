@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-import epi_ml.core.estimators
-from epi_ml.other_estimators import main as main_module
+import epiclass.core.estimators
+from epiclass.other_estimators import main as main_module
 from tests.epilap_test_data import FIXTURES_DIR, EpiAtlasTreatmentTestData
 
 
@@ -20,7 +20,7 @@ def fixture_test_dir(mk_logdir) -> Path:
 def test_hyperparams(test_dir: Path):
     """Test if hyperparameter file is handled properly."""
     os.environ["MIN_CLASS_SIZE"] = "3"
-    epi_ml.core.estimators.NFOLD_PREDICT = 2
+    epiclass.core.estimators.NFOLD_PREDICT = 2
 
     datasource = EpiAtlasTreatmentTestData.default_test_data().epiatlas_dataset.datasource
 
@@ -52,7 +52,7 @@ def test_binary_classifier(test_dir: Path):
 
     os.environ["MIN_CLASS_SIZE"] = "1"
     os.environ["LABEL_LIST"] = '["female", "male"]'
-    epi_ml.core.estimators.NFOLD_PREDICT = 2
+    epiclass.core.estimators.NFOLD_PREDICT = 2
 
     # Loading paths
     datasource = EpiAtlasTreatmentTestData.default_test_data(

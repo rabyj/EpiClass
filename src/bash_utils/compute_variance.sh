@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --time=00:40:00
 #SBATCH --account=def-jacquesp
-#SBATCH --job-name=variance
+#SBATCH --job-name=bin_metrics
 #SBATCH --output=%x-%j.out
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
@@ -10,9 +10,9 @@
 #SBATCH --mail-type=END
 
 project_path="/lustre03/project/6007017/rabyj/epi_ml_project"
-script_path="${project_path}/epi_ml/epi_ml/python/compute_bin_variance.py"
+script_path="${project_path}/epiclass/src/python/epiclass/utils/compute_bin_metrics.py"
 
-. ${project_path}/epi_ml/venv/bin/activate
+. ${project_path}/epiclass/venv/bin/activate
 
 release="2018-10"
 assembly="hg19"
@@ -21,9 +21,9 @@ list_name="${signal_type}_major_ct"
 
 name=${assembly}"_"${release} # ex: hg38_2018-10
 
-hdf5_list=${name}"/"${list_name}".list"
-chrom_file=${assembly}".noy.chrom.sizes"
-json=${name}"_final.json"
+hdf5_list="${name}/${list_name}.list"
+chrom_file="${assembly}.noy.chrom.sizes"
+json="${name}_final.json"
 
 log_dir="${release}/${assembly}_${signal_type}/variance_major_cell_type"
 

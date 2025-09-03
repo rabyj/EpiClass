@@ -2,15 +2,13 @@
 
 EpiClass trains machine learning models to classify and label epigenomic data.
 
-`epi_ml` (current repository name) is the legacy name which means Epigenomic Machine Learning.
-
 ## Publication
 
 This repository contains most of the code used to obtain results for the following paper: Leveraging the largest harmonized epigenomic data collection for metadata prediction validated and augmented over 350,000 public epigenomic datasets
 
 See [Key Scripts](#key-scripts) section for the training code.
 
-To reproduce paper figures, use [fig*.ipynb notebooks](src/python/epi_ml/utils/notebooks/paper/paper-final) at `src/python/epi_ml/utils/notebooks/paper/paper-final`.
+To reproduce paper figures, use [fig*.ipynb notebooks](src/python/epiclass/utils/notebooks/paper/paper-final) at `src/python/epiclass/utils/notebooks/paper/paper-final`.
 
 ## Model Availability – Neural Networks Trained on EpiATLAS
 
@@ -53,7 +51,7 @@ If your system does not have Python 3.8 installed, consider using [pyenv](https:
 
 - See the `input-format/` folder for examples of required input files.
 - The `src/bash_utils/` folder contains SLURM-compatible job launcher templates.
-- Main training scripts are in `src/python/epi_ml/`.
+- Main training scripts are in `src/python/epiclass/`.
 
 ### Key Scripts
 
@@ -80,7 +78,7 @@ These allow dynamic relabeling or filtering of specific categories.
 - Once a label category exists, any value (including `""`, `"--"`, or `"NA"`) is interpreted as a valid label.
 - If your dataset may contain inconsistent keys, use `remove_missing_labels()` on the relevant categories.
 
-For more details, refer to the [documentation](https://rabyj.github.io/epi_ml/epi_ml/core/metadata.html).
+For more details, refer to the [documentation](https://rabyj.github.io/epiclass/epiclass/core/metadata.html).
 
 For advanced metadata manipulation, use `pandas` directly.
 

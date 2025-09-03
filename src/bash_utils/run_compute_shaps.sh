@@ -1,17 +1,17 @@
 #!/bin/bash
-home="/home/local/USHERBROOKE/rabj2301/Projects"
+base_dir="$HOME/Projects"
 
-code="$home/sources/epi_ml/src/python/compute_shaps.py"
-env="$home/epilap/venv-epilap-pytorch/bin/activate"
+code="$base_dir/sources/epiclass/src/python/epiclass/compute_shaps.py"
+env="$base_dir/epilap/venv-epilap-pytorch/bin/activate"
 
 . $env
 
-input="$home/epilap/input"
+input="$base_dir/epilap/input"
 hdf5_list="$input/hdf5_list/hg38_2022-epiatlas/estimator-debug-biotype-n400.list"
 metadata="$input//metadata/merge_EpiAtlas_allmetadata-v11-mod.json"
 chroms="$input/chromsizes/hg38.noy.chrom.sizes"
 
-output="$home/epilap/output"
+output="$base_dir/epilap/output"
 logdir="$output/logs/hg38_2022-epiatlas/shap"
 model_dir="$output/models/split0"
 

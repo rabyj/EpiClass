@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from epi_ml.utils.classification_merging_utils import merge_dataframes
+from epiclass.utils.classification_merging_utils import merge_dataframes
 
 
 class TestMergeDataframes:

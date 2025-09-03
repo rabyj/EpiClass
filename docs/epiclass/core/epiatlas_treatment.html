@@ -1,0 +1,807 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+<meta name="generator" content="pdoc3 0.11.0">
+<title>epiclass.core.epiatlas_treatment API documentation</title>
+<meta name="description" content="Functions to split epiatlas datasets properly, keeping track types together in the different sets.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/sanitize.min.css" integrity="sha512-y1dtMcuvtTMJc1yPgEqF0ZjQbhnc/bFhyvIyVNb9Zk5mIGtqVaAB1Ttl28su8AvFMOY0EwRbAe+HCLqj6W7/KA==" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/typography.min.css" integrity="sha512-Y1DYSb995BAfxobCkKepB1BqJJTPrOp3zPL74AWFugHHmmdcvO+C48WLrUOlhGMc0QG7AE3f7gmvvcrmX2fDoA==" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:1.5em;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:2em 0 .50em 0}h3{font-size:1.4em;margin:1.6em 0 .7em 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .2s ease-in-out}a:visited{color:#503}a:hover{color:#b62}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900;font-weight:bold}pre code{font-size:.8em;line-height:1.4em;padding:1em;display:block}code{background:#f3f3f3;font-family:"DejaVu Sans Mono",monospace;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em 1em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul ul{padding-left:1em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha512-D9gUyxqja7hBtkWpPWGt9wfbfaMGVt9gnyCvYa+jojwwPHLCzUm5i8rpk7vD7wNee9bA35eYIjobYPaQuKS1MQ==" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => {
+hljs.configure({languages: ['bash', 'css', 'diff', 'graphql', 'ini', 'javascript', 'json', 'plaintext', 'python', 'python-repl', 'rust', 'shell', 'sql', 'typescript', 'xml', 'yaml']});
+hljs.highlightAll();
+})</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>epiclass.core.epiatlas_treatment</code></h1>
+</header>
+<section id="section-intro">
+<p>Functions to split epiatlas datasets properly, keeping track types together in the different sets.</p>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="epiclass.core.epiatlas_treatment.EpiAtlasDataset"><code class="flex name class">
+<span>class <span class="ident">EpiAtlasDataset</span></span>
+<span>(</span><span>datasource: EpiDataSource, label_category: str, label_list: List[str] | None = None, min_class_size: int = 10, md5_list: List[str] | None = None, force_filter: bool = True, metadata: UUIDMetadata | None = None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Class that handles how epiatlas data signals are linked together.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>datasource</code></strong> :&ensp;<code>EpiDataSource</code></dt>
+<dd>Where everything is read from.</dd>
+<dt><strong><code>label_category</code></strong> :&ensp;<code>str</code></dt>
+<dd>The target category of labels to use.</dd>
+<dt><strong><code>label_list</code></strong> :&ensp;<code>List[str]</code>, optional</dt>
+<dd>List of labels/classes to include from given category</dd>
+<dt><strong><code>min_class_size</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>Minimum number of samples per class.</dd>
+<dt><strong><code>md5_list</code></strong> :&ensp;<code>List[str]</code>, optional</dt>
+<dd>List of datasource md5s to include in the dataset. If None, everything is used and usual filter methods are used.
+(using min_class_size and label_list)</dd>
+<dt><strong><code>force_filter</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>If True, will filter the metadata even if md5_list is given. If False, will not filter the metadata if md5_list.</dd>
+<dt><strong><code>metadata</code></strong> :&ensp;<code>UUIDMetadata</code>, optional</dt>
+<dd>If given, will use this metadata instead of loading it from the datasource.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class EpiAtlasDataset:
+    &#34;&#34;&#34;Class that handles how epiatlas data signals are linked together.
+
+    Parameters
+    ----------
+    datasource : EpiDataSource
+        Where everything is read from.
+    label_category : str
+        The target category of labels to use.
+    label_list : List[str], optional
+        List of labels/classes to include from given category
+    min_class_size : int, optional
+        Minimum number of samples per class.
+    md5_list : List[str], optional
+        List of datasource md5s to include in the dataset. If None, everything is used and usual filter methods are used.
+        (using min_class_size and label_list)
+    force_filter : bool, optional
+        If True, will filter the metadata even if md5_list is given. If False, will not filter the metadata if md5_list.
+    metadata : UUIDMetadata, optional
+        If given, will use this metadata instead of loading it from the datasource.
+    &#34;&#34;&#34;
+
+    def __init__(
+        self,
+        datasource: EpiDataSource,
+        label_category: str,
+        label_list: List[str] | None = None,
+        min_class_size: int = 10,
+        md5_list: List[str] | None = None,
+        force_filter: bool = True,
+        metadata: UUIDMetadata | None = None,
+    ):
+        self._datasource = datasource
+        self._label_category = label_category
+        self._label_list = label_list
+
+        # Load metadata
+        meta = metadata
+        if meta is None:
+            meta = UUIDMetadata(self._datasource.metadata_file)
+        if md5_list:
+            try:
+                meta = UUIDMetadata.from_dict({md5: meta[md5] for md5 in md5_list})
+            except KeyError as e:
+                raise KeyError(f&#34;md5 {e} from md5 list not found in metadata&#34;) from e
+
+        if force_filter or not md5_list:
+            meta = self._filter_metadata(min_class_size, meta, verbose=True)
+
+        self._metadata = meta
+
+        # Classes info
+        self._classes = self._metadata.unique_classes(self._label_category)
+        self._classes_mapping = {label: i for i, label in enumerate(self._classes)}
+
+        # UUID info
+        self._metadata.display_uuid_per_class(self._label_category)
+        self._uuid_mapping = self._metadata.uuid_to_md5()
+
+        # Load signals and create proper dataset
+        self._signals = self._load_signals()
+
+        md5s = list(self._signals.keys())
+        labels = [self._metadata[md5][self._label_category] for md5 in md5s]
+
+        self._dataset: data.KnownData = data.KnownData(
+            ids=md5s,
+            x=list(self._signals.values()),
+            y_str=labels,
+            y=[self._classes_mapping[label] for label in labels],
+            metadata=self._metadata,
+        )
+
+    @property
+    def datasource(self) -&gt; EpiDataSource:
+        &#34;&#34;&#34;Return given datasource.&#34;&#34;&#34;
+        return self._datasource
+
+    @property
+    def target_category(self) -&gt; str:
+        &#34;&#34;&#34;Return given label category (e.g. assay)&#34;&#34;&#34;
+        return self._label_category
+
+    @property
+    def label_list(self) -&gt; List[str] | None:
+        &#34;&#34;&#34;Return given target labels inclusion list.&#34;&#34;&#34;
+        return self._label_list
+
+    @property
+    def classes(self) -&gt; List[str]:
+        &#34;&#34;&#34;Return target classes&#34;&#34;&#34;
+        return self._classes
+
+    @property
+    def metadata(self) -&gt; UUIDMetadata:
+        &#34;&#34;&#34;Return a copy of current metadata held&#34;&#34;&#34;
+        return copy.deepcopy(self._metadata)
+
+    @property
+    def signals(self) -&gt; Dict[str, np.ndarray]:
+        &#34;&#34;&#34;Return loaded signals.&#34;&#34;&#34;
+        return self._signals
+
+    @property
+    def dataset(self) -&gt; data.KnownData:
+        &#34;&#34;&#34;Return dataset.&#34;&#34;&#34;
+        return self._dataset
+
+    def _load_signals(self) -&gt; Dict[str, np.ndarray]:
+        &#34;&#34;&#34;Load signals from given datasource.&#34;&#34;&#34;
+        loader = Hdf5Loader(chrom_file=self.datasource.chromsize_file, normalization=True)
+        loader = loader.load_hdf5s(
+            data_file=self.datasource.hdf5_file,
+            md5s=self.metadata.md5s,
+            strict=True,
+            verbose=True,
+        )
+        return loader.signals
+
+    def _filter_metadata(
+        self, min_class_size: int, metadata: UUIDMetadata, verbose: bool
+    ) -&gt; UUIDMetadata:
+        &#34;&#34;&#34;Filter entry metadata for given files, assay list and label_category.&#34;&#34;&#34;
+        files = Hdf5Loader.read_list(self.datasource.hdf5_file)
+
+        # Remove metadata not associated with files
+        metadata.apply_filter(lambda item: item[0] in files)
+
+        metadata.remove_missing_labels(self.target_category)
+        if self.label_list is not None:
+            metadata.select_category_subsets(self.target_category, self.label_list)
+        metadata.remove_small_classes(
+            min_class_size, self.target_category, verbose, using_uuid=True
+        )
+        return metadata</code></pre>
+</details>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="epiclass.core.epiatlas_treatment.EpiAtlasMetadata" href="#epiclass.core.epiatlas_treatment.EpiAtlasMetadata">EpiAtlasMetadata</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="epiclass.core.epiatlas_treatment.EpiAtlasDataset.classes"><code class="name">prop <span class="ident">classes</span> : List[str]</code></dt>
+<dd>
+<div class="desc"><p>Return target classes</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def classes(self) -&gt; List[str]:
+    &#34;&#34;&#34;Return target classes&#34;&#34;&#34;
+    return self._classes</code></pre>
+</details>
+</dd>
+<dt id="epiclass.core.epiatlas_treatment.EpiAtlasDataset.dataset"><code class="name">prop <span class="ident">dataset</span> : data.KnownData</code></dt>
+<dd>
+<div class="desc"><p>Return dataset.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def dataset(self) -&gt; data.KnownData:
+    &#34;&#34;&#34;Return dataset.&#34;&#34;&#34;
+    return self._dataset</code></pre>
+</details>
+</dd>
+<dt id="epiclass.core.epiatlas_treatment.EpiAtlasDataset.datasource"><code class="name">prop <span class="ident">datasource</span> : EpiDataSource</code></dt>
+<dd>
+<div class="desc"><p>Return given datasource.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def datasource(self) -&gt; EpiDataSource:
+    &#34;&#34;&#34;Return given datasource.&#34;&#34;&#34;
+    return self._datasource</code></pre>
+</details>
+</dd>
+<dt id="epiclass.core.epiatlas_treatment.EpiAtlasDataset.label_list"><code class="name">prop <span class="ident">label_list</span> : List[str] | None</code></dt>
+<dd>
+<div class="desc"><p>Return given target labels inclusion list.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def label_list(self) -&gt; List[str] | None:
+    &#34;&#34;&#34;Return given target labels inclusion list.&#34;&#34;&#34;
+    return self._label_list</code></pre>
+</details>
+</dd>
+<dt id="epiclass.core.epiatlas_treatment.EpiAtlasDataset.metadata"><code class="name">prop <span class="ident">metadata</span> : UUIDMetadata</code></dt>
+<dd>
+<div class="desc"><p>Return a copy of current metadata held</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def metadata(self) -&gt; UUIDMetadata:
+    &#34;&#34;&#34;Return a copy of current metadata held&#34;&#34;&#34;
+    return copy.deepcopy(self._metadata)</code></pre>
+</details>
+</dd>
+<dt id="epiclass.core.epiatlas_treatment.EpiAtlasDataset.signals"><code class="name">prop <span class="ident">signals</span> : Dict[str, np.ndarray]</code></dt>
+<dd>
+<div class="desc"><p>Return loaded signals.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def signals(self) -&gt; Dict[str, np.ndarray]:
+    &#34;&#34;&#34;Return loaded signals.&#34;&#34;&#34;
+    return self._signals</code></pre>
+</details>
+</dd>
+<dt id="epiclass.core.epiatlas_treatment.EpiAtlasDataset.target_category"><code class="name">prop <span class="ident">target_category</span> : str</code></dt>
+<dd>
+<div class="desc"><p>Return given label category (e.g. assay)</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def target_category(self) -&gt; str:
+    &#34;&#34;&#34;Return given label category (e.g. assay)&#34;&#34;&#34;
+    return self._label_category</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory"><code class="flex name class">
+<span>class <span class="ident">EpiAtlasFoldFactory</span></span>
+<span>(</span><span>epiatlas_dataset: <a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset">EpiAtlasDataset</a>, n_fold: int = 10, test_ratio: float = 0)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Class that handles how epiatlas data is split into training, validation, and testing sets.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>epiatlas_dataset</code></strong> :&ensp;<code><a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset">EpiAtlasDataset</a></code></dt>
+<dd>Source container for epiatlas data.</dd>
+<dt><strong><code>n_fold</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>Number of folds for cross-validation.</dd>
+<dt><strong><code>test_ratio</code></strong> :&ensp;<code>float</code>, optional</dt>
+<dd>Ratio of data kept for test (not used for training or validation)</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class EpiAtlasFoldFactory:
+    &#34;&#34;&#34;Class that handles how epiatlas data is split into training, validation, and testing sets.
+
+    Parameters
+    ----------
+    epiatlas_dataset : EpiAtlasDataset
+        Source container for epiatlas data.
+    n_fold : int, optional
+        Number of folds for cross-validation.
+    test_ratio : float, optional
+        Ratio of data kept for test (not used for training or validation)
+    &#34;&#34;&#34;
+
+    def __init__(
+        self,
+        epiatlas_dataset: EpiAtlasDataset,
+        n_fold: int = 10,
+        test_ratio: float = 0,
+    ):
+        self.k = n_fold
+        if n_fold &lt; 2:
+            raise ValueError(
+                f&#34;Need at least two folds for cross-validation. Got {n_fold}.&#34;
+            )
+        self.test_ratio = test_ratio
+        if test_ratio &lt; 0 or test_ratio &gt; 1:
+            raise ValueError(f&#34;test_ratio must be between 0 and 1. Got {test_ratio}.&#34;)
+
+        self._epiatlas_dataset = epiatlas_dataset
+        self._classes = self._epiatlas_dataset.classes
+
+        self._train_val, self._test = self._reserve_test()
+        if len(self._train_val) == 0:
+            raise ValueError(&#34;No data in training and validation.&#34;)
+
+    @classmethod
+    def from_datasource(
+        cls,
+        datasource: EpiDataSource,
+        label_category: str,
+        label_list: List[str] | None = None,
+        min_class_size: int = 10,
+        test_ratio: float = 0,
+        n_fold: int = 10,
+        md5_list: List[str] | None = None,
+        force_filter: bool = True,
+        metadata: UUIDMetadata | None = None,
+    ):
+        &#34;&#34;&#34;Create EpiAtlasFoldFactory from a given EpiDataSource,
+        directly create the intermediary EpiAtlasDataset. See
+        EpiAtlasDataset init parameters for more details.
+        &#34;&#34;&#34;
+        epiatlas_dataset = EpiAtlasDataset(
+            datasource,
+            label_category,
+            label_list,
+            min_class_size,
+            md5_list,
+            force_filter,
+            metadata,
+        )
+        return cls(epiatlas_dataset, n_fold, test_ratio)
+
+    @property
+    def n_fold(self) -&gt; int:
+        &#34;&#34;&#34;Returns expected number of folds.&#34;&#34;&#34;
+        return self.k
+
+    @property
+    def epiatlas_dataset(self) -&gt; EpiAtlasDataset:
+        &#34;&#34;&#34;Returns source EpiAtlasDataset.&#34;&#34;&#34;
+        return self._epiatlas_dataset
+
+    @property
+    def classes(self) -&gt; List[str]:
+        &#34;&#34;&#34;Returns classes.&#34;&#34;&#34;
+        return self._classes
+
+    @property
+    def train_val_dset(self) -&gt; data.KnownData:
+        &#34;&#34;&#34;Returns training dataset for cross-validation.&#34;&#34;&#34;
+        return self._train_val
+
+    @property
+    def test_dset(self) -&gt; data.KnownData:
+        &#34;&#34;&#34;Returns test dataset, not used in cross-validation.&#34;&#34;&#34;
+        return self._test
+
+    @staticmethod
+    def _label_uuid(dset: data.KnownData) -&gt; Tuple[NDArray, NDArray, NDArrayInt]:
+        &#34;&#34;&#34;Return uuids, unique uuids and uuid to int mapping (for stratified group k-fold)
+
+        Args:
+            dset (data.KnownData): The dataset from which the UUIDs are to be extracted.
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray, np.ndarray]:
+                - uuids (np.ndarray): All the UUIDs for the dataset&#39;s samples. Length n.
+                - unique_uuids (np.ndarray): Unique UUIDs present in the dataset.
+                - uuid_to_int (np.ndarray): The indices to reconstruct the original array from the unique array. Length n.
+        &#34;&#34;&#34;
+        uuids = [dset.metadata[md5][&#34;uuid&#34;] for md5 in dset.ids]
+        unique_uuids, uuid_to_int = np.unique(uuids, return_inverse=True)  # type: ignore
+        return np.array(uuids), unique_uuids, uuid_to_int
+
+    def _reserve_test(self) -&gt; Tuple[data.KnownData, data.KnownData]:
+        &#34;&#34;&#34;Return training data from cross-validation and test data for final evaluation.&#34;&#34;&#34;
+        dset = self._epiatlas_dataset.dataset
+        if self.test_ratio == 0:
+            return dset, data.KnownData.empty_collection()
+
+        n_splits = int(1 / self.test_ratio)
+        if self.epiatlas_dataset.target_category == &#34;track_type&#34;:
+            train_val, test = next(self._split_by_track_type(dset, n_splits))
+        else:
+            train_val, test = next(self._split_dataset(dset, n_splits, oversample=False))
+        return train_val, test
+
+    def _split_by_track_type(
+        self, dset: data.KnownData, n_splits: int
+    ) -&gt; Generator[Tuple[data.KnownData, data.KnownData], None, None]:
+        &#34;&#34;&#34;Split dataset by track_type. Oversampling not implemented.&#34;&#34;&#34;
+        _, _, uuids_inverse = self._label_uuid(dset)
+
+        # forcing track type as the class label
+        labels = [dset.metadata[md5][&#34;track_type&#34;] for md5 in dset.ids]
+
+        skf = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=42)
+        for train_idxs, valid_idxs in skf.split(
+            X=dset.signals, y=labels, groups=uuids_inverse
+        ):
+            train_set = dset.subsample(list(train_idxs))
+            valid_set = dset.subsample(list(valid_idxs))
+
+            yield train_set, valid_set
+
+    def _split_dataset(
+        self, dset: data.KnownData, n_splits: int, oversample: bool = False
+    ) -&gt; Generator[Tuple[data.KnownData, data.KnownData], None, None]:
+        # Convert the labels and groups (uuids) into numpy arrays
+        uuids, uuids_unique, uuids_inverse = self._label_uuid(dset)
+        labels_unique = [
+            dset.encoded_labels[uuids == uuid][0] for uuid in uuids_unique
+        ]  # assuming all samples from the same UUID share the same label --&gt; not true for track_type
+
+        skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+        for train_idxs_unique, valid_idxs_unique in skf.split(
+            X=np.empty(shape=(len(uuids_unique), dset.signals.shape[1])),
+            y=labels_unique,
+        ):
+            train_idxs: NDArrayInt = np.concatenate(
+                [np.where(uuids_inverse == idx)[0] for idx in train_idxs_unique]
+            )
+            valid_idxs: NDArrayInt = np.concatenate(
+                [np.where(uuids_inverse == idx)[0] for idx in valid_idxs_unique]
+            )
+
+            if oversample:
+                # Oversample in the UUID space, not the sample space
+                ros = RandomOverSampler(random_state=42)
+                train_uuids_resampled, _ = ros.fit_resample(  # type: ignore
+                    np.array(uuids_unique[train_idxs_unique]).reshape(-1, 1),
+                    np.array(labels_unique)[train_idxs_unique],
+                )
+                # map back to the sample space
+                train_idxs: NDArrayInt = np.concatenate(
+                    [
+                        np.where(uuids == uuid)[0]
+                        for uuid in train_uuids_resampled.flatten()  # type: ignore
+                    ]
+                )
+
+            train_set = dset.subsample(list(train_idxs))
+            valid_set = dset.subsample(list(valid_idxs))
+
+            yield train_set, valid_set
+
+    def yield_split(self, oversample: bool = True) -&gt; Generator[data.DataSet, None, None]:
+        &#34;&#34;&#34;Yield train and valid tensor datasets for one split.
+
+        Depends on given init parameters.
+        &#34;&#34;&#34;
+        dset = self._train_val
+
+        if self.epiatlas_dataset.target_category == &#34;track_type&#34;:
+            generator = self._split_by_track_type(dset, self.k)
+        else:
+            generator = self._split_dataset(dset, self.k, oversample=oversample)
+
+        for train_set, valid_set in generator:
+            yield data.DataSet(
+                training=train_set,
+                validation=valid_set,
+                test=data.KnownData.empty_collection(),
+                sorted_classes=self.classes,
+            )
+
+    def create_total_data(self, oversample: bool = True) -&gt; data.KnownData:
+        &#34;&#34;&#34;Create a single dataset from the training and validation data.
+
+        Will not oversample properly if all samples from the same UUID do not share target label.
+
+        Used for final training, with no validation.
+        &#34;&#34;&#34;
+        train_set = self._train_val
+
+        # Convert the labels and groups (uuids) into numpy arrays
+        uuids, uuids_unique, uuids_inverse = self._label_uuid(train_set)
+        labels_unique = [
+            train_set.encoded_labels[uuids == uuid][0] for uuid in uuids_unique
+        ]  # assuming all samples from the same UUID share the same label --&gt; not true for track_type
+
+        if oversample:
+            # Oversample in the UUID space, not the sample space
+            ros = RandomOverSampler(random_state=42)
+            resampled_uuid_idxs, _ = ros.fit_resample(  # type: ignore
+                np.array(range(len(uuids_unique))).reshape(-1, 1),
+                np.array(labels_unique),
+            )
+            resampled_uuid_idxs = resampled_uuid_idxs.flatten()  # type: ignore
+
+            # Map back to the sample space
+            train_idxs = np.concatenate(
+                [np.where(uuids_inverse == idx)[0] for idx in resampled_uuid_idxs]
+            )
+
+            train_set = train_set.subsample(list(train_idxs))
+
+        return train_set
+
+    # TODO: needed for tune_estimator
+    # def split(
+    #     self,
+    #     total_data: data.KnownData,
+    #     X=None,
+    #     y=None,
+    #     groups=None,
+    # ) -&gt; Generator[tuple[List, List], None, None]:
+    #     &#34;&#34;&#34;Generate indices to split total data into training and validation set.
+
+    #     Indexes match positions in output of create_total_data()
+    #     X, y and groups :
+    #         Always ignored, exist for compatibility.
+    #     &#34;&#34;&#34;
+    #     md5_mapping = {md5: i for i, md5 in enumerate(total_data.ids)}
+
+    #     raw_dset = self.epiatlas_dataset.raw_dataset
+    #     skf = StratifiedKFold(n_splits=self.k, shuffle=False)
+    #     for train_idxs, valid_idxs in skf.split(
+    #         np.zeros((raw_dset.train.num_examples, len(self.classes))),
+    #         list(raw_dset.train.encoded_labels),
+    #     ):
+    #         # The &#34;complete&#34; refers to the fact that the indexes are sampling over total data.
+    #         complete_train_idxs = self._find_other_tracks(
+    #             train_idxs, self._raw_dset.train, resample=True, md5_mapping=md5_mapping  # type: ignore
+    #         )
+
+    #         complete_valid_idxs = self._find_other_tracks(
+    #             valid_idxs, self._raw_dset.train, resample=False, md5_mapping=md5_mapping  # type: ignore
+    #         )
+
+    #         yield complete_train_idxs, complete_valid_idxs</code></pre>
+</details>
+<h3>Static methods</h3>
+<dl>
+<dt id="epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.from_datasource"><code class="name flex">
+<span>def <span class="ident">from_datasource</span></span>(<span>datasource: EpiDataSource, label_category: str, label_list: List[str] | None = None, min_class_size: int = 10, test_ratio: float = 0, n_fold: int = 10, md5_list: List[str] | None = None, force_filter: bool = True, metadata: UUIDMetadata | None = None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Create EpiAtlasFoldFactory from a given EpiDataSource,
+directly create the intermediary EpiAtlasDataset. See
+EpiAtlasDataset init parameters for more details.</p></div>
+</dd>
+</dl>
+<h3>Instance variables</h3>
+<dl>
+<dt id="epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.classes"><code class="name">prop <span class="ident">classes</span> : List[str]</code></dt>
+<dd>
+<div class="desc"><p>Returns classes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def classes(self) -&gt; List[str]:
+    &#34;&#34;&#34;Returns classes.&#34;&#34;&#34;
+    return self._classes</code></pre>
+</details>
+</dd>
+<dt id="epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.epiatlas_dataset"><code class="name">prop <span class="ident">epiatlas_dataset</span> : <a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset">EpiAtlasDataset</a></code></dt>
+<dd>
+<div class="desc"><p>Returns source EpiAtlasDataset.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def epiatlas_dataset(self) -&gt; EpiAtlasDataset:
+    &#34;&#34;&#34;Returns source EpiAtlasDataset.&#34;&#34;&#34;
+    return self._epiatlas_dataset</code></pre>
+</details>
+</dd>
+<dt id="epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.n_fold"><code class="name">prop <span class="ident">n_fold</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Returns expected number of folds.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def n_fold(self) -&gt; int:
+    &#34;&#34;&#34;Returns expected number of folds.&#34;&#34;&#34;
+    return self.k</code></pre>
+</details>
+</dd>
+<dt id="epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.test_dset"><code class="name">prop <span class="ident">test_dset</span> : data.KnownData</code></dt>
+<dd>
+<div class="desc"><p>Returns test dataset, not used in cross-validation.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def test_dset(self) -&gt; data.KnownData:
+    &#34;&#34;&#34;Returns test dataset, not used in cross-validation.&#34;&#34;&#34;
+    return self._test</code></pre>
+</details>
+</dd>
+<dt id="epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.train_val_dset"><code class="name">prop <span class="ident">train_val_dset</span> : data.KnownData</code></dt>
+<dd>
+<div class="desc"><p>Returns training dataset for cross-validation.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def train_val_dset(self) -&gt; data.KnownData:
+    &#34;&#34;&#34;Returns training dataset for cross-validation.&#34;&#34;&#34;
+    return self._train_val</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.create_total_data"><code class="name flex">
+<span>def <span class="ident">create_total_data</span></span>(<span>self, oversample: bool = True) ‑> <a title="epiclass.core.data.KnownData" href="data.html#epiclass.core.data.KnownData">KnownData</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Create a single dataset from the training and validation data.</p>
+<p>Will not oversample properly if all samples from the same UUID do not share target label.</p>
+<p>Used for final training, with no validation.</p></div>
+</dd>
+<dt id="epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.yield_split"><code class="name flex">
+<span>def <span class="ident">yield_split</span></span>(<span>self, oversample: bool = True) ‑> Generator[<a title="epiclass.core.data.DataSet" href="data.html#epiclass.core.data.DataSet">DataSet</a>, None, None]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Yield train and valid tensor datasets for one split.</p>
+<p>Depends on given init parameters.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="epiclass.core.epiatlas_treatment.EpiAtlasMetadata"><code class="flex name class">
+<span>class <span class="ident">EpiAtlasMetadata</span></span>
+<span>(</span><span>datasource: EpiDataSource, label_category: str, label_list: List[str] | None = None, min_class_size: int = 10, md5_list: List[str] | None = None, force_filter: bool = True, metadata: UUIDMetadata | None = None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Class that handles how epiatlas data ids are linked together.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>datasource</code></strong> :&ensp;<code>EpiDataSource</code></dt>
+<dd>Where everything is read from.</dd>
+<dt><strong><code>label_category</code></strong> :&ensp;<code>str</code></dt>
+<dd>The target category of labels to use.</dd>
+<dt><strong><code>label_list</code></strong> :&ensp;<code>List[str]</code>, optional</dt>
+<dd>List of labels/classes to include from given category</dd>
+<dt><strong><code>min_class_size</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>Minimum number of samples per class.</dd>
+<dt><strong><code>md5_list</code></strong> :&ensp;<code>List[str]</code>, optional</dt>
+<dd>List of datasource md5s to include in the dataset. If None, everything is used and usual filter methods are used.
+(using min_class_size and label_list)</dd>
+<dt><strong><code>force_filter</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>If True, will filter the metadata even if md5_list is given. If False, will not filter the metadata if md5_list.</dd>
+<dt><strong><code>metadata</code></strong> :&ensp;<code>UUIDMetadata</code>, optional</dt>
+<dd>If given, will use this metadata instead of loading it from the datasource.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class EpiAtlasMetadata(EpiAtlasDataset):
+    &#34;&#34;&#34;Class that handles how epiatlas data ids are linked together.
+
+    Parameters
+    ----------
+    datasource : EpiDataSource
+        Where everything is read from.
+    label_category : str
+        The target category of labels to use.
+    label_list : List[str], optional
+        List of labels/classes to include from given category
+    min_class_size : int, optional
+        Minimum number of samples per class.
+    md5_list : List[str], optional
+        List of datasource md5s to include in the dataset. If None, everything is used and usual filter methods are used.
+        (using min_class_size and label_list)
+    force_filter : bool, optional
+        If True, will filter the metadata even if md5_list is given. If False, will not filter the metadata if md5_list.
+    metadata : UUIDMetadata, optional
+        If given, will use this metadata instead of loading it from the datasource.
+    &#34;&#34;&#34;
+
+    def _load_signals(self) -&gt; Dict[str, np.ndarray]:
+        &#34;&#34;&#34;Load empty signals as no signals are needed for metadata.&#34;&#34;&#34;
+        return {md5: np.ndarray(0) for md5 in self._metadata.md5s}</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset">EpiAtlasDataset</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset">EpiAtlasDataset</a></b></code>:
+<ul class="hlist">
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset.classes" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset.classes">classes</a></code></li>
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset.dataset" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset.dataset">dataset</a></code></li>
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset.datasource" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset.datasource">datasource</a></code></li>
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset.label_list" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset.label_list">label_list</a></code></li>
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset.metadata" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset.metadata">metadata</a></code></li>
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset.signals" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset.signals">signals</a></code></li>
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset.target_category" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset.target_category">target_category</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="epiclass.core" href="index.html">epiclass.core</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset">EpiAtlasDataset</a></code></h4>
+<ul class="two-column">
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset.classes" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset.classes">classes</a></code></li>
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset.dataset" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset.dataset">dataset</a></code></li>
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset.datasource" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset.datasource">datasource</a></code></li>
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset.label_list" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset.label_list">label_list</a></code></li>
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset.metadata" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset.metadata">metadata</a></code></li>
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset.signals" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset.signals">signals</a></code></li>
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasDataset.target_category" href="#epiclass.core.epiatlas_treatment.EpiAtlasDataset.target_category">target_category</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory" href="#epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory">EpiAtlasFoldFactory</a></code></h4>
+<ul class="two-column">
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.classes" href="#epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.classes">classes</a></code></li>
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.create_total_data" href="#epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.create_total_data">create_total_data</a></code></li>
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.epiatlas_dataset" href="#epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.epiatlas_dataset">epiatlas_dataset</a></code></li>
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.from_datasource" href="#epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.from_datasource">from_datasource</a></code></li>
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.n_fold" href="#epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.n_fold">n_fold</a></code></li>
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.test_dset" href="#epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.test_dset">test_dset</a></code></li>
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.train_val_dset" href="#epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.train_val_dset">train_val_dset</a></code></li>
+<li><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.yield_split" href="#epiclass.core.epiatlas_treatment.EpiAtlasFoldFactory.yield_split">yield_split</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="epiclass.core.epiatlas_treatment.EpiAtlasMetadata" href="#epiclass.core.epiatlas_treatment.EpiAtlasMetadata">EpiAtlasMetadata</a></code></h4>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.0</a>.</p>
+</footer>
+</body>
+</html>

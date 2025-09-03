@@ -8,10 +8,10 @@ from typing import List
 
 import h5py
 
-from epi_ml.core.data_source import EpiDataSource
-from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory
-from epi_ml.core.hdf5_loader import Hdf5Loader
-from epi_ml.core.metadata import Metadata
+from epiclass.core.data_source import EpiDataSource
+from epiclass.core.epiatlas_treatment import EpiAtlasFoldFactory
+from epiclass.core.hdf5_loader import Hdf5Loader
+from epiclass.core.metadata import Metadata
 
 DEFAULT_TEST_LOGDIR = Path("/tmp/pytest")
 DEFAULT_TEST_LOGDIR.mkdir(exist_ok=True, parents=True)

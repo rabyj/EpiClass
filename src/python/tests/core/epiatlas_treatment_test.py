@@ -10,16 +10,16 @@ import numpy as np
 import pytest
 from sklearn.model_selection import StratifiedKFold
 
-from epi_ml.core.data_source import EpiDataSource
-from epi_ml.core.epiatlas_treatment import (
+from epiclass.core.data_source import EpiDataSource
+from epiclass.core.epiatlas_treatment import (
     ACCEPTED_TRACKS,
     LEADER_TRACKS,
     OTHER_TRACKS,
     EpiAtlasFoldFactory,
 )
-from epi_ml.core.metadata import Metadata
-from epi_ml.utils.general_utility import write_md5s_to_file
-from epi_ml.utils.metadata_utils import count_labels_from_dset
+from epiclass.core.metadata import Metadata
+from epiclass.utils.general_utility import write_md5s_to_file
+from epiclass.utils.metadata_utils import count_labels_from_dset
 from tests.epilap_test_data import FIXTURES_DIR, EpiAtlasTreatmentTestData
 
 

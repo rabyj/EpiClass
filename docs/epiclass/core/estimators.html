@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+<meta name="generator" content="pdoc3 0.11.0">
+<title>epiclass.core.estimators API documentation</title>
+<meta name="description" content="Module for wrappers around simple sklearn machine learning estimators.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/sanitize.min.css" integrity="sha512-y1dtMcuvtTMJc1yPgEqF0ZjQbhnc/bFhyvIyVNb9Zk5mIGtqVaAB1Ttl28su8AvFMOY0EwRbAe+HCLqj6W7/KA==" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/typography.min.css" integrity="sha512-Y1DYSb995BAfxobCkKepB1BqJJTPrOp3zPL74AWFugHHmmdcvO+C48WLrUOlhGMc0QG7AE3f7gmvvcrmX2fDoA==" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:1.5em;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:2em 0 .50em 0}h3{font-size:1.4em;margin:1.6em 0 .7em 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .2s ease-in-out}a:visited{color:#503}a:hover{color:#b62}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900;font-weight:bold}pre code{font-size:.8em;line-height:1.4em;padding:1em;display:block}code{background:#f3f3f3;font-family:"DejaVu Sans Mono",monospace;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em 1em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul ul{padding-left:1em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha512-D9gUyxqja7hBtkWpPWGt9wfbfaMGVt9gnyCvYa+jojwwPHLCzUm5i8rpk7vD7wNee9bA35eYIjobYPaQuKS1MQ==" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => {
+hljs.configure({languages: ['bash', 'css', 'diff', 'graphql', 'ini', 'javascript', 'json', 'plaintext', 'python', 'python-repl', 'rust', 'shell', 'sql', 'typescript', 'xml', 'yaml']});
+hljs.highlightAll();
+})</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>epiclass.core.estimators</code></h1>
+</header>
+<section id="section-intro">
+<p>Module for wrappers around simple sklearn machine learning estimators.</p>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="epiclass.core.estimators.best_params_cb"><code class="name flex">
+<span>def <span class="ident">best_params_cb</span></span>(<span>result)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>BayesSearchCV callback</p></div>
+</dd>
+<dt id="epiclass.core.estimators.get_model_name"><code class="name flex">
+<span>def <span class="ident">get_model_name</span></span>(<span>filepath: str) ‑> str</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Extract model name from filepath. (string before first '_')</p></div>
+</dd>
+<dt id="epiclass.core.estimators.init_lock"><code class="name flex">
+<span>def <span class="ident">init_lock</span></span>(<span>l)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Define a global lock</p></div>
+</dd>
+<dt id="epiclass.core.estimators.log_tune_results"><code class="name flex">
+<span>def <span class="ident">log_tune_results</span></span>(<span>logdir: Path, name: str, opt: BayesSearchCV)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>It takes the results of a parameter optimization run and saves them to a CSV
+file.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>logdir</code></strong> :&ensp;<code>Path</code></dt>
+<dd>The directory where the results will be saved.</dd>
+<dt><strong><code>name</code></strong> :&ensp;<code>str</code></dt>
+<dd>The name of the model.</dd>
+<dt><strong><code>opt</code></strong> :&ensp;<code>BayesSearchCV</code></dt>
+<dd>Optimizer after tuning.</dd>
+</dl></div>
+</dd>
+<dt id="epiclass.core.estimators.optimize_estimator"><code class="name flex">
+<span>def <span class="ident">optimize_estimator</span></span>(<span>ea_handler: EpiAtlasFoldFactory, logdir: Path, n_iter: int, name: str, concurrent_cv: int = 1)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>It takes a dataset and model name, and then it optimizes the model with the given name
+using the search space with the same name.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>ea_handler</code></strong> :&ensp;<code>EpiAtlasFoldFactory</code></dt>
+<dd>Dataset splits creator.</dd>
+<dt><strong><code>logdir</code></strong> :&ensp;<code>Path</code></dt>
+<dd>The directory where the results will be saved.</dd>
+<dt><strong><code>n_iter</code></strong> :&ensp;<code>int</code></dt>
+<dd>Number of different search space sampling.</dd>
+<dt><strong><code>name</code></strong> :&ensp;<code>str</code></dt>
+<dd>The name of the model we're tuning.</dd>
+<dt><strong><code>concurrent_cv</code></strong> :&ensp;<code>int</code></dt>
+<dd>Number of full cross-validation process (X folds) to run</dd>
+</dl>
+<p>in parallel. Defaults to 1.</p></div>
+</dd>
+<dt id="epiclass.core.estimators.run_prediction"><code class="name flex">
+<span>def <span class="ident">run_prediction</span></span>(<span>i: int, my_data: DataSet, estimator: Pipeline, name: str, logdir: Path, verbose=True, save_model=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>It takes a dataset, fits the model on the training data, and then predicts on
+the validation data</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>i</code></strong> :&ensp;<code>int</code></dt>
+<dd>the index of the split</dd>
+<dt><strong><code>my_data</code></strong> :&ensp;<code>DataSet</code></dt>
+<dd>DataSet</dd>
+<dt><strong><code>estimator</code></strong> :&ensp;<code>Pipeline</code></dt>
+<dd>The model to use.</dd>
+<dt><strong><code>name</code></strong> :&ensp;<code>str</code></dt>
+<dd>The name of the model.</dd>
+<dt><strong><code>logdir</code></strong> :&ensp;<code>Path</code></dt>
+<dd>The directory where the results will be saved.</dd>
+<dt><strong><code>verbose</code></strong></dt>
+<dd>Whether to print out the metrics. Defaults to True</dd>
+</dl></div>
+</dd>
+<dt id="epiclass.core.estimators.run_predictions"><code class="name flex">
+<span>def <span class="ident">run_predictions</span></span>(<span>ea_handler: EpiAtlasFoldFactory, estimator: Pipeline, name: str, logdir: Path)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>It will fit and run a prediction for each of the k-folds in the EpiAtlasFoldFactory
+object, using the estimator provided. Will use all available cpus.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>ea_handler</code></strong> :&ensp;<code>EpiAtlasFoldFactory</code></dt>
+<dd>Dataset splits creator.</dd>
+<dt><strong><code>estimator</code></strong> :&ensp;<code>Pipeline</code></dt>
+<dd>The model to use.</dd>
+<dt><strong><code>name</code></strong> :&ensp;<code>str</code></dt>
+<dd>The name of the model.</dd>
+<dt><strong><code>logdir</code></strong> :&ensp;<code>Path</code></dt>
+<dd>The directory where the results will be saved.</dd>
+</dl></div>
+</dd>
+<dt id="epiclass.core.estimators.tune_estimator"><code class="name flex">
+<span>def <span class="ident">tune_estimator</span></span>(<span>model: Pipeline, ea_handler: EpiAtlasFoldFactory, params: dict, n_iter: int, concurrent_cv: int, n_jobs: int | None = None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Apply Bayesian optimization on model, over hyperparameters search space.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>model</code></strong> :&ensp;<code>Pipeline</code></dt>
+<dd>The model to tune.</dd>
+<dt><strong><code>ea_handler</code></strong> :&ensp;<code>EpiAtlasFoldFactory</code></dt>
+<dd>Dataset splits creator.</dd>
+<dt><strong><code>params</code></strong> :&ensp;<code>dict</code></dt>
+<dd>Hyperparameters search space.</dd>
+<dt><strong><code>n_iter</code></strong> :&ensp;<code>int</code></dt>
+<dd>Total number of parameter settings to sample.</dd>
+<dt><strong><code>concurrent_cv</code></strong> :&ensp;<code>int</code></dt>
+<dd>Number of full cross-validation process (X folds) to run</dd>
+</dl>
+<p>in parallel.
+n_jobs (int | None): Number of jobs to run in parallel. Max NFOLD_TUNE *
+concurrent_cv.</p>
+<h2 id="returns">Returns</h2>
+<p>A BayesSearchCV object</p></div>
+</dd>
+</dl>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="epiclass.core.estimators.EstimatorAnalyzer"><code class="flex name class">
+<span>class <span class="ident">EstimatorAnalyzer</span></span>
+<span>(</span><span>classes: Collection[str], estimator)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Generic class to analyze results given by an estimator.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class EstimatorAnalyzer:
+    &#34;&#34;&#34;Generic class to analyze results given by an estimator.&#34;&#34;&#34;
+
+    def __init__(self, classes: Collection[str], estimator):
+        self.classes = sorted(classes)
+        self.mapping = dict(enumerate(self.classes))
+        self.encoder = LabelBinarizer().fit(list(self.mapping.keys()))
+
+        self._clf = estimator
+        self._name = self._get_name(estimator)
+
+    @staticmethod
+    def _get_name(estimator) -&gt; str:
+        &#34;&#34;&#34;Return estimator model name.&#34;&#34;&#34;
+        name = type(estimator).__name__
+        if name == &#34;Pipeline&#34;:
+            name = type(estimator.named_steps[&#34;model&#34;]).__name__
+        return name
+
+    @property
+    def name(self) -&gt; str:
+        &#34;&#34;&#34;Return classifier name.&#34;&#34;&#34;
+        return self._get_name(self._clf)
+
+    @property
+    def classifier(self):
+        &#34;&#34;&#34;Return classifier instance.&#34;&#34;&#34;
+        return self._clf
+
+    def predict(self, X):
+        &#34;&#34;&#34;Return class predictions.&#34;&#34;&#34;
+        if self.name == &#34;LGBMClassifier&#34;:
+            pred_results = self._clf.predict(
+                X, raw_score=False, pred_leaf=False, pred_contrib=False
+            )
+        else:
+            pred_results = self._clf.predict(X)
+        return pred_results
+
+    def predict_proba(self, X):
+        &#34;&#34;&#34;Return class prediction probabilities.&#34;&#34;&#34;
+        try:
+            if self.name == &#34;LGBMClassifier&#34;:
+                pred_results = self._clf.predict_proba(
+                    X, raw_score=False, pred_leaf=False, pred_contrib=False
+                )
+            else:
+                pred_results = self._clf.predict_proba(X)
+        except AttributeError:  # SVM
+            int_results = self._clf.predict(X)
+            pred_results = self.encoder.transform(int_results)
+            if pred_results.shape[1] == 1:  # 2 classes, e.g. sex
+                pred_results = [[1, 0] if i == 0 else [0, 1] for i in int_results]
+
+        return pred_results
+
+    def metrics(self, X, y, verbose=True):
+        &#34;&#34;&#34;Return a dict of metrics over given set&#34;&#34;&#34;
+        y_pred = self.predict(X)
+        y_true = y
+
+        val_acc = sklearn.metrics.accuracy_score(y_true, y_pred)
+        val_precision = sklearn.metrics.precision_score(y_true, y_pred, average=&#34;macro&#34;)
+        val_recall = sklearn.metrics.recall_score(y_true, y_pred, average=&#34;macro&#34;)
+        val_f1 = sklearn.metrics.f1_score(y_true, y_pred, average=&#34;macro&#34;)
+        val_mcc = sklearn.metrics.matthews_corrcoef(y_true, y_pred)
+
+        metrics_dict = {
+            &#34;val_acc&#34;: val_acc,
+            &#34;val_precision&#34;: val_precision,
+            &#34;val_recall&#34;: val_recall,
+            &#34;val_f1&#34;: val_f1,
+            &#34;val_mcc&#34;: val_mcc,
+        }
+
+        if verbose:
+            EstimatorAnalyzer.print_metrics(metrics_dict)
+
+        return metrics_dict
+
+    @staticmethod
+    def print_metrics(metrics_dict: dict):
+        &#34;&#34;&#34;Print metrics&#34;&#34;&#34;
+        print(f&#34;Validation Accuracy: {metrics_dict[&#39;val_acc&#39;]}&#34;)
+        print(f&#34;Validation Precision: {metrics_dict[&#39;val_precision&#39;]}&#34;)
+        print(f&#34;Validation Recall: {metrics_dict[&#39;val_recall&#39;]}&#34;)
+        print(f&#34;Validation F1_score: {metrics_dict[&#39;val_f1&#39;]}&#34;)
+        print(f&#34;Validation MCC: {metrics_dict[&#39;val_mcc&#39;]}&#34;)
+
+    def predict_file(self, ids, X, y, log):
+        &#34;&#34;&#34;Write predictions table for validation set.
+
+        ids: Sample identifier.
+        X: Sample features
+        y: Sample labels
+        log: path where to save predictions
+        &#34;&#34;&#34;
+
+        pred_results = self.predict_proba(X)
+
+        str_preds = [
+            self.mapping[encoded_label] for encoded_label in np.argmax(pred_results, axis=1)  # type: ignore
+        ]
+
+        str_y = [self.mapping[encoded_label] for encoded_label in y]
+
+        write_pred_table(
+            predictions=pred_results,
+            str_preds=str_preds,
+            str_targets=str_y,
+            classes=self.classes,
+            md5s=ids,
+            path=log,
+        )
+
+    def save_model(self, logdir: Path, name=None):
+        &#34;&#34;&#34;Save model to pickle file. If a filename is given, it will be appended to model name.&#34;&#34;&#34;
+        save_name = f&#34;{self._name}&#34;
+        if name is not None:
+            save_name += f&#34;_{name}&#34;
+
+        time = str(time_now()).replace(&#34; &#34;, &#34;_&#34;)
+        save_name = logdir / f&#34;{save_name}_{time}.pickle&#34;
+
+        print(f&#34;Saving model to {save_name}&#34;)
+        with open(save_name, &#34;wb&#34;) as f:
+            pickle.dump(self, f)
+
+    @classmethod
+    def restore_model_from_name(cls, logdir: str, auto_name: str) -&gt; EstimatorAnalyzer:
+        &#34;&#34;&#34;Restore most recent EstimatorAnalyzer instance from a previous save.
+
+        auto_name is the cli name of the model.
+        &#34;&#34;&#34;
+        if auto_name not in save_mapping:
+            raise ValueError(f&#34;Expected a cli model name (restricted). Gave: {auto_name}&#34;)
+
+        name = save_mapping[auto_name]
+        path = Path(logdir) / f&#34;{name}*.pickle&#34;
+        list_of_files = glob.glob(str(path))
+        try:
+            filepath = max(list_of_files, key=os.path.getctime)
+        except ValueError as err:
+            print(
+                f&#34;Did not find any model file following pattern {path}&#34;,
+                file=sys.stderr,
+            )
+            raise err
+
+        return EstimatorAnalyzer.restore_model_from_path(filepath)
+
+    @classmethod
+    def restore_model_from_path(cls, full_path: str) -&gt; EstimatorAnalyzer:
+        &#34;&#34;&#34;Restore EstimatorAnalyzer instance from a previous pickle save.&#34;&#34;&#34;
+        print(f&#34;Loading model {full_path}&#34;)
+        with open(full_path, &#34;rb&#34;) as f:
+            return pickle.load(f)</code></pre>
+</details>
+<h3>Static methods</h3>
+<dl>
+<dt id="epiclass.core.estimators.EstimatorAnalyzer.print_metrics"><code class="name flex">
+<span>def <span class="ident">print_metrics</span></span>(<span>metrics_dict: dict)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Print metrics</p></div>
+</dd>
+<dt id="epiclass.core.estimators.EstimatorAnalyzer.restore_model_from_name"><code class="name flex">
+<span>def <span class="ident">restore_model_from_name</span></span>(<span>logdir: str, auto_name: str) ‑> <a title="epiclass.core.estimators.EstimatorAnalyzer" href="#epiclass.core.estimators.EstimatorAnalyzer">EstimatorAnalyzer</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Restore most recent EstimatorAnalyzer instance from a previous save.</p>
+<p>auto_name is the cli name of the model.</p></div>
+</dd>
+<dt id="epiclass.core.estimators.EstimatorAnalyzer.restore_model_from_path"><code class="name flex">
+<span>def <span class="ident">restore_model_from_path</span></span>(<span>full_path: str) ‑> <a title="epiclass.core.estimators.EstimatorAnalyzer" href="#epiclass.core.estimators.EstimatorAnalyzer">EstimatorAnalyzer</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Restore EstimatorAnalyzer instance from a previous pickle save.</p></div>
+</dd>
+</dl>
+<h3>Instance variables</h3>
+<dl>
+<dt id="epiclass.core.estimators.EstimatorAnalyzer.classifier"><code class="name">prop <span class="ident">classifier</span></code></dt>
+<dd>
+<div class="desc"><p>Return classifier instance.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def classifier(self):
+    &#34;&#34;&#34;Return classifier instance.&#34;&#34;&#34;
+    return self._clf</code></pre>
+</details>
+</dd>
+<dt id="epiclass.core.estimators.EstimatorAnalyzer.name"><code class="name">prop <span class="ident">name</span> : str</code></dt>
+<dd>
+<div class="desc"><p>Return classifier name.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def name(self) -&gt; str:
+    &#34;&#34;&#34;Return classifier name.&#34;&#34;&#34;
+    return self._get_name(self._clf)</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="epiclass.core.estimators.EstimatorAnalyzer.metrics"><code class="name flex">
+<span>def <span class="ident">metrics</span></span>(<span>self, X, y, verbose=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return a dict of metrics over given set</p></div>
+</dd>
+<dt id="epiclass.core.estimators.EstimatorAnalyzer.predict"><code class="name flex">
+<span>def <span class="ident">predict</span></span>(<span>self, X)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return class predictions.</p></div>
+</dd>
+<dt id="epiclass.core.estimators.EstimatorAnalyzer.predict_file"><code class="name flex">
+<span>def <span class="ident">predict_file</span></span>(<span>self, ids, X, y, log)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Write predictions table for validation set.</p>
+<p>ids: Sample identifier.
+X: Sample features
+y: Sample labels
+log: path where to save predictions</p></div>
+</dd>
+<dt id="epiclass.core.estimators.EstimatorAnalyzer.predict_proba"><code class="name flex">
+<span>def <span class="ident">predict_proba</span></span>(<span>self, X)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return class prediction probabilities.</p></div>
+</dd>
+<dt id="epiclass.core.estimators.EstimatorAnalyzer.save_model"><code class="name flex">
+<span>def <span class="ident">save_model</span></span>(<span>self, logdir: Path, name=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Save model to pickle file. If a filename is given, it will be appended to model name.</p></div>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="epiclass.core" href="index.html">epiclass.core</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="two-column">
+<li><code><a title="epiclass.core.estimators.best_params_cb" href="#epiclass.core.estimators.best_params_cb">best_params_cb</a></code></li>
+<li><code><a title="epiclass.core.estimators.get_model_name" href="#epiclass.core.estimators.get_model_name">get_model_name</a></code></li>
+<li><code><a title="epiclass.core.estimators.init_lock" href="#epiclass.core.estimators.init_lock">init_lock</a></code></li>
+<li><code><a title="epiclass.core.estimators.log_tune_results" href="#epiclass.core.estimators.log_tune_results">log_tune_results</a></code></li>
+<li><code><a title="epiclass.core.estimators.optimize_estimator" href="#epiclass.core.estimators.optimize_estimator">optimize_estimator</a></code></li>
+<li><code><a title="epiclass.core.estimators.run_prediction" href="#epiclass.core.estimators.run_prediction">run_prediction</a></code></li>
+<li><code><a title="epiclass.core.estimators.run_predictions" href="#epiclass.core.estimators.run_predictions">run_predictions</a></code></li>
+<li><code><a title="epiclass.core.estimators.tune_estimator" href="#epiclass.core.estimators.tune_estimator">tune_estimator</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="epiclass.core.estimators.EstimatorAnalyzer" href="#epiclass.core.estimators.EstimatorAnalyzer">EstimatorAnalyzer</a></code></h4>
+<ul class="">
+<li><code><a title="epiclass.core.estimators.EstimatorAnalyzer.classifier" href="#epiclass.core.estimators.EstimatorAnalyzer.classifier">classifier</a></code></li>
+<li><code><a title="epiclass.core.estimators.EstimatorAnalyzer.metrics" href="#epiclass.core.estimators.EstimatorAnalyzer.metrics">metrics</a></code></li>
+<li><code><a title="epiclass.core.estimators.EstimatorAnalyzer.name" href="#epiclass.core.estimators.EstimatorAnalyzer.name">name</a></code></li>
+<li><code><a title="epiclass.core.estimators.EstimatorAnalyzer.predict" href="#epiclass.core.estimators.EstimatorAnalyzer.predict">predict</a></code></li>
+<li><code><a title="epiclass.core.estimators.EstimatorAnalyzer.predict_file" href="#epiclass.core.estimators.EstimatorAnalyzer.predict_file">predict_file</a></code></li>
+<li><code><a title="epiclass.core.estimators.EstimatorAnalyzer.predict_proba" href="#epiclass.core.estimators.EstimatorAnalyzer.predict_proba">predict_proba</a></code></li>
+<li><code><a title="epiclass.core.estimators.EstimatorAnalyzer.print_metrics" href="#epiclass.core.estimators.EstimatorAnalyzer.print_metrics">print_metrics</a></code></li>
+<li><code><a title="epiclass.core.estimators.EstimatorAnalyzer.restore_model_from_name" href="#epiclass.core.estimators.EstimatorAnalyzer.restore_model_from_name">restore_model_from_name</a></code></li>
+<li><code><a title="epiclass.core.estimators.EstimatorAnalyzer.restore_model_from_path" href="#epiclass.core.estimators.EstimatorAnalyzer.restore_model_from_path">restore_model_from_path</a></code></li>
+<li><code><a title="epiclass.core.estimators.EstimatorAnalyzer.save_model" href="#epiclass.core.estimators.EstimatorAnalyzer.save_model">save_model</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.0</a>.</p>
+</footer>
+</body>
+</html>

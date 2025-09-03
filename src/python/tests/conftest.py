@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from epi_ml.core.data import DataSet
-from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory
-from epi_ml.core.model_pytorch import LightningDenseClassifier
+from epiclass.core.data import DataSet
+from epiclass.core.epiatlas_treatment import EpiAtlasFoldFactory
+from epiclass.core.model_pytorch import LightningDenseClassifier
 from tests.epilap_test_data import FIXTURES_DIR, EpiAtlasTreatmentTestData
 
 # def pytest_collection_modifyitems(session, config, items):

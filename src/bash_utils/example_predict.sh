@@ -58,7 +58,7 @@ chromsizes="${input_path}/chromsizes/hg38.noy.chrom.sizes"
 out1="${log}/output_job${SLURM_JOB_ID}_${SLURM_JOB_NAME}_${timestamp}.o"
 out2="${log}/output_job${SLURM_JOB_ID}_${SLURM_JOB_NAME}_${timestamp}.e"
 
-program_path="${gen_path}/sources/epi_ml/src/python/epi_ml"
+program_path="${gen_path}/sources/epiclass/src/python/epiclass"
 cd ${program_path}
 
 

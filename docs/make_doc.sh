@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export PYTHONPATH=../src/python/epi_ml
+export PYTHONPATH=../src/python/epiclass
 
 # from git root
-pdoc3 --html -o . ../src/python/epi_ml --force
+pdoc3 --html -o . ../src/python/epiclass --force

@@ -28,8 +28,8 @@ fi
 
 gen_path="/lustre06/project/6007017/rabyj"
 input_path="${gen_path}/epilap/input"
-gen_program_path="${gen_path}/sources/epi_ml"
-program_path="${gen_program_path}/src/python/epi_ml"
+gen_program_path="${gen_path}/sources/epiclass"
+program_path="${gen_program_path}/src/python/epiclass"
 
 slurm_out_folder="${gen_path}/epilap/output/sub/slurm_files"
 
@@ -82,7 +82,7 @@ done
 # --- Pre-checks ---
 echo "$(date +%F_%T) - Executing pre-checks"
 set -e # in case check_dir fails, to stop bash script
-program_path="${gen_path}/sources/epi_ml/src/python/epi_ml"
+program_path="${gen_path}/sources/epiclass/src/python/epiclass"
 cd ${program_path}
 
 printf '\n%s\n' "Launching following command"

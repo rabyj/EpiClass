@@ -27,8 +27,8 @@ gen_path="/path/to/epiclass" # MODIFY, input/output directories
 input_path="${gen_path}/epiclass/input"
 output_path="${gen_path}/epiclass/output/logs"
 
-gen_program_path="${gen_path}/sources/epi_ml" # MODIFY: git root
-program_path="${gen_program_path}/src/python/epi_ml"
+gen_program_path="${gen_path}/sources/epiclass" # MODIFY: git root
+program_path="${gen_program_path}/src/python/epiclass"
 
 slurm_out_folder="${gen_path}/epiclass/output/sub/slurm_files"
 

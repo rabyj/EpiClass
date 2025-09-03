@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from sklearn.metrics import confusion_matrix
 
-from epi_ml.core.confusion_matrix import ConfusionMatrixWriter
+from epiclass.core.confusion_matrix import ConfusionMatrixWriter
 
 THIS_FILE = Path(__file__).resolve()
 

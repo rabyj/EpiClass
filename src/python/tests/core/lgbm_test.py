@@ -25,7 +25,7 @@ def tmp_logdir(mk_logdir) -> Path:
 def test_lgbm_save_load(logdir):
     """Test LGBM tuning + subsequent fit pipeline."""
 
-    from epi_ml.core import estimators, lgbm as lgbm_funcs
+    from epiclass.core import estimators, lgbm as lgbm_funcs
 
     ea_handler = EpiAtlasTreatmentTestData.default_test_data()
 
@@ -53,7 +53,7 @@ def minimal_bug_example():
     from sklearn.datasets import load_iris
     from sklearn.model_selection import StratifiedKFold
 
-    from epi_ml.core import estimators
+    from epiclass.core import estimators
 
     print(estimators.lgbm_allowed_params)
 

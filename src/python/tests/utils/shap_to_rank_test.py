@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from epi_ml.utils.shap.shap_to_rank import main
+from epiclass.utils.shap.shap_to_rank import main
 
 
 @pytest.fixture(name="temp_input_folder")

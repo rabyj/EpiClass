@@ -2,8 +2,8 @@
 
 import pytest
 
-from epi_ml.core.epiatlas_treatment import EpiAtlasFoldFactory
-from epi_ml.utils.bed_utils import (
+from epiclass.core.epiatlas_treatment import EpiAtlasFoldFactory
+from epiclass.utils.bed_utils import (
     bed_ranges_to_bins,
     bins_to_bed_ranges,
     read_bed_to_ranges,

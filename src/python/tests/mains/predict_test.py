@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from epi_ml.predict import main as main_module
+from epiclass.predict import main as main_module
 from tests.epilap_test_data import FIXTURES_DIR
 
 
