@@ -4,7 +4,8 @@ EpiClass trains machine learning models to classify and label epigenomic data.
 
 ## Publication
 
-This repository contains most of the code used to obtain results for the following paper: Leveraging the largest harmonized epigenomic data collection for metadata prediction validated and augmented over 350,000 public epigenomic datasets
+This repository contains most of the code used to obtain results for the following paper:  
+[Leveraging the largest harmonized epigenomic data collection for metadata prediction validated and augmented over 350,000 public epigenomic datasets](https://doi.org/10.1101/2025.09.04.670545)
 
 See [Key Scripts](#key-scripts) section for the training code.
 
