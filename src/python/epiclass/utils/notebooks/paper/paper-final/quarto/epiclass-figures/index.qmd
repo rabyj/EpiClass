@@ -1,0 +1,17 @@
+---
+title: "EpiClass paper - Figures"
+---
+
+This is a Quarto website presenting figures from the [EpiClass paper](https://doi.org/10.1101/2025.09.04.670545).
+
+## Figures
+
+Here are the figure pages:
+
+- Section 1: [EpiClass accurately predicts EpiATLAS assay and biospecimen metadata](./figs/fig1.qmd)
+- Section 2: [EpiClass reliably validates and augments other categories of EpiATLAS metadata](./figs/fig2.qmd)
+- Section 3: [Application of EpiClass on public epigenomic data](./figs/fig3.qmd)
+
+## Quarto
+
+To learn more about Quarto websites visit <https://quarto.org/docs/websites>.

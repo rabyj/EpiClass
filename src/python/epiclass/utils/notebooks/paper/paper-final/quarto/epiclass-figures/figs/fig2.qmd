@@ -1,0 +1,24 @@
+---
+title: "EpiClass accurately predicts EpiATLAS assay and biospecimen metadata"
+author: "Joanny Raby"
+format:
+  html:
+    code-fold: true
+    toc: true
+    toc-location: right
+    embed-resources: true
+engine: jupyter
+execute:
+  echo: true
+  warning: false
+  eval: true
+  error: false
+---
+
+# Results section 2 figures
+
+TO BE RELEASED SOON
+
+Formatting of the figures may not be identical to the paper, but they contain the same data points.
+
+All code is folded by default, click on "Code" to expand it.
