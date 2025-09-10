@@ -1,14 +1,13 @@
 ---
 title: "EpiClass accurately predicts EpiATLAS assay and biospecimen metadata"
 author: "Joanny Raby"
-project:
-  execute-dir:
 resources:
     - "../resources/threshold_impact_graph_global_assay_epiclass_11c-11_classes_cdn.html"
     - "../resources/threshold_impact_graph_global_harmonized_sample_ontology_intermediate-16_classes_cdn.html"
 format:
   html:
     code-fold: true
+    code-tools: true
     toc: true
     toc-location: right
     toc-expand: 2

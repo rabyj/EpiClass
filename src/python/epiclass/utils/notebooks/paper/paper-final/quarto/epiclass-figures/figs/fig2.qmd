@@ -4,6 +4,7 @@ format:
   html:
     toc: false
     embed-resources: False
+    code-tools: true
 ---
 
 # Results section 2 figures
