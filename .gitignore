@@ -9,7 +9,7 @@
 
 # quarto website
 resources/
-epiclass-figures/.gitignore
+**/epiclass-figures/.gitignore
 
 # cluster files
 slurm_files/
