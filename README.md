@@ -7,9 +7,9 @@ EpiClass trains machine learning models to classify and label epigenomic data.
 This repository contains most of the code used to obtain results for the following paper:  
 [Leveraging the largest harmonized epigenomic data collection for metadata prediction validated and augmented over 350,000 public epigenomic datasets](https://doi.org/10.1101/2025.09.04.670545)
 
-See [Key Scripts](#key-scripts) section for the training code.
+To interact with the paper figures, use the [Quarto website](https://rabyj.github.io/EpiClass/epiclass-paper/index.html). This website is generated from an alternative version of the Python notebooks used to create the figures (notebooks are at `src/python/epiclass/utils/notebooks/paper/paper-final/fig*.ipynb`).
 
-To reproduce paper figures, use [fig*.ipynb notebooks](src/python/epiclass/utils/notebooks/paper/paper-final) at `src/python/epiclass/utils/notebooks/paper/paper-final`.
+See [Key Scripts](#key-scripts) section for the training code.
 
 ## Model Availability – Neural Networks Trained on EpiATLAS
 
@@ -79,7 +79,7 @@ These allow dynamic relabeling or filtering of specific categories.
 - Once a label category exists, any value (including `""`, `"--"`, or `"NA"`) is interpreted as a valid label.
 - If your dataset may contain inconsistent keys, use `remove_missing_labels()` on the relevant categories.
 
-For more details, refer to the [documentation](https://rabyj.github.io/epiclass/epiclass/core/metadata.html).
+For more details, refer to the [documentation](https://rabyj.github.io/EpiClass/epiclass/core/metadata.html).
 
 For advanced metadata manipulation, use `pandas` directly.
 
