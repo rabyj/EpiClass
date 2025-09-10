@@ -1,5 +1,10 @@
-**/.quarto/**
-**/*.quarto_ipynb
-**/_site/**
-**/test-site/**
-**/site_libs/**
+.quarto/
+.quarto_ipynb/
+_site/
+test-site/
+site_libs/
+
+test.qmd
+tmp.txt
+*.svg
+*.html

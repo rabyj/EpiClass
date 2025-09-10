@@ -1,11 +1,17 @@
 ---
 title: "EpiClass accurately predicts EpiATLAS assay and biospecimen metadata"
 author: "Joanny Raby"
+project:
+  execute-dir:
+resources:
+    - "../resources/threshold_impact_graph_global_assay_epiclass_11c-11_classes_cdn.html"
+    - "../resources/threshold_impact_graph_global_harmonized_sample_ontology_intermediate-16_classes_cdn.html"
 format:
   html:
     code-fold: true
     toc: true
     toc-location: right
+    toc-expand: 2
     embed-resources: true
 engine: jupyter
 execute:
@@ -13,12 +19,6 @@ execute:
   warning: false
   eval: true
   error: false
-# crossref:
-#   custom:
-#     - key: myfig
-#       kind: float
-#       reference-prefix: ""
-#       space-before-numbering: false
 ---
 
 # Results section 1 figures
@@ -157,13 +157,13 @@ main_title_settings = {
 
 Performance of EpiClass Assay and Biospecimen classifiers.
 
-### Fig 1A - EpiClass training overview
+### A - EpiClass training overview
 
 ![](../resources/fig1A.png){width=.column-body}
 
 Fig. 1A: Overview of the EpiClass training process for various classifiers and their inference on external data. Each classifier is trained independently.
 
-### Fig 1B-C Prep
+### B-C Prep
 
 Path setup.
 
@@ -508,7 +508,7 @@ def graph_feature_set_metrics(
         category_fig.show()
 ```
 
-### Fig 1B - Assay MLP performance
+### B - Assay MLP performance
 
 Graph 100kb resolution MLP metrics.
 
@@ -545,7 +545,7 @@ graph_feature_set_metrics(
 
 Fig. 1B: Distribution of accuracy and F1-score for each of the ten training folds (dots) for the Assay and Biospecimen MLP classifiers.
 
-### Fig 1C - MLP performance at varying resolution
+### C - MLP performance at varying resolution
 
 Graph.
 
@@ -964,7 +964,7 @@ for metric in ["Accuracy", "F1_macro"]:
 
 Fig. 1C: Distribution of accuracy per training fold for different bin resolutions for the Assay and Biospecimen classifiers. The circles represent the means and the whiskers the min and max values of the ten training folds.
 
-### Fig 1D - Confusion matrix
+### D - Confusion matrix
 
 Define create_confusion_matrix to create and show a confusion matrix.
 
@@ -1073,7 +1073,7 @@ create_confusion_matrix(
 
 Fig. 1D: Confusion matrix aggregating the cross-validation folds (therefore showing all files) without applying a prediction score threshold. RNA-seq and WGBS data were both separated according to two protocols during initial training (but combined thereafter to nine assays).
 
-### Fig 1E - Mislabeled target assays
+### E - Mislabeled target assays
 
 ![](../resources/fig1E.png){width=.column-body}
 
@@ -1083,9 +1083,13 @@ Fig. 1E: Genome browser representation showing in black the datasets swap betwee
 
 More detailled performance of EpiClass Assay and Biospecimen classifiers.
 
-### Supplementary Figure 1A,B - All classifiers metrics on EpiAtlas - Assay and Biospecimen - 100kb resolution
+### A,B - All classifiers metrics on EpiAtlas
 
-Fig. 1A,1B data points are included in these two graphs.
+Fig. 1A,B data points are included in these two graphs (MLP data points).\
+\
+\
+
+Define graphing function plot_multiple_models_split_metrics.
 
 ```{python}
 #| label: supp-fig1ab-plot-function
@@ -1180,6 +1184,8 @@ def plot_multiple_models_split_metrics(
     fig.show()
 ```
 
+Graph.
+
 ```{python}
 #| label: supp-fig1ab-run-plots
 #| column: page-left
@@ -1206,9 +1212,15 @@ for label_category in [ASSAY, CELL_TYPE]:
     )
 ```
 
+Supplementary Figure 1A,B: Distribution of performance scores (accuracy, F1 as well as micro and macro AUROC) per training fold (dots) for each machine learning approach used for training on the Assay (A) and Biospecimen (B) metadata. Micro-averaging aggregates contributions from all classes (global true positive rate and false positive rate); macro-averaging averages the true positive rate from each class. Dashed lines represent means, solid lines the medians, boxes the quartiles, and
+whiskers the farthest points within 1.5× the interquartile range.\
+\
+\
 **Going forward, all results are for MLP classifiers.**
 
-### Supp Fig 1C - ROC curves - Assay and Biospecimen
+### C - ROC curves
+
+Define graphing function plot_roc_curves. Computes macro-average ROC curves manually.
 
 ```{python}
 #| label: supp-fig1c-roc-function
@@ -1435,6 +1447,8 @@ def plot_roc_curves(
     fig.show()
 ```
 
+Prepare assay data for plotting.
+
 ```{python}
 #| label: supp-fig1c-roc-assay-data
 data_dir = (
@@ -1453,13 +1467,12 @@ concat_df = split_results_handler.add_max_pred(concat_df)
 concat_df_w_meta = metadata_handler.join_metadata(concat_df, metadata_v2)
 
 df = merge_similar_assays(concat_df_w_meta.copy())
-N_error = (df["True class"] != df["Predicted class"]).sum()
-# print(f"Only {N_error}/{len(df)} errors. ({N_error/len(df):.3%} error rate)")
 ```
+
+Graph assay results.
 
 ```{python}
 #| label: supp-fig1c-roc-assay-plot
-logdir = base_fig_dir / "fig2_EpiAtlas_other" / "ROC_curves"
 plot_roc_curves(
     results_df=df.copy(),
     label_category=ASSAY,
@@ -1468,6 +1481,8 @@ plot_roc_curves(
     verbose=False,
 )
 ```
+
+Prepare biospecimen data for plotting.
 
 ```{python}
 #| label: supp-fig1c-roc-celltype-data
@@ -1486,6 +1501,8 @@ concat_df = split_results_handler.add_max_pred(concat_df)
 concat_df_w_meta = metadata_handler.join_metadata(concat_df, metadata_v2)
 ```
 
+Graph biospecimen results.
+
 ```{python}
 #| label: supp-fig1c-roc-celltype-plot
 plot_roc_curves(
@@ -1497,7 +1514,12 @@ plot_roc_curves(
 )
 ```
 
-### Supp Fig 1D - Metrics for zeroed blacklist values and winsorized files - 100kb resolution
+Supplementary Figure 1C: ROC curves from aggregated cross-validation results for the Assay and Biospecimen classifiers. Curves for each class are
+computed in a one-vs-rest scheme.
+
+### D - Alternative signal pre-processing
+
+Define graphing function create_blklst_graphs.
 
 ```{python}
 #| label: supp-fig1d-blklst-function
@@ -1608,6 +1630,8 @@ def create_blklst_graphs(
     return figs
 ```
 
+Prepare paths.
+
 ```{python}
 #| label: supp-fig1d-data-prep
 include_sets = [
@@ -1620,6 +1644,8 @@ results_folder_blklst = base_data_dir / "training_results" / "2023-01-epiatlas-f
 if not results_folder_blklst.exists():
     raise FileNotFoundError(f"Folder '{results_folder_blklst}' not found")
 ```
+
+Compute metrics.
 
 ```{python}
 #| label: supp-fig1d-metrics
@@ -1638,9 +1664,7 @@ all_metrics_blklst: Dict[
 )  # type: ignore
 ```
 
-Distribution of accuracy and F1-score per training fold (dots) for the Assay and Biospecimen classifiers after removing signal from blacklisted regions and applying winsorization of 0.1%.
-
-Dashed lines represent means, solid lines the medians, boxes the quartiles, and whiskers the farthest points within 1.5× the interquartile range.
+Graph.
 
 ```{python}
 #| label: supp-fig1dplot
@@ -1652,15 +1676,19 @@ figs[0].show()
 figs[1].show()
 ```
 
+Supplementary Figure 1D: Distribution of accuracy and F1-score per training fold (dots) for the Assay and Biospecimen classifiers after removing signal from blacklisted regions and applying winsorization of 0.1%. Dashed lines represent means, solid lines the medians, boxes the quartiles, and whiskers the farthest points within 1.5× the interquartile range.
 
-### Supp Fig 1E,1F,1G - Distribution of average prediction scores per assay
+### E-G - Distribution of average prediction scores per assay
 
--   E: Assay training 10-fold validation
--   F: Assay complete training, predictions on imputed data
--   G: Biospecimen 10-fold validation
+-   E: Assay training 10-fold cross-validation
+-   F: Assay complete training (mixed tracks), predictions on imputed data (all pval)
+-   G: Biospecimen 10-fold cross-validation
+\
 
+Define graphing function plot_prediction_scores_distribution.
 ```{python}
 #| label: supp-fig1efg-plot-function
+#| echo: false
 def plot_prediction_scores_distribution(
     results_df: pd.DataFrame,
     merge_assay_pairs: bool = True,
@@ -1785,7 +1813,11 @@ def plot_prediction_scores_distribution(
     fig.show()
 ```
 
-#### Supp Fig 1E: ASSAY - Prediction scores for 10-fold cross-validation
+Supplementary Figure 1E-G: Distribution of average prediction score per file (dots) for the majority-vote class (up to three track type files) (E, F) or individual file (G), from the MLP approach for the Assay (E, G) and Biospecimen classifiers (F), using aggregated cross-validation results from observed data (E, F) or results from the classifier trained on all observed data and applied to imputed data from EpiATLAS (G). Dashed lines represent means, solid lines the medians, boxes the quartiles, and whiskers the farthest points within 1.5× the interquartile range, with a violin representation on top.
+
+#### E - Assay
+
+Gather prediction scores.
 
 ```{python}
 #| label: supp-fig1e-data
@@ -1805,6 +1837,8 @@ concat_df = split_results_handler.add_max_pred(concat_df)
 concat_df_w_meta = metadata_handler.join_metadata(concat_df, metadata_v2)
 ```
 
+Graph.
+
 ```{python}
 #| label: supp-fig1e-plot
 #| column: page-left
@@ -1817,7 +1851,9 @@ plot_prediction_scores_distribution(
 )
 ```
 
-#### Supp Fig 1F: Biospecimen - Prediction scores for 10-fold cross-validation
+#### F - Biospecimen
+
+Gather prediction scores.
 
 ```{python}
 #| label: supp-fig1f-data
@@ -1832,6 +1868,8 @@ concat_df_w_meta = metadata_handler.join_metadata(concat_df, metadata_v2)
 concat_df_w_meta.replace({ASSAY: ASSAY_MERGE_DICT}, inplace=True)
 ```
 
+Graph.
+
 ```{python}
 #| label: supp-fig1f-plot
 #| column: page-left
@@ -1843,7 +1881,9 @@ plot_prediction_scores_distribution(
 )
 ```
 
-#### Supp Fig 1G: ASSAY - Classifier trained on full EpiATLAS data. Inference on imputed data (all pval)
+#### G - Assay imputed
+
+Gather imputed signal metadata.
 
 ```{python}
 #| label: supp-fig1g-imputed-metadata
@@ -1857,6 +1897,8 @@ metadata_path = (
 )
 metadata_imputed: pd.DataFrame = metadata_handler.load_any_metadata(metadata_path, as_dataframe=True)  # type: ignore
 ```
+
+Gather prediction scores.
 
 ```{python}
 #| label: supp-fig1g-imputed-data
@@ -1877,22 +1919,23 @@ df_pred = pd.read_csv(
     data_dir / "complete_no_valid_oversample_prediction.csv",
     index_col=0,
 )
-print(df_pred.shape)
 ```
+
+Prepare dataframe for graphing.
 
 ```{python}
 #| label: supp-fig1g-add-max-pred
 assay_classes = list(metadata_v2_df[ASSAY].unique())
 df_pred = split_results_handler.add_max_pred(df_pred, expected_classes=assay_classes)
-print(df_pred.shape)
-```
 
-```{python}
-#| label: supp-fig1g-augment-df
 augmented_df = pd.merge(df_pred, metadata_imputed, left_index=True, right_on="md5sum")
 augmented_df["True class"] = augmented_df[ASSAY]
-augmented_df["True class"].value_counts(dropna=False)
+print("Number of files per assay:")
+print(augmented_df["True class"].value_counts(dropna=False).to_string())
 ```
+\
+\
+Graph.
 
 ```{python}
 #| label: supp-fig1g-plot
@@ -1907,14 +1950,24 @@ plot_prediction_scores_distribution(
 )
 ```
 
-### Supp Fig 1H,I
+### H,I - Prediction score thresholds
 
-See `src/python/epiclass/utils/notebooks/paper/confidence_threshold.ipynb`.
+For the code that produced the figures, see `src/python/epiclass/utils/notebooks/paper/confidence_threshold.ipynb`.
 
+<!-- figures are supposed to be 700x600, but need some extra margin to not create scroll bar -->
+```{=html}
+<iframe width="710", height="615", src="../resources/threshold_impact_graph_global_assay_epiclass_11c-11_classes_cdn.html"></iframe>
 
-## Supp Fig 2 - Various feature sets performance per assay - Biospecimen
+<iframe width="710", height="615", src="../resources/threshold_impact_graph_global_harmonized_sample_ontology_intermediate-16_classes_cdn.html"></iframe>
+```
 
-### Supp Fig 2A,B
+Supplementary Figure 1H,I: Distribution of aggregated accuracy, F1-score and corresponding file subset size across
+varying prediction score thresholds, based on pooled predictions from all cross-validation folds
+for the Assay (H) and Biospecimen (I) classifiers.
+
+## Supplementary Figure 2 - Biospecimen performance on various feature sets.
+
+### A,B
 
 ```{python}
 #| label: supp-fig2ab-plot
@@ -1932,7 +1985,7 @@ graph_feature_set_metrics(
 ```
 
 
-### Supp Fig 2C,D
+### C,D
 
 ```{python}
 #| label: supp-fig2rest-prep-function
