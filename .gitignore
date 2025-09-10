@@ -7,6 +7,10 @@
 **/tests/**/*.ckpt
 **/tests/fixtures/
 
+# quarto website
+resources/
+epiclass-figures/.gitignore
+
 # cluster files
 slurm_files/
 

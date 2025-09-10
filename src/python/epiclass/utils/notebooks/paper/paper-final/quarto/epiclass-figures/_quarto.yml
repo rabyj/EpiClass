@@ -1,4 +1,5 @@
 project:
+  output-dir: "../../../../../../../../../docs/epiclass-paper"
   type: website
   preview:
     watch-inputs: true   # automatically rebuild on save

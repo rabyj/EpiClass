@@ -4,7 +4,8 @@ _site/
 test-site/
 site_libs/
 
-test.qmd
+*test.qmd
 tmp.txt
 *.svg
 *.html
+./epiclass-figures/.gitignore
