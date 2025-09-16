@@ -38,7 +38,7 @@ repos:
     - id: check-yaml
     - id: debug-statements
     - id: end-of-file-fixer
-      exclude: docs/epiclass-paper/*
+      exclude: docs/epiclass-paper/.*
     - id: forbid-submodules
     - id: mixed-line-ending
     - id: name-tests-test

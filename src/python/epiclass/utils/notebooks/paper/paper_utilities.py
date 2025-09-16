@@ -1,5 +1,5 @@
 """Utility functions for the paper notebooks."""
-# pylint: disable=too-many-branches, too-many-lines, too-many-positional-arguments
+# pylint: disable=too-many-branches, too-many-lines
 
 from __future__ import annotations
 
@@ -1679,3 +1679,38 @@ def filter_biomat_LS(
     df = pd.concat([df, unknown_subset])
 
     return df
+
+
+class PathChecker:
+    """Class to verify path existences."""
+
+    @staticmethod
+    def _validate_path(
+        path: Path | str, check_file: bool = False, check_dir: bool = False
+    ) -> None:
+        """Internal helper to validate paths."""
+        path_obj = Path(path)
+
+        if not path_obj.exists():
+            type_name = "file" if check_file else "directory" if check_dir else "path"
+            raise FileNotFoundError(f"{type_name.title()} does not exist: {path}")
+
+        if check_file and not path_obj.is_file():
+            raise IsADirectoryError(f"Not a file: {path}")
+        if check_dir and not path_obj.is_dir():
+            raise NotADirectoryError(f"Not a directory: {path}")
+
+    @staticmethod
+    def check_path_exists(path: Path | str) -> None:
+        """Check if a path exists."""
+        PathChecker._validate_path(path)
+
+    @staticmethod
+    def check_file(path: Path | str) -> None:
+        """Check if a file exists."""
+        PathChecker._validate_path(path, check_file=True)
+
+    @staticmethod
+    def check_directory(path: Path | str) -> None:
+        """Check if a directory exists."""
+        PathChecker._validate_path(path, check_dir=True)
