@@ -38,7 +38,7 @@ repos:
     - id: check-yaml
     - id: debug-statements
     - id: end-of-file-fixer
-      exclude: \.html$|__init__.py
+      exclude: docs/epiclass-paper/*
     - id: forbid-submodules
     - id: mixed-line-ending
     - id: name-tests-test
@@ -52,6 +52,7 @@ repos:
       files: \.yaml$
     - id: trailing-whitespace
       args: [--markdown-linebreak-ext=md]
+      exclude: docs/epiclass-paper/.*
 - repo: https://github.com/nbQA-dev/nbQA
   rev: 1.8.7
   hooks:
