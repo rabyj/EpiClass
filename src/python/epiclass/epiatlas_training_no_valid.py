@@ -176,7 +176,7 @@ def main():
 
     exp_name = "-".join(cli.logdir.parts[-3:])
     comet_logger = pl_loggers.CometLogger(
-        project_name="EpiLaP",
+        project_name="EpiClass",
         experiment_name=exp_name,
         save_dir=logdir,  # type: ignore
         offline=IsOffline,
@@ -295,7 +295,7 @@ def train_without_valid(
         IsOffline = bool(type(logger.experiment).__name__ == "OfflineExperiment")
 
         logger = pl_loggers.CometLogger(
-            project_name="EpiLaP",
+            project_name="EpiClass",
             save_dir=logger.save_dir,  # type: ignore
             offline=IsOffline,
             auto_metric_logging=False,

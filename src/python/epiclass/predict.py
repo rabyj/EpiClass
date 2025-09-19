@@ -64,7 +64,7 @@ def main():
     IsOffline = cli.offline  # additional logging fails with True
     exp_name = "-".join(cli.logdir.parts[-2:])
     comet_logger = pl_loggers.CometLogger(
-        project_name="EpiLaP",
+        project_name="EpiClass",
         experiment_name=exp_name,
         save_dir=cli.logdir,
         offline=IsOffline,
