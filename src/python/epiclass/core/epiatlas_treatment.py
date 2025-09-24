@@ -32,8 +32,8 @@ LEADER_TRACKS = frozenset(["raw", "Unique_plusRaw", "gembs_pos"])
 OTHER_TRACKS = frozenset(ACCEPTED_TRACKS) - LEADER_TRACKS
 
 NDArray = npt.NDArray[Any]
-NDArrayInt = npt.NDArray[np.int_]
-NDArrayBool = npt.NDArray[np.bool_]
+NDArrayInt = npt.NDArray[int]  # type: ignore # np.int_ is deprecated NumPy >= 1.20.0
+NDArrayBool = npt.NDArray[bool]  # type: ignore # np.bool_ is deprecated NumPy >= 1.20.0
 
 
 class EpiAtlasDataset:
