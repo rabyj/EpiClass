@@ -1,7 +1,6 @@
 comet-ml==3.33.10
 GitPython==3.1.34
 h5py==3.6.0
-huggingface-hub==0.29.3
 imbalanced-learn==0.8.0
 kaleido==0.1.0
 lightgbm==3.3.5

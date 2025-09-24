@@ -17,36 +17,26 @@ Models trained on the EpiATLAS dataset and used for inference on other datasets 
 
 ## Setup
 
-The code was developed primarily with **Python 3.8**. Compatibility with other versions is not guaranteed. However, a separate requirements file is provided for **Python 3.12** for convenience, specifically for analysis notebooks. Note that some code paths remain untested under Python 3.12, and classifiers cannot be trained.
-
-There are two main types of requirements files:
-
-- `requirements/minimal_requirements.txt`: Minimal packages needed to reproduce training.
-- `full_requirements.list/dev_requirements.txt`: Additional packages for development, testing, and analysis notebooks.
+The code was developed primarily with **Python 3.8**. Compatibility with other versions is not guaranteed. However, the test suite passed under python3.9 and 3.10.
 
 To install the environment for training:
 
 1. Clone this repository.
 2. Create and activate a virtual environment.
-3. From the Python code root (where `setup.py` is located), run:
+3. From the Python code root (where `pyproject.toml` is located), run:
 
 ```bash
-pip install -e .
+pip install -e . # you can also use 'uv'
 ```
 
-4. Then install the minimal requirements:
+To install the environment for analysis notebooks or running tests:
 
 ```bash
-pip install -r requirements/minimal_requirements.txt
+pip install -e .[utils] # adds requirements notebooks and utility scripts
+pip install -e .[test] # adds pytest requirements
 ```
 
-To automatically set up the training environment (e.g. on HPC clusters), use:
-
-```bash
-src/bash_utils/setup_venv.sh
-```
-
-If your system does not have Python 3.8 installed, consider using [pyenv](https://github.com/pyenv/pyenv) to manage multiple Python versions.
+The exact requirements are in `src/python/requirements/req_core.in`. Other dependencies are specified in `pyproject.toml`.
 
 ## Input Format & Job Launching
 
@@ -196,7 +186,7 @@ Model-specific:
 
 ## Tests
 
-All tests are expected to pass on tagged releases (under Python 3.8), provided all requirements are installed.
+All tests are expected to pass on tagged releases since v0.3.0, provided all requirements are installed.
 
 Exceptions:
 

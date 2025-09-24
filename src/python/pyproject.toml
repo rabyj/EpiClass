@@ -1,3 +1,54 @@
+# PYTHON INSTALL SECTION
+[build-system]
+requires = ["setuptools>=75", "pip>=23", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "EpiClass"
+dynamic = ["version", "dependencies"]
+description = "Apply machine learning to epigenomic data classification."
+authors = [{ name = "Joanny Raby", email = "Joanny.Raby@usherbrooke.ca" }]
+requires-python = ">=3.8, <3.11"
+
+[tool.setuptools.dynamic]
+version = { file = "VERSION" }
+dependencies = { file = "requirements/req_core.in" }
+
+[tool.uv.pip]
+only-binary = [
+    "torch",
+    "pytorch-lightning",
+    "lgbm",
+    "llvmlite",
+    "h5py",
+    "numpy",
+    "scipy",
+    "pandas",
+    "scikit-learn",
+]
+
+[project.optional-dependencies]
+test = ["pytest-mock>=3.14, <3.15", "pytest>=8.3, <8.4", "tables>=3.8, <3.9"]
+utils = [
+    "GitPython>=3.1, <3.2",
+    "jupyter>=1.1",
+    "kaleido>=0.1, <0.2",
+    "matplotlib>=3.7, <3.8",
+    "plotly>=5.22, <5.23",
+    "pyBigWig>=0.3.22",
+    "seaborn>=0.13, <0.14",
+    "tables>=3.8, <3.9",
+    "umap-learn>=0.5, <0.6",
+    "UpSetPlot>=0.8, <0.9",
+]
+dev = [
+    "black>=23.1, <24",
+    "isort>=5.12, <6",
+    "pylint>=3.2, <4",
+    "pre-commit>=3.5, <4",
+]
+
+# OTHER TOOLS CONFIGURATION
 [tool.black]
 line-length = 90 # override black's default line-length
 force-exclude = '''
