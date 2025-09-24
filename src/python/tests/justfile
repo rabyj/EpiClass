@@ -1,0 +1,121 @@
+# Justfile for managing test suite with multiple Python versions.
+# Uses `uv` (https://pypi.org/project/uv/) for environment and dependency management.
+# Uses `pytest` for running tests.
+
+# List all available recipes
+list:
+    @just --list
+    @echo "Use 'just <recipe>' to run a specific recipe."
+
+# Generate timestamp for log files
+_timestamp := `date +"%Y%m%d_%H%M%S"`
+
+# Environment check - only runs when explicitly called
+check-env:
+    @echo "🔍 Checking environment..."
+    @which uv > /dev/null || (echo "❌ uv not found" && exit 1)
+    @echo "✅ Environment OK"
+
+# Compile requirements for a specific Python version (separate step for reproducibility)
+compile python_version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    v="{{python_version}}"
+    echo "📋 Compiling requirements for Python ${v}..."
+
+    # Ensure we generate exact, reproducible requirements
+    uv pip compile --generate-hashes -p=${v} ../requirements/req_core.in > ../requirements/req_core_${v}.txt
+
+    echo "✅ Requirements compiled for Python ${v}"
+    echo "📄 Generated: ../requirements/req_core_${v}.txt"
+
+# Run tests for a specific Python version using pre-compiled requirements
+test python_version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p logs
+    mkdir -p envs
+
+    v="{{python_version}}"
+    venv_path="./envs/venv_test_${v}"
+    req_file="../requirements/req_core_${v}.txt"
+
+    echo "🚀 Running tests for Python ${v}..."
+    echo "📝 Logs will be saved with timestamp: {{_timestamp}}"
+
+    just compile ${v}
+
+    # Create fresh virtual environment (--clear removes existing one)
+    echo "🔄 Creating fresh virtual environment for Python ${v}..."
+    uv venv --seed --clear -p=${v} "$venv_path"
+    . "$venv_path/bin/activate"
+
+    echo "📦 Installing exact pinned dependencies from ${req_file}..."
+    # Install exact requirements first (what users will get)
+    uv pip install -r "$req_file" >> logs/pytest-${v}_{{_timestamp}}.log 2>&1
+
+    echo "📦 Installing package in editable mode with test dependencies..."
+    uv pip install -e ../.[test] >> logs/pytest-${v}_{{_timestamp}}.log 2>&1
+
+    echo "🧪 Running pytest for Python ${v}..."
+    uv run --active pytest --tb=short ../tests/ >> logs/pytest-${v}_{{_timestamp}}.log 2>&1 || true
+
+    echo "✅ Tests for Python ${v} completed - check logs/ directory for results"
+
+# Compile requirements for all Python versions
+compile-all: check-env
+    just compile 3.8
+    just compile 3.9
+    just compile 3.10
+    just compile 3.11
+    @echo "✅ All requirements compiled"
+
+# Test with fresh compilation (ensures latest dependencies)
+test-fresh python_version:
+    just compile {{python_version}}
+    just test {{python_version}}
+
+# Run tests for Python 3.10 and 3.11
+test-modern: check-env
+    just test 3.10
+    just test 3.11
+    @echo "✅ Modern Python tests completed"
+
+# Run tests for Python 3.8 and 3.9
+test-legacy: check-env
+    just test 3.8
+    just test 3.9
+    @echo "✅ Legacy Python tests completed"
+
+# Run all tests
+test-all: check-env
+    just test 3.8
+    just test 3.9
+    just test 3.10
+    just test 3.11
+    @echo "✅ All tests completed"
+
+# Clean up generated files (WARNING: deletes all logs!)
+clean:
+    #!/usr/bin/env bash
+    echo "⚠️  This will delete ALL log files and cache directories!"
+    echo "Press Ctrl+C to cancel, or Enter to continue..."
+    read -r
+    echo "🧹 Cleaning up..."
+    rm -rf logs/
+    rm -rf __pycache__/
+    rm -rf .pytest_cache/
+    rm -rf envs/
+    echo "✅ Cleanup complete"
+
+# Clean only compiled requirements
+clean-requirements:
+    @echo "🧹 Cleaning compiled requirements..."
+    rm -rf ../requirements/req_core_*.txt
+    @echo "✅ Requirements cleanup complete"
+
+# Clean up log files older than 7 days
+clean-old-logs:
+    @echo "🧹 Cleaning up log files older than 7 days..."
+    find logs/ -name "*.log" -mtime +7 -delete 2>/dev/null || true
+    @echo "✅ Old logs cleanup complete"
