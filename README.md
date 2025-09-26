@@ -4,7 +4,7 @@ EpiClass trains machine learning models to classify and label epigenomic data.
 
 ## Publication
 
-This repository contains most of the code used to obtain results for the following paper:  
+This repository contains most of the code used to obtain results for the following paper:
 [Leveraging the largest harmonized epigenomic data collection for metadata prediction validated and augmented over 350,000 public epigenomic datasets](https://doi.org/10.1101/2025.09.04.670545)
 
 To interact with the paper figures, use the [Quarto website](https://rabyj.github.io/EpiClass/epiclass-paper/index.html). This website is generated from an alternative version of the Python notebooks used to create the figures (notebooks are at `src/python/epiclass/utils/notebooks/paper/paper-final/fig*.ipynb`).
@@ -17,7 +17,7 @@ Models trained on the EpiATLAS dataset and used for inference on other datasets 
 
 ## Setup
 
-The code was developed primarily with **Python 3.8**. Compatibility with other versions is not guaranteed. However, the test suite passed under python3.9 and 3.10.
+The code was developed primarily with **Python 3.8**. Compatibility with other versions is not guaranteed. However, the test suite passed under python 3.9 to 3.11.
 
 To install the environment for training:
 
