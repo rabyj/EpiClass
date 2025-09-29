@@ -19,21 +19,11 @@ execute:
 
 # Results section 2 figures
 
-## TO BE RELEASED SOON
-
-::: {#WIP .callout-important}
-
-THIS IS A WORK IN PROGRESS.
-
-This page will be updated with the figures and their corresponding code in the following weeks.
-
-Message date: 2025-09-10
-:::
-
-
 Formatting of the figures may not be identical to the paper, but they contain the same data points.
 
-All code is folded by default, click on "Code" to expand it.
+All code is folded by default. For any given cell, click on "Code" to expand it, or unfold all using code options beside the main title, above.
+
+Some code may be repeated, as the original python notebook was written for figures to be created semi-independantly (so one can fully re-run individual sections when making modifications).
 
 ## Article text
 
@@ -133,14 +123,31 @@ metadata_v2 = metadata_handler.load_metadata("v2")
 metadata_v2_df = metadata_v2.to_df()
 ```
 
+Setup figures general settings.
 
-## Fig 2
+```{python}
+#| label: setup-figs-settings
+main_title_settings = {
+    "title":dict(
+        automargin=True,
+        x=0.5,
+        xanchor="center",
+        yanchor="top",
+        y=0.98
+        ),
+    "margin":dict(t=50, l=10, r=10)
+}
+```
 
-### Fig 2A, 2B (and Supp Fig 4A) - MLP performance on various classification tasks - 100kb resolution files
+## Figure 2
+
+### A,B - MLP performance on various classification tasks (100kb resolution) {#sec-2ab}
 
 - 2A: Accuracy
 - 2B: F1-Score
-- Supp 4A: AUC scores
+- Supp 5A: AUC scores
+
+Define function that graphs performance accross classification tasks.
 
 ```{python}
 #| label: func-nn-performance
@@ -243,14 +250,16 @@ def NN_performance_across_classification_tasks(
                 col=i + 1,
             )
 
+    # Title
     title_text = (
         "Neural network classification - Metric distribution for 10-fold cross-validation"
     )
     if title:
         title_text = title
+    fig.update_layout(title_text=title_text, **main_title_settings)
 
+    # Layout
     fig.update_layout(
-        title_text=title_text,
         yaxis_title="Value",
         boxmode="group",
         height=1200 * 0.8,
@@ -282,6 +291,8 @@ def NN_performance_across_classification_tasks(
     return classifier_names
 ```
 
+Compute metrics.
+
 ```{python}
 #| label: load-split-metrics
 exclude_categories = ["track_type", "group", "disease", "PE", "martin"]
@@ -310,9 +321,11 @@ split_results_metrics, all_split_results = split_results_handler.general_split_m
 )
 ```
 
+Graph metrics.
+
 ```{python}
 #| label: plot-nn-performance
-#| column: body-outset-left
+#| column: screen-inset-left
 metrics_full = ["Accuracy", "F1_macro", "AUC_micro", "AUC_macro"]
 fig_name = f"{hdf5_type}_perf_across_categories_full"
 sorted_task_names = NN_performance_across_classification_tasks(
@@ -322,7 +335,11 @@ sorted_task_names = NN_performance_across_classification_tasks(
 )
 ```
 
-### Fig 2C: Normalized Shannon Entropy on various metadata categories
+Fig. 2A,B: Distribution of accuracy and F1-score evaluated per training fold (dots) for each metadata classifier. Performance metrics are reported without applying a prediction score threshold. Dashed lines represent means, solid lines the medians, boxes the quartiles, and whiskers the farthest points within 1.5× the interquartile range.
+
+### C - Class imbalance (Shannon Entropy)
+
+Define function `compute_class_imbalance`.
 
 ```{python}
 #| label: func-compute-imbalance
@@ -389,6 +406,8 @@ def compute_class_imbalance(
     return df_class_balance
 ```
 
+Compute class imbalance (Shannon entropy).
+
 ```{python}
 #| label: compute-imbalance
 subset = {
@@ -399,47 +418,64 @@ subset = {
 df_class_balance = compute_class_imbalance(subset)  # type: ignore
 ```
 
+Define graphing function `plot_shannon_entropy`.
+
+```{python}
+#| label: fct-shannon-plot
+#| column: body-outset-left
+def plot_shannon_entropy(class_balance_df: pd.DataFrame, ordered_task_names: List[str]|None) -> None:
+    """Graph Shannon entropy values, in the order given by task_names"""
+    df = class_balance_df.copy()
+
+    # Reorder df
+    task_names = df.index
+    if ordered_task_names:
+        task_names = [
+            task_name for task_name in task_names if task_name in ordered_task_names
+    ]
+    df = df.loc[sorted_task_names]
+
+    # plot
+    fig = px.scatter(
+        df,
+        x=df.index,
+        y="Normalized Shannon Entropy",
+        labels={
+            "k": "Number of classes",
+            "Normalized Shannon Entropy": "Normalized Shannon Entropy",
+        },
+        title="Class imbalance across tasks (higher is more balanced)",
+    )
+    fig.update_layout(
+        yaxis=dict(range=[0, 1]),
+        xaxis_title=None,
+    )
+
+    fig.show()
+```
+
+Graph.
 ```{python}
 #| label: plot-shannon-entropy
 #| column: body-outset-left
-sorted_task_names = [
-    task_name for task_name in sorted_task_names if task_name in df_class_balance.index
-]
-df_class_balance = df_class_balance.loc[sorted_task_names]
-fig = px.scatter(
-    df_class_balance,
-    x=df_class_balance.index,
-    y="Normalized Shannon Entropy",
-    labels={
-        "k": "Number of classes",
-        "Normalized Shannon Entropy": "Normalized Shannon Entropy",
-    },
-    title="Class imbalance across tasks (higher is more balanced)",
-)
-fig.update_layout(
-    yaxis=dict(range=[0, 1]),
-)
+plot_shannon_entropy(
+    class_balance_df=df_class_balance,
+    ordered_task_names=sorted_task_names,
+    )
 ```
+Fig. 2C: Shannon entropy scores for each metadata category.
 
-### Fig 2D: Donor Sex, before and after label correction
+### D - Donor Sex classification
 
-IHEC_sample_metadata_harmonization.v1.1.extended.csv contains 314 EpiRRs with unknown sex. We applied a fully trained sex classifier on those.
+`IHEC_sample_metadata_harmonization.v1.1.extended.csv` contains 314 EpiRRs with unknown sex. We applied a fully trained sex classifier on those.
 
-Need to reproduce: https://docs.google.com/spreadsheets/d/1nMCEOZd16pWHfGY63vXcI2JzeOqGBR-tCoBuRZLZgQM/edit?gid=608314669#gid=608314669
+To properly create sex classification related graphs (D,E) we need
 
-```{python}
-#| label: setup-sex-results-path
-sex_results_dir = (
-    base_data_dir
-    / "training_results"
-    / "dfreeze_v2"
-    / "hg38_100kb_all_none"
-    / f"{SEX}_1l_3000n"
-)
-PathChecker.check_directory(sex_results_dir)
-```
+    - Classifier predictions on samples with unknown sex label
+    - Metadata pre/post correction
+    - Average ChrY signal for each file
 
-#### Unknown Predictions
+Load v1.1 and v1.2 official metadata.
 
 ```{python}
 #| label: load-v1-metadata
@@ -454,6 +490,8 @@ metadata_v1_2_path = (
 metadata_v1_2 = pd.read_csv(metadata_v1_2_path, index_col=0)
 ```
 
+Sanity check: make sure that the number of unknown labels is the same in our metadata VS official v1.1
+
 ```{python}
 #| label: check-unknown-sex-counts
 full_metadata_df = metadata_v2_df
@@ -465,8 +503,17 @@ assert (
 )
 ```
 
+Load predictions for unknown sex samples.
+
 ```{python}
 #| label: load-unknown-sex-predictions
+sex_results_dir = (
+    base_data_dir
+    / "training_results"
+    / "dfreeze_v2"
+    / "hg38_100kb_all_none"
+    / f"{SEX}_1l_3000n"
+)
 sex_full_model_dir = sex_results_dir / "complete_no_valid_oversample"
 PathChecker.check_directory(sex_full_model_dir)
 
@@ -478,6 +525,8 @@ pred_unknown_file_path = (
 pred_unknown_df = pd.read_csv(pred_unknown_file_path, index_col=0, header=0)
 ```
 
+Join metadata to predictions.
+
 ```{python}
 #| label: process-unknown-sex-predictions
 pred_unknown_df = pred_unknown_df[pred_unknown_df["True class"] == "unknown"]
@@ -486,7 +535,7 @@ pred_unknown_df = metadata_handler.join_metadata(pred_unknown_df, metadata_v2)
 pred_unknown_df["md5sum"] = pred_unknown_df.index
 ```
 
-#### 10fold cross-validation results
+Load 10-fold cross validation results.
 
 ```{python}
 #| label: load-sex-10fold-results
@@ -500,20 +549,57 @@ concat_results_10fold: pd.DataFrame = split_results_handler.concatenate_split_re
 concat_results_10fold = split_results_handler.add_max_pred(concat_results_10fold)
 concat_results_10fold = metadata_handler.join_metadata(concat_results_10fold, metadata_v2)
 ```
-\
-\
-#### -- Average chrY values z-score distributions --
+
+#### Inner portion
+
+Fig. 2D: Proportion of donor sex metadata originally annotated (inner circle, metadata v1.1) and predicted with high-confidence (outer circle, metadata v2.0) for female (red) and male (blue) (mixed sex not shown).
+
+Compute values for the inner portion of the pie chart.
+
+```{python}
+#| label: calc-sex-proportion-v1-1
+# Proportion of unknown, excluding mixed. same as v1.1 ihec metadata
+no_mixed = full_metadata_df[full_metadata_df[SEX] != "mixed"]
+
+with pd.option_context("display.float_format", "{:.2%}".format):
+    print("file-wise:")
+    print(no_mixed[SEX].value_counts(dropna=False) / no_mixed.shape[0])
+
+    print("\nEpiRR-wise:")
+    epirr_no_mixed = no_mixed.drop_duplicates(subset=["EpiRR"])
+    print(epirr_no_mixed[SEX].value_counts(dropna=False) / epirr_no_mixed.shape[0])
+```
+
+#### Outer portion
+
+Outer ring represents SEX metadata labnels v1.2 (without `mixed` labels), which had those modifications:
+
+- Some unknown SEX files were labelled, using (assay,track type) z-score in conjunction with fully trained model predictions.
+- Correction of some mislabels, using 10fold cross-validation results
+
+```{python}
+#| label: calc-sex-proportion-v1-2
+meta_v1_2_no_mixed = metadata_v1_2[metadata_v1_2[SEX] != "mixed"]
+with pd.option_context("display.float_format", "{:.2%}".format):
+    print("EpiRR-wise:")
+    print(meta_v1_2_no_mixed.value_counts(SEX) / meta_v1_2_no_mixed.shape[0])
+```
+
+#### Average chrY values z-score distributions
 
 Work done in another script:
 
 1. For each bigwig file, the chrY average value is computed. (with pyBigWig module, in chrY_bigwig_mean.py)
 2. For each assay, the z-score distribution (of the mean chrY value) of the file group is computed.
-- Outputs `chrXY_all.csv`
+    - Outputs `chrXY_all.csv`
     - Outputs `chrY_zscores.csv`
 
 Fig. 2E is made by averaging for each EpiRR the z-score value in each assay distribution.
 
 This data is needed for the full sex mislabel context table.
+\
+\
+Define function `compute_chrY_zscores`.
 
 ```{python}
 #| label: func-compute-chry-zscores
@@ -610,7 +696,7 @@ def compute_chrY_zscores(
     return chrY_df
 ```
 
-Compute chrY zscores
+Compute chrY zscores.
 
 ```{python}
 #| label: compute-chry-zscores
@@ -620,71 +706,55 @@ PathChecker.check_directory(chrY_dir)
 chrY_df = compute_chrY_zscores(chrY_dir, "v2", save=False)
 ```
 
-#### 2D - Inner portion
-
-```{python}
-#| label: calc-sex-proportion-v1-1
-# Proportion of unknown, excluding mixed. same as v1.1 ihec metadata
-no_mixed = full_metadata_df[full_metadata_df[SEX] != "mixed"]
-
-with pd.option_context("display.float_format", "{:.2%}".format):
-    print("file-wise:")
-    print(no_mixed[SEX].value_counts(dropna=False) / no_mixed.shape[0])
-
-    print("\nEpiRR-wise:")
-    epirr_no_mixed = no_mixed.drop_duplicates(subset=["EpiRR"])
-    print(epirr_no_mixed[SEX].value_counts(dropna=False) / epirr_no_mixed.shape[0])
-```
-
-#### Fig 2D - Outer portion
-
-Outer ring represents SEX metadata labnels v1.2 (without `mixed` labels), which had those modifications:
-- Some unknown SEX files were labelled, using (assay,track type) z-score in conjunction with fully trained model predictions.
-- Correction of some mislabels, using 10fold cross-validation results
-
-```{python}
-#| label: calc-sex-proportion-v1-2
-meta_v1_2_no_mixed = metadata_v1_2[metadata_v1_2[SEX] != "mixed"]
-with pd.option_context("display.float_format", "{:.2%}".format):
-    print("EpiRR-wise:")
-    print(meta_v1_2_no_mixed.value_counts(SEX) / meta_v1_2_no_mixed.shape[0])
-```
-
 #### Unknown predictions analysis file
 
-This generates a similar table to what was used to determine which unknown sex to label.
+The following folded code generates a similar table to what was used to determine which unknown sex sample to label.
+It was not used to produce any graph.
 
 ```{python}
 #| label: analyze-unknown-predictions
-index_cols = [
-    "EpiRR",
-    "project",
-    "harmonized_donor_type",
-    CELL_TYPE,
-    SEX,
-    "Predicted class",
-]
-val_cols = ["Max pred", "chrY_zscore_vs_assay_track"]
-pred_unknown_analysis = pred_unknown_df.merge(
-    chrY_coverage_df, on="md5sum", suffixes=("", "_DROP")
-)
-pred_unknown_analysis.drop(
-    columns=[c for c in pred_unknown_analysis.columns if c.endswith("_DROP")],
-    inplace=True,
+def create_sex_pred_pivot_table(pred_unknown: pd.DataFrame, chrY_df: pd.DataFrame) -> pd.DataFrame:
+    """Generate a pivot table containing group metrics per predicted label, for each EpiRR."""
+    index_cols = [
+        "EpiRR",
+        "project",
+        "harmonized_donor_type",
+        CELL_TYPE,
+        SEX,
+        "Predicted class",
+    ]
+    pred_plus_chrY_df = pd.merge(
+        pred_unknown,
+        chrY_df,
+        on="md5sum",
+        suffixes=("", "_DROP")
+    )
+    pred_plus_chrY_df.drop(
+        columns=[c for c in pred_plus_chrY_df.columns if c.endswith("_DROP")],
+        inplace=True,
+    )
+
+    val_cols = ["Max pred", "chrY_zscore_vs_assay_track"]
+    pivot_table = pred_plus_chrY_df.pivot_table(
+        index=index_cols,
+        values=val_cols,
+        aggfunc=["mean", "median", "std", "count"],
+    )
+
+    return pivot_table
+
+
+create_sex_pred_pivot_table(
+    pred_unknown=pred_unknown_df,
+    chrY_df=chrY_df,
 )
 
-pivot_table = pred_unknown_analysis.pivot_table(
-    index=index_cols,
-    values=val_cols,
-    aggfunc=["mean", "median", "std", "count"],
-)
-
-display(pivot_table.head())
 ```
+\
 
 #### 10fold cross-validation predictions analysis file
 
-This generates a similar table to what was used to determine which EpiRR sex labels might be mistaken.
+This section generates a similar table to what was used to determine which EpiRR sex labels might be mistaken.
 It aggregates results from the 10 cross-validation classifiers.
 
 ```{python}
@@ -723,7 +793,9 @@ pivot_table = cross_val_analysis_track.pivot_table(
 display(pivot_table.head())
 ```
 
-### Fig 2E - Average EpiRR z-score for 10fold on v1.1 IHEC harmonized metadata
+### E - Average EpiRR z-score for 10fold
+
+Define function `zscore_merged_assays` that computes the chrY average signal metric.
 
 ```{python}
 #| label: func-zscore-merged-assays
@@ -914,19 +986,725 @@ def zscore_merged_assays(
     fig.show()
 ```
 
+Graph zscores.
+
 ```{python}
 #| label: plot-zscore-merged-assays
 #| column: body-outset-left
-for no_rna in [True, False]:
-    zscore_merged_assays(
-        zscore_df=cross_val_analysis,
-        sex_mislabels=create_mislabel_corrector(paper_dir)[1][SEX],
-        name="no_RNA" if no_rna else "w_RNA",
-        no_rna=no_rna,
-    )
+zscore_merged_assays(
+    zscore_df=cross_val_analysis,
+    sex_mislabels=create_mislabel_corrector(paper_dir)[1][SEX],
+    name="no_RNA",
+    no_rna=True,
+)
 ```
 
-### Supp Fig 5B - Average EpiRR z-score per assay (for 10fold on v1.1 IHEC harmonized metadata)
+Fig 2E: Distribution of the average z-score signal of epigenomes (dots) over chrY, computed on the ChIP-Seq datasets (up to 7 assays per epigenome) using the fold change track type files for female (red) and male (blue). Originally mislabeled epigenomes are shown as big dots. Boxplot elements are as in Fig. 2A.
+
+### F - Donor life stage and GP-Age
+
+Load official IHEC sample metadata.
+
+```{python}
+#| label: load-v1-metadata-again
+meta_v1_2_df = pd.read_csv(
+    official_metadata_dir / "IHEC_sample_metadata_harmonization.v1.2.extended.csv"
+)
+meta_v1_1_df = pd.read_csv(
+    official_metadata_dir / "IHEC_sample_metadata_harmonization.v1.1.extended.csv"
+)
+```
+
+Sanity check, both metadata versions have the same 'cell line' samples.
+
+```{python}
+#| label: check-cell-lines
+cell_lines_v11 = meta_v1_1_df[meta_v1_1_df[BIOMATERIAL_TYPE] == "cell line"][
+    "epirr_id_without_version"
+].unique()
+cell_lines_v12 = meta_v1_2_df[meta_v1_2_df[BIOMATERIAL_TYPE] == "cell line"][
+    "epirr_id_without_version"
+].unique()
+assert set(cell_lines_v11) == set(cell_lines_v12)
+```
+
+Load GP-age results.
+
+```{python}
+#| label: load-gpage-data
+gp_age_dir = base_data_dir / "GP_age"
+PathChecker.check_directory(gp_age_dir)
+
+df_gp_age = pd.read_csv(gp_age_dir / "life_stage_prediction.GPage.20250513.tsv", sep="\t")
+df_gp_age["graph_age"] = df_gp_age["model30"]
+
+epiclass_pred_col = "epiclass_predicted_lifestage"
+
+display(df_gp_age.head())
+```
+
+The `epiclass_predicted_lifestage` column is manually curated, from analyzing all predictions for all samples.
+When an expected label is known, and epiclass predictions are inconclusive (low average max pred and/or no majority consensus), the expected label is kept.
+
+Columns `tissue` and `tissue_subtype` are formatting of `harmonized_sample_organ_system_order_AnetaMikulasova` and `harmonized_sample_organ_order_AnetaMikulasova`.
+\
+Following code remaps 5 life stage classes to 3 (perinatal, pediatric, adult).
+```{python}
+#| label: process-gpage-data
+df_gp_age.loc[:, "graph_age_categories"] = df_gp_age[epiclass_pred_col].str.removesuffix(
+    "_pred"
+)
+
+gp_age_categories = {
+    "adult": "adult",
+    "child": "pediatric",
+    "embryonic": "perinatal",
+    "fetal": "perinatal",
+    "newborn": "perinatal",
+    "unknown": "unknown",
+}
+df_gp_age.loc[:, "graph_age_categories"] = df_gp_age["graph_age_categories"].map(
+    gp_age_categories
+)
+display(df_gp_age["graph_age_categories"].value_counts(dropna=False))
+```
+
+Here we merge GP-age data with additional EpiAtlas metadata.
+```{python}
+#| label: merge-gpage-metadata
+epirr_col = "epirr_id_without_version"
+
+merged_dp_age = pd.merge(
+    df_gp_age,
+    meta_v1_2_df[[epirr_col, CELL_TYPE, BIOMATERIAL_TYPE]],
+    left_on="epirr_noV",
+    right_on=epirr_col,
+    how="left",
+)
+merged_dp_age.drop_duplicates(subset=[epirr_col], inplace=True)
+merged_dp_age.drop(columns=["epirr_noV"], inplace=True)
+```
+
+Excluding 'cell line' samples from considered data.
+```{python}
+#| label: remove-cell-lines-gpage
+# Removing cell lines: life stage makes less sense
+# type: ignore
+N_before = merged_dp_age.shape[0]
+merged_dp_age: pd.DataFrame = merged_dp_age[
+    merged_dp_age[BIOMATERIAL_TYPE] != "cell line"
+]
+print(f"Removed {N_before - merged_dp_age.shape[0]} cell lines.")
+```
+
+Creating the graph categories.
+
+We need to categorize separately whole blood since from other tissues since GP-Age training is only made of whole blood. We keep 'immune system' tissues, specifically venous and umbilical blood since they match the most closely to the training data. unsure about blood marrow.
+
+```{python}
+#| label: create-gpage-tissue-groups
+layer1_vals = ["IMMU"]
+layer2_vals = ["blood-umbilical-cord", "blood-venous"]
+
+merged_dp_age.loc[:, "tissue_group"] = [
+    "blood" if (val1 in layer1_vals and val2 in layer2_vals) else "other"
+    for val1, val2 in merged_dp_age.loc[:, ["tissue", "tissue_subtype"]].values
+]
+```
+
+Sanity check, no NaN present.
+
+```{python}
+#| label: check-gpage-nan
+important_cols = [
+    "epirr_id_without_version",
+    "tissue_group",
+    epiclass_pred_col,
+    "graph_age",
+]
+missing_N = merged_dp_age.loc[:, important_cols].isna().sum().sum()
+if missing_N > 0:
+    raise ValueError(f"Missing values in merged_dp_age: {missing_N}")
+```
+
+Define graphing function `graph_gp_age`.
+
+```{python}
+#| label: func-graph-gpage
+def graph_gp_age(
+    df_gp_age: pd.DataFrame,
+    logdir: Path | None = None,
+    name: str | None = None,
+    title: str | None = None,
+) -> None:
+    """
+    Plot the GP age predictions.
+
+    Args:
+        df_gp_age: The dataframe with GP age data.
+    """
+    df = df_gp_age.copy(deep=True)
+
+    tissue_colors = {"blood": "red", "other": "gray"}
+
+    age_cat_label = "graph_age_categories"
+
+    fig = go.Figure()
+    for tissue_group in sorted(df["tissue_group"].unique()):
+        sub_df = df[df["tissue_group"] == tissue_group]
+        fig.add_trace(
+            go.Box(
+                name=f"{tissue_group} (n={len(sub_df)})",
+                x=sub_df[age_cat_label],
+                y=sub_df["graph_age"],
+                boxmean=True,
+                boxpoints="all",
+                hovertemplate="%{text}",
+                text=[
+                    f"{ct}: {age:.3f}"
+                    for ct, age in zip(sub_df[CELL_TYPE], sub_df["graph_age"])
+                ],
+                marker=dict(size=2, color=tissue_colors[tissue_group]),
+                showlegend=True,
+            ),
+        )
+
+    fig.update_layout(
+        title=f"GP age predictions - Using MLP predicted labels ({title})",
+        xaxis_title="Life stage",
+        yaxis_title="GP-Age : Predicted age",
+        width=750,
+        height=750,
+        boxmode="group",
+    )
+
+    # Order x-axis
+    label_order = ["perinatal", "pediatric", "adult"]
+    axis_labels = [
+        f"{age_cat} (n={(df[age_cat_label] == age_cat).sum()})" for age_cat in label_order
+    ]
+
+    fig.update_xaxes(categoryorder="array", categoryarray=label_order)
+    fig.update_xaxes(tickvals=[0, 1, 2], ticktext=axis_labels)
+
+    # Save figure
+    if logdir:
+        if name is None:
+            name = "GP_age_predictions"
+        fig.write_image(logdir / f"{name}.svg")
+        fig.write_image(logdir / f"{name}.png")
+        fig.write_html(logdir / f"{name}.html")
+
+    fig.show()
+```
+
+Define dataframe content function `display_tissue_age_df`.
+
+```{python}
+#| label: func-display-tissue-age-df
+def display_tissue_age_df(df: pd.DataFrame) -> None:
+    """Display tissue group count breakdown."""
+    count = df.groupby(["tissue_group", "graph_age_categories"]).size()
+    print("Tissue group summary")
+    print(f"Blood: {count.loc['blood'].sum()}")  # type: ignore
+    print(f"Other: {count.loc['other'].sum()}")  # type: ignore
+    print(f"Total: {count.sum()}")
+    print("Detail:")
+    print(count)
+```
+
+For initially unknown labels, only predictions that were manually confirmed as mislabels.
+
+```{python}
+#| label: plot-gpage-unknown-samples
+#| column: body-outset-left
+#|
+# Remove inconclusive predictions
+gp_graph_df = merged_dp_age[merged_dp_age[epiclass_pred_col] != "unknown"]
+
+only_unknown_df: pd.DataFrame = gp_graph_df[gp_graph_df[LIFE_STAGE] == "unknown"]
+display_tissue_age_df(only_unknown_df)
+
+graph_gp_age(
+    df_gp_age=only_unknown_df,
+    name="GP_age_predictions_unknown_only_MLP_predicted_labels",
+    title="Samples with unknown life stage",
+)
+```
+
+Fig 2F: Distribution of the age prediction from GP-age for the WGBS datasets with an originally unknown life stage predicted by EpiClass (datasets related to blood biospecimen are in red, others in grey). Boxplot elements are as in Fig. 2A.
+
+### G - Biospecimen classifier - ChromScore for high-SHAP regions
+
+See `src/python/epiclass/utils/notebooks/analyze_hdf5_vals.ipynb`, particularly section "ChromScore hdf5 values".
+
+Fig 2G: Distribution of the average ChromScore values over the important Biospecimen classifier regions according to SHAP (pink) compared to the global distribution (grey). Statistical significance was assessed using a two-sided Welch's t-test. Boxplot elements are as in Fig. 2A, with a violin representation on top.
+
+### H - Gene Ontology and SHAP values
+
+See `src/python/epiclass/utils/notebooks/profile_bed.ipynb` for creation of gene ontology files.
+The code compares important SHAP values regions of different cell types with gene gff (using the gProfiler module)
+
+Define GO terms.
+```{python}
+#| label: define-go-terms
+selected_cell_types = [
+    "T_cell",
+    "neutrophil",
+    "lymphocyte_of_B_lineage",
+    "brain",
+    "hepatocyte",
+]
+go_terms_table = [
+    "T cell receptor complex",
+    "plasma membrane signaling receptor complex",
+    "adaptive immune response",
+    "receptor complex",
+    "secretory granule",
+    "secretory vesicle",
+    "secretory granule membrane",
+    "intracellular vesicle",
+    "immunoglobulin complex",
+    "immune response",
+    "immune system process",
+    "homophilic cell adhesion via plasma membrane adhesion molecules",
+    "DNA binding",
+    "cell-cell adhesion via plasma-membrane adhesion molecules",
+    "RNA polymerase II cis-regulatory region sequence-specific DNA binding",
+    "blood microparticle",
+    "platelet alpha granule lumen",
+    "fibrinogen complex",
+    "endoplasmic reticulum lumen",
+]
+
+# Add some line breaks for readability
+go_terms_graph = [
+    "T cell receptor complex",
+    "plasma membrane<br>signaling receptor complex",
+    "adaptive immune response",
+    "receptor complex",
+    "secretory granule",
+    "secretory vesicle",
+    "secretory granule membrane",
+    "intracellular vesicle",
+    "immunoglobulin complex",
+    "immune response",
+    "immune system process",
+    "homophilic cell adhesion via<br>plasma membrane adhesion molecules",
+    "DNA binding",
+    "cell-cell adhesion via<br>plasma-membrane adhesion molecules",
+    "RNA polymerase II cis-regulatory<br>region sequence-specific DNA binding",
+    "blood microparticle",
+    "platelet alpha granule lumen",
+    "fibrinogen complex",
+    "endoplasmic reticulum lumen",
+]
+```
+
+Setup paths.
+
+```{python}
+#| label: load-go-bed-files
+hdf5_type = "hg38_100kb_all_none"
+
+SHAP_dir = base_data_dir / "SHAP"
+
+cell_type_shap_dir = (
+    SHAP_dir / hdf5_type / f"{CELL_TYPE}_1l_3000n" / "10fold-oversampling"
+)
+beds_file = cell_type_shap_dir / "select_beds_top303.tar.gz"
+PathChecker.check_file(beds_file)
+```
+
+Load top g:profiler results for each cell type.
+
+```{python}
+#| label: read-go-dfs
+all_go_dfs: Dict[str, pd.DataFrame] = {}
+with tarfile.open(beds_file, "r:gz") as tar:
+    for member in tar.getmembers():
+        filename = member.name
+        if filename.endswith("profiler.tsv") and "merge_samplings" in filename:
+            with tar.extractfile(member) as f:  # type: ignore
+                go_df = pd.read_csv(f, sep="\t", index_col=0)
+                all_go_dfs[member.name] = go_df
+
+assert len(all_go_dfs) == 16
+```
+
+Merge results for all cell types into one table.
+
+```{python}
+#| label: process-go-dfs
+for name, df in all_go_dfs.items():
+    sub_df = df.copy()
+    sub_df.loc[:, "shap_source"] = re.match(r".*/merge_samplings_(.*)_features_intersect_gff_gprofiler.tsv", name).group(1)  # type: ignore
+    sub_df.loc[:, "table_val"] = -np.log10(sub_df.loc[:, "p_value"])
+    all_go_dfs[name] = sub_df
+
+full_concat_df = pd.concat(all_go_dfs.values())
+full_concat_df = full_concat_df.drop(["significant", "query"], axis=1)
+
+assert all(go_term in full_concat_df["name"].values for go_term in go_terms_table)
+
+table = full_concat_df.pivot_table(
+    index="name", columns="shap_source", values="table_val", aggfunc="mean"
+)
+```
+
+Collect subset of table for the five selected cell types.
+
+```{python}
+#| label: subset-go-table
+table_5_ct = table.loc[go_terms_table, selected_cell_types].copy()
+assert table_5_ct.shape == (len(go_terms_graph), len(selected_cell_types))
+
+# Rename index
+table_5_ct = pd.DataFrame(table_5_ct, index=go_terms_graph, columns=table_5_ct.columns)
+```
+
+Define graphing function `plot_go_heatmap`.
+
+```{python}
+#| label: define-plot-fn
+def plot_go_heatmap(table: pd.DataFrame, width: int, height: int, title: str|None=None):
+    """Plot a GO heatmap."""
+    # Define colorbar
+    sigma = "\u03c3"
+
+    colorbar = dict(
+        title="-log<sub>10</sub>(p-value)",
+        tickvals=[0, 1.30, 2, 3, 5, 6.53, 10],
+        ticktext=[
+            "0",
+            f"1.30: p=0.05~2{sigma}",
+            "2: p=0.01",
+            f"3: p=0.001~3{sigma}",
+            "5",
+            f"6.53: p=3x10<sup>-7</sup> = 5{sigma}",
+            "10",
+        ],
+    )
+
+    # keep NaNs in for labeling
+    z = table.values
+    text = np.where(np.isnan(z), "NS", np.char.mod("%.2f", z))
+
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=np.nan_to_num(z, nan=0),  # replace NaN with 0 for coloring
+            x=table.columns,
+            y=table.index,
+            colorscale="Blues",
+            zmin=0,
+            zmax=10,
+            colorbar=colorbar,
+            text=text,
+            texttemplate="%{text}",
+            hovertemplate="GO Term: %{y}<br>Class: %{x}<br>Value: %{z:.2f}<extra></extra>",
+            showscale=True,
+            xgap=2,
+            ygap=2,
+        )
+    )
+
+    fig.update_layout(
+        title_text=title,
+        width=width,
+        height=height,
+        plot_bgcolor="black",
+    )
+    fig.update_xaxes(showgrid=False)
+    fig.update_yaxes(showgrid=False)
+
+    fig.show()
+```
+
+Graph GO for 5 cell types.
+
+```{python}
+#| label: plot-go-heatmap-5ct
+#| column: body-outset-left
+plot_go_heatmap(
+    table=table_5_ct,
+    width=600,
+    height=1000,
+)
+```
+
+
+Fig 2H: Top four gene ontology (GO) terms enriched by g:Profiler35 for genes within important Biospecimen classifier regions according to SHAP values.
+
+#### 5 top pval terms for each biospecimen label
+
+Collect the 5 most significants terms for each the 16 cell types.
+
+```{python}
+#| label: get-top5-go-terms
+# preserve order
+top_5_terms = []
+for name, df in all_go_dfs.items():
+    df.sort_values("p_value", inplace=True)
+    top_5 = df["name"].head(5).to_list()
+    top_5_terms.extend(top_5)
+
+top_5_terms = list(dict.fromkeys(top_5_terms))
+```
+
+Graph.
+
+```{python}
+#| label: plot-go-heatmap-top5
+#| column: screen-inset-left
+table_top_5_GO = table.loc[top_5_terms, :].copy()
+
+plot_go_heatmap(
+    table=table_top_5_GO,
+    width=1300,
+    height=2000,
+)
+```
+
+### I - Biospecimen important regions chromatin states
+
+Images extracted from Epilogos viewer, using:
+- Region: chr11:118300000-118400000
+- View mode: Single
+- Dataset: IHEC
+- All biosamples
+- Saliency Metric: S1
+
+
+Fig. 2I: Epilogos visualization of one of the important Biospecimen classifier regions enriched in the T cell receptor complex GO term from Fig .2H.
+
+### J - Copy Number Alteration (CNA) Signatures and SHAP values
+
+Note: The code uses the acronym CNV (Copy Number Variant/Variation) instead of CNA.
+
+See CNV_treatment.ipynb for the creation of the CNA stats. The following figures represent the Z-scores of the signal within the top SHAP features (N=336) vs 200 random feature sets of same size, for signatures created using patients samples with cancer types similar to EpiAtlas content (see paper Methods).
+\
+\
+Load z-scores.
+```{python}
+#| label: load-cnv-data
+cnv_dir = base_data_dir / "CNV"
+cnv_intersection_results = (
+    cnv_dir
+    / "signature_analysis"
+    / "epiatlas_cancer_types"
+    / "important_cancer_features_z_scores_vs_random200.tsv"
+)
+PathChecker.check_file(cnv_intersection_results)
+
+cnv_df = pd.read_csv(cnv_intersection_results, sep="\t", index_col=0)
+cnv_df.name = cnv_intersection_results.stem
+```
+
+Define graphing function `plot_cnv_zscores`, which uses the CNA groups defined by [Signatures of copy number alterations in human cancer](https://doi.org/10.1038/s41586-022-04738-6). See Supplementary Table 8 for details.
+
+```{python}
+#| label: func-plot-cnv-zscores
+def plot_cnv_zscores(cnv_df: pd.DataFrame, logdir: Path | None = None) -> None:
+    """Plot z-scores of top SHAP features vs random feature sets, grouped by CNV groups.
+
+    Args:
+        cnv_df: The DataFrame with z-scores.
+        logdir: The output directory to save the plot.
+    """
+    n_beds = int(cnv_df.name.split("random")[1])
+    signature_subset_name = "EpiATLAS cancer types"
+
+    CN_groups = [
+        [f"CN{i}" for i in range(1, 4)],
+        [f"CN{i}" for i in range(9, 13)],
+        [f"CN{i}" for i in range(13, 17)],
+        [f"CN{i}" for i in range(17, 18)],
+        [f"CN{i}" for i in range(18, 22)],
+        [f"CN{i}" for i in range(4, 9)],
+    ]
+    CN_names = [
+        "CN1-CN3",
+        "CN9-CN12",
+        "CN13-CN16",
+        "CN17",
+        "CN18-CN21",
+        "CN4-CN8",
+    ]
+
+    # Assign groups to the DataFrame
+    cnv_df["group"] = "Other"
+    for i, group in enumerate(CN_groups):
+        cnv_df.loc[cnv_df.index.isin(group), "group"] = CN_names[i]
+
+    # Sort groups
+    group_medians = (
+        cnv_df.groupby("group")["z_score"].median().sort_values(ascending=False)
+    )
+    sorted_CN_names = group_medians.index.tolist()
+
+    # Create the figure
+    fig = go.Figure()
+
+    for group in sorted_CN_names:
+        group_data = cnv_df[cnv_df["group"] == group]
+        marker_size = 4 if group != "CN17" else 6
+
+        # Add the box plot without points
+        fig.add_trace(
+            go.Box(
+                y=group_data["z_score"],
+                name=group,
+                boxmean=True,
+                boxpoints=False,  # Don't show points in the box plot
+                line=dict(color="black"),
+                fillcolor="rgba(255,255,255,0)",
+                showlegend=False,
+            )
+        )
+
+        # Add scatter plot for individual points
+        fig.add_trace(
+            go.Scatter(
+                x=[group] * len(group_data),
+                y=group_data["z_score"],
+                mode="markers",
+                marker=dict(
+                    color="red",
+                    size=marker_size,
+                ),
+                name=group,
+                showlegend=False,
+                text=group_data.index,  # Use CN names as hover text
+                hoverinfo="text+y",  # Show CN name and y-value on hover
+            )
+        )
+    # Update layout
+    fig.update_layout(
+        xaxis_title="CNA Group",
+        yaxis_title="Z-score",
+        **main_title_settings
+    )
+
+    # Add a horizontal line at y=0 for reference
+    fig.add_hline(y=0, line_color="grey", line_width=1)
+
+    # Show and save the figure
+    if logdir:
+        name = "important_cancer_features_z_scores_boxplot"
+        fig.write_image(logdir / f"{name}.png")
+        fig.write_image(logdir / f"{name}.svg")
+        fig.write_html(logdir / f"{name}.html")
+
+    fig.show()
+```
+
+Graph.
+
+```{python}
+#| label: plot-cnv-zscores
+#| column: body-outset-left
+plot_cnv_zscores(cnv_df)
+```
+
+Define the graphing function `plot_cnv_zscores_alt`, which groups CNA by focal vs chromosomal events.
+
+```{python}
+#| label: func-plot-cnv-zscores-alt
+def plot_cnv_zscores_alt(cnv_df: pd.DataFrame, logdir: Path | None = None) -> None:
+    """Plot z-scores of top SHAP features vs random feature sets, grouped by focal vs chromosomal events.
+
+    Args:
+        cnv_df: The DataFrame with z-scores.
+        logdir: The output directory to save the plot.
+    """
+    n_beds = int(cnv_df.name.split("random")[1])
+    signature_subset_name = "EpiATLAS cancer types"
+
+    # Assign groups
+    CN_groups = [
+        [f"CN{i}" for i in range(1, 9)] + [f"CN{i}" for i in range(13, 17)],
+        [f"CN{i}" for i in range(9, 13)] + [f"CN{i}" for i in range(17, 22)],
+    ]
+    CN_names = [
+        "Chromosomal events (CN1-CN8, CN13-CN16)",
+        "Focal events (CN9-CN12, CN17-CN21)",
+    ]
+
+    # Assign groups to the DataFrame
+    cnv_df["group"] = "Other"
+    for i, group in enumerate(CN_groups):
+        cnv_df.loc[cnv_df.index.isin(group), "group"] = CN_names[i]
+
+    # Sort groups
+    group_medians = (
+        cnv_df.groupby("group")["z_score"].median().sort_values(ascending=False)
+    )
+    sorted_CN_names = group_medians.index.tolist()
+
+    # Create the figure
+    fig = go.Figure()
+
+    for group in sorted_CN_names:
+        group_data = cnv_df[cnv_df["group"] == group]
+        hover_text = [
+            f"{CN_name}: Z={val:.3f}"
+            for CN_name, val in zip(group_data.index, group_data["z_score"])
+        ]
+
+        # Add the box plot without points
+        fig.add_trace(
+            go.Box(
+                y=group_data["z_score"],
+                name=group,
+                boxmean=True,
+                boxpoints="all",
+                line=dict(color="black"),
+                fillcolor="rgba(255,255,255,0)",
+                showlegend=False,
+                hoverinfo="text",  # Show CN name and y-value on hover
+                hovertext=hover_text,
+            )
+        )
+
+    # Update layout
+    fig.update_layout(
+        xaxis_title="Copy Number Alteration Event Type",
+        yaxis_title="CNA Enrichment (Z-score)",
+        **main_title_settings
+    )
+
+    # Add a horizontal line at y=0 for reference
+    fig.add_hline(y=0, line_color="grey", line_width=1)
+
+    # Show and save the figure
+    if logdir:
+        name = "important_cancer_features_z_scores_boxplot_V2"
+        fig.write_image(logdir / f"{name}.png")
+        fig.write_image(logdir / f"{name}.svg")
+        fig.write_html(logdir / f"{name}.html")
+
+    fig.show()
+```
+
+Graph.
+
+```{python}
+#| label: plot-cnv-zscores-alt
+#| column: body-outset-left
+plot_cnv_zscores_alt(cnv_df)
+```
+
+Fig. 2J: Distribution of the z-score enrichment for copy number (CN) signatures (dots) in genomic regions identified as important by the Cancer status classifier compared to random control regions. CN signatures are grouped as being mostly associated with focal changes CN9-12,17-21) or chromosomal ones (CN1-8,13-16). Boxplot elements are as in Fig 2A.
+
+## Supplementary Figure 5
+
+### A - MLP performance on various classification tasks (100kb resolution)
+
+See Figure 2A,B.
+
+### B - chrY signal per sex: Average EpiRR z-score per assay
+
+Define function `zscore_per_assay` to compute and graph the metric for each assay instead of globally.
 
 ```{python}
 #| label: func-zscore-per-assay
@@ -1055,12 +1833,11 @@ def zscore_per_assay(
     )
 
     fig.update_xaxes(showticklabels=False)
-    fig.update_yaxes(range=[-1.5, 3])
-    title = "z-score(mean chrY coverage per file) distribution per assay"
+    fig.update_yaxes(range=[-1.5, 3], showticklabels=True)
+
     fig.update_layout(
-        title_text=title,
-        width=3000,
-        height=1000,
+        width=1500,
+        height=750,
     )
 
     # Save figure
@@ -1074,13 +1851,21 @@ def zscore_per_assay(
     fig.show()
 ```
 
+Graph zscore per assay.
+
 ```{python}
 #| label: plot-zscore-per-assay
-#| column: body-outset-left
+#| column: screen-inset-left
 zscore_per_assay(cross_val_analysis)
 ```
 
-### Supp Fig 5C - Female/Male chrY signal z-score cluster separation
+Supp. Fig. 5B: Distribution of average z-score signal of epigenomes (dots) over chrY per sex (female in red, male in blue) for each assay individually (showing only the fold change track type for the ChIP datasets, and the two types of WGBS and RNA-seq were merged). Dashed lines represent means, solid lines the medians, boxes the quartiles, and whiskers the farthest points within 1.5× the interquartile range.
+
+To see RNA-Seq and WGBS, scroll to the right for using horizontal scrollbar at the bottom.
+
+### C - Female/Male chrY signal z-score cluster separation
+
+Define function `merged_assays_separation_distance` that computes and graphs the showing separation distance between male/female zscore clusters.
 
 ```{python}
 #| label: func-separation-distance
@@ -1203,230 +1988,17 @@ def merged_assays_separation_distance(
     fig.show()
 ```
 
+Graph.
+
 ```{python}
 #| label: plot-separation-distance
 #| column: body-outset-left
 merged_assays_separation_distance(cross_val_analysis)
 ```
 
-### Supp Fig 5E - Sex genes chromatin states
+Supp. Fig. 5C: Effect of a prediction score threshold on the aggregated mean (blue) and median (green) sex z-score male/female cluster distances, as well as and corresponding file subset size (red) of ChIP-related assays from panel B.
 
-Images extracted from Epilogos viewer, using specified coordinates (XIST and FIRRE positions), and:
-- View mode: Paired
-- Dataset: IHEC
-- Pairwise: Male VS Female 100 samples
-- Saliency Metric: S1
-
-### Fig 2F, Supp Fig 5D - Donor life stage and GP-Age
-
-```{python}
-#| label: load-v1-metadata-again
-meta_v1_2_df = pd.read_csv(
-    official_metadata_dir / "IHEC_sample_metadata_harmonization.v1.2.extended.csv"
-)
-meta_v1_1_df = pd.read_csv(
-    official_metadata_dir / "IHEC_sample_metadata_harmonization.v1.1.extended.csv"
-)
-```
-
-Sanity check, both metadata versions have the same cell line samples.
-
-```{python}
-#| label: check-cell-lines
-cell_lines_v11 = meta_v1_1_df[meta_v1_1_df[BIOMATERIAL_TYPE] == "cell line"][
-    "epirr_id_without_version"
-].unique()
-cell_lines_v12 = meta_v1_2_df[meta_v1_2_df[BIOMATERIAL_TYPE] == "cell line"][
-    "epirr_id_without_version"
-].unique()
-assert set(cell_lines_v11) == set(cell_lines_v12)
-```
-
-```{python}
-#| label: setup-gpage-path
-gp_age_dir = base_data_dir / "GP_age"
-PathChecker.check_directory(gp_age_dir)
-```
-
-```{python}
-#| label: load-gpage-data
-df_gp_age = pd.read_csv(gp_age_dir / "life_stage_prediction.GPage.20250513.tsv", sep="\t")
-df_gp_age["graph_age"] = df_gp_age["model30"]
-
-epiclass_pred_col = "epiclass_predicted_lifestage"
-```
-
-The `epiclass_predicted_lifestage` column is manually curated, from analyzing all predictions for all samples.
-When an expected label is known, and epiclass predictions are inconclusive (low average max pred and/or no majority consensus), the expected label is kept.
-
-Columns `tissue` and `tissue_subtype` are formatting of `harmonized_sample_organ_system_order_AnetaMikulasova` and `harmonized_sample_organ_order_AnetaMikulasova`.
-
-```{python}
-#| label: process-gpage-data
-df_gp_age.loc[:, "graph_age_categories"] = df_gp_age[epiclass_pred_col].str.removesuffix(
-    "_pred"
-)
-
-gp_age_categories = {
-    "adult": "adult",
-    "child": "pediatric",
-    "embryonic": "perinatal",
-    "fetal": "perinatal",
-    "newborn": "perinatal",
-    "unknown": "unknown",
-}
-df_gp_age.loc[:, "graph_age_categories"] = df_gp_age["graph_age_categories"].map(
-    gp_age_categories
-)
-display(df_gp_age["graph_age_categories"].value_counts(dropna=False))
-print(df_gp_age.shape)
-```
-
-```{python}
-#| label: merge-gpage-metadata
-epirr_col = "epirr_id_without_version"
-
-merged_dp_age = pd.merge(
-    df_gp_age,
-    meta_v1_2_df[[epirr_col, CELL_TYPE, BIOMATERIAL_TYPE]],
-    left_on="epirr_noV",
-    right_on=epirr_col,
-    how="left",
-)
-merged_dp_age.drop_duplicates(subset=[epirr_col], inplace=True)
-merged_dp_age.drop(columns=["epirr_noV"], inplace=True)
-```
-
-```{python}
-#| label: remove-cell-lines-gpage
-# Removing cell lines: life stage makes less sense
-# type: ignore
-N_before = merged_dp_age.shape[0]
-merged_dp_age: pd.DataFrame = merged_dp_age[
-    merged_dp_age[BIOMATERIAL_TYPE] != "cell line"
-]
-print(f"Removed {N_before - merged_dp_age.shape[0]} cell lines.")
-```
-
-Creating the graph categories.
-
-We need to categorize separately whole blood since from other tissues since GP-Age training is only made of whole blood. We keep 'immune system' tissues, specifically venous and umbilical blood since they match the most closely to the training data. unsure about blood marrow.
-
-```{python}
-#| label: create-gpage-tissue-groups
-layer1_vals = ["IMMU"]
-layer2_vals = ["blood-umbilical-cord", "blood-venous"]
-
-merged_dp_age.loc[:, "tissue_group"] = [
-    "blood" if (val1 in layer1_vals and val2 in layer2_vals) else "other"
-    for val1, val2 in merged_dp_age.loc[:, ["tissue", "tissue_subtype"]].values
-]
-```
-
-Sanity check, no NaN present.
-
-```{python}
-#| label: check-gpage-nan
-important_cols = [
-    "epirr_id_without_version",
-    "tissue_group",
-    epiclass_pred_col,
-    "graph_age",
-]
-missing_N = merged_dp_age.loc[:, important_cols].isna().sum().sum()
-if missing_N > 0:
-    raise ValueError(f"Missing values in merged_dp_age: {missing_N}")
-```
-
-```{python}
-#| label: func-graph-gpage
-def graph_gp_age(
-    df_gp_age: pd.DataFrame,
-    logdir: Path | None = None,
-    name: str | None = None,
-    title: str | None = None,
-) -> None:
-    """
-    Plot the GP age predictions.
-
-    Args:
-        df_gp_age: The dataframe with GP age data.
-    """
-    df = df_gp_age.copy(deep=True)
-
-    tissue_colors = {"blood": "red", "other": "gray"}
-
-    age_cat_label = "graph_age_categories"
-
-    fig = go.Figure()
-    for tissue_group in sorted(df["tissue_group"].unique()):
-        sub_df = df[df["tissue_group"] == tissue_group]
-        fig.add_trace(
-            go.Box(
-                name=f"{tissue_group} (n={len(sub_df)})",
-                x=sub_df[age_cat_label],
-                y=sub_df["graph_age"],
-                boxmean=True,
-                boxpoints="all",
-                hovertemplate="%{text}",
-                text=[
-                    f"{ct}: {age:.3f}"
-                    for ct, age in zip(sub_df[CELL_TYPE], sub_df["graph_age"])
-                ],
-                marker=dict(size=2, color=tissue_colors[tissue_group]),
-                showlegend=True,
-            ),
-        )
-
-    fig.update_layout(
-        title=f"GP age predictions - Using MLP predicted labels ({title})",
-        xaxis_title="Life stage",
-        yaxis_title="GP-Age : Predicted age",
-        width=750,
-        height=750,
-        boxmode="group",
-    )
-
-    # Order x-axis
-    label_order = ["perinatal", "pediatric", "adult"]
-    axis_labels = [
-        f"{age_cat} (n={(df[age_cat_label] == age_cat).sum()})" for age_cat in label_order
-    ]
-
-    fig.update_xaxes(categoryorder="array", categoryarray=label_order)
-    fig.update_xaxes(tickvals=[0, 1, 2], ticktext=axis_labels)
-
-    # Save figure
-    if logdir:
-        if name is None:
-            name = "GP_age_predictions"
-        fig.write_image(logdir / f"{name}.svg")
-        fig.write_image(logdir / f"{name}.png")
-        fig.write_html(logdir / f"{name}.html")
-
-    fig.show()
-```
-
-```{python}
-#| label: filter-gpage-inconclusive
-# Remove inconclusive predictions
-gp_graph_df = merged_dp_age[merged_dp_age[epiclass_pred_col] != "unknown"]
-```
-
-```{python}
-#| label: func-display-tissue-age-df
-def display_tissue_age_df(df: pd.DataFrame) -> None:
-    """Display tissue group count breakdown."""
-    count = df.groupby(["tissue_group", "graph_age_categories"]).size()
-    print("Tissue group summary")
-    print(f"Blood: {count.loc['blood'].sum()}")  # type: ignore
-    print(f"Other: {count.loc['other'].sum()}")  # type: ignore
-    print(f"Total: {count.sum()}")
-    print("Detail:")
-    print(count)
-```
-
-#### Supp Fig 5D
+### D - GP-Age, all samples
 
 Considering all samples that had a conclusive epiclass prediction (or existing label and no conclusion)
 
@@ -1442,535 +2014,30 @@ graph_gp_age(
 )
 ```
 
-#### Fig 2F
+Supp. Fig. 5D: Distribution of the age prediction from GP-age for the 565 epigenomes (dots) with conclusive consensus predictions (epigenomes related to blood biospecimen are in red, others in grey). The perinatal category encompasses the original embryonic, fetal and newborn categories of metadata as they individually contain too few samples. Dashed lines represent means, solid lines the medians, boxes the quartiles, and whiskers the farthest points within 1.5× the interquartile range.
 
-For initially unknown labels, only predictions that were manually confirmed as mislabels.
+### E - Sex genes chromatin states
 
-```{python}
-#| label: plot-gpage-unknown-samples
-#| column: body-outset-left
-only_unknown_df: pd.DataFrame = gp_graph_df[gp_graph_df[LIFE_STAGE] == "unknown"]
-display_tissue_age_df(only_unknown_df)
-
-graph_gp_age(
-    df_gp_age=only_unknown_df,
-    name="GP_age_predictions_unknown_only_MLP_predicted_labels",
-    title="Samples with unknown life stage",
-)
-```
-
-#### Other
-
-```{python}
-#| label: plot-gpage-known-samples
-#| column: body-outset-left
-# Life stage label already existed in v1.1.
-known_expected_label_df = gp_graph_df[gp_graph_df[LIFE_STAGE] != "unknown"]
-display_tissue_age_df(known_expected_label_df)
-
-graph_gp_age(
-    df_gp_age=known_expected_label_df,
-    name="GP_age_predictions_known_samples_MLP_predicted_labels",
-    title="All samples w expected label",
-)
-```
-
-### Fig 2G + Supp Fig 7 - Biospecimen classifier - ChromScore for high-SHAP regions
-
-See `src/python/epiclass/utils/notebooks/analyze_hdf5_vals.ipynb`, particularly section "ChromScore hdf5 values"
-
-### Fig 2H - Gene Ontology and SHAP values
-
-See `src/python/epiclass/utils/notebooks/profile_bed.ipynb` for creation of gene ontology files.
-The code compares important SHAP values regions of different cell types with gene gff (using the gProfiler module)
-
-```{python}
-#| label: setup-go-paths
-hdf5_type = "hg38_100kb_all_none"
-```
-
-```{python}
-#| label: define-go-terms
-selected_cell_types = [
-    "T_cell",
-    "neutrophil",
-    "lymphocyte_of_B_lineage",
-    "brain",
-    "hepatocyte",
-]
-go_terms_table = [
-    "T cell receptor complex",
-    "plasma membrane signaling receptor complex",
-    "adaptive immune response",
-    "receptor complex",
-    "secretory granule",
-    "secretory vesicle",
-    "secretory granule membrane",
-    "intracellular vesicle",
-    "immunoglobulin complex",
-    "immune response",
-    "immune system process",
-    "homophilic cell adhesion via plasma membrane adhesion molecules",
-    "DNA binding",
-    "cell-cell adhesion via plasma-membrane adhesion molecules",
-    "RNA polymerase II cis-regulatory region sequence-specific DNA binding",
-    "blood microparticle",
-    "platelet alpha granule lumen",
-    "fibrinogen complex",
-    "endoplasmic reticulum lumen",
-]
-```
-
-```{python}
-#| label: setup-shap-path
-SHAP_dir = base_data_dir / "SHAP"
-```
-
-```{python}
-#| label: load-go-bed-files
-cell_type_shap_dir = (
-    SHAP_dir / hdf5_type / f"{CELL_TYPE}_1l_3000n" / "10fold-oversampling"
-)
-beds_file = cell_type_shap_dir / "select_beds_top303.tar.gz"
-PathChecker.check_file(beds_file)
-```
-
-```{python}
-#| label: read-go-dfs
-all_go_dfs: Dict[str, pd.DataFrame] = {}
-with tarfile.open(beds_file, "r:gz") as tar:
-    for member in tar.getmembers():
-        filename = member.name
-        if filename.endswith("profiler.tsv") and "merge_samplings" in filename:
-            with tar.extractfile(member) as f:  # type: ignore
-                go_df = pd.read_csv(f, sep="\t", index_col=0)
-                all_go_dfs[member.name] = go_df
-
-assert len(all_go_dfs) == 16
-```
-
-```{python}
-#| label: process-go-dfs
-for name, df in all_go_dfs.items():
-    sub_df = df.copy()
-    sub_df.loc[:, "shap_source"] = re.match(r".*/merge_samplings_(.*)_features_intersect_gff_gprofiler.tsv", name).group(1)  # type: ignore
-    sub_df.loc[:, "table_val"] = -np.log10(sub_df.loc[:, "p_value"])
-    all_go_dfs[name] = sub_df
-```
-
-```{python}
-#| label: concat-go-dfs
-full_concat_df = pd.concat(all_go_dfs.values())
-full_concat_df = full_concat_df.drop(["significant", "query"], axis=1)
-```
-
-```{python}
-#| label: check-go-terms
-assert all(go_term in full_concat_df["name"].values for go_term in go_terms_table)
-```
-
-```{python}
-#| label: pivot-go-table
-table = full_concat_df.pivot_table(
-    index="name", columns="shap_source", values="table_val", aggfunc="mean"
-)
-```
-
-```{python}
-#| label: define-go-graph-terms
-go_terms_graph = [
-    "T cell receptor complex",
-    "plasma membrane<br>signaling receptor complex",
-    "adaptive immune response",
-    "receptor complex",
-    "secretory granule",
-    "secretory vesicle",
-    "secretory granule membrane",
-    "intracellular vesicle",
-    "immunoglobulin complex",
-    "immune response",
-    "immune system process",
-    "homophilic cell adhesion via<br>plasma membrane adhesion molecules",
-    "DNA binding",
-    "cell-cell adhesion via<br>plasma-membrane adhesion molecules",
-    "RNA polymerase II cis-regulatory<br>region sequence-specific DNA binding",
-    "blood microparticle",
-    "platelet alpha granule lumen",
-    "fibrinogen complex",
-    "endoplasmic reticulum lumen",
-]
-```
-
-```{python}
-#| label: subset-go-table
-table_5_ct = table.loc[go_terms_table, selected_cell_types].copy()
-assert table_5_ct.shape == (len(go_terms_graph), len(selected_cell_types))
-
-# Rename index
-table_5_ct = pd.DataFrame(table_5_ct, index=go_terms_graph, columns=table_5_ct.columns)
-```
-
-```{python}
-#| label: define-go-colorbar
-sigma = "\u03c3"
-
-colorbar = dict(
-    title="-log<sub>10</sub>(p-value)",
-    tickvals=[0, 1.30, 2, 3, 5, 6.53, 10],
-    ticktext=[
-        "0",
-        f"1.30: p=0.05~2{sigma}",
-        "2: p=0.01",
-        f"3: p=0.001~3{sigma}",
-        "5",
-        f"6.53: p=3x10<sup>-7</sup> = 5{sigma}",
-        "10",
-    ],
-)
-```
-
-```{python}
-#| label: plot-go-heatmap-5ct
-#| column: body-outset-left
-# Fill z with NaNs (for color) and make custom text labels
-z = table_5_ct.values  # keep NaNs in for color
-text = np.where(
-    np.isnan(z), "NS", np.char.mod("%.2f", z)  # format floats to 2 decimal places
-)
-
-fig = go.Figure(
-    data=go.Heatmap(
-        z=np.nan_to_num(
-            z, nan=0
-        ),  # replace NaNs with 0 for coloring (or use a custom colormap later)
-        x=table_5_ct.columns,
-        y=table_5_ct.index,
-        colorscale="Blues",
-        zmin=0,
-        zmax=10,
-        colorbar=colorbar,
-        text=text,
-        texttemplate="%{text}",
-        hovertemplate="GO Term: %{y}<br>Class: %{x}<br>Value: %{z:.2f}<extra></extra>",
-        showscale=True,
-        xgap=2,
-        ygap=2,
-    )
-)
-
-# Customize layout
-fig.update_layout(
-    title_text="Top SHAP regions: GO term enrichment",
-    width=600,
-    height=1000,
-    plot_bgcolor="black",
-)
-
-# Fix gridlines
-fig.update_xaxes(showgrid=False)
-fig.update_yaxes(showgrid=False)
-
-fig.show()
-```
-
-#### 5 top pval terms for each biospecimen
-
-```{python}
-#| label: get-top5-go-terms
-# get 5 more significant terms for each cell type, preserve order
-top_5_terms = []
-for name, df in all_go_dfs.items():
-    df.sort_values("p_value", inplace=True)
-    top_5 = df["name"].head(5).to_list()
-    top_5_terms.extend(top_5)
-
-top_5_terms = list(dict.fromkeys(top_5_terms))  # preserve order
-```
-
-```{python}
-#| label: plot-go-heatmap-top5
-#| column: body-outset-left
-table_top_5_GO = table.loc[top_5_terms, :].copy()
-
-z = table_top_5_GO.values
-text = np.where(np.isnan(z), "NS", np.char.mod("%.2f", z))
-
-
-fig = go.Figure(
-    data=go.Heatmap(
-        z=np.nan_to_num(
-            z, nan=0
-        ),  # replace NaNs with 0 for coloring (or use a custom colormap later)
-        x=table_top_5_GO.columns,
-        y=table_top_5_GO.index,
-        colorscale="Blues",
-        zmin=0,
-        zmax=10,
-        colorbar=colorbar,
-        text=text,
-        texttemplate="%{text}",
-        hovertemplate="GO Term: %{y}<br>Class: %{x}<br>Value: %{z:.2f}<extra></extra>",
-        showscale=True,
-        xgap=2,
-        ygap=2,
-    )
-)
-
-# Customize layout
-fig.update_layout(
-    title_text="Top SHAP regions: GO term enrichment",
-    width=1300,
-    height=2000,
-    plot_bgcolor="black",
-)
-
-# Fix gridlines
-fig.update_xaxes(showgrid=False)
-fig.update_yaxes(showgrid=False)
-
-name = "GO_top_5_term_enrichment_all_ct"
-
-fig.show()
-```
-
-#### Important regions per cell type
-
-```{python}
-#| label: analyze-important-regions
-input_dir = table_dir / "dfreeze_v2/100kb_all_none/SHAP-MLP/cell_type"
-input_file = input_dir / "select_beds_top303.tar.gz"
-PathChecker.check_file(input_file)
-
-sizes = []
-with tarfile.open(input_file, "r:gz") as tar:
-    for member in tar.getmembers():
-        filename = member.name
-        if "merge_samplings" in filename and filename.endswith("bed"):
-            with tar.extractfile(member) as f:  # type: ignore
-                N = len(f.readlines())
-                print(f"{filename.split('/')[1]}: {N}")
-                sizes.append(N)
-
-print(f"Mean: {np.mean(sizes):.1f}")
-print(f"Median: {np.median(sizes):.1f}")
-print(f"Std: {np.std(sizes):.1f}")
-print(f"Range: [{min(sizes)}, {max(sizes)}]")
-```
-
-### Fig 2I - Biospecimen important regions chromatin states
-
-Images extracted from Epilogos viewer, using:
-- Region: chr11:118300000-118400000
-- View mode: Single
+Images extracted from Epilogos viewer, using specified coordinates (XIST and FIRRE positions), and:
+- View mode: Paired
 - Dataset: IHEC
-- All biosamples
+- Pairwise: Male VS Female 100 samples
 - Saliency Metric: S1
 
-### Fig 2J - Copy Number Variant (CNV) Signatures and SHAP values
 
-See CNV_treatment.ipynb for the creation of the CNV stats.
 
-```{python}
-#| label: load-cnv-data
-cnv_dir = base_data_dir / "CNV"
-cnv_intersection_results = (
-    cnv_dir
-    / "signature_analysis"
-    / "epiatlas_cancer_types"
-    / "important_cancer_features_z_scores_vs_random200.tsv"
-)
-PathChecker.check_file(cnv_intersection_results)
+Supp. Fig. 5E: Epilogos pairwise comparisons of male (top) vs female (bottom) showing portions of important regions for the Sex classifier, including the XIST (left) and FIRRE (right) genes.
 
-cnv_df = pd.read_csv(cnv_intersection_results, sep="\t", index_col=0)
-cnv_df.name = cnv_intersection_results.stem
-```
+### F - Sex genes chromatin states
 
-```{python}
-#| label: func-plot-cnv-zscores
-def plot_cnv_zscores(cnv_df: pd.DataFrame, logdir: Path | None = None) -> None:
-    """Plot z-scores of top SHAP features vs random feature sets, grouped by CNV groups.
+INSERT
 
-    Args:
-        cnv_df: The DataFrame with z-scores.
-        logdir: The output directory to save the plot.
-    """
-    n_beds = int(cnv_df.name.split("random")[1])
-    signature_subset_name = "EpiATLAS cancer types"
+Supp. Fig. 5F: Genome browser representation of the important regions shown in Figure 2I.
 
-    CN_groups = [
-        [f"CN{i}" for i in range(1, 4)],
-        [f"CN{i}" for i in range(9, 13)],
-        [f"CN{i}" for i in range(13, 17)],
-        [f"CN{i}" for i in range(17, 18)],
-        [f"CN{i}" for i in range(18, 22)],
-        [f"CN{i}" for i in range(4, 9)],
-    ]
-    CN_names = [
-        "CN1-CN3",
-        "CN9-CN12",
-        "CN13-CN16",
-        "CN17",
-        "CN18-CN21",
-        "CN4-CN8",
-    ]
+## Supplementary Figure 6 - Prediction score threshold impact
 
-    # Assign groups to the DataFrame
-    cnv_df["group"] = "Other"
-    for i, group in enumerate(CN_groups):
-        cnv_df.loc[cnv_df.index.isin(group), "group"] = CN_names[i]
+nani?
 
-    # Sort groups
-    group_medians = (
-        cnv_df.groupby("group")["z_score"].median().sort_values(ascending=False)
-    )
-    sorted_CN_names = group_medians.index.tolist()
+## Supplementary Figure 7 - Biospecimen classifier - ChromScore for high-SHAP regions
 
-    # Create the figure
-    fig = go.Figure()
-
-    for group in sorted_CN_names:
-        group_data = cnv_df[cnv_df["group"] == group]
-        marker_size = 4 if group != "CN17" else 6
-
-        # Add the box plot without points
-        fig.add_trace(
-            go.Box(
-                y=group_data["z_score"],
-                name=group,
-                boxmean=True,
-                boxpoints=False,  # Don't show points in the box plot
-                line=dict(color="black"),
-                fillcolor="rgba(255,255,255,0)",
-                showlegend=False,
-            )
-        )
-
-        # Add scatter plot for individual points
-        fig.add_trace(
-            go.Scatter(
-                x=[group] * len(group_data),
-                y=group_data["z_score"],
-                mode="markers",
-                marker=dict(
-                    color="red",
-                    size=marker_size,
-                ),
-                name=group,
-                showlegend=False,
-                text=group_data.index,  # Use CN names as hover text
-                hoverinfo="text+y",  # Show CN name and y-value on hover
-            )
-        )
-    # Update layout
-    fig.update_layout(
-        title={
-            "text": f"Z-scores of top SHAP features (N=336) vs {n_beds} random feature sets of same size<br>on {signature_subset_name}"
-        },
-        xaxis_title="Cancer Type Group",
-        yaxis_title="Z-score",
-    )
-
-    # Add a horizontal line at y=0 for reference
-    fig.add_hline(y=0, line_color="grey", line_width=1)
-
-    # Show and save the figure
-    if logdir:
-        name = "important_cancer_features_z_scores_boxplot"
-        fig.write_image(logdir / f"{name}.png")
-        fig.write_image(logdir / f"{name}.svg")
-        fig.write_html(logdir / f"{name}.html")
-
-    fig.show()
-```
-
-```{python}
-#| label: plot-cnv-zscores
-#| column: body-outset-left
-plot_cnv_zscores(cnv_df)
-```
-
-```{python}
-#| label: func-plot-cnv-zscores-alt
-def plot_cnv_zscores_alt(cnv_df: pd.DataFrame, logdir: Path | None = None) -> None:
-    """Plot z-scores of top SHAP features vs random feature sets, grouped by focal vs chromosomal events.
-
-    Args:
-        cnv_df: The DataFrame with z-scores.
-        logdir: The output directory to save the plot.
-    """
-    n_beds = int(cnv_df.name.split("random")[1])
-    signature_subset_name = "EpiATLAS cancer types"
-
-    # Assign groups
-    CN_groups = [
-        [f"CN{i}" for i in range(1, 9)] + [f"CN{i}" for i in range(13, 17)],
-        [f"CN{i}" for i in range(9, 13)] + [f"CN{i}" for i in range(17, 22)],
-    ]
-    CN_names = [
-        "Chromosomal events (CN1-CN8, CN13-CN16)",
-        "Focal events (CN9-CN12, CN17-CN21)",
-    ]
-
-    # Assign groups to the DataFrame
-    cnv_df["group"] = "Other"
-    for i, group in enumerate(CN_groups):
-        cnv_df.loc[cnv_df.index.isin(group), "group"] = CN_names[i]
-
-    # Sort groups
-    group_medians = (
-        cnv_df.groupby("group")["z_score"].median().sort_values(ascending=False)
-    )
-    sorted_CN_names = group_medians.index.tolist()
-
-    # Create the figure
-    fig = go.Figure()
-
-    for group in sorted_CN_names:
-        group_data = cnv_df[cnv_df["group"] == group]
-        hover_text = [
-            f"{CN_name}: Z={val:.3f}"
-            for CN_name, val in zip(group_data.index, group_data["z_score"])
-        ]
-
-        # Add the box plot without points
-        fig.add_trace(
-            go.Box(
-                y=group_data["z_score"],
-                name=group,
-                boxmean=True,
-                boxpoints="all",
-                line=dict(color="black"),
-                fillcolor="rgba(255,255,255,0)",
-                showlegend=False,
-                hoverinfo="text",  # Show CN name and y-value on hover
-                hovertext=hover_text,
-            )
-        )
-
-    # Update layout
-    fig.update_layout(
-        title={
-            "text": f"Z-scores of top SHAP features (N=336) vs {n_beds} random feature sets of same size<br>on {signature_subset_name}"
-        },
-        xaxis_title="Copy Number Alteration Event Type",
-        yaxis_title="CNA Enrichment (Z-score)",
-    )
-
-    # Add a horizontal line at y=0 for reference
-    fig.add_hline(y=0, line_color="grey", line_width=1)
-
-    # Show and save the figure
-    if logdir:
-        name = "important_cancer_features_z_scores_boxplot_V2"
-        fig.write_image(logdir / f"{name}.png")
-        fig.write_image(logdir / f"{name}.svg")
-        fig.write_html(logdir / f"{name}.html")
-
-    fig.show()
-```
-
-```{python}
-#| label: plot-cnv-zscores-alt
-#| column: body-outset-left
-plot_cnv_zscores_alt(cnv_df)
-```
+See `src/python/epiclass/utils/notebooks/analyze_hdf5_vals.ipynb`, particularly section "ChromScore hdf5 values".

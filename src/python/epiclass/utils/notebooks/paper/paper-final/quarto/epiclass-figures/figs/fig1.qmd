@@ -24,7 +24,7 @@ execute:
 
 Formatting of the figures may not be identical to the paper, but they contain the same data points.
 
-All code is folded by default, click on "Code" to expand it.
+All code is folded by default. For any given cell, click on "Code" to expand it, or unfold all using code options beside the main title, above.
 
 ## Article text
 
@@ -303,7 +303,7 @@ resolution_colors = {
 }
 ```
 
-Define function graph_feature_set_metrics.
+Define graphing function `graph_feature_set_metrics`.
 
 ```{python}
 #| label: fig1bc-prep-graph-function
@@ -559,7 +559,7 @@ graph_feature_set_metrics(
 Fig. 1C-alt: Distribution of accuracy per training fold for different bin resolutions for the Assay and Biospecimen classifiers.\
 \
 \
-Define function parse_bin_size to extract a numerical bin size in base pairs.
+Define function `parse_bin_size` to extract a numerical bin size in base pairs.
 
 ```{python}
 #| label: fig1c-parse-bin-size
@@ -606,7 +606,7 @@ def parse_bin_size(feature_set_name: str) -> Optional[float]:
         return None
 ```
 
-Define function graph_feature_set_scatter to graph performance metrics as a scatter plot instead of bar plot.
+Define graphing function `graph_feature_set_scatter` to plot performance metrics as a scatter plot instead of bar plot.
 
 ```{python}
 #| label: fig1c-scatter-function
@@ -958,7 +958,7 @@ Fig. 1C: Distribution of accuracy per training fold for different bin resolution
 
 ### D - Confusion matrix
 
-Define create_confusion_matrix to create and show a confusion matrix.
+Define function `create_confusion_matrix` to create and show a confusion matrix.
 
 ```{python}
 #| label: fig1d-cm-function
@@ -1081,7 +1081,7 @@ Fig. 1A,B data points are included in these two graphs (MLP data points).\
 \
 \
 
-Define graphing function plot_multiple_models_split_metrics.
+Define graphing function `plot_multiple_models_split_metrics`.
 
 ```{python}
 #| label: supp-fig1ab-plot-function
@@ -1212,7 +1212,7 @@ whiskers the farthest points within 1.5× the interquartile range.\
 
 ### C - ROC curves
 
-Define graphing function plot_roc_curves. Computes macro-average ROC curves manually.
+Define graphing function `plot_roc_curves`. Computes macro-average ROC curves manually.
 
 ```{python}
 #| label: supp-fig1c-roc-function
@@ -1509,7 +1509,7 @@ computed in a one-vs-rest scheme.
 
 ### D - Alternative signal pre-processing
 
-Define graphing function create_blklst_graphs.
+Define graphing function `create_blklst_graphs`.
 
 ```{python}
 #| label: supp-fig1d-blklst-function
@@ -1674,7 +1674,7 @@ Supplementary Figure 1D: Distribution of accuracy and F1-score per training fold
 -   G: Biospecimen 10-fold cross-validation
 \
 
-Define graphing function plot_prediction_scores_distribution.
+Define graphing function `plot_prediction_scores_distribution`.
 ```{python}
 #| label: supp-fig1efg-plot-function
 #| echo: false
