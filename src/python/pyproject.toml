@@ -87,7 +87,7 @@ combine_as_imports = true
 line_length = 90
 known_first_party = ["epiclass", "tests"]
 known_local_folder = ["./epiclass", "./tests"]
-src_paths = ["./epiclass/**", "./tests/**"]
+src_paths = ["./epiclass", "./tests"]
 
 
 [tool.pyright]
