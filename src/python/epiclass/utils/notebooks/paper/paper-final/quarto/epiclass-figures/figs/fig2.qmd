@@ -500,28 +500,27 @@ concat_results_10fold: pd.DataFrame = split_results_handler.concatenate_split_re
 concat_results_10fold = split_results_handler.add_max_pred(concat_results_10fold)
 concat_results_10fold = metadata_handler.join_metadata(concat_results_10fold, metadata_v2)
 ```
+\
+\
+#### -- Average chrY values z-score distributions --
 
-#### Average chrY values z-score distributions
+Work done in another script:
 
 1. For each bigwig file, the chrY average value is computed. (with pyBigWig module, in chrY_bigwig_mean.py)
 2. For each assay, the z-score distribution (of the mean chrY value) of the file group is computed.
-3. Graph E is made by averaging for each EpiRR the z-score value in each assay distribution.
----
-1. Outputs `chrXY_coverage_all.csv`
-2. Outputs `chrY_coverage_zscores.csv`
+- Outputs `chrXY_all.csv`
+    - Outputs `chrY_zscores.csv`
 
-```{python}
-#| label: setup-chry-coverage-path
-chrY_coverage_dir = base_data_dir / "chrY_coverage"
-PathChecker.check_directory(chrY_coverage_dir)
-```
+Fig. 2E is made by averaging for each EpiRR the z-score value in each assay distribution.
+
+This data is needed for the full sex mislabel context table.
 
 ```{python}
 #| label: func-compute-chry-zscores
 def compute_chrY_zscores(
-    chrY_coverage_dir: Path, version: str, save: bool = False
+    chrY_dir: Path, version: str, save: bool = False
 ) -> pd.DataFrame:
-    """Compute z-scores for chrY coverage data.
+    """Compute z-scores for chrY signal data.
 
     Computes two distributions of z-scores:
     1) Per assay group, excluding raw, pval, and Unique_raw tracks.
@@ -530,69 +529,69 @@ def compute_chrY_zscores(
     In both cases, rna-seq/mrna-seq and wgbs-standard/wgbs-pbat are put as one assay.
 
     Args:
-        chrY_coverage_dir: The directory containing the chrY coverage data.
+        chrY_dir: The directory containing the chrY signal data.
         version: The metadata version to use.
         save: Whether to save the results.
 
     Returns:
-        pd.DataFrame: The chrY coverage data with z-scores appended.
+        pd.DataFrame: The chrY signal data with z-scores appended.
     """
     output_dir = Path()
     if save:
-        output_dir = chrY_coverage_dir / f"dfreeze_{version}_stats"
+        output_dir = chrY_dir / f"dfreeze_{version}_stats"
         output_dir.mkdir(parents=False, exist_ok=True)
 
-    # Get chrY coverage data
-    chrY_coverage_dir = base_data_dir / "chrY_coverage"
-    PathChecker.check_directory(chrY_coverage_dir)
-    chrY_coverage_df = pd.read_csv(chrY_coverage_dir / "chrXY_coverage_all.csv", header=0)
+    # Get chrY signal data
+    chrY_dir = base_data_dir / "chrY"
+    PathChecker.check_directory(chrY_dir)
+    chrY_df = pd.read_csv(chrY_dir / "chrXY_all.csv", header=0)
 
     # Filter out md5s not in metadata version
     metadata = MetadataHandler(paper_dir).load_metadata(version)
     md5s = set(metadata.md5s)
-    chrY_coverage_df = chrY_coverage_df[chrY_coverage_df["filename"].isin(md5s)]
+    chrY_df = chrY_df[chrY_df["filename"].isin(md5s)]
 
     # Make sure all values are non-zero
-    if not (chrY_coverage_df["chrY"] != 0).all():
+    if not (chrY_df["chrY"] != 0).all():
         raise ValueError("Some chrY values are zero.")
 
     # Merge metadata
     metadata_df = pd.DataFrame.from_records(list(metadata.datasets))
     metadata_df.replace({ASSAY: ASSAY_MERGE_DICT}, inplace=True)
-    chrY_coverage_df = chrY_coverage_df.merge(
+    chrY_df = chrY_df.merge(
         metadata_df, left_on="filename", right_on="md5sum"
     )
 
     # Compute stats for distributions
     metric_name_1 = "chrY_zscore_vs_assay_w_track_exclusion"
     metric_name_2 = "chrY_zscore_vs_assay_track"
-    files1 = chrY_coverage_df[
-        ~chrY_coverage_df["track_type"].isin(["raw", "pval", "Unique_raw"])
+    files1 = chrY_df[
+        ~chrY_df["track_type"].isin(["raw", "pval", "Unique_raw"])
     ]
-    files2 = chrY_coverage_df
+    files2 = chrY_df
     dist1 = files1.groupby(ASSAY).agg({"chrY": ["mean", "std", "count"]})
     dist2 = files2.groupby([ASSAY, "track_type"]).agg({"chrY": ["mean", "std", "count"]})
     if save:
         output_dir: Path
-        dist1.to_csv(output_dir / "chrY_coverage_stats_assay_w_track_exclusion.csv")
-        dist2.to_csv(output_dir / "chrY_coverage_stats_assay_and_track.csv")
+        dist1.to_csv(output_dir / "chrY_stats_assay_w_track_exclusion.csv")
+        dist2.to_csv(output_dir / "chrY_stats_assay_and_track.csv")
 
     # Compute full z-score distributions
     for groups in files1.groupby(ASSAY):
         _, group_df = groups
         group_df["zscore"] = zscore(group_df["chrY"])
-        chrY_coverage_df.loc[group_df.index, metric_name_1] = group_df["zscore"]
-        chrY_coverage_df.loc[group_df.index, f"N_{metric_name_1}"] = groups[1].shape[0]
+        chrY_df.loc[group_df.index, metric_name_1] = group_df["zscore"]
+        chrY_df.loc[group_df.index, f"N_{metric_name_1}"] = groups[1].shape[0]
     for groups in files2.groupby([ASSAY, "track_type"]):
         _, group_df = groups
         group_df["zscore"] = zscore(group_df["chrY"])
-        chrY_coverage_df.loc[group_df.index, metric_name_2] = group_df["zscore"]
-        chrY_coverage_df.loc[group_df.index, f"N_{metric_name_2}"] = groups[1].shape[0]
+        chrY_df.loc[group_df.index, metric_name_2] = group_df["zscore"]
+        chrY_df.loc[group_df.index, f"N_{metric_name_2}"] = groups[1].shape[0]
 
     # Fill in missing values
     for N_name in [f"N_{metric_name_1}", f"N_{metric_name_2}"]:
-        chrY_coverage_df[N_name] = chrY_coverage_df[N_name].fillna(0).astype(int)
-    chrY_coverage_df.fillna(pd.NA, inplace=True)
+        chrY_df[N_name] = chrY_df[N_name].fillna(0).astype(int)
+    chrY_df.fillna(pd.NA, inplace=True)
 
     if save:
         output_cols = [
@@ -605,18 +604,23 @@ def compute_chrY_zscores(
             metric_name_2,
             f"N_{metric_name_2}",
         ]
-        chrY_coverage_df[output_cols].to_csv(
-            output_dir / "chrY_coverage_zscores.csv", index=False, na_rep="NA"  # type: ignore
+        chrY_df[output_cols].to_csv(
+            output_dir / "chrY_zscores.csv", index=False, na_rep="NA"  # type: ignore
         )
-    return chrY_coverage_df
+    return chrY_df
 ```
+
+Compute chrY zscores
 
 ```{python}
 #| label: compute-chry-zscores
-chrY_coverage_df = compute_chrY_zscores(chrY_coverage_dir, "v2", save=False)
+chrY_dir = base_data_dir / "chrY"
+PathChecker.check_directory(chrY_dir)
+
+chrY_df = compute_chrY_zscores(chrY_dir, "v2", save=False)
 ```
 
-#### Fig 2D - Inner portion
+#### 2D - Inner portion
 
 ```{python}
 #| label: calc-sex-proportion-v1-1
@@ -685,7 +689,7 @@ It aggregates results from the 10 cross-validation classifiers.
 
 ```{python}
 #| label: analyze-10fold-predictions
-cross_val_analysis = concat_results_10fold.merge(chrY_coverage_df, left_index=True, right_on="md5sum", suffixes=("", "_DROP"))  # type: ignore
+cross_val_analysis = concat_results_10fold.merge(chrY_df, left_index=True, right_on="md5sum", suffixes=("", "_DROP"))  # type: ignore
 cross_val_analysis.drop(
     columns=[c for c in cross_val_analysis.columns if c.endswith("_DROP")], inplace=True
 )
@@ -886,7 +890,7 @@ def zscore_merged_assays(
     fig.update_xaxes(showticklabels=False)
 
     fig.update_yaxes(range=[-1.5, 3])
-    title = f"z-score(mean chrY coverage per file) distribution - z-scores averaged over {N_assays} assays"
+    title = f"z-score(mean chrY signal per file) distribution - z-scores averaged over {N_assays} assays"
     if min_pred is not None:
         title += f"<br>avg_maxPred>{min_pred}"
 
@@ -1076,7 +1080,7 @@ def zscore_per_assay(
 zscore_per_assay(cross_val_analysis)
 ```
 
-### Supp Fig 5C - Female/Male chrY coverage z-score cluster separation
+### Supp Fig 5C - Female/Male chrY signal z-score cluster separation
 
 ```{python}
 #| label: func-separation-distance
