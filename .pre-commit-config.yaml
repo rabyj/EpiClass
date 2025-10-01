@@ -45,7 +45,7 @@ repos:
       exclude: .*epilap_test_data.py
     - id: pretty-format-json
       args: [--autofix]
-      exclude: \.ipynb$
+      exclude: \.ipynb$|search.json
     - id: requirements-txt-fixer
       exclude: .*pipdeptree.*
     - id: sort-simple-yaml
