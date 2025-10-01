@@ -179,13 +179,13 @@ feature_sets_14 = [
     "hg38_100kb_all_none",
     "hg38_gene_regions_100kb_coord_n19864",
     "hg38_10kb_random_n30321_none",
-    "hg38_regulatory_regions_n30321",
+    "hg38_regulReg_allCorr_n30k",
     "hg38_1kb_random_n30321_none",
-    "hg38_cpg_topvar_200bp_10kb_coord_n30k",
+    "hg38_cpg_topvar_200bp_n30k_wrong_coordinates",
     "hg38_10kb_all_none",
-    "hg38_regulatory_regions_n303114",
+    "hg38_regulReg_allCorr_n303k",
     "hg38_1kb_random_n303114_none",
-    "hg38_cpg_topvar_200bp_10kb_coord_n300k",
+    "hg38_cpg_topvar_200bp_n303k_wrong_coordinates",
 ]
 fig1_sets = [
     "hg38_10mb_all_none_1mb_coord",
@@ -198,32 +198,10 @@ fig1_sets = [
     "hg38_10kb_all_none",
     "hg38_1kb_random_n303114_none",
 ]
-flagship_selection_4cat = [
-    "hg38_100kb_all_none",
-    "hg38_gene_regions_100kb_coord_n19864",
-    "hg38_regulatory_regions_n30321",
-    "hg38_cpg_topvar_200bp_10kb_coord_n30k",
-]
-different_nature_sets = [
-    "hg38_regulatory_regions_n30321",
-    "hg38_regulatory_regions_n303114",
-    "hg38_cpg_topvar_200bp_10kb_coord_n30k",
-    "hg38_cpg_topvar_200bp_10kb_coord_n300k",
-    "hg38_cpg_topvar_2bp_10kb_coord_n30k",
-    "hg38_cpg_topvar_2bp_10kb_coord_n300k",
-    "hg38_gene_regions_100kb_coord_n19864",
-    "hg38_100kb_all_none",
-    "hg38_10kb_all_none",
-    "hg38_10kb_random_n30321_none",
-    "hg38_1kb_random_n30321_none",
-    "hg38_1kb_random_n303114_none",
-]
 
 metric_orders_map = {
-    "flagship_selection_4cat": flagship_selection_4cat,
     "fig1_sets": fig1_sets,
     "feature_sets_14": feature_sets_14,
-    "different_nature_sets": different_nature_sets,
 }
 ```
 
@@ -294,7 +272,7 @@ resolution_colors = {
     "100kb": px.colors.qualitative.Safe[0],
     "10kb": px.colors.qualitative.Safe[1],
     "1kb": px.colors.qualitative.Safe[2],
-    "regulatory": px.colors.qualitative.Safe[3],
+    "regulReg": px.colors.qualitative.Safe[3],
     "gene": px.colors.qualitative.Safe[4],
     "cpg": px.colors.qualitative.Safe[5],
     "1mb": px.colors.qualitative.Safe[6],
@@ -338,11 +316,7 @@ def graph_feature_set_metrics(
 
     non_standard_names = {ASSAY: f"{ASSAY}_11c", SEX: f"{SEX}_w-mixed"}
     non_standard_assay_task_names = ["hg38_100kb_all_none"]
-    non_standard_sex_task_name = [
-        "hg38_100kb_all_none",
-        "hg38_regulatory_regions_n30321",
-        "hg38_regulatory_regions_n303114",
-    ]
+
     used_resolutions = set()
     for i in range(len(metadata_categories)):
         category_idx = i
@@ -566,7 +540,7 @@ Define function `parse_bin_size` to extract a numerical bin size in base pairs.
 def parse_bin_size(feature_set_name: str) -> Optional[float]:
     """
     Parses the feature set name to extract a numerical bin size in base pairs.
-    Handles formats like '100kb', '5mb', 'regulatory', 'gene', 'cpg'.
+    Handles formats like '100kb', '5mb', 'regulReg', 'gene', 'cpg'.
 
     Returns numerical size (float) or None if unparseable or non-numeric.
     Assigns placeholder values for non-genomic-range types if needed,
@@ -591,11 +565,6 @@ def parse_bin_size(feature_set_name: str) -> Optional[float]:
     # Option 2: Assign arbitrary numbers (might distort scale)
     # Option 3: Could use different marker symbols later if needed
     if resolution_str in ["regulatory", "gene", "cpg"]:
-        # For now, let's return None so they are filtered out from the numeric plot
-        # Or assign a placeholder if you want to handle them differently:
-        # if resolution_str == 'regulatory': return 1e1 # Example placeholder
-        # if resolution_str == 'gene': return 1e2 # Example placeholder
-        # if resolution_str == 'cpg': return 1e0 # Example placeholder
         return None  # Returning None is cleaner for a pure numeric axis
 
     # Fallback for unrecognised formats
@@ -646,13 +615,6 @@ def graph_feature_set_scatter(
 
     # --- Standard Name Handling (simplified from original) ---
     non_standard_names = {ASSAY: f"{ASSAY}_11c", SEX: f"{SEX}_w-mixed"}
-    # These lists are no longer strictly needed by the simplified lookup, but kept for context
-    # non_standard_assay_task_names = ["hg38_100kb_all_none"]
-    # non_standard_sex_task_name = [
-    #     "hg38_100kb_all_none",
-    #     "hg38_regulatory_regions_n30321",
-    #     "hg38_regulatory_regions_n303114",
-    # ]
 
     # --- Find reference and task names ----
     reference_hdf5_type = next(iter(all_metrics), None)
