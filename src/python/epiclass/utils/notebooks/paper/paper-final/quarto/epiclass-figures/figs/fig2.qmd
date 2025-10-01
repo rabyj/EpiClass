@@ -25,6 +25,15 @@ All code is folded by default. For any given cell, click on "Code" to expand it,
 
 Some code may be repeated, as the original python notebook was written for figures to be created semi-independantly (so one can fully re-run individual sections when making modifications).
 
+::: {#WIP .callout-important}
+THIS IS A WORK IN PROGRESS.
+
+Some figures are still missing.
+Message date: 2025-10-01
+:::
+
+
+
 ## Article text
 
 Building on the successful classification of assay and biospecimen attributes, we extended our approach to six additional categories of harmonized metadata from EpiATLAS (donor sex, sample cancer status, donor life stage, biomaterial type, paired-end sequencing status and data provider (consortium)). These new classifiers demonstrated similarly impressive performance, achieving accuracy above 95%, F1-scores exceeding 92% (except for life stage), and AUROC values greater than 98% (Fig. 2A-B, Supplementary Fig. 5A, Supplementary Table 2). The F1-score variations among categories primarily reflected underlying class imbalances, quantified through normalized Shannon entropy (Fig. 2C, Supplementary Table 1). For instance, in the life stage category, fetal and newborn classes contained only 44 and 106 datasets respectively, compared to over 5,000 adult datasets. Similarly, in the sex category, the mixed class included just 114 datasets versus more than 3,400 for both female and male classes. Despite these class imbalance challenges, the robust classifiers performance enabled us to augment with high-confidence over 85% of previously missing donor sex and life stage labels in EpiATLAS v2.0 metadata, endorsed by the presence of multiple assays per biological sample. Moreover, the performances of all classifiers improve by increasing the prediction score threshold, prompting us to consider prediction scores as a confidence score hereafter (Supplementary Fig. 6A).
@@ -141,7 +150,7 @@ main_title_settings = {
 
 ## Figure 2
 
-### A,B - MLP performance on various classification tasks (100kb resolution) {#sec-2ab}
+### A,B - MLP performance on various classification tasks (100kb resolution) {#sec-2AB}
 
 - 2A: Accuracy
 - 2B: F1-Score
@@ -999,7 +1008,7 @@ zscore_merged_assays(
 )
 ```
 
-Fig 2E: Distribution of the average z-score signal of epigenomes (dots) over chrY, computed on the ChIP-Seq datasets (up to 7 assays per epigenome) using the fold change track type files for female (red) and male (blue). Originally mislabeled epigenomes are shown as big dots. Boxplot elements are as in Fig. 2A.
+Fig 2E: Distribution of the average z-score signal of epigenomes (dots) over chrY, computed on the ChIP-Seq datasets (up to 7 assays per epigenome) using the fold change track type files for female (red) and male (blue). Originally mislabeled epigenomes are shown as big dots. Boxplot elements are as in [Fig. 2A](./fig2.html#sec-2AB).
 
 ### F - Donor life stage and GP-Age
 
@@ -1232,15 +1241,15 @@ graph_gp_age(
 )
 ```
 
-Fig 2F: Distribution of the age prediction from GP-age for the WGBS datasets with an originally unknown life stage predicted by EpiClass (datasets related to blood biospecimen are in red, others in grey). Boxplot elements are as in Fig. 2A.
+Fig 2F: Distribution of the age prediction from GP-age for the WGBS datasets with an originally unknown life stage predicted by EpiClass (datasets related to blood biospecimen are in red, others in grey). Boxplot elements are as in [Fig. 2A](./fig2.html#sec-2AB).
 
 ### G - Biospecimen classifier - ChromScore for high-SHAP regions
 
 See `src/python/epiclass/utils/notebooks/analyze_hdf5_vals.ipynb`, particularly section "ChromScore hdf5 values".
 
-Fig 2G: Distribution of the average ChromScore values over the important Biospecimen classifier regions according to SHAP (pink) compared to the global distribution (grey). Statistical significance was assessed using a two-sided Welch's t-test. Boxplot elements are as in Fig. 2A, with a violin representation on top.
+Fig 2G: Distribution of the average ChromScore values over the important Biospecimen classifier regions according to SHAP (pink) compared to the global distribution (grey). Statistical significance was assessed using a two-sided Welch's t-test. Boxplot elements are as in [Fig. 2A](./fig2.html#sec-2AB), with a violin representation on top.
 
-### H - Gene Ontology and SHAP values
+### H - Gene Ontology and SHAP values {#sec-2H}
 
 See `src/python/epiclass/utils/notebooks/profile_bed.ipynb` for creation of gene ontology files.
 The code compares important SHAP values regions of different cell types with gene gff (using the gProfiler module)
@@ -1433,7 +1442,7 @@ plot_go_heatmap(
 ```
 
 
-Fig 2H: Top four gene ontology (GO) terms enriched by g:Profiler35 for genes within important Biospecimen classifier regions according to SHAP values.
+Fig 2H: Top four gene ontology (GO) terms enriched by g:Profiler[35] for genes within important Biospecimen classifier regions according to SHAP values.
 
 #### 5 top pval terms for each biospecimen label
 
@@ -1465,7 +1474,7 @@ plot_go_heatmap(
 )
 ```
 
-### I - Biospecimen important regions chromatin states
+### I - Biospecimen important regions chromatin states {#sec-2I}
 
 Images extracted from Epilogos viewer, using:
 - Region: chr11:118300000-118400000
@@ -1475,7 +1484,7 @@ Images extracted from Epilogos viewer, using:
 - Saliency Metric: S1
 
 
-Fig. 2I: Epilogos visualization of one of the important Biospecimen classifier regions enriched in the T cell receptor complex GO term from Fig .2H.
+Fig. 2I: Epilogos visualization of one of the important Biospecimen classifier regions enriched in the T cell receptor complex GO term from [Fig. 2H](./fig2.html#sec-2H).
 
 ### J - Copy Number Alteration (CNA) Signatures and SHAP values
 
@@ -1700,7 +1709,7 @@ Fig. 2J: Distribution of the z-score enrichment for copy number (CN) signatures 
 
 ### A - MLP performance on various classification tasks (100kb resolution)
 
-See Figure 2A,B.
+See [Figure 2A,B](./fig2.html#sec-2AB)
 
 ### B - chrY signal per sex: Average EpiRR z-score per assay
 
@@ -2019,20 +2028,21 @@ Supp. Fig. 5D: Distribution of the age prediction from GP-age for the 565 epigen
 ### E - Sex genes chromatin states
 
 Images extracted from Epilogos viewer, using specified coordinates (XIST and FIRRE positions), and:
+
 - View mode: Paired
 - Dataset: IHEC
 - Pairwise: Male VS Female 100 samples
 - Saliency Metric: S1
 
-
+![](../resources/Supp5E.png){width=.column-body}
 
 Supp. Fig. 5E: Epilogos pairwise comparisons of male (top) vs female (bottom) showing portions of important regions for the Sex classifier, including the XIST (left) and FIRRE (right) genes.
 
 ### F - Sex genes chromatin states
 
-INSERT
+![](../resources/Supp5F.png){width=.column-body}
 
-Supp. Fig. 5F: Genome browser representation of the important regions shown in Figure 2I.
+Supp. Fig. 5F: Genome browser representation of the important regions shown in [Figure 2I](./fig2.html#sec-2I).
 
 ## Supplementary Figure 6 - Prediction score threshold impact
 
