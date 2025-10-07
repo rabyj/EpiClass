@@ -36,7 +36,8 @@ pip install -e .[utils] # adds requirements notebooks and utility scripts
 pip install -e .[test] # adds pytest requirements
 ```
 
-The exact requirements are in `src/python/requirements/req_core.in`. Other dependencies are specified in `pyproject.toml`.
+The base requirements are in `src/python/requirements/req_core.in`. Other dependencies are specified in `pyproject.toml`.
+If you have problems installing or running the code, please attempt using a python version specific requirement file. Those fixed dependencies files are in `src/python/requirements/` and are named `req_core-pyX.Y.txt` where `X` and `Y` are the major and minor python version numbers (e.g. `req_core-py3.8.in` for python 3.8). The test suite was confirmed to pass with all those fixed dependencies files.
 
 ## Input Format & Job Launching
 
