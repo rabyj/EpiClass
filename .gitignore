@@ -7,6 +7,9 @@
 **/tests/**/*.ckpt
 **/tests/fixtures/
 
+# uv
+uv.lock
+
 # quarto website
 resources/
 **/epiclass-figures/.gitignore
