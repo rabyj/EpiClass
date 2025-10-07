@@ -1,5 +1,5 @@
 """Utility functions for the paper notebooks."""
-# pylint: disable=too-many-branches, too-many-lines
+# pylint: disable=too-many-branches, too-many-lines, too-many-positional-arguments
 
 from __future__ import annotations
 
@@ -72,6 +72,20 @@ EPIATLAS_16_CT: List[str] = [
         "extraembryonic cell",
     ]
 ]
+
+LIFESTAGE_REMAPPER = {
+    "adult": "adult",
+    "embryo": "perinatal",
+    "embryonic": "perinatal",
+    "fetal": "perinatal",
+    "newborn": "perinatal",
+    "perinatal": "perinatal",
+    "child": "child",
+    "unknown": "unknown",
+    "indeterminate": "unknown",
+    np.nan: "unknown",
+    pd.NA: "unknown",
+}
 
 
 class IHECColorMap:
@@ -1319,21 +1333,6 @@ def merge_life_stages(
     """
     df = df.copy(deep=True)
 
-    # Define the life stage mapping
-    lifestage_remapper = {
-        "adult": "adult",
-        "embryo": "perinatal",
-        "embryonic": "perinatal",
-        "fetal": "perinatal",
-        "newborn": "perinatal",
-        "perinatal": "perinatal",
-        "child": "child",
-        "unknown": "unknown",
-        "indeterminate": "unknown",
-        np.nan: "unknown",
-        pd.NA: "unknown",
-    }
-
     # Set default column templates if not provided
     if column_name_templates is None:
         column_name_templates = [
@@ -1408,13 +1407,13 @@ def merge_life_stages(
             continue
 
         # Apply life stage remapping
-        df[new_column_name] = df[old_column_name].map(lifestage_remapper)
+        df[new_column_name] = df[old_column_name].map(LIFESTAGE_REMAPPER)
 
         # Validate that all values were successfully mapped
         unmapped_mask = df[new_column_name].isnull() & df[old_column_name].notnull()
         if unmapped_mask.any():
             unmapped_values = df.loc[unmapped_mask, old_column_name].unique().tolist()
-            available_keys = list(lifestage_remapper.keys())
+            available_keys = list(LIFESTAGE_REMAPPER.keys())
 
             raise ValueError(
                 f"Failed to remap all values in column `{old_column_name}`. "
