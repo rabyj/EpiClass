@@ -1,6 +1,8 @@
 ---
 title: "EpiClass accurately predicts EpiATLAS assay and biospecimen metadata"
 author: "Joanny Raby"
+resources:
+    - "../resources/global_chromscore.html"
 format:
   html:
     code-fold: true
@@ -17,37 +19,13 @@ execute:
   error: false
 ---
 
-# Results section 2 figures
+# Results section 2: Figures and their code
 
-Formatting of the figures may not be identical to the paper, but they contain the same data points.
+The formatting of the figures may differ slightly from those in the paper, but they display the same data points.
 
-All code is folded by default. For any given cell, click on "Code" to expand it, or unfold all using code options beside the main title, above.
+All code cells are folded by default. To view any cell, click **"Code"** to expand it, or use the code options near the main title above to unfold all at once.
 
-Some code may be repeated, as the original python notebook was written for figures to be created semi-independantly (so one can fully re-run individual sections when making modifications).
-
-::: {#WIP .callout-important}
-THIS IS A WORK IN PROGRESS.
-
-Some figures are still missing.
-Message date: 2025-10-01
-:::
-
-
-
-## Article text
-
-Building on the successful classification of assay and biospecimen attributes, we extended our approach to six additional categories of harmonized metadata from EpiATLAS (donor sex, sample cancer status, donor life stage, biomaterial type, paired-end sequencing status and data provider (consortium)). These new classifiers demonstrated similarly impressive performance, achieving accuracy above 95%, F1-scores exceeding 92% (except for life stage), and AUROC values greater than 98% (Fig. 2A-B, Supplementary Fig. 5A, Supplementary Table 2). The F1-score variations among categories primarily reflected underlying class imbalances, quantified through normalized Shannon entropy (Fig. 2C, Supplementary Table 1). For instance, in the life stage category, fetal and newborn classes contained only 44 and 106 datasets respectively, compared to over 5,000 adult datasets. Similarly, in the sex category, the mixed class included just 114 datasets versus more than 3,400 for both female and male classes. Despite these class imbalance challenges, the robust classifiers performance enabled us to augment with high-confidence over 85% of previously missing donor sex and life stage labels in EpiATLAS v2.0 metadata, endorsed by the presence of multiple assays per biological sample. Moreover, the performances of all classifiers improve by increasing the prediction score threshold, prompting us to consider prediction scores as a confidence score hereafter (Supplementary Fig. 6A).
-
-To support the sex predictions, we leveraged chromosome Y (chrY) signal as a complementary validation metric given that it was excluded during training. As expected, this signal showed distinct patterns between male and female samples [28], where males exhibited higher average methylation signals on chrY than females, with the exception of WGBS (Supplementary Fig. 5B). Moreover, progressively increasing the prediction confidence threshold resulted in a corresponding increase in the average z-score separation between the clusters, indicating that the prediction score aligns well with the strength of this independent biological sex marker (Supplementary Fig. 5C). Through this approach, we confidently assigned sex metadata to 268 unlabeled biological samples, reducing unknown cases to 2% (Fig. 2D, Supplementary Table 5). This analysis also revealed 23 previously mislabeled samples, which were corrected in EpiATLAS v2.0 (Fig. 2E, Supplementary Table 5).
-
-We achieved similarly strong results for life stage classification, confidently assigning metadata labels to 404 biological samples, with only 5% remaining unknown (Supplementary Table 5). To support these predictions, the WGBS data was provided to the machine learning GP-age tool,18 showing expected trends between its predicted age and the life stage categories across both previously unknown (n = 145) and all samples (n = 565) (Fig. 2F, Supplementary Fig. 5D). Notably, blood-related samples showed tighter correspondence between GP-age predictions and life stage categories, with more distinct age distributions across the perinatal, pediatric, and adult groups. This improved alignment is consistent with GP-age's training background which is made of blood samples. This analysis also identified 17 mislabeled biological samples, which were also corrected in EpiATLAS v2.0 (Supplementary Table 5).
-
-Using Shapley additive explanations (SHAP) [29], we identified genomic regions that most significantly influence model predictions for Biospecimen classification. SHAP values quantify each feature's contribution to model decisions by measuring its impact on predictions compared to expected values. This approach revealed an average of 187 important genomic bins driving the Biospecimen classifier decisions (Supplementary Table 6). Interestingly, their potential biological relevance is supported by two aspects: 1) their elevated functional potential compared to all regions of the genome, quantified using the ChromActivity computational framework [26,30] (Fig. 2G, Supplementary Fig. 7), and 2) their biospecimen-specific enriched gene ontology terms that are well aligned with expected ones, also supported by the Epilogos visualization [31] of a representative region (Fig. 2H-I, Supplementary Table 7).
-
-We also identified 503 SHAP-based important regions for the Sex classifier and 336 for the Cancer status one (Supplementary Table 6). Unsurprisingly, ~30% of the important regions for sex classifications were on chrX (5.8 fold enrichment), including the known sex-influenced genes XIST [32] and FIRRE [33] (P = 3.30E-3, Methods) (Supplementary Fig. 5E), with X-linked inheritance (HP:0001417) emerging as the most significant term from the 643 protein-coding genes in these regions (P = 3.40E-55) (Supplementary Table 7). Notably, 78.6% (22/28) of the features overlapping the pseudoautosomal region 1 (PAR1) were among the important regions, a highly significant enrichment (P = 2.55E-18). The important regions from the Cancer status classifier showed a much high enrichment (z-score > 3) in the copy number (CN) alteration signatures associated with focal events such as the tandem duplicator phenotype (CN17), complex patterns (CN18-21) and focal loss of heterozygosity (CN9-12) compared to chromosomal events (Fig. 2I, Supplementary Table 8) [34]. Enriched gene ontology terms from these same important regions are related to chromatin structure (GO:0030527, P = 3.38E-23) and histone deacetylation (REAC:R-HSA-3214815, P = 2.60E-19) (Supplementary Table 7).
-
-Collectively, these results demonstrate that EpiClass can be used to confidently validate and enrich the metadata of associated data, and suggest that the regions identified as important by the different classifiers contain biologically relevant information.
-
+Some code may be repeated, as the original Python notebook was designed for figures to be generated semi-independently.
 
 ## Setup Code - Imports and co.
 
@@ -346,6 +324,7 @@ sorted_task_names = NN_performance_across_classification_tasks(
 
 Fig. 2A,B: Distribution of accuracy and F1-score evaluated per training fold (dots) for each metadata classifier. Performance metrics are reported without applying a prediction score threshold. Dashed lines represent means, solid lines the medians, boxes the quartiles, and whiskers the farthest points within 1.5× the interquartile range.
 
+
 ### C - Class imbalance (Shannon Entropy)
 
 Define function `compute_class_imbalance`.
@@ -474,6 +453,7 @@ plot_shannon_entropy(
 ```
 Fig. 2C: Shannon entropy scores for each metadata category.
 
+
 ### D - Donor Sex classification
 
 `IHEC_sample_metadata_harmonization.v1.1.extended.csv` contains 314 EpiRRs with unknown sex. We applied a fully trained sex classifier on those.
@@ -598,7 +578,7 @@ with pd.option_context("display.float_format", "{:.2%}".format):
 
 Work done in another script:
 
-1. For each bigwig file, the chrY average value is computed. (with pyBigWig module, in chrY_bigwig_mean.py)
+1. For each bigwig file, the chrY average value is computed with the pyBigWig module, in `chrY_bigwig_mean.py` ([permalink](https://github.com/rabyj/EpiClass/blob/e87306bccecd3e35d9ffdbb5ddb29fcaa0800a35/src/python/epiclass/utils/chrY_bigwig_mean.py)).
 2. For each assay, the z-score distribution (of the mean chrY value) of the file group is computed.
     - Outputs `chrXY_all.csv`
     - Outputs `chrY_zscores.csv`
@@ -631,14 +611,12 @@ def compute_chrY_zscores(
     Returns:
         pd.DataFrame: The chrY signal data with z-scores appended.
     """
-    output_dir = Path()
+    output_dir: Path = chrY_dir
     if save:
         output_dir = chrY_dir / f"dfreeze_{version}_stats"
         output_dir.mkdir(parents=False, exist_ok=True)
 
     # Get chrY signal data
-    chrY_dir = base_data_dir / "chrY"
-    PathChecker.check_directory(chrY_dir)
     chrY_df = pd.read_csv(chrY_dir / "chrXY_all.csv", header=0)
 
     # Filter out md5s not in metadata version
@@ -667,7 +645,6 @@ def compute_chrY_zscores(
     dist1 = files1.groupby(ASSAY).agg({"chrY": ["mean", "std", "count"]})
     dist2 = files2.groupby([ASSAY, "track_type"]).agg({"chrY": ["mean", "std", "count"]})
     if save:
-        output_dir: Path
         dist1.to_csv(output_dir / "chrY_stats_assay_w_track_exclusion.csv")
         dist2.to_csv(output_dir / "chrY_stats_assay_and_track.csv")
 
@@ -801,6 +778,7 @@ pivot_table = cross_val_analysis_track.pivot_table(
 
 display(pivot_table.head())
 ```
+
 
 ### E - Average EpiRR z-score for 10fold
 
@@ -1009,6 +987,7 @@ zscore_merged_assays(
 ```
 
 Fig 2E: Distribution of the average z-score signal of epigenomes (dots) over chrY, computed on the ChIP-Seq datasets (up to 7 assays per epigenome) using the fold change track type files for female (red) and male (blue). Originally mislabeled epigenomes are shown as big dots. Boxplot elements are as in [Fig. 2A](./fig2.html#sec-2AB).
+
 
 ### F - Donor life stage and GP-Age
 
@@ -1243,15 +1222,43 @@ graph_gp_age(
 
 Fig 2F: Distribution of the age prediction from GP-age for the WGBS datasets with an originally unknown life stage predicted by EpiClass (datasets related to blood biospecimen are in red, others in grey). Boxplot elements are as in [Fig. 2A](./fig2.html#sec-2AB).
 
-### G - Biospecimen classifier - ChromScore for high-SHAP regions
+#### Supplementary Figure 5D - GP-age {#sec-supp-5D}
 
-See `src/python/epiclass/utils/notebooks/analyze_hdf5_vals.ipynb`, particularly section "ChromScore hdf5 values".
+Considering all samples that had a conclusive epiclass prediction (or existing label and no conclusion)
 
-Fig 2G: Distribution of the average ChromScore values over the important Biospecimen classifier regions according to SHAP (pink) compared to the global distribution (grey). Statistical significance was assessed using a two-sided Welch's t-test. Boxplot elements are as in [Fig. 2A](./fig2.html#sec-2AB), with a violin representation on top.
+```{python}
+#| label: plot-gpage-all-samples
+#| column: body-outset-left
+display_tissue_age_df(gp_graph_df)
+
+graph_gp_age(
+    df_gp_age=gp_graph_df,
+    name="GP_age_predictions_all_samples_MLP_predicted_labels",
+    title="All samples (has a life stage pred + gp-age)",
+)
+```
+
+Supp. Fig. 5D: Distribution of the age prediction from GP-age for the 565 epigenomes (dots) with conclusive consensus predictions (epigenomes related to blood biospecimen are in red, others in grey). The perinatal category encompasses the original embryonic, fetal and newborn categories of metadata as they individually contain too few samples. Dashed lines represent means, solid lines the medians, boxes the quartiles, and whiskers the farthest points within 1.5× the interquartile range.
+
+
+### G - Biospecimen classifier - ChromScore for high-SHAP regions {#sec-2G}
+
+For full code, since the processing is more complex, see `src/python/epiclass/utils/notebooks/analyze_hdf5_vals.ipynb` ([permalink](https://github.com/rabyj/EpiClass/blob/e87306bccecd3e35d9ffdbb5ddb29fcaa0800a35/src/python/epiclass/utils/notebooks/analyze_hdf5_vals.ipynb)), particularly section "ChromScore hdf5 values".
+
+::: {.text-center}
+<iframe
+  src="../resources/global_chromscore.html"
+  width="510"
+  height="510"
+></iframe>
+:::
+
+Fig 2G: Distribution of the average ChromScore values over the important Biospecimen classifier regions according to SHAP (blue) compared to the global distribution (pink). Statistical significance was assessed using a two-sided Welch's t-test. Boxplot elements are as in [Fig. 2A](./fig2.html#sec-2AB), with a violin representation on top.
+
 
 ### H - Gene Ontology and SHAP values {#sec-2H}
 
-See `src/python/epiclass/utils/notebooks/profile_bed.ipynb` for creation of gene ontology files.
+See `src/python/epiclass/utils/notebooks/profile_bed.ipynb` ([permalink](https://github.com/rabyj/EpiClass/blob/e87306bccecd3e35d9ffdbb5ddb29fcaa0800a35/src/python/epiclass/utils/notebooks/profile_bed.ipynb)) for creation of gene ontology files.
 The code compares important SHAP values regions of different cell types with gene gff (using the gProfiler module)
 
 Define GO terms.
@@ -1433,14 +1440,13 @@ Graph GO for 5 cell types.
 
 ```{python}
 #| label: plot-go-heatmap-5ct
-#| column: body-outset-left
+#| fig-align: center
 plot_go_heatmap(
     table=table_5_ct,
     width=600,
     height=1000,
 )
 ```
-
 
 Fig 2H: Top four gene ontology (GO) terms enriched by g:Profiler[35] for genes within important Biospecimen classifier regions according to SHAP values.
 
@@ -1474,23 +1480,29 @@ plot_go_heatmap(
 )
 ```
 
+
 ### I - Biospecimen important regions chromatin states {#sec-2I}
 
 Images extracted from Epilogos viewer, using:
+
 - Region: chr11:118300000-118400000
 - View mode: Single
 - Dataset: IHEC
 - All biosamples
 - Saliency Metric: S1
 
+![](../resources/fig2I.png){width=column.page-left}
 
-Fig. 2I: Epilogos visualization of one of the important Biospecimen classifier regions enriched in the T cell receptor complex GO term from [Fig. 2H](./fig2.html#sec-2H).
+Fig. 2I: Epilogos visualization of one of the important Biospecimen classifier regions enriched in the `T cell receptor complex` GO term from [Fig. 2H](./fig2.html#sec-2H).
+
+See [Annex A](./fig2.html#sec-annex-a) for a more detailled Epilogos color legend.
+
 
 ### J - Copy Number Alteration (CNA) Signatures and SHAP values
 
 Note: The code uses the acronym CNV (Copy Number Variant/Variation) instead of CNA.
 
-See CNV_treatment.ipynb for the creation of the CNA stats. The following figures represent the Z-scores of the signal within the top SHAP features (N=336) vs 200 random feature sets of same size, for signatures created using patients samples with cancer types similar to EpiAtlas content (see paper Methods).
+See CNV_treatment.ipynb ([permalink](https://github.com/rabyj/EpiClass/blob/e87306bccecd3e35d9ffdbb5ddb29fcaa0800a35/src/python/epiclass/utils/notebooks/paper/CNV_treatment.ipynb)) for the creation of the CNA stats. The following figures represent the Z-scores of the signal within the top SHAP features (N=336) vs 200 random feature sets of same size, for signatures created using patients samples with cancer types similar to EpiAtlas content (see paper Methods).
 \
 \
 Load z-scores.
@@ -1703,351 +1715,19 @@ Graph.
 plot_cnv_zscores_alt(cnv_df)
 ```
 
-Fig. 2J: Distribution of the z-score enrichment for copy number (CN) signatures (dots) in genomic regions identified as important by the Cancer status classifier compared to random control regions. CN signatures are grouped as being mostly associated with focal changes CN9-12,17-21) or chromosomal ones (CN1-8,13-16). Boxplot elements are as in Fig 2A.
+Fig. 2J: Distribution of the z-score enrichment for copy number (CN) signatures (dots) in genomic regions identified as important by the Cancer status classifier compared to random control regions. CN signatures are grouped as being mostly associated with focal changes (CN9-12,17-21) or chromosomal ones (CN1-8,13-16). Boxplot elements are as in Fig 2A.
 
-## Supplementary Figure 5
 
-### A - MLP performance on various classification tasks (100kb resolution)
+## Supplementary Figures 5 to 7
 
-See [Figure 2A,B](./fig2.html#sec-2AB)
+See [Supplementary Figures page](./fig2-supp.html) (separate to limit maximum website page size and loading times).
 
-### B - chrY signal per sex: Average EpiRR z-score per assay
 
-Define function `zscore_per_assay` to compute and graph the metric for each assay instead of globally.
+## Annex A - Epilogos color legend {#sec-annex-a}
 
-```{python}
-#| label: func-zscore-per-assay
-def zscore_per_assay(
-    zscore_df: pd.DataFrame, logdir: Path | None = None, name: str | None = None
-) -> None:
-    """
-    Plot the z-score distributions per assay.
+![](../resources/epilogos_legend.png){width=.column-body}
 
-    Does not include pval and raw tracks.
-
-    Args:
-        zscore_df: The dataframe with z-score data.
-    """
-    zscore_df = zscore_df.copy(deep=True)
-
-    # Remove pval/raw tracks + rna unstranded
-    zscore_df = zscore_df[~zscore_df["track_type"].isin(["pval", "raw", "Unique_raw"])]
-
-    # Merge rna protocols
-    zscore_df.replace({ASSAY: ASSAY_MERGE_DICT}, inplace=True)
-
-    # Remove NAs
-    metric_label = "chrY_zscore_vs_assay_w_track_exclusion"
-    zscore_df = zscore_df[zscore_df[metric_label] != "NA"]
-
-    assay_sizes = zscore_df[ASSAY].value_counts()
-    assays = sorted(assay_sizes.index)
-
-    x_title = "Sex z-score distributions per assay"
-    fig = make_subplots(
-        rows=1,
-        cols=len(assays),
-        shared_yaxes=True,
-        x_title=x_title,
-        y_title="z-score",
-        horizontal_spacing=0.02,
-        subplot_titles=[
-            f"{assay_label} ({assay_sizes[assay_label]})" for assay_label in assays
-        ],
-    )
-
-    for i, assay_label in enumerate(sorted(assays)):
-        sub_df = zscore_df[zscore_df[ASSAY] == assay_label]
-
-        hovertext = [
-            f"{epirr}: z-score={z_score:.3f}, pred={pred:.3f}"
-            for epirr, pred, z_score in zip(
-                sub_df["EpiRR"],
-                sub_df["Max pred"],
-                sub_df[metric_label],
-            )
-        ]
-        hovertext = np.array(hovertext)
-
-        sub_df.reset_index(drop=True, inplace=True)
-        y_values = sub_df[metric_label].values
-
-        female_idx = np.argwhere((sub_df[SEX] == "female").values).flatten()
-        male_idx = np.argwhere((sub_df[SEX] == "male").values).flatten()
-
-        fig.add_trace(
-            go.Box(
-                name=assay_label,
-                y=y_values[female_idx],
-                boxmean=True,
-                boxpoints="all",
-                hovertemplate="%{text}",
-                text=hovertext[female_idx],
-                marker=dict(
-                    size=2,
-                    color=sex_colors["female"],
-                    line=dict(width=0.5, color="black"),
-                ),
-                fillcolor=sex_colors["female"],
-                line=dict(width=1, color="black"),
-                showlegend=False,
-                legendgroup="Female",
-            ),
-            row=1,
-            col=i + 1,
-        )
-
-        fig.add_trace(
-            go.Box(
-                name=assay_label,
-                y=y_values[male_idx],
-                boxmean=True,
-                boxpoints="all",
-                hovertemplate="%{text}",
-                text=hovertext[male_idx],
-                marker=dict(
-                    size=2, color=sex_colors["male"], line=dict(width=0.5, color="black")
-                ),
-                fillcolor=sex_colors["male"],
-                line=dict(width=1, color="black"),
-                showlegend=False,
-                legendgroup="Male",
-            ),
-            row=1,
-            col=i + 1,
-        )
-
-    # Add a dummy scatter plot for legend
-    fig.add_trace(
-        go.Scatter(
-            x=[None],
-            y=[None],
-            mode="markers",
-            name="Female",
-            marker=dict(color=sex_colors["female"], size=20),
-            showlegend=True,
-            legendgroup="Female",
-        )
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=[None],
-            y=[None],
-            mode="markers",
-            name="Male",
-            marker=dict(color=sex_colors["male"], size=20),
-            showlegend=True,
-            legendgroup="Male",
-        )
-    )
-
-    fig.update_xaxes(showticklabels=False)
-    fig.update_yaxes(range=[-1.5, 3], showticklabels=True)
-
-    fig.update_layout(
-        width=1500,
-        height=750,
-    )
-
-    # Save figure
-    if logdir:
-        if name is None:
-            name = "zscore_distributions_per_assay"
-        fig.write_image(logdir / f"{name}.svg")
-        fig.write_image(logdir / f"{name}.png")
-        fig.write_html(logdir / f"{name}.html")
-
-    fig.show()
-```
-
-Graph zscore per assay.
-
-```{python}
-#| label: plot-zscore-per-assay
-#| column: screen-inset-left
-zscore_per_assay(cross_val_analysis)
-```
-
-Supp. Fig. 5B: Distribution of average z-score signal of epigenomes (dots) over chrY per sex (female in red, male in blue) for each assay individually (showing only the fold change track type for the ChIP datasets, and the two types of WGBS and RNA-seq were merged). Dashed lines represent means, solid lines the medians, boxes the quartiles, and whiskers the farthest points within 1.5× the interquartile range.
-
-To see RNA-Seq and WGBS, scroll to the right for using horizontal scrollbar at the bottom.
-
-### C - Female/Male chrY signal z-score cluster separation
-
-Define function `merged_assays_separation_distance` that computes and graphs the showing separation distance between male/female zscore clusters.
-
-```{python}
-#| label: func-separation-distance
-def merged_assays_separation_distance(
-    zscore_df: pd.DataFrame, logdir: Path | None = None, name: str | None = None
-) -> None:
-    """Complement to figure 2E, showing separation distance (mean, median)
-    between male/female zscore clusters, for ChIP-seq (core7). Grouped by EpiRR.
-
-    Args:
-        zscore_df (pd.DataFrame): The dataframe with z-score data.
-        logdir (Path): The directory path to save the output plots.
-        name (str): The base name for the output plot files.
-    """
-    metric_label = "chrY_zscore_vs_assay_track"
-
-    # Preprocessing
-    zscore_df = zscore_df.copy(deep=True)
-    zscore_df.replace({ASSAY: ASSAY_MERGE_DICT}, inplace=True)
-
-    zscore_df = zscore_df[zscore_df[ASSAY].isin(CORE7_ASSAYS)]  # type: ignore
-
-    # Remove pval/raw tracks
-    zscore_df = zscore_df[~zscore_df["track_type"].isin(["pval", "raw"])]
-
-    # Average chrY z-score values
-    mean_chrY_values_df = zscore_df.groupby(["EpiRR", SEX]).agg(
-        {metric_label: "mean", "Max pred": "mean"}
-    )
-    mean_chrY_values_df.reset_index(inplace=True)
-    if not mean_chrY_values_df["EpiRR"].is_unique:
-        raise ValueError("EpiRR is not unique.")
-
-    mean_chrY_values_df.reset_index(drop=True, inplace=True)
-
-    distances = {"mean": [], "median": []}
-    min_preds = list(np.arange(0, 1.0, 0.01)) + [0.999]
-    sample_count = []
-    for min_pred in min_preds:
-        subset_chrY_values_df = mean_chrY_values_df[
-            mean_chrY_values_df["Max pred"] > min_pred
-        ]
-        sample_count.append(subset_chrY_values_df.shape[0])
-
-        # Compute separation distances
-        chrY_vals_female = subset_chrY_values_df[subset_chrY_values_df[SEX] == "female"][
-            metric_label
-        ]
-        chrY_vals_male = subset_chrY_values_df[subset_chrY_values_df[SEX] == "male"][
-            metric_label
-        ]
-
-        if not chrY_vals_female.empty and not chrY_vals_male.empty:
-            mean_distance = np.abs(chrY_vals_female.mean() - chrY_vals_male.mean())
-            median_distance = np.abs(chrY_vals_female.median() - chrY_vals_male.median())
-
-            distances["mean"].append(mean_distance)
-            distances["median"].append(median_distance)
-        else:
-            distances["mean"].append(np.nan)
-            distances["median"].append(np.nan)
-
-    # Plotting the results
-    fig = go.Figure()
-
-    # Add traces for mean and median distances
-    fig.add_trace(
-        go.Scatter(
-            x=min_preds,
-            y=distances["mean"],
-            mode="lines+markers",
-            name="Mean Distance (left)",
-            line=dict(color="blue"),
-        )
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=min_preds,
-            y=distances["median"],
-            mode="lines+markers",
-            name="Median Distance (left)",
-            line=dict(color="green"),
-        )
-    )
-
-    # Add trace for number of files
-    fig.add_trace(
-        go.Scatter(
-            x=min_preds,
-            y=np.array(sample_count) / max(sample_count),
-            mode="lines+markers",
-            name="Proportion of samples (right)",
-            line=dict(color="red"),
-            yaxis="y2",
-        )
-    )
-
-    fig.update_xaxes(range=[0.499, 1.0])
-
-    # Update layout for secondary y-axis
-    fig.update_layout(
-        title="Separation Distance of chrY z-scores male/female clusters - ChIP-Seq",
-        xaxis_title="Average Prediction Score minimum threshold",
-        yaxis_title="Z-score Distance",
-        yaxis2=dict(title="Proportion of samples", overlaying="y", side="right"),
-        yaxis2_range=[0, 1.001],
-        legend=dict(
-            x=1.08,
-        ),
-    )
-
-    # Save figure
-    if logdir:
-        if name is None:
-            name = "zscore_cluster_separation_distance"
-        fig.write_image(logdir / f"{name}.svg")
-        fig.write_image(logdir / f"{name}.png")
-        fig.write_html(logdir / f"{name}.html")
-
-    fig.show()
-```
-
-Graph.
-
-```{python}
-#| label: plot-separation-distance
-#| column: body-outset-left
-merged_assays_separation_distance(cross_val_analysis)
-```
-
-Supp. Fig. 5C: Effect of a prediction score threshold on the aggregated mean (blue) and median (green) sex z-score male/female cluster distances, as well as and corresponding file subset size (red) of ChIP-related assays from panel B.
-
-### D - GP-Age, all samples
-
-Considering all samples that had a conclusive epiclass prediction (or existing label and no conclusion)
-
-```{python}
-#| label: plot-gpage-all-samples
-#| column: body-outset-left
-display_tissue_age_df(gp_graph_df)
-
-graph_gp_age(
-    df_gp_age=gp_graph_df,
-    name="GP_age_predictions_all_samples_MLP_predicted_labels",
-    title="All samples (has a life stage pred + gp-age)",
-)
-```
-
-Supp. Fig. 5D: Distribution of the age prediction from GP-age for the 565 epigenomes (dots) with conclusive consensus predictions (epigenomes related to blood biospecimen are in red, others in grey). The perinatal category encompasses the original embryonic, fetal and newborn categories of metadata as they individually contain too few samples. Dashed lines represent means, solid lines the medians, boxes the quartiles, and whiskers the farthest points within 1.5× the interquartile range.
-
-### E - Sex genes chromatin states
-
-Images extracted from Epilogos viewer, using specified coordinates (XIST and FIRRE positions), and:
-
-- View mode: Paired
-- Dataset: IHEC
-- Pairwise: Male VS Female 100 samples
-- Saliency Metric: S1
-
-![](../resources/Supp5E.png){width=.column-body}
-
-Supp. Fig. 5E: Epilogos pairwise comparisons of male (top) vs female (bottom) showing portions of important regions for the Sex classifier, including the XIST (left) and FIRRE (right) genes.
-
-### F - Sex genes chromatin states
-
-![](../resources/Supp5F.png){width=.column-body}
-
-Supp. Fig. 5F: Genome browser representation of the important regions shown in [Figure 2I](./fig2.html#sec-2I).
-
-## Supplementary Figure 6 - Prediction score threshold impact
-
-nani?
-
-## Supplementary Figure 7 - Biospecimen classifier - ChromScore for high-SHAP regions
-
-See `src/python/epiclass/utils/notebooks/analyze_hdf5_vals.ipynb`, particularly section "ChromScore hdf5 values".
+- biv = bivalent
+- Tx = Transcription
+- Repr = Repressed
+- PC = Polycomb

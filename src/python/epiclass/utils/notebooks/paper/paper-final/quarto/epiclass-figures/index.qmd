@@ -8,9 +8,10 @@ This is a Quarto website presenting figures from the [EpiClass paper](https://do
 
 Here are the figure pages:
 
-- Section 1: [EpiClass accurately predicts EpiATLAS assay and biospecimen metadata](./figs/fig1.qmd)
-- Section 2: [EpiClass reliably validates and augments other categories of EpiATLAS metadata](./figs/fig2.qmd)
-- Section 3: [Application of EpiClass on public epigenomic data](./figs/fig3.qmd)
+- Section 1: [EpiClass accurately predicts EpiATLAS assay and biospecimen metadata](./figs/fig1.html)
+- Section 2: [EpiClass reliably validates and augments other categories of EpiATLAS metadata](./figs/fig2.html)
+- Section 3: [Application of EpiClass on public epigenomic data](./figs/fig3.html)
+- [Supplementary figures 5 to 7](./figs/fig2-supp.html)
 
 ## Quarto
 
