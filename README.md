@@ -190,7 +190,7 @@ All tests are expected to pass on tagged releases since v0.3.0, provided all req
 
 Exceptions:
 
-- Three tests are on standby (due to runtime).
+- Three tests are skipped (due to runtime).
 - One test is currently unimplemented.
 
 To run tests, first uncompress fixtures `src/python/tests/fixtures.tar.xz` as folder `fixtures`.
