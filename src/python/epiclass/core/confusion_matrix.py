@@ -14,7 +14,6 @@ import matplotlib.patheffects as path_effects
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib import cm
 from matplotlib.colors import ListedColormap
 
 
@@ -152,7 +151,7 @@ class ConfusionMatrixWriter:
 
         # prep colormap
         nb_colors = 20
-        gnuplot = cm.get_cmap("gnuplot", nb_colors)  # 20 colors
+        gnuplot = plt.get_cmap("gnuplot", nb_colors)  # 20 colors
         newcolors = gnuplot(np.linspace(0.0, 1.0, nb_colors))
         new_cmap = ListedColormap(newcolors)  # type: ignore
         new_cmap.set_over(
