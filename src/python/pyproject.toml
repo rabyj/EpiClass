@@ -14,6 +14,10 @@ requires-python = ">=3.8, <3.12"
 version = { file = "VERSION" }
 dependencies = { file = "requirements/req_core.in" }
 
+[[tool.uv.index]]
+name = "computecanada"
+url = "/cvmfs/soft.computecanada.ca/custom/python/wheelhouse"
+
 [tool.uv.pip]
 only-binary = [
     "torch",
