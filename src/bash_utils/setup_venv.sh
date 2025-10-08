@@ -4,7 +4,7 @@
 # Define your environment name and requirements file
 # Default values
 ENV_NAME="epiclass_env"
-REQUIREMENTS_FILE="requirements/minimal_requirements.txt"
+REQUIREMENTS_FILE="requirements/req_core.in"
 LOCAL_MODULE_PATH="src/python"
 
 # Function to display the usage of the script
