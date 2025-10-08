@@ -32,9 +32,14 @@ pip install -e . # you can also use 'uv'
 To install the environment for analysis notebooks or running tests:
 
 ```bash
-pip install -e .[utils] # adds requirements notebooks and utility scripts
-pip install -e .[test] # adds pytest requirements
+pip install -e .[extra_name] # adds requirements notebooks and utility scripts
 ```
+
+The available `extra_name` options are:
+
+- `utils`: for utility scripts and notebooks (`src/python/epiclass/utils/`)
+- `test`: for running tests (includes `utils`)
+- `dev`: for development tools used (includes all of the above)
 
 The base requirements are listed in `src/python/requirements/req_core.in`. Additional dependencies (for `utils` and `test`) are defined in `pyproject.toml`.
 

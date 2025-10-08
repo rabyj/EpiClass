@@ -35,7 +35,7 @@ dulwich==0.24.2
     # via comet-ml
 everett==3.1.0
     # via comet-ml
-filelock==3.19.1
+filelock==3.20.0
     # via
     #   huggingface-hub
     #   torch
@@ -179,7 +179,7 @@ pandas==1.5.3
     #   shap
 pillow==11.3.0
     # via matplotlib
-propcache==0.4.0
+propcache==0.3.2
     # via
     #   aiohttp
     #   yarl

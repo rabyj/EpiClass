@@ -1,4 +1,3 @@
-#! /usr/bin/just
 # Justfile for managing test suite with multiple Python versions.
 # Uses `uv` (https://pypi.org/project/uv/) for environment and dependency management.
 # Uses `pytest` for running tests.
@@ -99,8 +98,10 @@ clean:
     echo "Press Ctrl+C to cancel, or Enter to continue..."
     read -r
     echo "🧹 Cleaning up..."
-    rm -rf logs
-    rm -rf __pycache__
-    rm -rf .pytest_cache
-    rm -rf envs
+    for dir in logs envs ./venv __pycache__ .pytest_cache; do
+        if [ -d "$dir" ]; then
+            echo "Removing $dir..."
+            rm -rf "$dir"
+        fi
+    done
     echo "✅ Cleanup complete"

@@ -27,7 +27,7 @@ torchmetrics>=0.7.2,<0.8
 skops>=0.9.0,<0.10
 
 # Visualization and plotting
-matplotlib>=3.7
+matplotlib>=3.7,<3.11
 kaleido==0.1.0
 
 # Experiment tracking and monitoring
