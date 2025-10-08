@@ -7,17 +7,19 @@ EpiClass trains machine learning models to classify and label epigenomic data.
 This repository contains most of the code used to obtain results for the following paper:
 [Leveraging the largest harmonized epigenomic data collection for metadata prediction validated and augmented over 350,000 public epigenomic datasets](https://doi.org/10.1101/2025.09.04.670545)
 
-To interact with the paper figures, use the [Quarto website](https://rabyj.github.io/EpiClass/epiclass-paper/index.html). This website is generated from an alternative version of the Python notebooks used to create the figures (notebooks are at `src/python/epiclass/utils/notebooks/paper/paper-final/fig*.ipynb`).
+To explore the interactive figures, use the [Quarto website](https://rabyj.github.io/EpiClass/epiclass-paper/index.html). This website is generated from an alternative version of the Python notebooks used to create the figures (notebooks are at `src/python/epiclass/utils/notebooks/paper/paper-final/fig*.ipynb`).
 
 See [Key Scripts](#key-scripts) section for the training code.
 
 ## Model Availability – Neural Networks Trained on EpiATLAS
 
-Models trained on the EpiATLAS dataset and used for inference on other datasets (as part of the associated publication) are available on HuggingFace under the ["EpiClass models" collection](https://huggingface.co/collections/KatLeChat/epiclass-models-68adb5ce65c8f2fb93322e59).
+Models trained on the EpiATLAS dataset and used for inference on other datasets (as part of the associated publication) are available on Hugging Face under the ["EpiClass models" collection](https://huggingface.co/collections/KatLeChat/epiclass-models-68adb5ce65c8f2fb93322e59).
 
 ## Setup
 
-The code was developed primarily with **Python 3.8**. Compatibility with other versions is not guaranteed. However, the test suite passed under python 3.9 to 3.11.
+The code was developed primarily with **Python 3.8**. Compatibility with other versions is not guaranteed. However, the test suite passed under python 3.9-3.11.
+
+### Installation for training
 
 To install the environment for training:
 
@@ -29,7 +31,9 @@ To install the environment for training:
 pip install -e . # you can also use 'uv'
 ```
 
-To install the environment for analysis notebooks or running tests:
+This installs the base requirements needed for training models, and EpiClass (`.`) as an editable package. (`-e`) It is suggested to install the package in editable mode to facilitate personal modifications.
+
+### Installation for analysis notebooks or running tests
 
 ```bash
 pip install -e .[extra_name] # adds requirements notebooks and utility scripts
@@ -39,7 +43,9 @@ The available `extra_name` options are:
 
 - `utils`: for utility scripts and notebooks (`src/python/epiclass/utils/`)
 - `test`: for running tests (includes `utils`)
-- `dev`: for development tools used (includes all of the above)
+- `dev`: for development tools (includes all of the above)
+
+### Dependencies
 
 The base requirements are listed in `src/python/requirements/req_core.in`. Additional dependencies (for `utils` and `test`) are defined in `pyproject.toml`.
 
@@ -207,8 +213,6 @@ To run tests, first uncompress fixtures `src/python/tests/fixtures.tar.xz` as fo
 ```bash
 pytest src/python/tests
 ```
-
----
 
 ## License
 
